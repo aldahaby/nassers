@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login to Gold Prices</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #1a1a1a;
+      --accent-color: #f4c10f;
+      --primary-color: #d4af37;
+      --header-bg: #f9fafc;
+      --table-bg: #fdfdfd;
+      --table-border: #e0e0e0;
+      --info-bg: #f0f4f8;
+      --input-bg: #ffffff;
+      --input-text: #000000;
+    }
+
+    body.dark {
+      --bg-color: #1e1e1e;
+      --text-color: #e0e0e0;
+      --accent-color: #ffcc00;
+      --primary-color: #ffcc00;
+      --header-bg: #2a2a2a;
+      --table-bg: #2a2a2a;
+      --table-border: #3a3a3a;
+      --info-bg: #2f2f2f;
+      --input-bg: #2a2a2a;
+      --input-text: #e0e0e0;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: all 0.3s ease;
+      height: 102vh;
+      width: 102vw;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #login-container {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    #login-box {
+      background: var(--header-bg);
+      border: 1px solid var(--table-border);
+      border-radius: 12px;
+      padding: 3vh 4vw;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 70%;
+      max-width: 15cm;
+    }
+
+    #login-box h2 {
+      font-size: 3vh;
+      margin-bottom: 2vh;
+    }
+
+    #login-box input {
+      width: 100%;
+      padding: 1.5vh;
+      margin: 1vh 0;
+      border: 1px solid var(--table-border);
+      border-radius: 6px;
+      font-size: 2vh;
+      background-color: var(--input-bg);
+      color: var(--input-text);
+    }
+
+    #login-box button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 1.5vh 3vw;
+      font-size: 2vh;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 1vh;
+    }
+
+    #login-error {
+      color: red;
+      display: none;
+      font-size: 1.8vh;
+    }
+
+    #content {
+      display: none;
+      height: 97vh; /* Slightly less than viewport for margins */
+      width: 97vw; /* Slightly less than viewport for margins */
+      position: relative;
+    }
+
+    .container {
+      height: 100%;
+      width: 100%;
+      padding: 1vh 1vw;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1 {
+      font-size: 2.9vh;
+      color: var(--primary-color);
+      margin: 0.5vh 0;
+      text-align: center;
+    }
+
+    #datetime, #last-update {
+      font-size: 1.8vh;
+      color: #888;
+      text-align: center;
+      margin: 0.3vh 0;
+    }
+
+    .top-controls {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 1vw;
+      flex-wrap: wrap;
+      position: absolute;
+      top: 1vh;
+      right: 1vw;
+      z-index: 1000;
+    }
+
+    .lang-button, .fullscreen-button, .exit-fullscreen-button, .theme-button, .settings-button {
+      padding: 1vh 1.4vw;
+      font-size: 1.4vh;
+      background-color: var(--primary-color);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .exit-fullscreen-button {
+      display: none;
+    }
+
+    body.fullscreen .lang-button,
+    body.fullscreen .theme-button,
+    body.fullscreen .fullscreen-button,
+    body.fullscreen .settings-button,
+    body.fullscreen .message-editor {
+      display: none;
+    }
+
+    body.fullscreen .exit-fullscreen-button {
+      display: inline-block;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--table-border);
+      border-radius: 12px;
+      overflow: hidden;
+      background-color: var(--table-bg);
+      margin: 1vh 0;
+      flex: 1; /* Takes available space */
+    }
+
+    th, td {
+      padding: 1.7vh;
+      font-size: 2.4vh;
+      text-align: center;
+    }
+
+    th {
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+      color: #000;
+      font-weight: 620;
+      border-bottom: 2px solid var(--table-border);
+    }
+
+    td {
+      border-bottom: 1px solid var(--table-border);
+      background-color: var(--table-bg);
+      color: var(--text-color);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover td {
+      background-color: rgba(255, 215, 0, 0.1);
+    }
+
+    .info-boxes {
+      margin-top: 1.7vh;
+      background-color: var(--info-bg);
+      padding: 1.7vh;
+      border-radius: 10px;
+      font-size: 2.6vh;
+      color: var(--primary-color);
+      font-weight: bold;
+      text-align: center;
+      height: 6vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .message-editor {
+      margin-top: 1.5vh;
+      display: flex;
+      gap: 1vw;
+      flex-wrap: wrap;
+    }
+
+    .message-editor input {
+      flex: 1;
+      padding: 1.5vh;
+      font-size: 2vh;
+      background-color: var(--input-bg);
+      color: var(--input-text);
+      border: 1px solid var(--table-border);
+      border-radius: 6px;
+    }
+
+    .message-editor button {
+      padding: 1.5vh 2vw;
+      font-size: 2vh;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #settings-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: var(--bg-color);
+      border: 1px solid var(--table-border);
+      padding: 2vh;
+      border-radius: 10px;
+      display: none;
+      z-index: 9999;
+      width: 50vw;
+      max-width: 10cm;
+    }
+
+    #settings-modal label {
+      font-size: 2vh;
+      display: block;
+      margin-bottom: 1.5vh;
+    }
+
+    #settings-modal input {
+      width: 60%;
+      padding: 1vh;
+      font-size: 2vh;
+    }
+
+    #settings-modal button {
+      padding: 1.5vh 2vw;
+      font-size: 1.8vh;
+      margin: 0 0.5vw;
+    }
+  </style>
+</head>
+<body>
+  <div id="login-container">
+    <div id="login-box">
+      <h2>Enter Username and Password</h2>
+      <input type="text" id="username" placeholder="Username" />
+      <input type="password" id="password" placeholder="Password" />
+      <p id="login-error">Incorrect username or password.</p>
+      <button onclick="login()">Log in</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <div class="top-controls">
+      <button class="lang-button" onclick="toggleLanguage()">عربي</button>
+      <button class="fullscreen-button" onclick="toggleFullscreen()">Fullscreen</button>
+      <button class="exit-fullscreen-button" onclick="exitFullscreen()">Exit Fullscreen</button>
+      <button class="theme-button" onclick="toggleTheme()">Dark Mode</button>
+      <button class="settings-button" onclick="toggleSettings()">Settings</button>
+    </div>
+
+    <div class="container">
+      <h1 id="title">Gold Prices in Jordan (JOD per Gram)</h1>
+      <p id="datetime"></p>
+      <p id="last-update">Last update: --:--:--</p>
+      <table>
+        <thead>
+          <tr>
+            <th id="carat-header">Carat</th>
+            <th id="buy-header">Buy </th>
+            <th id="sell-header">Sell </th>
+          </tr>
+        </thead>
+        <tbody id="price-table-body"></tbody>
+      </table>
+      <div class="info-boxes" id="info-box">No messages yet. Add one below.</div>
+      <div class="message-editor">
+        <input type="text" id="single-message" placeholder="Type a message to display...">
+        <button onclick="addMessage()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-modal">
+    <label>Markup %: <input type="number" id="markup-input" min="0" step="0.01">%</label>
+    <button onclick="applyMarkup()">Apply</button>
+    <button onclick="toggleSettings()">Close</button>
+  </div>
+
+  <script>
+    const API_KEY = "0u53fn16nkajvhrbazkec1dj46ytgcpwn1zzxy7ts8qoxviwwrkhin8c3uy1";
+    const correctUsername = "admin";
+    const correctPassword = "gold123";
+
+    const PURITY = {
+      "24K": 1.000,
+      "22K": 0.916,
+      "21K": 0.875,
+      "18K": 0.750,
+      "14K": 0.585,
+      "12K": 0.500
+    };
+
+    let markupMultiplier = 1.82;
+    let INFO_MESSAGES = [];
+    let infoIndex = 0;
+    let currentLanguage = 'en';
+
+    function login() {
+      const u = document.getElementById("username").value;
+      const p = document.getElementById("password").value;
+      const errorBox = document.getElementById("login-error");
+
+      if (u === correctUsername && p === correctPassword) {
+        document.getElementById("login-container").style.display = "none";
+        document.getElementById("content").style.display = "block";
+        errorBox.style.display = "none";
+        updatePriceTable(); // Fetch prices immediately after login
+      } else {
+        errorBox.style.display = "block";
+      }
+    }
+
+    async function updatePriceTable() {
+      try {
+        const res = await fetch(`https://metals-api.com/api/latest?access_key=${API_KEY}&base=USD&symbols=XAU,JOD`);
+        
+        if (!res.ok) {
+          throw new Error(`API request failed with status ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        if (!data.success) {
+          throw new Error(`API error: ${data.error.info}`);
+        }
+
+         const usdToJod = data.rates.JOD;
+        const goldUsdPerOz = data.rates.XAU;
+        const goldJodPerGram = (1 / goldUsdPerOz) * usdToJod / 31.1035;
+
+        const tbody = document.getElementById("price-table-body");
+        tbody.innerHTML = "";
+
+        Object.entries(PURITY).sort((a, b) => b[1] - a[1]).forEach(([carat, purity]) => {
+          const purePrice = goldJodPerGram * purity;
+          const buy = purePrice * markupMultiplier - 1;
+          const sell = purePrice * markupMultiplier + 1;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${carat}</td>
+            <td>د.ا ${buy.toFixed(2)}</td>
+            <td>د.ا ${sell.toFixed(2)}</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        document.getElementById("last-update").textContent =
+          "Last update: " + new Date().toLocaleTimeString();
+      } catch (e) {
+        console.error("Error fetching gold price:", e);
+        document.getElementById("last-update").textContent =
+          "Error updating prices. Please try again later.";
+      }
+    }
+
+    function updateClock() {
+      document.getElementById("datetime").textContent = new Date().toLocaleString();
+    }
+
+    function toggleLanguage() {
+      currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
+      applyLanguage(currentLanguage);
+    }
+
+    function applyLanguage(lang) {
+      document.querySelector('.lang-button').textContent = lang === 'en' ? 'عربي' : 'English';
+      document.getElementById('title').textContent = lang === 'en'
+        ? 'Gold Prices in Jordan (JOD per Gram)'
+        : 'أسعار الذهب في الأردن (دينار للغرام)';
+      document.getElementById('carat-header').textContent = lang === 'en' ? 'Carat' : 'عيار';
+      document.getElementById('buy-header').textContent = lang === 'en' ? 'Buy ' : ' الشراء';
+      document.getElementById('sell-header').textContent = lang === 'en' ? 'sell ' : ' البيع';
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+      document.querySelector('.theme-button').textContent =
+        document.body.classList.contains('dark') ? 'Light Mode' : 'Dark Mode';
+    }
+
+    function toggleSettings() {
+      const modal = document.getElementById("settings-modal");
+      modal.style.display = modal.style.display === "block" ? "none" : "block";
+      document.getElementById("markup-input").value = ((markupMultiplier - 1) * 100).toFixed(2);
+    }
+
+    function applyMarkup() {
+      const value = parseFloat(document.getElementById("markup-input").value);
+      if (!isNaN(value) && value >= 0) {
+        markupMultiplier = 1 + value / 100;
+        updatePriceTable();
+        toggleSettings();
+      }
+    }
+
+    async function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        document.body.classList.add('fullscreen');
+      }
+    }
+
+    async function exitFullscreen() {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+      document.body.classList.remove('fullscreen');
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        document.body.classList.remove('fullscreen');
+      }
+    });
+
+    function rotateInfo() {
+      const infoBox = document.getElementById('info-box');
+      if (INFO_MESSAGES.length > 0) {
+        infoBox.textContent = INFO_MESSAGES[infoIndex];
+        infoIndex = (infoIndex + 1) % INFO_MESSAGES.length;
+      } else {
+        infoBox.textContent = 'No messages yet. Add one below.';
+      }
+    }
+
+    function addMessage() {
+      const input = document.getElementById("single-message");
+      const newMsg = input.value.trim();
+      if (newMsg) {
+        INFO_MESSAGES.push(newMsg);
+        input.value = "";
+        alert("Message added.");
+        if (INFO_MESSAGES.length === 1) rotateInfo();
+      }
+    }
+
+    // Initialize the page
+    updateClock();
+    applyLanguage(currentLanguage);
+    rotateInfo();
+
+    // Set up intervals
+    setInterval(updateClock, 1000);
+    setInterval(updatePriceTable, 1200000); // Update prices every 20 minutes
+    setInterval(rotateInfo, 10000); // Rotate messages every 10 seconds
+  </script>
+</body>
+</html>
