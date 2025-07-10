@@ -351,6 +351,10 @@
     let infoIndex = 0;
     let currentLanguage = 'en';
 
+    let lastGoldUsd = null;
+const PRICE_THRESHOLD = 20;
+
+
     function login() {
       const u = document.getElementById("username").value;
       const p = document.getElementById("password").value;
@@ -366,57 +370,56 @@
       }
     }
 
-    async function updatePriceTable() {
-      try {
-        const res = await fetch(`https://metals-api.com/api/latest?access_key=${API_KEY}&base=USD&symbols=XAU,JOD`);
-        
-        if (!res.ok) {
-          throw new Error(`API request failed with status ${res.status}`);
-        }
-        
-        const data = await res.json();
-        
-        if (!data.success) {
-          throw new Error(`API error: ${data.error.info}`);
-        }
+   async function updatePriceTable() {
+  try {
+    const res = await fetch(`https://metals-api.com/api/latest?access_key=${API_KEY}&base=USD&symbols=XAU,JOD`);
+    if (!res.ok) throw new Error(`API request failed with status ${res.status}`);
 
-         const usdToJod = data.rates.JOD;
-        const goldUsdPerOz = data.rates.XAU;
-        const goldJodPerGram = (1 / goldUsdPerOz) * usdToJod / 31.1035;
+    const data = await res.json();
+    if (!data.success) throw new Error(`API error: ${data.error.info}`);
 
-        const tbody = document.getElementById("price-table-body");
-        tbody.innerHTML = "";
+    const usdToJod = data.rates.JOD;
+    const goldUsdPerOz = data.rates.XAU;
 
-        Object.entries(PURITY).sort((a, b) => b[1] - a[1]).forEach(([carat, purity]) => {
-  const goldPricePerOunceInJOD = (1 / goldUsdPerOz) * usdToJod;
-  
-  // Shop Selling Price: Add 7.38 JOD
-  const adjustedOunceSell = goldPricePerOunceInJOD + 7.08 + 0.30;
-  const pricePerGramSell = (adjustedOunceSell / 31.1035) * purity;
+    // Only proceed if price changed ≥ $20 or it's the first load
+    if (lastGoldUsd !== null && Math.abs(goldUsdPerOz - lastGoldUsd) < PRICE_THRESHOLD) {
+      console.log("Price change is less than $20. Skipping update.");
+      return;
+    }
 
-  // Buying from customers: Subtract 2.5 JOD from price per gram
-  const baseGram = (goldPricePerOunceInJOD / 31.1035) * purity;
-  const pricePerGramBuy = baseGram - 2.5;
+    lastGoldUsd = goldUsdPerOz; // Save new price for next comparison
 
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td>${carat}</td>
-    <td>د.ا ${pricePerGramBuy.toFixed(2)}</td>
-    <td>د.ا ${pricePerGramSell.toFixed(2)}</td>
-  `;
-  tbody.appendChild(row);
-});
+    const goldJodPerGram = (1 / goldUsdPerOz) * usdToJod / 31.1035;
+    const tbody = document.getElementById("price-table-body");
+    tbody.innerHTML = "";
+
+    Object.entries(PURITY).sort((a, b) => b[1] - a[1]).forEach(([carat, purity]) => {
+      const goldPricePerOunceInJOD = (1 / goldUsdPerOz) * usdToJod;
+      const adjustedOunceSell = goldPricePerOunceInJOD + 7.08 + 0.30;
+      const pricePerGramSell = (adjustedOunceSell / 31.1035) * purity;
+      const baseGram = (goldPricePerOunceInJOD / 31.1035) * purity;
+      const pricePerGramBuy = baseGram - 2.5;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${carat}</td>
+        <td>د.ا ${pricePerGramBuy.toFixed(2)}</td>
+        <td>د.ا ${pricePerGramSell.toFixed(2)}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    document.getElementById("last-update").textContent =
+      "Last update: " + new Date().toLocaleTimeString();
+
+  } catch (e) {
+    console.error("Error fetching gold price:", e);
+    document.getElementById("last-update").textContent =
+      "Error updating prices. Please try again later.";
+  }
+}
 
     
-
-        document.getElementById("last-update").textContent =
-          "Last update: " + new Date().toLocaleTimeString();
-      } catch (e) {
-        console.error("Error fetching gold price:", e);
-        document.getElementById("last-update").textContent =
-          "Error updating prices. Please try again later.";
-      }
-    }
 
     function updateClock() {
       document.getElementById("datetime").textContent = new Date().toLocaleString();
@@ -506,7 +509,7 @@
 
     // Set up intervals
     setInterval(updateClock, 1000);
-    setInterval(updatePriceTable, 1200000); // Update prices every 20 minutes
+    setInterval(updatePriceTable, 7200000); // Update prices every 2 hours
     setInterval(rotateInfo, 10000); // Rotate messages every 10 seconds
   </script>
 </body>
