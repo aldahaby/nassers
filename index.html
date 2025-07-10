@@ -346,6 +346,7 @@
       "12K": 0.500
     };
 
+    let lastGoldUsdPrice = null;
     let markupMultiplier = 1.82;
     let INFO_MESSAGES = [];
     let infoIndex = 0;
@@ -360,63 +361,69 @@
         document.getElementById("login-container").style.display = "none";
         document.getElementById("content").style.display = "block";
         errorBox.style.display = "none";
-        updatePriceTable(); // Fetch prices immediately after login
+        updatePriceTable(); // Fetch prices immediately after loginasync function updatePriceTable() {
+  try {
+    const res = await fetch(`https://metals-api.com/api/latest?access_key=${API_KEY}&base=USD&symbols=XAU,JOD`);
+
+    if (!res.ok) {
+      throw new Error(`API request failed with status ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    if (!data.success) {
+      throw new Error(`API error: ${data.error.info}`);
+    }
+
+    const goldUsdPerOz = data.rates.XAU;
+
+    // ✅ Skip update if price hasn't changed by ±20 USD
+    if (lastGoldUsdPrice !== null && Math.abs(goldUsdPerOz - lastGoldUsdPrice) < 20) {
+      console.log("Gold price change < $20. Skipping update.");
+      return;
+    }
+
+    // ✅ Store current price for next comparison
+    lastGoldUsdPrice = goldUsdPerOz;
+
+    const usdToJod = data.rates.JOD;
+    const tbody = document.getElementById("price-table-body");
+    tbody.innerHTML = "";
+
+    Object.entries(PURITY).sort((a, b) => b[1] - a[1]).forEach(([carat, purity]) => {
+      const goldPricePerOunceInJOD = (1 / goldUsdPerOz) * usdToJod;
+
+      // Shop selling price
+      const adjustedOunceSell = goldPricePerOunceInJOD + 7.08 + 0.30;
+      const pricePerGramSell = (adjustedOunceSell / 31.1035) * purity;
+
+      // Buy from customer
+      const baseGram = (goldPricePerOunceInJOD / 31.1035) * purity;
+      const pricePerGramBuy = baseGram - 2.5;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${carat}</td>
+        <td>د.ا ${pricePerGramBuy.toFixed(2)}</td>
+        <td>د.ا ${pricePerGramSell.toFixed(2)}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    document.getElementById("last-update").textContent =
+      "Last update: " + new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error("Error fetching gold price:", e);
+    document.getElementById("last-update").textContent =
+      "Error updating prices. Please try again later.";
+  }
+}
+
       } else {
         errorBox.style.display = "block";
       }
     }
-
-    async function updatePriceTable() {
-      try {
-        const res = await fetch(`https://metals-api.com/api/latest?access_key=${API_KEY}&base=USD&symbols=XAU,JOD`);
-        
-        if (!res.ok) {
-          throw new Error(`API request failed with status ${res.status}`);
-        }
-        
-        const data = await res.json();
-        
-        if (!data.success) {
-          throw new Error(`API error: ${data.error.info}`);
-        }
-
-         const usdToJod = data.rates.JOD;
-        const goldUsdPerOz = data.rates.XAU;
-        const goldJodPerGram = (1 / goldUsdPerOz) * usdToJod / 31.1035;
-
-        const tbody = document.getElementById("price-table-body");
-        tbody.innerHTML = "";
-
-        Object.entries(PURITY).sort((a, b) => b[1] - a[1]).forEach(([carat, purity]) => {
-  const goldPricePerOunceInJOD = (1 / goldUsdPerOz) * usdToJod;
-  
-  // Shop Selling Price: Add 7.38 JOD
-  const adjustedOunceSell = goldPricePerOunceInJOD + 7.08 + 0.30;
-  const pricePerGramSell = (adjustedOunceSell / 31.1035) * purity;
-
-  // Buying from customers: Subtract 2.5 JOD from price per gram
-  const baseGram = (goldPricePerOunceInJOD / 31.1035) * purity;
-  const pricePerGramBuy = baseGram - 2.5;
-
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td>${carat}</td>
-    <td>د.ا ${pricePerGramBuy.toFixed(2)}</td>
-    <td>د.ا ${pricePerGramSell.toFixed(2)}</td>
-  `;
-  tbody.appendChild(row);
-});
-
-    
-
-        document.getElementById("last-update").textContent =
-          "Last update: " + new Date().toLocaleTimeString();
-      } catch (e) {
-        console.error("Error fetching gold price:", e);
-        document.getElementById("last-update").textContent =
-          "Error updating prices. Please try again later.";
-      }
-    }
+ 
 
     function updateClock() {
       document.getElementById("datetime").textContent = new Date().toLocaleString();
@@ -500,13 +507,38 @@
     }
 
     // Initialize the page
-    updateClock();
+    function updateClock() {
+  const now = new Date();
+
+  // Format time using Asia/Amman timezone (Jordan Time)
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Amman',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+
+  const formatted = formatter.format(now);
+  
+  // Display full date and time (you can customize this)
+  document.getElementById("datetime").textContent = formatted;
+
+  // Calculate delay to next full second to avoid drift
+  const delay = 1000 - now.getMilliseconds();
+
+  setTimeout(updateClock, delay);
+}
+
     applyLanguage(currentLanguage);
     rotateInfo();
 
     // Set up intervals
-    setInterval(updateClock, 1000);
-    setInterval(updatePriceTable, 1200000); // Update prices every 20 minutes
+   updateClock();
+    setInterval(updatePriceTable, 7200000); // Update prices every 2 hours
     setInterval(rotateInfo, 10000); // Rotate messages every 10 seconds
   </script>
 </body>
