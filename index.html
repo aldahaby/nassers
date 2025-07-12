@@ -287,6 +287,17 @@
       font-size: 1.8vh;
       margin: 0 0.5vw;
     }
+      .time-info {
+  text-align: center;
+  margin-top: 1vh;
+}
+
+.time-info p {
+  font-size: 2.1vh;
+  color: #666;
+  margin: 0.3vh 0;
+}
+ 
   </style>
 </head>
 <body>
@@ -311,8 +322,11 @@
 
     <div class="container">
       <h1 id="title">Gold Prices in Jordan (JOD per Gram)</h1>
-      <p id="datetime"></p>
-      <p id="last-update">Last update: --:--:--</p>
+      <div class="time-info">
+  <p id="datetime"></p>
+  <p id="last-update">Last update: --:--:--</p>
+</div>
+      
       <table>
         <thead>
           <tr>
