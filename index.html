@@ -380,6 +380,7 @@ const PRICE_THRESHOLD = 20;
       const errorBox = document.getElementById("login-error");
 
       if (u === correctUsername && p === correctPassword) {
+        localStorage.setItem("loggedIn", "true");
         document.getElementById("login-container").style.display = "none";
         document.getElementById("content").style.display = "block";
         errorBox.style.display = "none";
@@ -531,6 +532,15 @@ const PRICE_THRESHOLD = 20;
     setInterval(updatePriceTable, 7200000); // Update prices every 2 hours
     setInterval(rotateInfo, 10000); // Rotate messages every 10 seconds
     setInterval(toggleLanguage, 60000); // Auto toggle language every 60 seconds
+    
+    // If already logged in, skip login screen
+if (localStorage.getItem("loggedIn") === "true") {
+  document.getElementById("login-container").style.display = "none";
+  document.getElementById("content").style.display = "block";
+  updatePriceTable();
+}
+    setTimeout(() => location.reload(), 8 * 60 * 60 * 1000);
+    
   </script>
 </body>
 </html>
