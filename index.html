@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login to Gold Prices</title>
+  <title>Gold Prices</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -47,65 +47,10 @@
       align-items: center;
     }
 
-    #login-container {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: var(--bg-color);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-
-    #login-box {
-      background: var(--header-bg);
-      border: 1px solid var(--table-border);
-      border-radius: 12px;
-      padding: 3vh 4vw;
-      box-shadow: 0 0 20px rgba(0,0,0,0.1);
-      text-align: center;
-      width: 70%;
-      max-width: 15cm;
-    }
-
-    #login-box h2 {
-      font-size: 3vh;
-      margin-bottom: 2vh;
-    }
-
-    #login-box input {
-      width: 100%;
-      padding: 1.5vh;
-      margin: 1vh 0;
-      border: 1px solid var(--table-border);
-      border-radius: 6px;
-      font-size: 2vh;
-      background-color: var(--input-bg);
-      color: var(--input-text);
-    }
-
-    #login-box button {
-      background-color: var(--primary-color);
-      color: white;
-      border: none;
-      padding: 1.5vh 3vw;
-      font-size: 2vh;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 1vh;
-    }
-
-    #login-error {
-      color: red;
-      display: none;
-      font-size: 1.8vh;
-    }
-
     #content {
-      display: none;
-      height: 97vh; /* Slightly less than viewport for margins */
-      width: 97vw; /* Slightly less than viewport for margins */
+      display: block; /* fixed */
+      height: 97vh;
+      width: 97vw;
       position: relative;
     }
 
@@ -119,23 +64,20 @@
     }
 
     h1 {
-  font-size: 2.9vh;
-  color: var(--primary-color);
-  margin: 5vh 0 1vh 0; /* Top margin increased */
-  text-align: center;
-}
-
+      font-size: 2.9vh;
+      color: var(--primary-color);
+      margin: 5vh 0 1vh 0;
+      text-align: center;
     }
 
     #datetime, #last-update {
-  font-size: 2.2vh;
-  color: #666;
-  text-align: center;
-  margin: 0.5vh auto;
-  display: block;
-  width: fit-content;
-}
-
+      font-size: 2.2vh;
+      color: #666;
+      text-align: center;
+      margin: 0.5vh auto;
+      display: block;
+      width: fit-content;
+    }
 
     .top-controls {
       display: flex;
@@ -183,7 +125,7 @@
       overflow: hidden;
       background-color: var(--table-bg);
       margin: 1vh 0;
-      flex: 1; /* Takes available space */
+      flex: 1;
     }
 
     th, td {
@@ -287,21 +229,20 @@
       font-size: 1.8vh;
       margin: 0 0.5vw;
     }
-      .time-info {
-  text-align: center;
-  margin-top: 1vh;
-}
 
-.time-info p {
-  font-size: 2.1vh;
-  color: #666;
-  margin: 0.3vh 0;
-}
- 
+    .time-info {
+      text-align: center;
+      margin-top: 1vh;
+    }
+
+    .time-info p {
+      font-size: 2.1vh;
+      color: #666;
+      margin: 0.3vh 0;
+    }
   </style>
 </head>
 <body>
-
   <div id="content">
     <div class="top-controls">
       <button class="lang-button" onclick="toggleLanguage()">عربي</button>
@@ -314,9 +255,9 @@
     <div class="container">
       <h1 id="title">Gold Prices in Jordan (JOD per Gram)</h1>
       <div class="time-info">
-  <p id="datetime"></p>
-  <p id="last-update">Last update: --:--:--</p>
-</div>
+        <p id="datetime"></p>
+        <p id="last-update">Last update: --:--:--</p>
+      </div>
       
       <table>
         <thead>
@@ -328,6 +269,7 @@
         </thead>
         <tbody id="price-table-body"></tbody>
       </table>
+
       <div class="info-boxes" id="info-box">No messages yet. Add one below.</div>
       <div class="message-editor">
         <input type="text" id="single-message" placeholder="Type a message to display...">
@@ -344,9 +286,6 @@
 
   <script>
     const API_KEY = "0u53fn16nkajvhrbazkec1dj46ytgcpwn1zzxy7ts8qoxviwwrkhin8c3uy1";
-    const correctUsername = "admin";
-    const correctPassword = "gold123";
-
     const PURITY = {
       "24K": 1.000,
       "22K": 0.916,
@@ -360,77 +299,48 @@
     let INFO_MESSAGES = [];
     let infoIndex = 0;
     let currentLanguage = 'en';
-
     let lastGoldUsd = null;
-const PRICE_THRESHOLD = 20;
+    const PRICE_THRESHOLD = 20;
 
+    async function updatePriceTable() {
+      try {
+        const res = await fetch(`https://metals-api.com/api/latest?access_key=${API_KEY}&base=USD&symbols=XAU,JOD`);
+        if (!res.ok) throw new Error(`API request failed with status ${res.status}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(`API error: ${data.error.info}`);
+        const usdToJod = data.rates.JOD;
+        const goldUsdPerOz = data.rates.XAU;
 
-    function login() {
-      const u = document.getElementById("username").value;
-      const p = document.getElementById("password").value;
-      const errorBox = document.getElementById("login-error");
+        if (lastGoldUsd !== null && Math.abs(goldUsdPerOz - lastGoldUsd) < PRICE_THRESHOLD) return;
+        lastGoldUsd = goldUsdPerOz;
 
-      if (u === correctUsername && p === correctPassword) {
-        localStorage.setItem("loggedIn", "true");
-        document.getElementById("login-container").style.display = "none";
-        document.getElementById("content").style.display = "block";
-        errorBox.style.display = "none";
-        updatePriceTable(); // Fetch prices immediately after login
-      } else {
-        errorBox.style.display = "block";
+        const tbody = document.getElementById("price-table-body");
+        tbody.innerHTML = "";
+
+        Object.entries(PURITY).sort((a, b) => b[1] - a[1]).forEach(([carat, purity]) => {
+          const goldPricePerOunceInJOD = (1 / goldUsdPerOz) * usdToJod;
+          const adjustedOunceSell = goldPricePerOunceInJOD + 7.08 + 0.30;
+          const pricePerGramSell = (adjustedOunceSell / 31.1035) * purity;
+          const baseGram = (goldPricePerOunceInJOD / 31.1035) * purity;
+          const pricePerGramBuy = baseGram - 2.5;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${carat}</td>
+            <td>د.ا ${pricePerGramBuy.toFixed(2)}</td>
+            <td>د.ا ${pricePerGramSell.toFixed(2)}</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        document.getElementById("last-update").textContent =
+          "Last update: " + new Date().toLocaleTimeString();
+      } catch (e) {
+        console.error("Error fetching gold price:", e);
+        document.getElementById("last-update").textContent =
+          "Error updating prices. Please try again later.";
       }
     }
-
-   async function updatePriceTable() {
-  try {
-    const res = await fetch(`https://metals-api.com/api/latest?access_key=${API_KEY}&base=USD&symbols=XAU,JOD`);
-    if (!res.ok) throw new Error(`API request failed with status ${res.status}`);
-
-    const data = await res.json();
-    if (!data.success) throw new Error(`API error: ${data.error.info}`);
-
-    const usdToJod = data.rates.JOD;
-    const goldUsdPerOz = data.rates.XAU;
-
-    // Only proceed if price changed ≥ $20 or it's the first load
-    if (lastGoldUsd !== null && Math.abs(goldUsdPerOz - lastGoldUsd) < PRICE_THRESHOLD) {
-      console.log("Price change is less than $20. Skipping update.");
-      return;
-    }
-
-    lastGoldUsd = goldUsdPerOz; // Save new price for next comparison
-
-    const goldJodPerGram = (1 / goldUsdPerOz) * usdToJod / 31.1035;
-    const tbody = document.getElementById("price-table-body");
-    tbody.innerHTML = "";
-
-    Object.entries(PURITY).sort((a, b) => b[1] - a[1]).forEach(([carat, purity]) => {
-      const goldPricePerOunceInJOD = (1 / goldUsdPerOz) * usdToJod;
-      const adjustedOunceSell = goldPricePerOunceInJOD + 7.08 + 0.30;
-      const pricePerGramSell = (adjustedOunceSell / 31.1035) * purity;
-      const baseGram = (goldPricePerOunceInJOD / 31.1035) * purity;
-      const pricePerGramBuy = baseGram - 2.5;
-
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${carat}</td>
-        <td>د.ا ${pricePerGramBuy.toFixed(2)}</td>
-        <td>د.ا ${pricePerGramSell.toFixed(2)}</td>
-      `;
-      tbody.appendChild(row);
-    });
-
-    document.getElementById("last-update").textContent =
-      "Last update: " + new Date().toLocaleTimeString();
-
-  } catch (e) {
-    console.error("Error fetching gold price:", e);
-    document.getElementById("last-update").textContent =
-      "Error updating prices. Please try again later.";
-  }
-}
-
-    
 
     function updateClock() {
       document.getElementById("datetime").textContent = new Date().toLocaleString();
@@ -473,23 +383,17 @@ const PRICE_THRESHOLD = 20;
     }
 
     async function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-        document.body.classList.add('fullscreen');
-      }
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      document.body.classList.add('fullscreen');
     }
 
     async function exitFullscreen() {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      }
+      if (document.fullscreenElement) await document.exitFullscreen();
       document.body.classList.remove('fullscreen');
     }
 
     document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) {
-        document.body.classList.remove('fullscreen');
-      }
+      if (!document.fullscreenElement) document.body.classList.remove('fullscreen');
     });
 
     function rotateInfo() {
@@ -513,27 +417,18 @@ const PRICE_THRESHOLD = 20;
       }
     }
 
-    // Initialize the page
+    // Initialize
     updateClock();
     applyLanguage(currentLanguage);
     rotateInfo();
-
-    // Set up intervals
     setInterval(updateClock, 1000);
-    setInterval(updatePriceTable, 7200000); // Update prices every 2 hours
-    setInterval(rotateInfo, 10000); // Rotate messages every 10 seconds
-    setInterval(toggleLanguage, 60000); // Auto toggle language every 60 seconds
-    
-    // If already logged in, skip login screen
-if (localStorage.getItem("loggedIn") === "true") {
-  document.getElementById("login-container").style.display = "none";
-  document.getElementById("content").style.display = "block";
-  updatePriceTable();
-}
-    setTimeout(() => location.reload(), 8 * 60 * 60 * 1000);
+    setInterval(updatePriceTable, 7200000);
+    setInterval(rotateInfo, 10000);
+    setInterval(toggleLanguage, 60000);
 
+    // Show content immediately
     updatePriceTable();
-    
+    setTimeout(() => location.reload(), 8 * 60 * 60 * 1000);
   </script>
 </body>
 </html>
