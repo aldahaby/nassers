@@ -301,15 +301,6 @@
   </style>
 </head>
 <body>
-  <div id="login-container">
-    <div id="login-box">
-      <h2>Enter Username and Password</h2>
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
-      <p id="login-error">Incorrect username or password.</p>
-      <button onclick="login()">Log in</button>
-    </div>
-  </div>
 
   <div id="content">
     <div class="top-controls">
@@ -540,6 +531,8 @@ if (localStorage.getItem("loggedIn") === "true") {
   updatePriceTable();
 }
     setTimeout(() => location.reload(), 8 * 60 * 60 * 1000);
+
+    updatePriceTable();
     
   </script>
 </body>
