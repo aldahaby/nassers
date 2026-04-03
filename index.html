@@ -422,7 +422,7 @@
     applyLanguage(currentLanguage);
     rotateInfo();
     setInterval(updateClock, 1000);
-    setInterval(updatePriceTable, 7200000);
+    setInterval(updatePriceTable, 8 * 60 * 60 * 1000); // 8 hours ✅
     setInterval(rotateInfo, 10000);
     setInterval(toggleLanguage, 60000);
 
