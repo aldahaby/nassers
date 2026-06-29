@@ -2,1008 +2,806 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>MOMENTUM — Villain Run (Prototype)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>INVINCIBLE RUN — Omni Flight</title>
   <style>
-    :root { --hud: #f4f4f4; --accent: #ff3b30; --good: #34c759; --warn: #ffcc00; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #05060a; }
-    body { font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; color: var(--hud); }
-    #app { position: fixed; inset: 0; }
-    canvas { display: block; }
+    :root { --hud:#f4f4f4; --accent:#ff3b30; --good:#34c759; --warn:#ffcc00; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#05060a;
+                touch-action:none; overscroll-behavior:none; }
+    body { font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif; color:var(--hud); user-select:none; -webkit-user-select:none; }
+    #app { position:fixed; inset:0; }
+    canvas { display:block; }
+
+    /* flash overlay for impacts */
+    #flash { position:fixed; inset:0; z-index:8; pointer-events:none; background:#fff; opacity:0; }
+    #vignette { position:fixed; inset:0; z-index:7; pointer-events:none;
+                box-shadow: inset 0 0 200px 40px rgba(120,0,0,0); transition:box-shadow .2s; }
 
     /* ---------- HUD ---------- */
-    #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
-    .bar-wrap { position: absolute; left: 18px; width: 260px; max-width: 42vw; }
-    .bar-label { font-size: 12px; letter-spacing: 2px; opacity: .8; margin-bottom: 4px; text-transform: uppercase; }
-    .bar { height: 14px; border-radius: 8px; background: rgba(255,255,255,.12); overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
-    .bar > i { display: block; height: 100%; width: 0%; border-radius: 8px; transition: width .08s linear; }
-    #momentum-wrap { top: 18px; }
-    #momentum-bar > i { background: linear-gradient(90deg, #ff3b30, #ff9500, #ffcc00); }
-    #adrenaline-wrap { top: 70px; }
-    #adrenaline-bar > i { background: linear-gradient(90deg, #5856d6, #af52de, #ff2d55); }
+    #hud { position:fixed; inset:0; pointer-events:none; z-index:10; padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+    .bar-wrap { position:absolute; left:16px; width:min(260px,44vw); }
+    .bar-label { font-size:11px; letter-spacing:2px; opacity:.85; margin-bottom:4px; text-transform:uppercase; }
+    .bar { height:13px; border-radius:8px; background:rgba(255,255,255,.12); overflow:hidden; box-shadow:0 0 0 1px rgba(255,255,255,.08) inset; }
+    .bar > i { display:block; height:100%; width:0%; border-radius:8px; transition:width .08s linear; }
+    #momentum-wrap { top:14px; }
+    #momentum-bar > i { background:linear-gradient(90deg,#ff3b30,#ff9500,#ffcc00); }
+    #adrenaline-wrap { top:60px; }
+    #adrenaline-bar > i { background:linear-gradient(90deg,#5856d6,#af52de,#ff2d55); }
 
-    #score-box { position: absolute; top: 18px; right: 18px; text-align: right; }
-    #score { font-size: 40px; font-weight: 700; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
-    #score-sub { font-size: 13px; opacity: .8; margin-top: 4px; }
+    #score-box { position:absolute; top:14px; right:16px; text-align:right; }
+    #score { font-size:38px; font-weight:800; line-height:1; text-shadow:0 2px 12px rgba(0,0,0,.6); }
+    #score-sub { font-size:12px; opacity:.85; margin-top:3px; }
 
-    #combo { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(1);
-             font-size: 64px; font-weight: 800; opacity: 0; text-shadow: 0 4px 24px rgba(0,0,0,.7);
-             transition: opacity .15s ease; color: var(--warn); }
-    #combo small { display:block; font-size: 18px; letter-spacing: 3px; opacity:.85; text-align:center; }
+    #combo { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) scale(1);
+             font-size:clamp(40px,12vw,72px); font-weight:900; opacity:0; color:var(--warn);
+             text-shadow:0 4px 24px rgba(0,0,0,.7); transition:opacity .15s; white-space:nowrap; }
+    #combo small { display:block; font-size:16px; letter-spacing:4px; opacity:.85; text-align:center; }
 
-    #state-tag { position: absolute; bottom: 18px; left: 18px; font-size: 12px; letter-spacing: 3px;
-                 text-transform: uppercase; opacity: .65; }
-    #speed-tag { position: absolute; bottom: 18px; right: 18px; font-size: 12px; letter-spacing: 2px; opacity:.65; }
+    #warning { position:absolute; bottom:30%; left:50%; transform:translate(-50%,0);
+               font-size:clamp(18px,5vw,26px); font-weight:800; color:var(--accent); opacity:0;
+               letter-spacing:2px; text-shadow:0 0 18px rgba(255,0,0,.6); transition:opacity .15s; }
+    #state-tag { position:absolute; bottom:14px; left:16px; font-size:11px; letter-spacing:3px; text-transform:uppercase; opacity:.6; }
+    #speed-tag { position:absolute; bottom:14px; right:16px; font-size:11px; letter-spacing:2px; opacity:.6; }
 
     /* ---------- Overlays ---------- */
-    .overlay { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
-               align-items: center; justify-content: center; text-align: center;
-               background: radial-gradient(circle at 50% 35%, rgba(20,22,34,.82), rgba(3,4,8,.94)); }
-    .overlay h1 { font-size: clamp(34px, 8vw, 84px); margin: 0; letter-spacing: 4px;
-                  background: linear-gradient(90deg,#ff3b30,#ffcc00); -webkit-background-clip: text;
-                  background-clip: text; color: transparent; }
-    .overlay p { max-width: 560px; font-size: 15px; line-height: 1.6; opacity: .85; padding: 0 24px; }
-    .overlay .keys { font-size: 13px; opacity: .7; margin-top: 8px; }
-    .btn { pointer-events: auto; margin-top: 22px; padding: 14px 38px; font-size: 18px; font-weight: 700;
-           letter-spacing: 2px; color: #05060a; background: linear-gradient(90deg,#ffcc00,#ff9500);
-           border: none; border-radius: 40px; cursor: pointer; text-transform: uppercase;
-           box-shadow: 0 8px 30px rgba(255,150,0,.35); transition: transform .1s ease; }
-    .btn:active { transform: scale(.96); }
-    #gameover-stats { font-size: 16px; opacity: .9; margin-top: 6px; line-height: 1.8; }
-    #gameover-stats b { color: var(--warn); }
-    .hidden { display: none !important; }
+    .overlay { position:fixed; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center;
+               text-align:center; background:radial-gradient(circle at 50% 35%,rgba(20,22,34,.85),rgba(3,4,8,.96)); padding:24px; }
+    .overlay h1 { font-size:clamp(34px,9vw,82px); margin:0; letter-spacing:3px; line-height:1;
+                  background:linear-gradient(90deg,#ff3b30,#ffcc00); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .overlay h2 { font-size:clamp(14px,4vw,20px); margin:6px 0 0; opacity:.8; font-weight:600; letter-spacing:2px; }
+    .overlay p { max-width:520px; font-size:14px; line-height:1.6; opacity:.85; }
+    .overlay .keys { font-size:12px; opacity:.65; margin-top:4px; }
+    .btn { pointer-events:auto; margin-top:20px; padding:15px 42px; font-size:18px; font-weight:800; letter-spacing:2px;
+           color:#05060a; background:linear-gradient(90deg,#ffcc00,#ff9500); border:none; border-radius:40px; cursor:pointer;
+           text-transform:uppercase; box-shadow:0 8px 30px rgba(255,150,0,.35); }
+    .btn:active { transform:scale(.96); }
+    #gameover-stats { font-size:15px; opacity:.9; margin-top:8px; line-height:1.9; }
+    #gameover-stats b { color:var(--warn); }
+    .hidden { display:none !important; }
 
-    /* ---------- Mobile touch controls ---------- */
-    #touch { position: fixed; inset: 0; z-index: 15; pointer-events: none; }
-    .pad { position: absolute; bottom: 26px; pointer-events: auto; user-select: none; -webkit-user-select: none;
-           border-radius: 50%; display: flex; align-items: center; justify-content: center;
-           font-size: 12px; font-weight: 700; letter-spacing: 1px; }
-    #stick-base { left: 26px; width: 130px; height: 130px; background: rgba(255,255,255,.08);
-                  box-shadow: 0 0 0 1px rgba(255,255,255,.12) inset; }
-    #stick-knob { position: absolute; left: 60px; bottom: 60px; width: 60px; height: 60px;
-                  background: rgba(255,255,255,.25); }
-    #btn-launch { right: 26px; width: 92px; height: 92px; background: rgba(255,59,48,.35);
-                  box-shadow: 0 0 0 1px rgba(255,59,48,.5) inset; }
-    #btn-boost { right: 130px; bottom: 40px; width: 78px; height: 78px; background: rgba(255,204,0,.3);
-                 box-shadow: 0 0 0 1px rgba(255,204,0,.5) inset; }
-    body:not(.touch) #touch { display: none; }
+    /* ---------- Touch controls ---------- */
+    #touch { position:fixed; inset:0; z-index:15; pointer-events:none; }
+    .pad { position:absolute; bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
+           display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:1px; }
+    #stick-base { left:24px; width:132px; height:132px; background:rgba(255,255,255,.07); box-shadow:0 0 0 1px rgba(255,255,255,.14) inset; }
+    #stick-knob { position:absolute; left:41px; bottom:41px; width:50px; height:50px; background:rgba(255,255,255,.28);
+                  transition:transform .03s; }
+    #btn-boost { right:26px; width:96px; height:96px; background:rgba(255,204,0,.28); box-shadow:0 0 0 1px rgba(255,204,0,.55) inset; }
+    body:not(.touch) #touch { display:none; }
+    body:not(.touch) .keys-hint-mobile { display:none; }
+    body.touch .keys-hint-desktop { display:none; }
   </style>
 </head>
 <body>
   <div id="app"></div>
+  <div id="flash"></div>
+  <div id="vignette"></div>
 
-  <!-- ============================ HUD ============================ -->
+  <!-- HUD -->
   <div id="hud">
-    <div id="momentum-wrap" class="bar-wrap">
-      <div class="bar-label">Momentum</div>
-      <div id="momentum-bar" class="bar"><i></i></div>
-    </div>
-    <div id="adrenaline-wrap" class="bar-wrap">
-      <div class="bar-label">Adrenaline</div>
-      <div id="adrenaline-bar" class="bar"><i></i></div>
-    </div>
-    <div id="score-box">
-      <div id="score">0</div>
-      <div id="score-sub">DIST 0m · HITS 0</div>
-    </div>
+    <div id="momentum-wrap" class="bar-wrap"><div class="bar-label">Momentum</div><div id="momentum-bar" class="bar"><i></i></div></div>
+    <div id="adrenaline-wrap" class="bar-wrap"><div class="bar-label">Adrenaline</div><div id="adrenaline-bar" class="bar"><i></i></div></div>
+    <div id="score-box"><div id="score">0</div><div id="score-sub">0 m · 0 hits</div></div>
     <div id="combo"><span id="combo-num">x0</span><small>COMBO</small></div>
-    <div id="state-tag">IDLE</div>
+    <div id="warning">LOW MOMENTUM — HIT A BUILDING!</div>
+    <div id="state-tag">READY</div>
     <div id="speed-tag">0 km/h</div>
   </div>
 
-  <!-- ============================ Touch ============================ -->
+  <!-- Touch -->
   <div id="touch">
     <div id="stick-base" class="pad"><div id="stick-knob" class="pad"></div></div>
-    <div id="btn-boost" class="pad">BOOST</div>
-    <div id="btn-launch" class="pad">LAUNCH</div>
+    <div id="btn-boost" class="pad">SURGE</div>
   </div>
 
-  <!-- ============================ Overlays ============================ -->
+  <!-- Overlays -->
   <div id="start-overlay" class="overlay">
-    <h1>MOMENTUM</h1>
-    <p>You are a superhuman villain. Hurl your target through the city, chain impacts to keep your
-       momentum alive, and survive as long as you can. There is no finish line — only flow.</p>
-    <p class="keys"><b>WASD / Arrows</b> steer · <b>SPACE</b> launch &amp; mid-air thrust ·
-       <b>SHIFT</b> impact boost · <b>R</b> restart</p>
-    <button id="start-btn" class="btn">Launch Run</button>
+    <h1>INVINCIBLE RUN</h1>
+    <h2>FLY THE DUMMY THROUGH THE CITY</h2>
+    <p>You are unstoppable. Hold your invincible victim out front and plow him straight through
+       skyscrapers. Every building you smash refuels your momentum — <b>miss too many and you drop
+       out of the sky.</b></p>
+    <p class="keys keys-hint-desktop"><b>WASD / Arrows</b> steer · <b>SHIFT</b> surge · <b>R</b> restart</p>
+    <p class="keys keys-hint-mobile"><b>Left stick</b> steer · <b>SURGE</b> for a burst</p>
+    <button id="start-btn" class="btn">Start Flight</button>
   </div>
 
   <div id="gameover-overlay" class="overlay hidden">
-    <h1>MOMENTUM LOST</h1>
+    <h1>YOU FELL</h1>
     <div id="gameover-stats"></div>
-    <button id="retry-btn" class="btn">Run Again</button>
+    <button id="retry-btn" class="btn">Fly Again</button>
   </div>
 
-  <!-- ============================ Engine ============================ -->
-  <!-- Libraries are vendored locally in ./vendor so the prototype runs fully offline,
-       with no CDN dependency. -->
   <script type="importmap">
-    {
-      "imports": {
-        "three": "./vendor/three.module.js",
-        "cannon-es": "./vendor/cannon-es.js"
-      }
-    }
+    { "imports": { "three": "./vendor/three.module.js" } }
   </script>
 
   <script type="module">
   import * as THREE from 'three';
-  import * as CANNON from 'cannon-es';
 
   /* =====================================================================================
-   *  MOMENTUM — Villain Run (single-file prototype)
+   *  INVINCIBLE RUN — Omni Flight
    *
-   *  Architecture: one Game object wires together independent SYSTEMS. Each system owns
-   *  its own state and exposes a small surface (init / update / reset / events). Systems
-   *  never reach into each other's internals — they talk through the shared `game` bus
-   *  and through explicit method calls. Everything here is built to be lifted out into
-   *  separate modules later without rewrites.
+   *  You play a flying, invincible villain (Omni-Man style) who carries a ragdoll victim
+   *  out in front and smashes him THROUGH buildings. Catch buildings to refuel momentum;
+   *  miss too long and you fall.
    *
-   *  Systems:
-   *    1. InputSystem        – keyboard + touch, normalised intent (no game logic)
-   *    2. PhysicsSystem      – cannon-es world, fixed timestep, body registry
-   *    3. MomentumSystem     – the core survival resource (separate from velocity)
-   *    4. ImpactSystem       – collision -> tiers -> rebound / score / momentum / fx
-   *    5. AdrenalineSystem   – meter from speed/combo/quality, drives buffs
-   *    6. ComboSystem        – impact chaining within a time window
-   *    7. ScoreSystem        – aggregates all scoring stats
-   *    8. CameraSystem       – follow + FOV + shake + state machine
-   *    9. TimeSystem         – smooth slow-motion that does not break physics
-   *   10. CitySystem         – procedural placeholder city, recycled around the target
-   *   11. RunStateManager    – Idle/Running/HighMomentum/SlowMo/GameOver
-   *   12. UISystem           – HUD bindings (bars, score, combo, tags)
-   *   13. AudioSystem        – WebAudio event hooks, fully synthesised (no assets)
+   *  Design decisions that fix the previous prototype's problems:
+   *   - Movement is a KINEMATIC FLIGHT MODEL (no rigidbody solver). Smooth, responsive,
+   *     frame-rate independent. This removes the stiffness / glitch / chaos issues.
+   *   - There is a real PLAYER (villain) and a separate DUMMY held in front — the dummy is
+   *     the hammer that connects with buildings.
+   *   - Collisions use cheap, reliable swept SPHERE-vs-AABB tests against buildings, and the
+   *     player flies THROUGH (no bounce) — exactly the Invincible feel.
+   *   - Buildings spawn in a fair, reachable corridor (clear logic, not random chaos).
+   *   - A dedicated EFFECTS system gives real crash feedback: debris burst, shockwave ring,
+   *     building shatter, screen flash, shake, slow-mo.
+   *
+   *  Systems (each its own class on a shared `game` bus, ready to be modularised):
+   *   InputSystem, FlightPlayer(+Dummy), CitySystem, ImpactSystem, EffectsSystem,
+   *   MomentumSystem, ComboSystem, AdrenalineSystem, ScoreSystem, CameraSystem,
+   *   TimeSystem, RunStateManager, UISystem, AudioSystem.
    * ===================================================================================== */
 
-  // ------------------------------------------------------------------ small util
-  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const lerp  = (a, b, t) => a + (b - a) * t;
-  const rand  = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v,a,b)=>Math.min(b,Math.max(a,v));
+  const lerp  = (a,b,t)=>a+(b-a)*t;
+  const damp  = (a,b,l,dt)=>lerp(a,b,1-Math.exp(-l*dt));   // frame-rate independent smoothing
+  const rand  = (a,b)=>a+Math.random()*(b-a);
 
   // ===================================================================================
-  // 1. INPUT SYSTEM — turns raw devices into a normalised intent. No gameplay here.
+  // INPUT — keyboard + touch stick. Outputs a normalised steer vector + surge edge.
   // ===================================================================================
   class InputSystem {
-    constructor() {
-      // continuous steering intent, range [-1,1] on each axis
-      this.move = { x: 0, y: 0 };
-      // edge-triggered actions consumed once by gameplay
-      this._launchQueued = false;
-      this._boostQueued = false;
-      this.launchHeld = false;
-      this.keys = new Set();
-      this.touch = { active: false, dir: { x: 0, y: 0 } };
-    }
-    init() {
-      addEventListener('keydown', (e) => {
-        if (e.repeat) return;
-        this.keys.add(e.code);
-        if (e.code === 'Space') { this._launchQueued = true; this.launchHeld = true; }
-        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this._boostQueued = true;
-        if (e.code === 'KeyR') this.restartQueued = true;
+    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.touch={active:false,x:0,y:0}; }
+    init(){
+      addEventListener('keydown',e=>{
+        if(e.repeat) return; this.keys.add(e.code);
+        if(e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='Space') this._surge=true;
+        if(e.code==='KeyR') this._restart=true;
       });
-      addEventListener('keyup', (e) => {
-        this.keys.delete(e.code);
-        if (e.code === 'Space') this.launchHeld = false;
-      });
+      addEventListener('keyup',e=>this.keys.delete(e.code));
       this._bindTouch();
     }
-    // called each frame to fold keyboard state into the analog move vector
-    sample() {
-      let x = 0, y = 0;
-      if (this.keys.has('KeyA') || this.keys.has('ArrowLeft'))  x -= 1;
-      if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) x += 1;
-      if (this.keys.has('KeyW') || this.keys.has('ArrowUp'))    y += 1;
-      if (this.keys.has('KeyS') || this.keys.has('ArrowDown'))  y -= 1;
-      if (this.touch.active) { x += this.touch.dir.x; y += this.touch.dir.y; }
-      const len = Math.hypot(x, y) || 1;
-      this.move.x = clamp(x / Math.max(1, len) , -1, 1);
-      this.move.y = clamp(y / Math.max(1, len) , -1, 1);
+    sample(){
+      let x=0,y=0;
+      if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
+      if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
+      if(this.keys.has('KeyW')||this.keys.has('ArrowUp'))    y+=1;
+      if(this.keys.has('KeyS')||this.keys.has('ArrowDown'))  y-=1;
+      if(this.touch.active){ x+=this.touch.x; y+=this.touch.y; }
+      const m=Math.hypot(x,y); if(m>1){ x/=m; y/=m; }
+      this.steer.x=clamp(x,-1,1); this.steer.y=clamp(y,-1,1);
     }
-    consumeLaunch() { const v = this._launchQueued; this._launchQueued = false; return v; }
-    consumeBoost()  { const v = this._boostQueued;  this._boostQueued  = false; return v; }
-    consumeRestart(){ const v = this.restartQueued; this.restartQueued = false; return v; }
-
-    _bindTouch() {
-      const base = document.getElementById('stick-base');
-      const knob = document.getElementById('stick-knob');
-      const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-      if (isTouch) document.body.classList.add('touch');
-
-      let baseRect = null;
-      const start = (e) => { baseRect = base.getBoundingClientRect(); this.touch.active = true; move(e); };
-      const move = (e) => {
-        if (!this.touch.active || !baseRect) return;
-        const t = e.touches ? e.touches[0] : e;
-        const cx = baseRect.left + baseRect.width / 2;
-        const cy = baseRect.top + baseRect.height / 2;
-        let dx = (t.clientX - cx) / (baseRect.width / 2);
-        let dy = (t.clientY - cy) / (baseRect.height / 2);
-        const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
-        this.touch.dir.x = dx; this.touch.dir.y = -dy;        // screen-down is world-back
-        knob.style.left = `${35 + dx * 35}px`;
-        knob.style.bottom = `${35 - dy * 35}px`;
+    consumeSurge(){ const v=this._surge; this._surge=false; return v; }
+    consumeRestart(){ const v=this._restart; this._restart=false; return v; }
+    _bindTouch(){
+      const base=document.getElementById('stick-base'), knob=document.getElementById('stick-knob');
+      if(matchMedia('(pointer: coarse)').matches||'ontouchstart' in window) document.body.classList.add('touch');
+      let rect=null;
+      const start=e=>{ rect=base.getBoundingClientRect(); this.touch.active=true; move(e); };
+      const move=e=>{
+        if(!this.touch.active||!rect) return;
+        const t=e.touches?e.touches[0]:e;
+        let dx=(t.clientX-(rect.left+rect.width/2))/(rect.width/2);
+        let dy=(t.clientY-(rect.top+rect.height/2))/(rect.height/2);
+        const m=Math.hypot(dx,dy); if(m>1){dx/=m;dy/=m;}
+        this.touch.x=dx; this.touch.y=-dy;
+        knob.style.transform=`translate(${dx*38}px,${dy*38}px)`;
       };
-      const end = () => { this.touch.active = false; this.touch.dir.x = this.touch.dir.y = 0;
-                          knob.style.left = '60px'; knob.style.bottom = '60px'; };
-      base.addEventListener('touchstart', start, { passive: true });
-      base.addEventListener('touchmove', move, { passive: true });
-      base.addEventListener('touchend', end);
-      const launchBtn = document.getElementById('btn-launch');
-      const boostBtn  = document.getElementById('btn-boost');
-      launchBtn.addEventListener('touchstart', (e)=>{e.preventDefault(); this._launchQueued = true; this.launchHeld = true;}, {passive:false});
-      launchBtn.addEventListener('touchend',   ()=>{ this.launchHeld = false; });
-      boostBtn.addEventListener('touchstart',  (e)=>{e.preventDefault(); this._boostQueued = true;}, {passive:false});
+      const end=()=>{ this.touch.active=false; this.touch.x=this.touch.y=0; knob.style.transform='translate(0,0)'; };
+      base.addEventListener('touchstart',start,{passive:true});
+      base.addEventListener('touchmove',move,{passive:true});
+      base.addEventListener('touchend',end); base.addEventListener('touchcancel',end);
+      const boost=document.getElementById('btn-boost');
+      boost.addEventListener('touchstart',e=>{e.preventDefault(); this._surge=true;},{passive:false});
     }
   }
 
   // ===================================================================================
-  // 2. PHYSICS SYSTEM — cannon-es world, fixed timestep, paired body<->mesh registry.
-  // ===================================================================================
-  class PhysicsSystem {
-    constructor() {
-      this.world = new CANNON.World({ gravity: new CANNON.Vec3(0, -22, 0) });
-      this.world.broadphase = new CANNON.SAPBroadphase(this.world);
-      this.world.allowSleep = true;
-      this.world.solver.iterations = 8;
-      this.materials = {
-        ground: new CANNON.Material('ground'),
-        target: new CANNON.Material('target'),
-        prop:   new CANNON.Material('prop'),
-      };
-      // bouncy target vs world so impacts rebound and chain
-      this.world.addContactMaterial(new CANNON.ContactMaterial(
-        this.materials.target, this.materials.prop, { friction: 0.05, restitution: 0.55 }));
-      this.world.addContactMaterial(new CANNON.ContactMaterial(
-        this.materials.target, this.materials.ground, { friction: 0.25, restitution: 0.4 }));
-      this.pairs = [];          // { body, mesh } kept in sync each frame
-      this._acc = 0;
-      this.fixedStep = 1 / 60;
-    }
-    add(body, mesh) { this.world.addBody(body); if (mesh) this.pairs.push({ body, mesh }); return body; }
-    remove(body, mesh) {
-      this.world.removeBody(body);
-      const i = this.pairs.findIndex(p => p.body === body);
-      if (i >= 0) this.pairs.splice(i, 1);
-    }
-    // dtScaled already includes time-scale; we step physics with REAL-time substeps so
-    // slow-motion never destabilises the solver (it just feeds smaller accumulated time).
-    update(dtScaled) {
-      this._acc += dtScaled;
-      let steps = 0;
-      while (this._acc >= this.fixedStep && steps < 5) {
-        this.world.step(this.fixedStep);
-        this._acc -= this.fixedStep; steps++;
-      }
-      for (const { body, mesh } of this.pairs) {
-        mesh.position.copy(body.position);
-        mesh.quaternion.copy(body.quaternion);
-      }
-    }
-    reset() {
-      for (const { body } of [...this.pairs]) this.world.removeBody(body);
-      this.pairs.length = 0; this._acc = 0;
-    }
-  }
-
-  // ===================================================================================
-  // 3. MOMENTUM SYSTEM — the core survival resource. Tracked separately from velocity.
-  // ===================================================================================
-  class MomentumSystem {
-    constructor(game) {
-      this.game = game;
-      this.value = 0;          // 0..MAX
-      this.MAX = 100;
-      this.HIGH_THRESHOLD = 62; // enters high-speed state above this
-      this.decayPerSec = 7.5;   // base bleed
-      this.lastImpactAt = 0;
-      this.chainGraceMs = 2600; // run dies if no impact for this long while moving
-    }
-    start() { this.value = 55; this.lastImpactAt = performance.now(); }
-    // momentum boosts more when impact is well-timed (mid-flight, decent speed)
-    addFromImpact(amount) {
-      this.value = clamp(this.value + amount, 0, this.MAX);
-      this.lastImpactAt = performance.now();
-    }
-    isHigh() { return this.value >= this.HIGH_THRESHOLD; }
-    factor() { return this.value / this.MAX; }   // 0..1, drives speed/force/camera
-    update(dt) {
-      // decay accelerates as momentum rises -> high states are thrilling but fragile
-      const decay = this.decayPerSec * (0.6 + this.factor() * 0.9);
-      this.value = clamp(this.value - decay * dt, 0, this.MAX);
-
-      const idleMs = performance.now() - this.lastImpactAt;
-      const moving = this.game.target.speed() > 4;
-      // death conditions: momentum bled to zero, OR chain broken too long while in motion
-      if (this.value <= 0 || (moving && idleMs > this.chainGraceMs && this.value < 12)) {
-        this.value = Math.max(0, this.value);
-        if (this.value <= 0) this.game.run.toGameOver();
-      }
-    }
-    reset() { this.value = 0; }
-  }
-
-  // ===================================================================================
-  // 6. COMBO SYSTEM — consecutive impacts within a time window. (defined before Impact)
-  // ===================================================================================
-  class ComboSystem {
-    constructor(game) {
-      this.game = game;
-      this.count = 0;
-      this.windowMs = 2200;
-      this.lastAt = 0;
-      this.best = 0;
-    }
-    registerImpact() {
-      const now = performance.now();
-      if (now - this.lastAt <= this.windowMs) this.count++;
-      else this.count = 1;
-      this.lastAt = now;
-      this.best = Math.max(this.best, this.count);
-      this.game.ui.flashCombo(this.count);
-      return this.count;
-    }
-    multiplier() { return 1 + Math.max(0, this.count - 1) * 0.25; } // x1, x1.25, x1.5...
-    update() {
-      if (this.count > 0 && performance.now() - this.lastAt > this.windowMs) {
-        this.count = 0;
-        this.game.ui.flashCombo(0);
-      }
-    }
-    reset() { this.count = 0; this.lastAt = 0; }
-  }
-
-  // ===================================================================================
-  // 4. IMPACT / DESTRUCTION SYSTEM — collision force -> tier -> rebound/score/fx.
-  // ===================================================================================
-  const IMPACT_TIERS = [
-    { name: 'light',        min: 6,   score: 20,   momentum: 4,  shake: 0.15, slowmo: 0    },
-    { name: 'medium',       min: 16,  score: 60,   momentum: 9,  shake: 0.35, slowmo: 0    },
-    { name: 'heavy',        min: 30,  score: 160,  momentum: 16, shake: 0.6,  slowmo: 0.18 },
-    { name: 'catastrophic', min: 52,  score: 420,  momentum: 26, shake: 1.0,  slowmo: 0.42 },
-  ];
-  class ImpactSystem {
-    constructor(game) { this.game = game; this.cooldown = new WeakMap(); }
-    tierFor(force) {
-      let t = null;
-      for (const tier of IMPACT_TIERS) if (force >= tier.min) t = tier;
-      return t;
-    }
-    // called by the target's collide event
-    handle(otherBody, contactNormalImpulse, relVel) {
-      const force = contactNormalImpulse;
-      const tier = this.tierFor(force);
-      if (!tier) return;
-      // debounce repeated contacts on the same body so resting doesn't farm score
-      const now = performance.now();
-      const last = this.cooldown.get(otherBody) || 0;
-      if (now - last < 140) return;
-      this.cooldown.set(otherBody, now);
-
-      const g = this.game;
-      const combo = g.combo.registerImpact();
-      const comboMul = g.combo.multiplier();
-      const adrMul = g.adrenaline.scoreMultiplier();
-
-      // momentum reward scales with how fast the target was actually moving (timing skill)
-      const speedQuality = clamp(g.target.speed() / 45, 0.35, 1.6);
-      g.momentum.addFromImpact(tier.momentum * speedQuality);
-
-      const gained = Math.round(tier.score * comboMul * adrMul);
-      g.score.addImpact(gained, tier.name);
-      g.adrenaline.addFromImpact(tier, speedQuality);
-
-      // feel: rebound impulse, camera shake, slow-mo on big hits, audio
-      g.target.rebound(tier, relVel);
-      g.city.damage(otherBody, force);
-      g.camera.shake(tier.shake * (0.7 + adrMul * 0.3));
-      if (tier.slowmo > 0) g.time.requestSlowMo(tier.slowmo, 0.32);
-      g.audio.impact(tier, combo);
-      g.ui.floatScore(gained, tier);
-    }
-  }
-
-  // ===================================================================================
-  // 5. ADRENALINE SYSTEM — fills from speed/combo/quality, drains idle, unlocks buffs.
-  // ===================================================================================
-  class AdrenalineSystem {
-    constructor(game) {
-      this.game = game;
-      this.value = 0;        // 0..MAX
-      this.MAX = 100;
-      this.CHAOS_THRESHOLD = 78;
-    }
-    addFromImpact(tier, quality) {
-      const gain = (tier.momentum * 0.8) * quality * (1 + this.game.combo.count * 0.06);
-      this.value = clamp(this.value + gain, 0, this.MAX);
-    }
-    isChaos() { return this.value >= this.CHAOS_THRESHOLD; }
-    factor() { return this.value / this.MAX; }
-    scoreMultiplier() { return 1 + this.factor() * 1.0; }       // up to x2 score
-    speedMultiplier() { return 1 + this.factor() * 0.35; }      // buff: faster control
-    update(dt) {
-      // small trickle from raw speed, steady drain otherwise
-      const speedFill = clamp((this.game.target.speed() - 18) / 60, 0, 1) * 6 * dt;
-      this.value = clamp(this.value + speedFill - 5 * dt, 0, this.MAX);
-    }
-    reset() { this.value = 0; }
-  }
-
-  // ===================================================================================
-  // 7. SCORE SYSTEM — aggregates impacts, distance, destruction.
-  // ===================================================================================
-  class ScoreSystem {
-    constructor(game) { this.game = game; this.reset(); }
-    addImpact(points, tierName) {
-      this.total += points; this.impacts++;
-      if (tierName === 'catastrophic' || tierName === 'heavy') this.destruction++;
-    }
-    addDistance(meters) { this.distance += meters; this.total += meters * 0.6; }
-    reset() { this.total = 0; this.impacts = 0; this.distance = 0; this.destruction = 0; }
-  }
-
-  // ===================================================================================
-  // 9. TIME SYSTEM — smooth slow-motion. Provides the scaled dt the whole game runs on.
+  // TIME — smooth slow-motion. Returns scaled dt for the simulation.
   // ===================================================================================
   class TimeSystem {
-    constructor() { this.scale = 1; this._target = 1; this._holdUntil = 0; }
-    // scale: 0..1 (lower = slower); duration in seconds at full slow before easing back
-    requestSlowMo(strength, duration) {
-      const s = clamp(1 - strength, 0.12, 1);
-      if (s < this._target || performance.now() > this._holdUntil) {
-        this._target = s;
-        this._holdUntil = performance.now() + duration * 1000;
-      }
+    constructor(){ this.scale=1; this._t=1; this._until=0; }
+    requestSlowMo(strength,dur){
+      const s=clamp(1-strength,0.18,1);
+      if(s<this._t||performance.now()>this._until){ this._t=s; this._until=performance.now()+dur*1000; }
     }
-    setChaos(on) { if (on) this._target = Math.min(this._target, 0.85); }
-    update(realDt) {
-      if (performance.now() > this._holdUntil) this._target = 1;
-      this.scale = lerp(this.scale, this._target, clamp(realDt * 6, 0, 1));
-      return realDt * this.scale;
+    update(realDt){
+      if(performance.now()>this._until) this._t=1;
+      this.scale=damp(this.scale,this._t,10,realDt);
+      return realDt*this.scale;
     }
-    reset() { this.scale = 1; this._target = 1; this._holdUntil = 0; }
+    reset(){ this.scale=1; this._t=1; this._until=0; }
   }
 
   // ===================================================================================
-  // TARGET — the launched body the player drives. Bridges control intent -> physics.
+  // MOMENTUM — core resource. Refilled by hitting buildings, decays over time, ends run.
   // ===================================================================================
-  class Target {
-    constructor(game) {
-      this.game = game;
-      const geo = new THREE.IcosahedronGeometry(1.1, 0);
-      const mat = new THREE.MeshStandardMaterial({ color: 0xff3b30, emissive: 0x550000,
-                    metalness: 0.4, roughness: 0.35, flatShading: true });
-      this.mesh = new THREE.Mesh(geo, mat);
-      this.mesh.castShadow = true;
-      game.scene.add(this.mesh);
-
-      this.body = new CANNON.Body({
-        mass: 6,
-        shape: new CANNON.Sphere(1.1),
-        material: game.physics.materials.target,
-        linearDamping: 0.06,
-        angularDamping: 0.2,
-      });
-      this.body.addEventListener('collide', (e) => this._onCollide(e));
-      game.physics.add(this.body, this.mesh);
-
-      // trail of fading echoes for speed feel
-      this.trail = [];
-      for (let i = 0; i < 10; i++) {
-        const m = new THREE.Mesh(geo, mat.clone());
-        m.material.transparent = true; m.material.depthWrite = false;
-        game.scene.add(m); this.trail.push(m);
-      }
-      this._launched = false;
+  class MomentumSystem {
+    constructor(game){ this.game=game; this.value=0; this.MAX=100; this.HIGH=66; this.decay=8; }
+    start(){ this.value=60; }
+    addHit(amount){ this.value=clamp(this.value+amount,0,this.MAX); }
+    isHigh(){ return this.value>=this.HIGH; }
+    isLow(){ return this.value<=22; }
+    factor(){ return this.value/this.MAX; }
+    update(dt){
+      // decay accelerates with momentum so high speed is thrilling but demands hits
+      const d=this.decay*(0.7+this.factor()*0.8);
+      this.value=clamp(this.value-d*dt,0,this.MAX);
+      if(this.value<=0) this.game.run.toGameOver();
     }
-    speed() { return this.body.velocity.length(); }
-    position() { return this.body.position; }
-
-    _onCollide(e) {
-      const impact = e.contact;
-      // normal impulse magnitude approximates collision force for tiering
-      const ni = Math.abs(impact.getImpactVelocityAlongNormal());
-      const other = e.body === this.body ? impact.bi : impact.bj;
-      this.game.impact.handle(other, ni, this.speed());
-    }
-
-    place(x, y, z) {
-      this.body.position.set(x, y, z);
-      this.body.velocity.setZero();
-      this.body.angularVelocity.setZero();
-      this.body.wakeUp();
-      this._launched = false;
-    }
-    launch() {
-      const dir = this.game.camera.forward();
-      const power = 38 + this.game.momentum.factor() * 30;
-      this.body.velocity.set(dir.x * power, 6 + dir.y * power, dir.z * power);
-      this.body.angularVelocity.set(rand(-6,6), rand(-6,6), rand(-6,6));
-      this._launched = true;
-      this.game.audio.whoosh();
-    }
-    // continuous steering thrust; stronger with momentum + adrenaline buff
-    thrust(intent, dt) {
-      if (intent.x === 0 && intent.y === 0) return;
-      const cam = this.game.camera;
-      const fwd = cam.forward(); const right = cam.right();
-      const power = (240 + this.game.momentum.factor() * 260) * this.game.adrenaline.speedMultiplier();
-      const fx = (right.x * intent.x + fwd.x * intent.y) * power * dt;
-      const fz = (right.z * intent.x + fwd.z * intent.y) * power * dt;
-      this.body.applyForce(new CANNON.Vec3(fx, 0, fz), this.body.position);
-      this.body.wakeUp();
-    }
-    // brief upward + forward kick on demand ("impact boost" / mid-air thrust)
-    boost() {
-      const dir = this.game.camera.forward();
-      const p = 14 + this.game.momentum.factor() * 10;
-      this.body.applyImpulse(new CANNON.Vec3(dir.x * p, 7, dir.z * p), new CANNON.Vec3());
-      this.game.camera.shake(0.25);
-      this.game.audio.whoosh();
-    }
-    rebound(tier, relVel) {
-      // give a little extra pop on heavy hits so chains feel springy
-      const v = this.body.velocity;
-      const boost = 1 + tier.momentum * 0.012;
-      v.x *= boost; v.z *= boost; v.y = Math.max(v.y, tier.momentum * 0.18);
-    }
-    update() {
-      // trail sampling
-      for (let i = this.trail.length - 1; i > 0; i--) {
-        this.trail[i].position.copy(this.trail[i - 1].position);
-        this.trail[i].material.opacity = (1 - i / this.trail.length) * 0.35 *
-          clamp(this.speed() / 30, 0, 1);
-        const s = 1 - i / this.trail.length; this.trail[i].scale.setScalar(s);
-      }
-      this.trail[0].position.copy(this.mesh.position);
-      // keep target from falling through the world forever
-      if (this.body.position.y < -20) this.game.run.toGameOver();
-    }
-    reset() { this.place(0, 3, 0); }
+    reset(){ this.value=0; }
   }
 
   // ===================================================================================
-  // 10. CITY SYSTEM — procedural placeholder city, recycled ahead of the target.
+  // COMBO — consecutive building smashes within a time window.
+  // ===================================================================================
+  class ComboSystem {
+    constructor(game){ this.game=game; this.count=0; this.best=0; this.windowMs=2600; this.lastAt=0; }
+    hit(){
+      const now=performance.now();
+      this.count = (now-this.lastAt<=this.windowMs) ? this.count+1 : 1;
+      this.lastAt=now; this.best=Math.max(this.best,this.count);
+      this.game.ui.flashCombo(this.count);
+      if(this.count>=2 && this.count%5===0) this.game.audio.comboMilestone(this.count);
+      return this.count;
+    }
+    multiplier(){ return 1+Math.max(0,this.count-1)*0.3; }
+    update(){ if(this.count>0 && performance.now()-this.lastAt>this.windowMs){ this.count=0; this.game.ui.flashCombo(0); } }
+    reset(){ this.count=0; this.lastAt=0; }
+  }
+
+  // ===================================================================================
+  // ADRENALINE — fills from speed + combos, drains idle, buffs speed/score.
+  // ===================================================================================
+  class AdrenalineSystem {
+    constructor(game){ this.game=game; this.value=0; this.MAX=100; this.CHAOS=80; }
+    addHit(tier){ this.value=clamp(this.value+tier.adr*(1+this.game.combo.count*0.05),0,this.MAX); }
+    isChaos(){ return this.value>=this.CHAOS; }
+    factor(){ return this.value/this.MAX; }
+    scoreMul(){ return 1+this.factor(); }
+    speedMul(){ return 1+this.factor()*0.3; }
+    update(dt){
+      const fill=clamp((this.game.momentum.factor()-0.4),0,1)*5*dt;
+      this.value=clamp(this.value+fill-4*dt,0,this.MAX);
+    }
+    reset(){ this.value=0; }
+  }
+
+  // ===================================================================================
+  // SCORE — aggregates impacts / distance / destruction.
+  // ===================================================================================
+  class ScoreSystem {
+    constructor(){ this.reset(); }
+    addHit(p){ this.total+=p; this.hits++; this.destroyed++; }
+    addDistance(m){ this.distance+=m; this.total+=m*0.5; }
+    reset(){ this.total=0; this.hits=0; this.distance=0; this.destroyed=0; }
+  }
+
+  // ===================================================================================
+  // EFFECTS — the crash feedback: pooled debris, shockwave rings, screen flash.
+  // ===================================================================================
+  class EffectsSystem {
+    constructor(game){
+      this.game=game;
+      // debris pool (manual lightweight physics, no solver)
+      this.debris=[];
+      const dgeo=new THREE.BoxGeometry(1,1,1);
+      for(let i=0;i<160;i++){
+        const m=new THREE.Mesh(dgeo,new THREE.MeshStandardMaterial({color:0x888888,roughness:.9,flatShading:true}));
+        m.visible=false; m.castShadow=true; game.scene.add(m);
+        this.debris.push({mesh:m,vel:new THREE.Vector3(),spin:new THREE.Vector3(),life:0,max:1});
+      }
+      // shockwave rings pool
+      this.rings=[];
+      const rgeo=new THREE.RingGeometry(0.6,1,24);
+      for(let i=0;i<10;i++){
+        const m=new THREE.Mesh(rgeo,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
+        m.visible=false; game.scene.add(m); this.rings.push({mesh:m,life:0,max:1});
+      }
+      this.flashEl=document.getElementById('flash');
+      this._dPtr=0; this._rPtr=0;
+    }
+    burst(pos,color,power,count){
+      for(let i=0;i<count;i++){
+        const d=this.debris[this._dPtr=(this._dPtr+1)%this.debris.length];
+        d.mesh.visible=true;
+        d.mesh.position.copy(pos).add(new THREE.Vector3(rand(-2,2),rand(-2,2),rand(-2,2)));
+        const s=rand(0.5,2.2); d.mesh.scale.setScalar(s);
+        d.mesh.material.color.copy(color).offsetHSL(0,0,rand(-0.05,0.05));
+        d.vel.set(rand(-1,1),rand(0.2,1.2),rand(-1,1)).normalize().multiplyScalar(power*rand(0.4,1.1));
+        d.vel.z+=power*0.3; // bias debris forward along flight
+        d.spin.set(rand(-8,8),rand(-8,8),rand(-8,8));
+        d.life=d.max=rand(0.8,1.6);
+      }
+    }
+    ring(pos,color,size){
+      const r=this.rings[this._rPtr=(this._rPtr+1)%this.rings.length];
+      r.mesh.visible=true; r.mesh.position.copy(pos);
+      r.mesh.lookAt(this.game.camera.cam.position);
+      r.mesh.scale.setScalar(size*0.25); r.mesh.material.color.copy(color);
+      r.mesh.material.opacity=0.6; r.life=r.max=0.45; r.size=size;
+    }
+    flash(strength){
+      this.flashEl.style.transition='none'; this.flashEl.style.opacity=String(clamp(strength,0,0.8));
+      requestAnimationFrame(()=>{ this.flashEl.style.transition='opacity .25s'; this.flashEl.style.opacity='0'; });
+    }
+    update(dt){
+      const G=18;
+      for(const d of this.debris){
+        if(d.life<=0){ if(d.mesh.visible) d.mesh.visible=false; continue; }
+        d.life-=dt;
+        d.vel.y-=G*dt;
+        d.mesh.position.addScaledVector(d.vel,dt);
+        d.mesh.rotation.x+=d.spin.x*dt; d.mesh.rotation.y+=d.spin.y*dt; d.mesh.rotation.z+=d.spin.z*dt;
+        if(d.mesh.position.y<0.4){ d.mesh.position.y=0.4; d.vel.y*=-0.35; d.vel.x*=0.7; d.vel.z*=0.7; }
+        const t=clamp(d.life/d.max,0,1);
+        d.mesh.scale.setScalar(Math.max(0.01,d.mesh.scale.x*0.999)*(0.4+t*0.6)/(0.4+t*0.6)); // keep size, fade by hiding
+        if(d.life<=0) d.mesh.visible=false;
+      }
+      for(const r of this.rings){
+        if(r.life<=0){ if(r.mesh.visible) r.mesh.visible=false; continue; }
+        r.life-=dt;
+        const t=1-r.life/r.max;
+        r.mesh.scale.setScalar(lerp(r.size*0.25,r.size*1.5,t));
+        r.mesh.material.opacity=(1-t)*0.6;
+        if(r.life<=0) r.mesh.visible=false;
+      }
+    }
+    reset(){ for(const d of this.debris){d.life=0;d.mesh.visible=false;} for(const r of this.rings){r.life=0;r.mesh.visible=false;} }
+  }
+
+  // ===================================================================================
+  // IMPACT TIERS — graded by building size. (size = w*h*d footprint heuristic)
+  // ===================================================================================
+  const TIERS=[
+    {name:'glance',  min:0,   score:40,  mom:9,  adr:8,  shake:0.25, slowmo:0,    debris:8,  flash:0.10},
+    {name:'smash',   min:140, score:120, mom:15, adr:14, shake:0.5,  slowmo:0,    debris:14, flash:0.18},
+    {name:'crush',   min:380, score:300, mom:22, adr:22, shake:0.85, slowmo:0.2,  debris:22, flash:0.30},
+    {name:'level',   min:820, score:650, mom:30, adr:32, shake:1.2,  slowmo:0.45, debris:34, flash:0.45},
+  ];
+  class ImpactSystem {
+    constructor(game){ this.game=game; }
+    tierFor(volume){ let t=TIERS[0]; for(const x of TIERS) if(volume>=x.min) t=x; return t; }
+    smash(building){
+      const g=this.game;
+      const vol=building.w*building.h*building.d;
+      const tier=this.tierFor(vol);
+      const combo=g.combo.hit();
+      const gained=Math.round(tier.score*g.combo.multiplier()*g.adrenaline.scoreMul());
+
+      g.momentum.addHit(tier.mom);
+      g.adrenaline.addHit(tier);
+      g.score.addHit(gained);
+
+      // crash effects
+      const hitPos=building.mesh.position.clone();
+      hitPos.z = g.player.dummy.position.z;     // contact roughly where the dummy meets it
+      hitPos.y = clamp(g.player.dummy.position.y, 2, building.h);
+      g.effects.burst(hitPos, building.mesh.material.color, 8+tier.mom*0.4, tier.debris);
+      g.effects.ring(hitPos, building.mesh.material.color, building.w+building.d);
+      g.effects.flash(tier.flash);
+      g.camera.shake(tier.shake*(0.8+g.adrenaline.factor()*0.3));
+      if(tier.slowmo>0) g.time.requestSlowMo(tier.slowmo,0.3);
+      g.audio.crash(tier,combo);
+      g.player.onSmash(tier);
+
+      g.city.shatter(building);   // remove + recycle the building
+    }
+  }
+
+  // ===================================================================================
+  // FLIGHT PLAYER — the villain (kinematic) + the dummy he flies through buildings.
+  // ===================================================================================
+  class FlightPlayer {
+    constructor(game){
+      this.game=game;
+      this.pos=new THREE.Vector3(0,18,0);
+      this.vel=new THREE.Vector3(0,0,38);
+      this.bank=0; this.pitch=0; this.fwdSpeed=38; this.fwdNow=38;
+
+      // ----- villain rig, BUILT IN FLIGHT POSE (lying along +Z, head forward) -----
+      // group only carries position + steering lean; the rig child holds the flying pose.
+      this.group=new THREE.Group(); game.scene.add(this.group);
+      this.rig=new THREE.Group(); this.group.add(this.rig); this.group.scale.setScalar(1.15);
+      const skin=new THREE.MeshStandardMaterial({color:0xf1c9a5,roughness:.6});
+      const suit=new THREE.MeshStandardMaterial({color:0xf3f4f8,roughness:.5,metalness:.12});
+      const cape=new THREE.MeshStandardMaterial({color:0xcc1f2a,roughness:.6,side:THREE.DoubleSide,emissive:0x350000});
+      const torso=new THREE.Mesh(new THREE.CapsuleGeometry(0.5,1.2,4,10),suit);
+      torso.rotation.x=Math.PI/2; torso.castShadow=true;                 // lie along Z
+      const head=new THREE.Mesh(new THREE.SphereGeometry(0.4,14,14),skin); head.position.z=1.05;
+      const mstache=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.14),new THREE.MeshStandardMaterial({color:0x141414}));
+      mstache.position.set(0,-0.08,1.34);
+      // arms reach FORWARD (+Z) gripping the dummy
+      const armGeo=new THREE.CapsuleGeometry(0.16,1.1,4,6);
+      const armL=new THREE.Mesh(armGeo,suit); armL.rotation.x=Math.PI/2; armL.position.set(-0.45,0,1.1);
+      const armR=armL.clone(); armR.position.x=0.45;
+      // cape trails BACK (-Z) toward the camera, waving
+      this.capeMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.5,2.2,1,8),cape);
+      this.capeMesh.rotation.x=-Math.PI/2; this.capeMesh.position.set(0,0.15,-1.2);
+      this.rig.add(torso,head,mstache,armL,armR,this.capeMesh);
+
+      // ----- dummy (invincible green victim) held OUT FRONT, head-first -----
+      this.dummy=new THREE.Group(); game.scene.add(this.dummy);
+      const dsuit=new THREE.MeshStandardMaterial({color:0x4f9d3a,roughness:.55,emissive:0x06180a});
+      const dskin=new THREE.MeshStandardMaterial({color:0xf1c9a5,roughness:.6});
+      const dbody=new THREE.Mesh(new THREE.CapsuleGeometry(0.42,1.1,4,8),dsuit);
+      dbody.rotation.x=Math.PI/2; dbody.castShadow=true;                 // head-first along Z
+      const dhead=new THREE.Mesh(new THREE.SphereGeometry(0.36,12,12),dskin); dhead.position.z=1.0;
+      this.dLimbs=[];
+      for(let i=0;i<4;i++){ const l=new THREE.Mesh(new THREE.CapsuleGeometry(0.14,0.8,4,6),dsuit);
+        this.dummy.add(l); this.dLimbs.push(l); }
+      this.dummy.add(dbody,dhead);
+      this.dummyAhead=4.6;            // rigid forward lead so he's always the hammer
+
+      this._smashPulse=0;
+    }
+    speed(){ return this.vel.length(); }
+    position(){ return this.pos; }
+    reset(){ this.pos.set(0,18,0); this.vel.set(0,0,this.fwdSpeed); this.fwdNow=this.fwdSpeed;
+             this.bank=this.pitch=this._smashPulse=0;
+             this.dummy.position.set(0,17.2,4.6); }
+    onSmash(tier){ this._smashPulse=Math.min(1.4,this._smashPulse+0.4+tier.mom*0.012); }
+
+    update(dt,steer){
+      const g=this.game;
+      const target=(this.fwdSpeed + g.momentum.factor()*48) * g.adrenaline.speedMul();
+      this.fwdNow=damp(this.fwdNow,target,3,dt);
+
+      // smooth, responsive kinematic steering (no solver -> no stiffness/glitch)
+      const STRAFE=40*g.adrenaline.speedMul(), CLIMB=34;
+      this.vel.x=damp(this.vel.x,steer.x*STRAFE,10,dt);
+      this.vel.y=damp(this.vel.y,steer.y*CLIMB,10,dt);
+      this.vel.z=this.fwdNow;
+      this.pos.addScaledVector(this.vel,dt);
+      this.pos.x=clamp(this.pos.x,-58,58);
+      this.pos.y=clamp(this.pos.y,4,70);
+
+      this.bank =damp(this.bank,-steer.x*0.55,9,dt);
+      this.pitch=damp(this.pitch, steer.y*0.30,9,dt);
+      this._smashPulse=damp(this._smashPulse,0,4,dt);
+
+      // villain rig: position + steering lean (rig already faces +Z)
+      this.group.position.copy(this.pos);
+      this.group.rotation.set(this.pitch,0,this.bank);
+      const now=performance.now();
+      const sp=clamp(this.speed()/70,0,1);
+      this.capeMesh.rotation.z=this.bank*0.6+Math.sin(now*0.02)*0.1*sp;       // cape sway
+
+      // DUMMY: rigid forward lead (z locked ahead), x/y smoothed -> whips on turns
+      const tx=this.pos.x+this.bank*4, ty=this.pos.y-0.7+this.pitch*3, tz=this.pos.z+this.dummyAhead;
+      this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
+      this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
+      this.dummy.position.z=tz;
+      this.dummy.rotation.z=this.bank*1.3+Math.sin(now*0.03)*0.18;
+      this.dummy.rotation.x=this.pitch*0.6;
+      // flailing limbs sell the "thrown through buildings" helplessness
+      const t=now*0.022, f=0.3+sp;
+      this.dLimbs[0].position.set(-0.4,0.25+Math.sin(t)*0.3*f,-0.15);   this.dLimbs[0].rotation.set(0,0,0.7+Math.sin(t)*0.6);
+      this.dLimbs[1].position.set( 0.4,0.25+Math.cos(t)*0.3*f,-0.15);   this.dLimbs[1].rotation.set(0,0,-0.7-Math.cos(t)*0.6);
+      this.dLimbs[2].position.set(-0.24,-0.85+Math.sin(t*1.3)*0.2*f,-0.1); this.dLimbs[2].rotation.set(0.3+Math.sin(t)*0.4,0,0.3);
+      this.dLimbs[3].position.set( 0.24,-0.85+Math.cos(t*1.3)*0.2*f,-0.1); this.dLimbs[3].rotation.set(0.3+Math.cos(t)*0.4,0,-0.3);
+    }
+    // hit-test sphere centred on the dummy (the hammer)
+    hitSphere(){ return { c:this.dummy.position, r:3.1 }; }
+  }
+
+  // ===================================================================================
+  // CITY — fair, reachable procedural corridor of smashable buildings. Recycled.
   // ===================================================================================
   class CitySystem {
-    constructor(game) {
-      this.game = game;
-      this.buildings = [];
-      this.tileSize = 28;
-      this.range = 5;            // tiles each side around target
-      this.spawned = new Map();  // key "gx,gz" -> array of building entries
+    constructor(game){
+      this.game=game;
+      this.buildings=[];
+      this.pool=[];
+      this.nextZ=40;
+      this.gap=20;             // distance between building rows (denser city)
+      this.aheadDist=440;      // how far ahead to keep populated
       this._ground();
-    }
-    _ground() {
-      const g = this.game;
-      const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(),
-                          material: g.physics.materials.ground });
-      groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-      g.physics.world.addBody(groundBody);
-      const grid = new THREE.GridHelper(2000, 200, 0x223044, 0x141a26);
-      g.scene.add(grid);
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000),
-                    new THREE.MeshStandardMaterial({ color: 0x0a0d16, roughness: 1 }));
-      floor.rotation.x = -Math.PI / 2; floor.position.y = -0.01; floor.receiveShadow = true;
-      g.scene.add(floor);
-    }
-    _spawnTile(gx, gz) {
-      const key = `${gx},${gz}`;
-      if (this.spawned.has(key)) return;
-      const entries = [];
-      // skip some tiles to carve "roads"
-      const road = (gx % 2 === 0) || (gz % 3 === 0);
-      const count = road ? 0 : (1 + (Math.random() * 2 | 0));
-      for (let i = 0; i < count; i++) {
-        const w = rand(3, 6), d = rand(3, 6), h = rand(5, 22);
-        const px = gx * this.tileSize + rand(-8, 8);
-        const pz = gz * this.tileSize + rand(-8, 8);
-        entries.push(this._building(px, h / 2, pz, w, h, d));
-      }
-      // occasional loose "obstacle" cubes that ragdoll nicely
-      if (Math.random() < 0.5) {
-        const px = gx * this.tileSize + rand(-10, 10);
-        const pz = gz * this.tileSize + rand(-10, 10);
-        entries.push(this._prop(px, 1.2, pz));
-      }
-      this.spawned.set(key, entries);
-    }
-    _building(x, y, z, w, h, d) {
-      const g = this.game;
-      const hue = 0.58 + Math.random() * 0.08;
-      const color = new THREE.Color().setHSL(hue, 0.3, 0.18 + Math.random() * 0.12);
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
-                   new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.1 }));
-      mesh.position.set(x, y, z); mesh.castShadow = mesh.receiveShadow = true;
-      g.scene.add(mesh);
-      // start static (mass 0); flips dynamic when smashed hard enough
-      const body = new CANNON.Body({ mass: 0,
-        shape: new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)),
-        material: g.physics.materials.prop });
-      body.position.set(x, y, z);
-      body.userData = { kind: 'building', hp: h * 1.2, mesh, dynamic: false };
-      g.physics.add(body, mesh);
-      const e = { body, mesh }; this.buildings.push(e); return e;
-    }
-    _prop(x, y, z) {
-      const g = this.game;
-      const s = rand(1.2, 2.2);
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(s, s, s),
-                   new THREE.MeshStandardMaterial({ color: 0x44506a, roughness: 0.7 }));
-      mesh.castShadow = true; g.scene.add(mesh);
-      const body = new CANNON.Body({ mass: 2,
-        shape: new CANNON.Box(new CANNON.Vec3(s/2, s/2, s/2)),
-        material: g.physics.materials.prop });
-      body.position.set(x, y, z);
-      body.userData = { kind: 'prop', hp: 1, mesh, dynamic: true };
-      g.physics.add(body, mesh);
-      const e = { body, mesh }; this.buildings.push(e); return e;
-    }
-    // when the target smashes something hard, flip it dynamic so it tumbles (ragdoll-like)
-    damage(body, force) {
-      const ud = body.userData;
-      if (!ud) return;
-      if (ud.kind === 'building' && !ud.dynamic) {
-        ud.hp -= force;
-        if (ud.hp <= 0 || force > 28) {
-          ud.dynamic = true;
-          const sh = body.shapes[0].halfExtents;
-          body.type = CANNON.Body.DYNAMIC;
-          body.mass = Math.max(1, (sh.x * sh.y * sh.z) * 0.4);
-          body.updateMassProperties();
-          body.wakeUp();
-          ud.mesh.material.emissive = new THREE.Color(0x331100);
-          this.game.score.destruction++;
-        }
+      const geo=new THREE.BoxGeometry(1,1,1);
+      this._geo=geo;
+      for(let i=0;i<130;i++){
+        const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.85,metalness:.08}));
+        m.castShadow=m.receiveShadow=true; m.visible=false; game.scene.add(m);
+        this.pool.push({mesh:m,active:false,w:1,h:1,d:1,hit:false});
+        // lit windows look
+        const edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+                    new THREE.LineBasicMaterial({color:0x2b3650}));
+        m.add(edge);
       }
     }
-    update() {
-      const p = this.game.target.position();
-      const gx = Math.round(p.x / this.tileSize);
-      const gz = Math.round(p.z / this.tileSize);
-      for (let dx = -this.range; dx <= this.range; dx++)
-        for (let dz = -this.range; dz <= this.range; dz++)
-          this._spawnTile(gx + dx, gz + dz);
-      // recycle anything far behind to keep body count bounded
-      const maxDist = (this.range + 3) * this.tileSize;
-      for (let i = this.buildings.length - 1; i >= 0; i--) {
-        const e = this.buildings[i];
-        const dpos = e.body.position;
-        if (Math.hypot(dpos.x - p.x, dpos.z - p.z) > maxDist || dpos.y < -30) {
-          this.game.scene.remove(e.mesh);
-          this.game.physics.remove(e.body, e.mesh);
-          this.buildings.splice(i, 1);
-          // forget tile key so it can respawn fresh later
-          const k = `${Math.round(dpos.x / this.tileSize)},${Math.round(dpos.z / this.tileSize)}`;
-          this.spawned.delete(k);
-        }
+    _ground(){
+      const g=this.game;
+      const floor=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),
+                  new THREE.MeshStandardMaterial({color:0x070a12,roughness:1}));
+      floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; g.scene.add(floor);
+      const grid=new THREE.GridHelper(4000,400,0x1b2740,0x0d1320); g.scene.add(grid);
+    }
+    _take(){ return this.pool.find(p=>!p.active); }
+    _spawnRow(z){
+      // 3–5 buildings; ALWAYS put one in the player's current lane so a smash is reachable.
+      const n=3+(Math.random()*3|0);
+      const px=this.game.player ? this.game.player.pos.x : 0;
+      const xs=[ clamp(px+rand(-14,14),-54,54) ];   // guaranteed-catchable target
+      for(let i=1;i<n;i++) xs.push(rand(-54,54));
+      for(const x of xs){
+        const b=this._take(); if(!b) break;
+        const w=rand(6,12), d=rand(6,12), h=rand(14,46);
+        b.mesh.visible=true; b.active=true; b.hit=false;
+        b.w=w; b.h=h; b.d=d;
+        b.mesh.scale.set(w,h,d);
+        b.mesh.position.set(x, h/2, z+rand(-6,6));
+        const c=new THREE.Color().setHSL(0.58+Math.random()*0.07, 0.35, 0.16+Math.random()*0.12);
+        b.mesh.material.color.copy(c);
+        b.mesh.material.emissive.setHSL(0.58,0.5,0.04);
+        this.buildings.push(b);
       }
     }
-    reset() {
-      for (const e of this.buildings) { this.game.scene.remove(e.mesh); this.game.physics.remove(e.body, e.mesh); }
-      this.buildings.length = 0; this.spawned.clear();
+    shatter(b){
+      b.active=false; b.hit=true; b.mesh.visible=false;
+      const i=this.buildings.indexOf(b); if(i>=0) this.buildings.splice(i,1);
     }
+    update(){
+      const pz=this.game.player.pos.z;
+      while(this.nextZ < pz + this.aheadDist){ this._spawnRow(this.nextZ); this.nextZ+=this.gap; }
+      // recycle behind
+      for(let i=this.buildings.length-1;i>=0;i--){
+        const b=this.buildings[i];
+        if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; this.buildings.splice(i,1); }
+      }
+    }
+    // sphere-vs-AABB test for the dummy; returns first un-hit building it overlaps
+    queryHit(sphere){
+      for(const b of this.buildings){
+        if(b.hit) continue;
+        const p=b.mesh.position;
+        const hw=b.w/2, hh=b.h/2, hd=b.d/2;
+        const cx=clamp(sphere.c.x, p.x-hw, p.x+hw);
+        const cy=clamp(sphere.c.y, p.y-hh, p.y+hh);
+        const cz=clamp(sphere.c.z, p.z-hd, p.z+hd);
+        const dx=sphere.c.x-cx, dy=sphere.c.y-cy, dz=sphere.c.z-cz;
+        if(dx*dx+dy*dy+dz*dz <= sphere.r*sphere.r) return b;
+      }
+      return null;
+    }
+    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; } this.buildings.length=0; this.nextZ=40; }
   }
 
   // ===================================================================================
-  // 8. CAMERA SYSTEM — follow + dynamic FOV + shake, driven by a small state machine.
+  // CAMERA — smooth chase, dynamic FOV, shake, bank roll. State machine for feel.
   // ===================================================================================
   class CameraSystem {
-    constructor(game, renderer) {
-      this.game = game;
-      this.cam = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 1200);
-      this.cam.position.set(0, 12, -18);
-      this.state = 'normal';   // normal | highspeed | impact | chaos
-      this.shakeAmt = 0;
-      this.yaw = 0;            // follow heading, eased toward velocity direction
-      this._tmp = new THREE.Vector3();
+    constructor(game){
+      this.game=game;
+      this.cam=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,0.1,2000);
+      this.cam.position.set(0,20,-20);
+      this.shakeAmt=0; this.state='normal';
+      this._look=new THREE.Vector3();
     }
-    forward() {
-      const f = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
-      return f.normalize();
-    }
-    right() {
-      const f = this.forward();
-      return new THREE.Vector3(f.z, 0, -f.x);
-    }
-    shake(amt) { this.shakeAmt = Math.min(1.4, this.shakeAmt + amt); }
-    _resolveState() {
-      const g = this.game;
-      if (g.time.scale < 0.7) this.state = 'impact';
-      else if (g.adrenaline.isChaos()) this.state = 'chaos';
-      else if (g.momentum.isHigh()) this.state = 'highspeed';
-      else this.state = 'normal';
-    }
-    update(realDt) {
-      this._resolveState();
-      const g = this.game, t = g.target;
-      const p = t.position();
-      // ease yaw toward horizontal velocity heading so camera trails motion
-      const vx = t.body.velocity.x, vz = t.body.velocity.z;
-      if (Math.hypot(vx, vz) > 3) {
-        const want = Math.atan2(vx, vz);
-        let d = want - this.yaw;
-        d = Math.atan2(Math.sin(d), Math.cos(d));
-        this.yaw += d * clamp(realDt * 2.2, 0, 1);
-      }
-      const back = this.forward().multiplyScalar(-1);
-      const dist = 16 + g.momentum.factor() * 6;
-      const height = 8 + g.momentum.factor() * 3;
-      const desired = this._tmp.set(
-        p.x + back.x * dist, p.y + height, p.z + back.z * dist);
-      this.cam.position.lerp(desired, clamp(realDt * 4, 0, 1));
+    shake(a){ this.shakeAmt=Math.min(1.6,this.shakeAmt+a); }
+    update(realDt){
+      const g=this.game, p=g.player;
+      // state
+      if(g.time.scale<0.7) this.state='impact';
+      else if(g.adrenaline.isChaos()) this.state='chaos';
+      else if(g.momentum.isHigh()) this.state='highspeed';
+      else this.state='normal';
 
-      // dynamic FOV from speed + adrenaline
-      const targetFov = 60 + clamp(t.speed() / 60, 0, 1) * 26 + g.adrenaline.factor() * 6;
-      this.cam.fov = lerp(this.cam.fov, targetFov, clamp(realDt * 3, 0, 1));
-      this.cam.updateProjectionMatrix();
+      const speedF=clamp(p.speed()/90,0,1);
+      const dist=12+speedF*5;
+      const height=4.2+speedF*1.8;
+      const desired=new THREE.Vector3(p.pos.x - p.bank*4, p.pos.y+height, p.pos.z-dist);
+      this.cam.position.lerp(desired, clamp(realDt*5,0,1));
 
-      // look slightly ahead of target
-      const ahead = this.forward().multiplyScalar(6);
-      const look = new THREE.Vector3(p.x + ahead.x, p.y + 1.5, p.z + ahead.z);
-      this.cam.lookAt(look);
+      const fov=64 + speedF*15 + g.adrenaline.factor()*5 + p._smashPulse*7;
+      this.cam.fov=damp(this.cam.fov,fov,6,realDt); this.cam.updateProjectionMatrix();
 
-      // shake decays; apply as positional jitter after lookAt
-      if (this.shakeAmt > 0.001) {
-        const s = this.shakeAmt;
-        this.cam.position.x += rand(-1, 1) * s;
-        this.cam.position.y += rand(-1, 1) * s;
-        this.cam.position.z += rand(-1, 1) * s;
-        this.shakeAmt = lerp(this.shakeAmt, 0, clamp(realDt * 6, 0, 1));
+      // look ahead toward the dummy / flight direction
+      this._look.set(p.pos.x + p.bank*4, p.pos.y+0.6+p.pitch*4, p.pos.z+13);
+      this.cam.up.set(Math.sin(p.bank*0.4),Math.cos(p.bank*0.4),0);
+      this.cam.lookAt(this._look);
+
+      if(this.shakeAmt>0.001){
+        const s=this.shakeAmt;
+        this.cam.position.x+=rand(-1,1)*s; this.cam.position.y+=rand(-1,1)*s; this.cam.position.z+=rand(-0.5,0.5)*s;
+        this.shakeAmt=damp(this.shakeAmt,0,9,realDt);
       }
     }
-    resize() { this.cam.aspect = innerWidth / innerHeight; this.cam.updateProjectionMatrix(); }
-    reset() { this.yaw = 0; this.shakeAmt = 0; this.cam.position.set(0, 12, -18); }
+    resize(){ this.cam.aspect=innerWidth/innerHeight; this.cam.updateProjectionMatrix(); }
+    reset(){ this.shakeAmt=0; this.cam.position.set(0,20,-20); }
   }
 
   // ===================================================================================
-  // 13. AUDIO SYSTEM — event hooks, fully synthesised via WebAudio. No assets.
+  // AUDIO — synthesised WebAudio crash/whoosh/combo hooks. No assets.
   // ===================================================================================
   class AudioSystem {
-    constructor() { this.ctx = null; this.master = null; }
-    _ensure() {
-      if (this.ctx) return;
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 0.4;
-      this.master.connect(this.ctx.destination);
-    }
-    resume() { this._ensure(); if (this.ctx.state === 'suspended') this.ctx.resume(); }
-    _tone(freq, dur, type = 'sine', gain = 0.5) {
-      if (!this.ctx) return;
-      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
-      o.type = type; o.frequency.value = freq;
-      g.gain.setValueAtTime(gain, this.ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + dur);
-      o.connect(g); g.connect(this.master); o.start(); o.stop(this.ctx.currentTime + dur);
-    }
-    _noise(dur, gain = 0.5) {
-      if (!this.ctx) return;
-      const n = this.ctx.sampleRate * dur;
-      const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
-      const src = this.ctx.createBufferSource(); src.buffer = buf;
-      const g = this.ctx.createGain(); g.gain.value = gain;
-      src.connect(g); g.connect(this.master); src.start();
-    }
-    // --- event hooks ---
-    impact(tier, combo) {
-      const base = { light: 180, medium: 130, heavy: 80, catastrophic: 50 }[tier.name];
-      this._tone(base + combo * 12, tier.name === 'light' ? 0.12 : 0.3, 'square', 0.35);
-      this._noise(0.05 + tier.shake * 0.2, 0.3 + tier.shake * 0.4);
-    }
-    whoosh() { this._noise(0.25, 0.25); }
-    comboMilestone(n) { this._tone(440 + n * 40, 0.18, 'triangle', 0.4); }
-    gameOver() { this._tone(220, 0.5, 'sawtooth', 0.4); setTimeout(() => this._tone(110, 0.8, 'sawtooth', 0.4), 120); }
+    constructor(){ this.ctx=null; }
+    _ensure(){ if(this.ctx) return; this.ctx=new (window.AudioContext||window.webkitAudioContext)();
+      this.master=this.ctx.createGain(); this.master.gain.value=0.35; this.master.connect(this.ctx.destination); }
+    resume(){ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume(); }
+    _tone(f,d,type='sine',g=0.4){ if(!this.ctx) return; const o=this.ctx.createOscillator(),gn=this.ctx.createGain();
+      o.type=type; o.frequency.value=f; gn.gain.setValueAtTime(g,this.ctx.currentTime);
+      gn.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+d); o.connect(gn); gn.connect(this.master);
+      o.start(); o.stop(this.ctx.currentTime+d); }
+    _noise(d,g=0.5){ if(!this.ctx) return; const n=this.ctx.sampleRate*d; const buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate);
+      const dat=buf.getChannelData(0); for(let i=0;i<n;i++) dat[i]=(Math.random()*2-1)*(1-i/n);
+      const src=this.ctx.createBufferSource(); src.buffer=buf; const gn=this.ctx.createGain(); gn.gain.value=g;
+      src.connect(gn); gn.connect(this.master); src.start(); }
+    crash(tier,combo){ const base={glance:160,smash:110,crush:70,level:45}[tier.name];
+      this._tone(base+combo*8,0.25,'square',0.3); this._noise(0.08+tier.shake*0.18,0.35+tier.shake*0.35); }
+    comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
+    gameOver(){ this._tone(200,0.5,'sawtooth',0.4); setTimeout(()=>this._tone(90,0.9,'sawtooth',0.4),120); }
   }
 
   // ===================================================================================
-  // 12. UI SYSTEM — binds game state to the HUD DOM. No game logic here.
+  // UI — binds state to HUD. No game logic.
   // ===================================================================================
   class UISystem {
-    constructor(game) {
-      this.game = game;
-      this.el = {
-        mom: document.querySelector('#momentum-bar > i'),
-        adr: document.querySelector('#adrenaline-bar > i'),
-        score: document.getElementById('score'),
-        sub: document.getElementById('score-sub'),
-        combo: document.getElementById('combo'),
-        comboNum: document.getElementById('combo-num'),
-        state: document.getElementById('state-tag'),
-        speed: document.getElementById('speed-tag'),
-      };
-      this._comboHideT = 0;
+    constructor(game){
+      this.game=game;
+      this.el={ mom:document.querySelector('#momentum-bar > i'), adr:document.querySelector('#adrenaline-bar > i'),
+        score:document.getElementById('score'), sub:document.getElementById('score-sub'),
+        combo:document.getElementById('combo'), comboNum:document.getElementById('combo-num'),
+        warn:document.getElementById('warning'), state:document.getElementById('state-tag'),
+        speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette') };
+      this._hide=0;
     }
-    flashCombo(n) {
-      if (n >= 2) {
-        this.el.comboNum.textContent = 'x' + n;
-        this.el.combo.style.opacity = '1';
-        this.el.combo.style.transform = 'translate(-50%,-50%) scale(1.25)';
-        requestAnimationFrame(() => this.el.combo.style.transform = 'translate(-50%,-50%) scale(1)');
-        this._comboHideT = performance.now() + 1200;
-        if (n % 5 === 0) this.game.audio.comboMilestone(n);
-      } else {
-        this.el.combo.style.opacity = '0';
-      }
+    flashCombo(n){
+      if(n>=2){ this.el.comboNum.textContent='x'+n; this.el.combo.style.opacity='1';
+        this.el.combo.style.transform='translate(-50%,-50%) scale(1.3)';
+        requestAnimationFrame(()=>this.el.combo.style.transform='translate(-50%,-50%) scale(1)');
+        this._hide=performance.now()+1300;
+      } else this.el.combo.style.opacity='0';
     }
-    floatScore() { /* hook point for floating score popups; kept minimal for prototype */ }
-    update() {
-      const g = this.game;
-      this.el.mom.style.width = (g.momentum.value) + '%';
-      this.el.adr.style.width = (g.adrenaline.value) + '%';
-      this.el.score.textContent = Math.round(g.score.total).toLocaleString();
-      this.el.sub.textContent = `DIST ${Math.round(g.score.distance)}m · HITS ${g.score.impacts}`;
-      this.el.state.textContent = g.run.state;
-      this.el.speed.textContent = Math.round(g.target.speed() * 3.6) + ' km/h';
-      if (this._comboHideT && performance.now() > this._comboHideT && g.combo.count < 2) {
-        this.el.combo.style.opacity = '0'; this._comboHideT = 0;
-      }
+    update(){
+      const g=this.game;
+      this.el.mom.style.width=g.momentum.value+'%';
+      this.el.adr.style.width=g.adrenaline.value+'%';
+      this.el.score.textContent=Math.round(g.score.total).toLocaleString();
+      this.el.sub.textContent=`${Math.round(g.score.distance)} m · ${g.score.hits} hits`;
+      this.el.state.textContent=g.run.state;
+      this.el.speed.textContent=Math.round(g.player.speed()*3.6)+' km/h';
+      const low=g.momentum.isLow() && g.run.state!=='READY' && g.run.state!=='GameOver';
+      this.el.warn.style.opacity=low?'1':'0';
+      this.el.vig.style.boxShadow=low?'inset 0 0 200px 50px rgba(160,0,0,.5)':'inset 0 0 200px 40px rgba(120,0,0,0)';
+      if(this._hide && performance.now()>this._hide && g.combo.count<2){ this.el.combo.style.opacity='0'; this._hide=0; }
     }
   }
 
   // ===================================================================================
-  // 11. RUN STATE MANAGER — top-level state machine + reset orchestration.
+  // RUN STATE MANAGER — Idle/Running/HighMomentum/SlowMotion/GameOver + reset.
   // ===================================================================================
   class RunStateManager {
-    constructor(game) { this.game = game; this.state = 'Idle'; }
-    toIdle() { this.state = 'Idle'; }
-    startRun() {
-      const g = this.game;
-      this.resetAll();
-      g.momentum.start();
-      this.state = 'Running';
+    constructor(game){ this.game=game; this.state='READY'; }
+    startRun(){
+      const g=this.game; this.resetAll(); g.momentum.start(); this.state='Running';
       g.audio.resume();
       document.getElementById('start-overlay').classList.add('hidden');
       document.getElementById('gameover-overlay').classList.add('hidden');
-      g.target.launch();
     }
-    // derived sub-states for feel/telemetry
-    tick() {
-      if (this.state === 'GameOver' || this.state === 'Idle') return;
-      const g = this.game;
-      if (g.time.scale < 0.7) this.state = 'SlowMotion';
-      else if (g.momentum.isHigh()) this.state = 'HighMomentum';
-      else this.state = 'Running';
+    tick(){
+      if(this.state==='GameOver'||this.state==='READY') return;
+      const g=this.game;
+      if(g.time.scale<0.7) this.state='SlowMotion';
+      else if(g.adrenaline.isChaos()) this.state='Chaos';
+      else if(g.momentum.isHigh()) this.state='HighMomentum';
+      else this.state='Running';
     }
-    toGameOver() {
-      if (this.state === 'GameOver') return;
-      this.state = 'GameOver';
-      const g = this.game;
-      g.audio.gameOver();
-      document.getElementById('gameover-stats').innerHTML =
-        `Score <b>${Math.round(g.score.total).toLocaleString()}</b><br>` +
-        `Best combo <b>x${g.combo.best}</b> · Impacts <b>${g.score.impacts}</b><br>` +
-        `Distance <b>${Math.round(g.score.distance)}m</b> · Destroyed <b>${g.score.destruction}</b>`;
+    toGameOver(){
+      if(this.state==='GameOver') return; this.state='GameOver';
+      const g=this.game; g.audio.gameOver();
+      document.getElementById('gameover-stats').innerHTML=
+        `Score <b>${Math.round(g.score.total).toLocaleString()}</b><br>`+
+        `Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b><br>`+
+        `Distance <b>${Math.round(g.score.distance)} m</b>`;
       document.getElementById('gameover-overlay').classList.remove('hidden');
     }
-    resetAll() {
-      const g = this.game;
-      g.city.reset(); g.physics.reset();
-      g.momentum.reset(); g.adrenaline.reset(); g.combo.reset();
-      g.score.reset(); g.time.reset(); g.camera.reset();
-      // rebuild target + city fresh
-      g.target = new Target(g);
-      g.target.reset();
+    resetAll(){
+      const g=this.game;
+      g.city.reset(); g.effects.reset();
+      g.momentum.reset(); g.adrenaline.reset(); g.combo.reset(); g.score.reset();
+      g.time.reset(); g.camera.reset(); g.player.reset();
       g.city.update();
-      this._lastPos = g.target.position().clone ? g.target.position().clone() : { x:0,z:0 };
+      this._lastZ=g.player.pos.z;
     }
   }
 
   // ===================================================================================
-  // GAME — the bus that owns and wires every system together.
+  // GAME — wires everything together.
   // ===================================================================================
   class Game {
-    constructor() {
-      // --- renderer + scene ---
-      this.renderer = new THREE.WebGLRenderer({ antialias: true });
-      this.renderer.setPixelRatio(Math.min(2, devicePixelRatio));
-      this.renderer.setSize(innerWidth, innerHeight);
-      this.renderer.shadowMap.enabled = true;
+    constructor(){
+      this.renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+      this.renderer.setPixelRatio(Math.min(2,devicePixelRatio));
+      this.renderer.setSize(innerWidth,innerHeight);
+      this.renderer.shadowMap.enabled=true; this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
       document.getElementById('app').appendChild(this.renderer.domElement);
 
-      this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0x05060a);
-      this.scene.fog = new THREE.Fog(0x05060a, 60, 240);
+      this.scene=new THREE.Scene();
+      this.scene.background=new THREE.Color(0x070912);
+      this.scene.fog=new THREE.Fog(0x070912,120,460);
 
-      const hemi = new THREE.HemisphereLight(0x8899ff, 0x080810, 0.7); this.scene.add(hemi);
-      const sun = new THREE.DirectionalLight(0xffffff, 1.1);
-      sun.position.set(30, 60, 20); sun.castShadow = true;
-      sun.shadow.mapSize.set(1024, 1024);
-      sun.shadow.camera.left = -80; sun.shadow.camera.right = 80;
-      sun.shadow.camera.top = 80; sun.shadow.camera.bottom = -80;
-      this.scene.add(sun); this.sun = sun;
+      this.scene.add(new THREE.HemisphereLight(0x8aa0ff,0x0a0a12,0.8));
+      const sun=new THREE.DirectionalLight(0xffffff,1.15); sun.position.set(40,80,-30); sun.castShadow=true;
+      sun.shadow.mapSize.set(1024,1024); const c=sun.shadow.camera;
+      c.left=-90;c.right=90;c.top=90;c.bottom=-90;c.near=1;c.far=300; this.scene.add(sun); this.sun=sun;
 
-      // --- systems (order: deps first) ---
-      this.input = new InputSystem();
-      this.physics = new PhysicsSystem();
-      this.time = new TimeSystem();
-      this.momentum = new MomentumSystem(this);
-      this.combo = new ComboSystem(this);
-      this.adrenaline = new AdrenalineSystem(this);
-      this.score = new ScoreSystem(this);
-      this.impact = new ImpactSystem(this);
-      this.camera = new CameraSystem(this, this.renderer);
-      this.city = new CitySystem(this);
-      this.target = new Target(this);
-      this.ui = new UISystem(this);
-      this.audio = new AudioSystem();
-      this.run = new RunStateManager(this);
+      // systems
+      this.input=new InputSystem();
+      this.time=new TimeSystem();
+      this.momentum=new MomentumSystem(this);
+      this.combo=new ComboSystem(this);
+      this.adrenaline=new AdrenalineSystem(this);
+      this.score=new ScoreSystem(this);
+      this.effects=new EffectsSystem(this);
+      this.impact=new ImpactSystem(this);
+      this.player=new FlightPlayer(this);
+      this.camera=new CameraSystem(this);
+      this.city=new CitySystem(this);
+      this.ui=new UISystem(this);
+      this.audio=new AudioSystem();
+      this.run=new RunStateManager(this);
 
-      this.input.init();
-      this.target.reset();
-      this.city.update();
+      this.input.init(); this.player.reset(); this.city.update();
+      this._lastZ=this.player.pos.z;
+      this._clock=new THREE.Clock();
 
-      this._lastPos = this.target.position().clone();
-      this._clock = new THREE.Clock();
+      addEventListener('resize',()=>{ this.renderer.setSize(innerWidth,innerHeight); this.camera.resize(); });
+      document.getElementById('start-btn').onclick=()=>this.run.startRun();
+      document.getElementById('retry-btn').onclick=()=>this.run.startRun();
 
-      addEventListener('resize', () => {
-        this.renderer.setSize(innerWidth, innerHeight);
-        this.camera.resize();
-      });
-
-      // overlays
-      document.getElementById('start-btn').onclick = () => this.run.startRun();
-      document.getElementById('retry-btn').onclick = () => this.run.startRun();
-
-      this._loop = this._loop.bind(this);
-      requestAnimationFrame(this._loop);
+      this._loop=this._loop.bind(this); requestAnimationFrame(this._loop);
     }
-
-    _loop() {
+    _loop(){
       requestAnimationFrame(this._loop);
-      const realDt = Math.min(0.05, this._clock.getDelta());
+      const realDt=Math.min(0.05,this._clock.getDelta());
+      if(this.input.consumeRestart()) this.run.startRun();
 
-      // restart hotkey always available
-      if (this.input.consumeRestart()) this.run.startRun();
+      const running=this.run.state!=='READY'&&this.run.state!=='GameOver';
+      const dt=this.time.update(realDt);
 
-      const running = this.run.state !== 'Idle' && this.run.state !== 'GameOver';
-      const dt = this.time.update(realDt);   // scaled dt for the simulation
-
-      if (running) {
-        // --- input -> control ---
+      if(running){
         this.input.sample();
-        if (this.input.consumeLaunch()) {
-          // first space launches; subsequent space gives a mid-air thrust kick
-          this.target.boost();
+        if(this.input.consumeSurge()){
+          this.momentum.addHit(6); this.player._smashPulse=Math.min(1,this.player._smashPulse+0.5);
+          this.camera.shake(0.2); this.audio.crash(TIERS[0],0);
         }
-        if (this.input.consumeBoost()) this.target.boost();
-        this.target.thrust(this.input.move, dt);
+        this.player.update(dt,this.input.steer);
 
-        // --- core sim ---
-        this.physics.update(dt);
+        // ---- hit detection: dummy vs buildings ----
+        let guard=0, b;
+        while((b=this.city.queryHit(this.player.hitSphere())) && guard++<4){ this.impact.smash(b); }
+
         this.momentum.update(dt);
         this.adrenaline.update(dt);
         this.combo.update();
         this.city.update();
-        this.target.update();
 
-        // distance accrual + chaos time dilation hook
-        const p = this.target.position();
-        const d = Math.hypot(p.x - this._lastPos.x, p.z - this._lastPos.z);
-        if (d < 30) this.score.addDistance(d);   // ignore teleport-sized jumps on reset
-        this._lastPos.copy(p);
-        if (this.adrenaline.isChaos()) this.time.setChaos(true);
+        const dz=this.player.pos.z-this._lastZ;
+        if(dz>0&&dz<60) this.score.addDistance(dz);
+        this._lastZ=this.player.pos.z;
 
         this.run.tick();
+      } else if(this.run.state==='READY'){
+        // gentle idle drift so the menu scene looks alive
+        this.player.update(realDt,{x:0,y:0});
+        this.city.update();
       }
 
-      // camera + render always run (so menus look alive)
+      this.effects.update(running?dt:realDt);
+      this.sun.position.set(this.player.pos.x+40,this.player.pos.y+80,this.player.pos.z-30);
+      this.sun.target.position.copy(this.player.pos); this.sun.target.updateMatrixWorld();
       this.camera.update(realDt);
       this.ui.update();
-      this.renderer.render(this.scene, this.camera.cam);
+      this.renderer.render(this.scene,this.camera.cam);
     }
   }
 
-  // boot
-  try {
-    window.__game = new Game();
-  } catch (err) {
-    document.body.innerHTML = '<div style="color:#fff;padding:40px;font-family:monospace">' +
-      'Failed to start: ' + (err && err.message ? err.message : err) +
-      '<br><br>This prototype needs WebGL + internet access (Three.js / cannon-es via CDN).</div>';
+  try { window.__game=new Game(); }
+  catch(err){
+    document.body.innerHTML='<div style="color:#fff;padding:40px;font-family:monospace">Failed to start: '+
+      (err&&err.message?err.message:err)+'<br><br>Needs WebGL. Open over http(s), not file://.</div>';
     console.error(err);
   }
   </script>
