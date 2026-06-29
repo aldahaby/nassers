@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>INVINCIBLE RUN — Omni Flight</title>
   <style>
     :root { --hud:#f4f4f4; --accent:#ff3b30; --good:#34c759; --warn:#ffcc00; }
@@ -75,11 +78,13 @@
     .pad { position:absolute; bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
            display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:1px; }
     #btn-boost { right:26px; width:96px; height:96px; background:rgba(255,204,0,.28); box-shadow:0 0 0 1px rgba(255,204,0,.55) inset; }
-    .zone { position:absolute; top:0; bottom:0; width:50%; display:flex; align-items:center; justify-content:center;
-            font-size:60px; color:rgba(255,255,255,.10); pointer-events:none; }
-    #zone-l { left:0; } #zone-r { right:0; }
-    #drag-hint { position:absolute; bottom:60px; left:50%; transform:translateX(-50%); font-size:12px;
-                 letter-spacing:3px; opacity:.55; pointer-events:none; }
+    /* analog joystick (joycon style) */
+    #joy-base { position:absolute; left:24px; bottom:max(28px,env(safe-area-inset-bottom)); width:138px; height:138px;
+                border-radius:50%; background:rgba(255,255,255,.07); box-shadow:0 0 0 2px rgba(255,255,255,.18) inset;
+                pointer-events:auto; touch-action:none; }
+    #joy-knob { position:absolute; left:39px; top:39px; width:60px; height:60px; border-radius:50%;
+                background:radial-gradient(circle at 40% 32%, #ffffff, #b9c4d2); box-shadow:0 5px 14px rgba(0,0,0,.45);
+                will-change:transform; }
     body:not(.touch) #touch { display:none; }
     body:not(.touch) .keys-hint-mobile { display:none; }
     body.touch .keys-hint-desktop { display:none; }
@@ -103,11 +108,9 @@
   </div>
   <button id="pause-btn" title="Pause">❚❚</button>
 
-  <!-- Touch: hold the left or right side of the screen to steer; tap SURGE for a burst -->
+  <!-- Touch: analog joystick (slide left/right) + SURGE -->
   <div id="touch">
-    <div id="zone-l" class="zone">‹</div>
-    <div id="zone-r" class="zone">›</div>
-    <div id="drag-hint">HOLD LEFT / RIGHT TO STEER</div>
+    <div id="joy-base"><div id="joy-knob"></div></div>
     <div id="btn-boost" class="pad">SURGE</div>
   </div>
 
@@ -180,7 +183,7 @@
   // steer that way instantly (no drag distance). Keyboard A/D + arrows also work. + surge edge.
   // ===================================================================================
   class InputSystem {
-    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.hold=0; }
+    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.joy=0; }
     init(){
       addEventListener('keydown',e=>{
         if(e.repeat) return; this.keys.add(e.code);
@@ -194,30 +197,28 @@
       let x=0;
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
-      x+=this.hold;                                   // touch/mouse hold-zone
+      x+=this.joy;                                    // ANALOG joystick (partial = partial steer)
       this.steer.x=clamp(x,-1,1); this.steer.y=0;     // no vertical, ever
     }
     consumeSurge(){ const v=this._surge; this._surge=false; return v; }
     consumeRestart(){ const v=this._restart; this._restart=false; return v; }
     _bindTouch(){
       if(matchMedia('(pointer: coarse)').matches||'ontouchstart' in window) document.body.classList.add('touch');
-      const isSurge=t=> t && t.target && t.target.id==='btn-boost';
-      // the most recent finger that ISN'T on the surge button decides the steer side
-      const recalc=(e)=>{
-        let side=0;
-        for(let i=0;i<e.touches.length;i++){ const t=e.touches[i]; if(isSurge(t)) continue;
-          side = t.clientX < innerWidth/2 ? -1 : 1; }
-        this.hold=side;
+      const base=document.getElementById('joy-base'), knob=document.getElementById('joy-knob');
+      const R=48;                                     // max knob travel; bigger = less sensitive
+      let active=false;
+      const moveTo=(clientX)=>{
+        const r=base.getBoundingClientRect(), center=r.left+r.width/2;
+        let dx=clamp(clientX-center,-R,R);
+        this.joy=dx/R; knob.style.transform=`translateX(${dx}px)`;
       };
-      document.addEventListener('touchstart',recalc,{passive:true});
-      document.addEventListener('touchmove',recalc,{passive:true});
-      document.addEventListener('touchend',recalc,{passive:true});
-      document.addEventListener('touchcancel',recalc,{passive:true});
-      // mouse (desktop): hold the left or right half
-      let md=false;
-      document.addEventListener('mousedown',e=>{ if(e.target.id==='btn-boost') return; md=true; this.hold=e.clientX<innerWidth/2?-1:1; });
-      document.addEventListener('mousemove',e=>{ if(md) this.hold=e.clientX<innerWidth/2?-1:1; });
-      document.addEventListener('mouseup',()=>{ md=false; this.hold=0; });
+      const end=()=>{ active=false; this.joy=0; knob.style.transform='translateX(0px)'; };
+      base.addEventListener('touchstart',e=>{ e.preventDefault(); active=true; moveTo(e.touches[0].clientX); },{passive:false});
+      base.addEventListener('touchmove', e=>{ e.preventDefault(); if(active) moveTo(e.touches[0].clientX); },{passive:false});
+      base.addEventListener('touchend',end); base.addEventListener('touchcancel',end);
+      base.addEventListener('mousedown',e=>{ active=true; moveTo(e.clientX); });
+      document.addEventListener('mousemove',e=>{ if(active) moveTo(e.clientX); });
+      document.addEventListener('mouseup',end);
       const boost=document.getElementById('btn-boost');
       if(boost){
         boost.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._surge=true; },{passive:false});
@@ -369,7 +370,7 @@
         if(!c.active) continue;
         c.mesh.rotation.z=this.spin;
         if(c.z < pz-30){ c.active=false; c.mesh.visible=false; continue; }
-        if(c.z<=dz+1 && c.z>=pz-3 && Math.abs(c.x-p.pos.x)<5.5){ c.active=false; c.mesh.visible=false; this._coin(c); }
+        if(c.z<=dz+1 && c.z>=pz-3 && Math.abs(c.x-p.pos.x)<2.6){ c.active=false; c.mesh.visible=false; this._coin(c); }
       }
       for(const d of this.drinks){
         if(!d.active) continue;
@@ -612,9 +613,11 @@
       // LEFT/RIGHT ONLY, very responsive. Strafe scales WITH flight speed (and surge already
       // doubles fwdNow) so threading the weaving road is ALWAYS physically possible -> fair at any
       // speed; the challenge is reaction/precision, never an impossible wall. sx flips so RIGHT=right.
-      const STRAFE=this.fwdNow*0.95 + 30;
+      // Strafe scales with flight speed so the road is always trackable, but tuned for a CALM,
+      // controllable feel with the analog stick (not twitchy). steer can be partial (joystick).
+      const STRAFE=this.fwdNow*0.8 + 26;
       const sx=-steer.x;
-      this.vel.x=damp(this.vel.x,sx*STRAFE,22,dt);   // very snappy -> precise, easy to stay on the road
+      this.vel.x=damp(this.vel.x,sx*STRAFE,16,dt);
       this.vel.y=0;
       this.vel.z=this.fwdNow;
       this.pos.x+=this.vel.x*dt;
@@ -664,7 +667,7 @@
       this.pool=[];
       this.nextZ=40;
       this.gap=20;             // distance between building rows (denser city)
-      this.aheadDist=440;      // how far ahead to keep populated
+      this.aheadDist=620;      // keep buildings populated out to the fog so they fade in (no pop-in)
       this._ground();
       this._buildRoad();
       const geo=new THREE.BoxGeometry(1,1,1);
@@ -687,7 +690,7 @@
     }
     // a winding ROAD ribbon that follows the building path, so it's obvious where to fly/hit.
     _buildRoad(){
-      this.roadN=90; this.roadHalf=14;
+      this.roadN=150; this.roadHalf=14; this.roadAhead=760; this.roadBack=60;  // extends PAST the fog -> never visibly ends
       const verts=new Float32Array((this.roadN+1)*2*3);
       const geo=new THREE.BufferGeometry();
       geo.setAttribute('position',new THREE.BufferAttribute(verts,3));
@@ -705,7 +708,7 @@
     updateRoad(){
       if(!this.road) return;
       const pz=this.game.player.pos.z;
-      const z0=pz-50, seg=(this.aheadDist+90)/this.roadN;
+      const z0=pz-this.roadBack, seg=(this.roadAhead+this.roadBack)/this.roadN;
       const pos=this.road.geometry.attributes.position.array;
       const lp=this.roadLine.geometry.attributes.position.array;
       for(let i=0;i<=this.roadN;i++){
@@ -851,6 +854,11 @@
     _ensure(){ if(this.ctx) return; this.ctx=new (window.AudioContext||window.webkitAudioContext)();
       this.master=this.ctx.createGain(); this.master.gain.value=0.35; this.master.connect(this.ctx.destination); }
     resume(){ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume(); }
+    // iOS / home-screen (standalone) need the AudioContext created+resumed inside a user gesture,
+    // and a silent buffer played to fully unlock. Safe to call repeatedly.
+    unlock(){ try{ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume();
+      const b=this.ctx.createBuffer(1,1,22050); const s=this.ctx.createBufferSource(); s.buffer=b;
+      s.connect(this.ctx.destination); s.start(0); }catch(e){} }
     _tone(f,d,type='sine',g=0.4){ if(!this.ctx) return; const o=this.ctx.createOscillator(),gn=this.ctx.createGain();
       o.type=type; o.frequency.value=f; gn.gain.setValueAtTime(g,this.ctx.currentTime);
       gn.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+d); o.connect(gn); gn.connect(this.master);
@@ -986,7 +994,7 @@
 
       this.scene=new THREE.Scene();
       const HORIZON=0x9fd0ff;
-      this.scene.fog=new THREE.Fog(HORIZON,160,620);            // buildings fade into the sky
+      this.scene.fog=new THREE.Fog(HORIZON,180,680);            // road/buildings fade into the sky
 
       // ----- gradient SKY dome (follows the camera) -----
       const skyGeo=new THREE.SphereGeometry(900,32,16);
@@ -1037,6 +1045,13 @@
       document.getElementById('resume-btn').onclick=()=>this.run.togglePause();
       document.getElementById('menu-btn').onclick=()=>this.run.toMenu();
       document.getElementById('menu-btn2').onclick=()=>this.run.toMenu();
+
+      // AUDIO unlock: home-screen/standalone (esp. iOS) start the audio context suspended, so
+      // unlock it on the very first user gesture and re-resume whenever the app returns to view.
+      const unlock=()=>this.audio.unlock();
+      ['touchstart','touchend','pointerdown','mousedown','keydown'].forEach(ev=>
+        document.addEventListener(ev,unlock,{passive:true}));
+      document.addEventListener('visibilitychange',()=>{ if(!document.hidden) this.audio.unlock(); });
 
       this._loop=this._loop.bind(this); requestAnimationFrame(this._loop);
     }
