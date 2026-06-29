@@ -43,6 +43,9 @@
                letter-spacing:2px; text-shadow:0 0 18px rgba(255,0,0,.6); transition:opacity .15s; }
     #state-tag { position:absolute; bottom:14px; left:16px; font-size:11px; letter-spacing:3px; text-transform:uppercase; opacity:.6; }
     #speed-tag { position:absolute; bottom:14px; right:16px; font-size:11px; letter-spacing:2px; opacity:.6; }
+    #surge-tag { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font-size:12px;
+                 font-weight:800; letter-spacing:2px; color:#34c759; }
+    #best-line { font-size:14px; font-weight:800; letter-spacing:2px; color:var(--warn); margin-top:6px; min-height:18px; }
 
     /* ---------- Overlays ---------- */
     .overlay { position:fixed; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -87,6 +90,7 @@
     <div id="warning">LOW MOMENTUM — HIT A BUILDING!</div>
     <div id="state-tag">READY</div>
     <div id="speed-tag">0 km/h</div>
+    <div id="surge-tag">⚡ SURGE READY</div>
   </div>
 
   <!-- Touch -->
@@ -104,6 +108,9 @@
        out of the sky.</b></p>
     <p class="keys keys-hint-desktop"><b>WASD / Arrows</b> steer · <b>SHIFT</b> surge · <b>R</b> restart</p>
     <p class="keys keys-hint-mobile"><b>Left stick</b> steer · <b>SURGE</b> for a burst</p>
+    <p>Buildings get sparser, narrower and faster the longer you survive. Smash to refuel —
+       and save your <b>SURGE</b> (bigger reach + speed) for the desperate stretches.</p>
+    <div id="best-line"></div>
     <button id="start-btn" class="btn">Start Flight</button>
   </div>
 
@@ -216,18 +223,42 @@
   }
 
   // ===================================================================================
+  // DIFFICULTY — drives the whole arc from distance travelled. Dense, slow & forgiving at
+  // the start; sparser, narrower, faster and decaying harder as the villain gets desperate.
+  // Other systems READ these curves so balance lives in one place.
+  // ===================================================================================
+  class DifficultySystem {
+    constructor(game){ this.game=game; this.level=0; this.p=0; }
+    update(){
+      this.level=this.game.score.distance/620;        // ~1 "level" per 620 m
+      this.p=clamp(this.level/7,0,1);                  // 0 easy -> 1 desperate (~4.3 km)
+    }
+    rowGap(){ return lerp(15,42,this.p); }             // spacing between building rows
+    perRow(){ return Math.max(1,Math.round(lerp(5,1.4,this.p))); }
+    laneGuarantee(){ return this.level<2.2; }          // free in-lane target only early on
+    laneSpread(){ return lerp(7,38,clamp(this.level/2.2,0,1)); }
+    buildingW(){ return lerp(rand(9,13),rand(4,6.5),this.p); }
+    gapRowChance(){ return this.p*0.42; }              // chance a whole row is skipped (empty stretch)
+    fwdSpeed(){ return lerp(34,72,this.p); }
+    decay(){ return lerp(5.5,12.5,this.p); }
+    reset(){ this.level=0; this.p=0; }
+  }
+
+  // ===================================================================================
   // MOMENTUM — core resource. Refilled by hitting buildings, decays over time, ends run.
   // ===================================================================================
   class MomentumSystem {
-    constructor(game){ this.game=game; this.value=0; this.MAX=100; this.HIGH=66; this.decay=8; }
-    start(){ this.value=60; }
+    constructor(game){ this.game=game; this.value=0; this.MAX=100; this.HIGH=66; }
+    start(){ this.value=58; }
     addHit(amount){ this.value=clamp(this.value+amount,0,this.MAX); }
     isHigh(){ return this.value>=this.HIGH; }
-    isLow(){ return this.value<=22; }
+    isLow(){ return this.value<=24; }
     factor(){ return this.value/this.MAX; }
     update(dt){
-      // decay accelerates with momentum so high speed is thrilling but demands hits
-      const d=this.decay*(0.7+this.factor()*0.8);
+      // decay scales with difficulty AND current momentum; surge eases it (your lifeline)
+      const base=this.game.difficulty.decay();
+      const ease=this.game.player.surgeActive>0 ? 0.4 : 1;
+      const d=base*(0.7+this.factor()*0.8)*ease;
       this.value=clamp(this.value-d*dt,0,this.MAX);
       if(this.value<=0) this.game.run.toGameOver();
     }
@@ -436,29 +467,42 @@
       this.dummyAhead=4.6;            // rigid forward lead so he's always the hammer
 
       this._smashPulse=0;
+      // ---- surge ability (lifeline for the desperate late game) ----
+      this.surgeActive=0;            // seconds of boost remaining
+      this.surgeCd=0;                // seconds until ready again
+      this.SURGE_DUR=2.6; this.SURGE_CD=6.5;
     }
     speed(){ return this.vel.length(); }
     position(){ return this.pos; }
+    surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0; }
+    trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,18,0); this.vel.set(0,0,this.fwdSpeed); this.fwdNow=this.fwdSpeed;
-             this.bank=this.pitch=this._smashPulse=0;
+             this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this.dummy.position.set(0,17.2,4.6); }
     onSmash(tier){ this._smashPulse=Math.min(1.4,this._smashPulse+0.4+tier.mom*0.012); }
 
     update(dt,steer){
       const g=this.game;
-      const target=(this.fwdSpeed + g.momentum.factor()*48) * g.adrenaline.speedMul();
-      this.fwdNow=damp(this.fwdNow,target,3,dt);
+      this.surgeActive=Math.max(0,this.surgeActive-dt);
+      this.surgeCd=Math.max(0,this.surgeCd-dt);
+      const surgeMul=this.surgeActive>0?1.5:1;
 
-      // smooth, responsive kinematic steering (no solver -> no stiffness/glitch)
-      const STRAFE=40*g.adrenaline.speedMul(), CLIMB=34;
-      this.vel.x=damp(this.vel.x,steer.x*STRAFE,10,dt);
-      this.vel.y=damp(this.vel.y,steer.y*CLIMB,10,dt);
+      const target=(g.difficulty.fwdSpeed() + g.momentum.factor()*28) * g.adrenaline.speedMul() * surgeMul;
+      this.fwdNow=damp(this.fwdNow,target,3.5,dt);
+
+      // smooth, responsive kinematic steering (no solver -> no stiffness/glitch).
+      // sx negates steer.x: with the camera looking +Z, world +X is screen-LEFT, so we
+      // flip it -> pressing RIGHT now moves the villain RIGHT on screen (no inversion).
+      const STRAFE=(38+(this.surgeActive>0?16:0))*g.adrenaline.speedMul(), CLIMB=34;
+      const sx=-steer.x;
+      this.vel.x=damp(this.vel.x,sx*STRAFE,11,dt);
+      this.vel.y=damp(this.vel.y,steer.y*CLIMB,11,dt);
       this.vel.z=this.fwdNow;
       this.pos.addScaledVector(this.vel,dt);
-      this.pos.x=clamp(this.pos.x,-58,58);
-      this.pos.y=clamp(this.pos.y,4,70);
+      this.pos.x=clamp(this.pos.x,-44,44);     // pulled-in corners
+      this.pos.y=clamp(this.pos.y,5,38);        // lower ceiling: stay among the buildings
 
-      this.bank =damp(this.bank,-steer.x*0.55,9,dt);
+      this.bank =damp(this.bank, sx*0.55,9,dt);
       this.pitch=damp(this.pitch, steer.y*0.30,9,dt);
       this._smashPulse=damp(this._smashPulse,0,4,dt);
 
@@ -469,8 +513,8 @@
       const sp=clamp(this.speed()/70,0,1);
       this.capeMesh.rotation.z=this.bank*0.6+Math.sin(now*0.02)*0.1*sp;       // cape sway
 
-      // DUMMY: rigid forward lead (z locked ahead), x/y smoothed -> whips on turns
-      const tx=this.pos.x+this.bank*4, ty=this.pos.y-0.7+this.pitch*3, tz=this.pos.z+this.dummyAhead;
+      // DUMMY: rigid forward lead (z locked ahead); x/y lead the velocity -> whips on turns
+      const tx=this.pos.x+this.vel.x*0.05, ty=this.pos.y-0.7+this.vel.y*0.04, tz=this.pos.z+this.dummyAhead;
       this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
       this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
       this.dummy.position.z=tz;
@@ -483,8 +527,8 @@
       this.dLimbs[2].position.set(-0.24,-0.85+Math.sin(t*1.3)*0.2*f,-0.1); this.dLimbs[2].rotation.set(0.3+Math.sin(t)*0.4,0,0.3);
       this.dLimbs[3].position.set( 0.24,-0.85+Math.cos(t*1.3)*0.2*f,-0.1); this.dLimbs[3].rotation.set(0.3+Math.cos(t)*0.4,0,-0.3);
     }
-    // hit-test sphere centred on the dummy (the hammer)
-    hitSphere(){ return { c:this.dummy.position, r:3.1 }; }
+    // hit-test sphere centred on the dummy (the hammer). Surge widens the catch radius.
+    hitSphere(){ return { c:this.dummy.position, r:this.surgeActive>0?6.4:2.9 }; }
   }
 
   // ===================================================================================
@@ -520,18 +564,21 @@
     }
     _take(){ return this.pool.find(p=>!p.active); }
     _spawnRow(z){
-      // 3–5 buildings; ALWAYS put one in the player's current lane so a smash is reachable.
-      const n=3+(Math.random()*3|0);
+      const D=this.game.difficulty;
+      if(Math.random()<D.gapRowChance()) return;        // empty stretch -> survival tension
+      const n=D.perRow();
       const px=this.game.player ? this.game.player.pos.x : 0;
-      const xs=[ clamp(px+rand(-14,14),-54,54) ];   // guaranteed-catchable target
-      for(let i=1;i<n;i++) xs.push(rand(-54,54));
+      const xs=[];
+      // EARLY game guarantees a catchable in-lane target; that help fades as you progress.
+      if(D.laneGuarantee()) xs.push(clamp(px+rand(-D.laneSpread(),D.laneSpread()),-44,44));
+      while(xs.length<n) xs.push(rand(-44,44));
       for(const x of xs){
         const b=this._take(); if(!b) break;
-        const w=rand(6,12), d=rand(6,12), h=rand(14,46);
+        const w=D.buildingW(), d=D.buildingW(), h=rand(16,42);
         b.mesh.visible=true; b.active=true; b.hit=false;
         b.w=w; b.h=h; b.d=d;
         b.mesh.scale.set(w,h,d);
-        b.mesh.position.set(x, h/2, z+rand(-6,6));
+        b.mesh.position.set(x, h/2, z+rand(-5,5));
         const c=new THREE.Color().setHSL(0.58+Math.random()*0.07, 0.35, 0.16+Math.random()*0.12);
         b.mesh.material.color.copy(c);
         b.mesh.material.emissive.setHSL(0.58,0.5,0.04);
@@ -544,7 +591,8 @@
     }
     update(){
       const pz=this.game.player.pos.z;
-      while(this.nextZ < pz + this.aheadDist){ this._spawnRow(this.nextZ); this.nextZ+=this.gap; }
+      const gap=this.game.difficulty.rowGap();
+      while(this.nextZ < pz + this.aheadDist){ this._spawnRow(this.nextZ); this.nextZ+=gap; }
       // recycle behind
       for(let i=this.buildings.length-1;i>=0;i--){
         const b=this.buildings[i];
@@ -631,6 +679,7 @@
     crash(tier,combo){ const base={glance:160,smash:110,crush:70,level:45}[tier.name];
       this._tone(base+combo*8,0.25,'square',0.3); this._noise(0.08+tier.shake*0.18,0.35+tier.shake*0.35); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
+    surge(){ this._tone(260,0.3,'sawtooth',0.3); this._tone(680,0.35,'sine',0.22); this._noise(0.2,0.2); }
     gameOver(){ this._tone(200,0.5,'sawtooth',0.4); setTimeout(()=>this._tone(90,0.9,'sawtooth',0.4),120); }
   }
 
@@ -644,7 +693,8 @@
         score:document.getElementById('score'), sub:document.getElementById('score-sub'),
         combo:document.getElementById('combo'), comboNum:document.getElementById('combo-num'),
         warn:document.getElementById('warning'), state:document.getElementById('state-tag'),
-        speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette') };
+        speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette'),
+        surge:document.getElementById('surge-tag'), boostBtn:document.getElementById('btn-boost') };
       this._hide=0;
     }
     flashCombo(n){
@@ -665,6 +715,11 @@
       const low=g.momentum.isLow() && g.run.state!=='READY' && g.run.state!=='GameOver';
       this.el.warn.style.opacity=low?'1':'0';
       this.el.vig.style.boxShadow=low?'inset 0 0 200px 50px rgba(160,0,0,.5)':'inset 0 0 200px 40px rgba(120,0,0,0)';
+      // surge indicator: SURGING / READY / cooldown countdown
+      const p=g.player;
+      if(p.surgeActive>0){ this.el.surge.textContent='⚡ SURGING'; this.el.surge.style.color='#ffcc00'; this.el.boostBtn.style.opacity='1'; }
+      else if(p.surgeReady()){ this.el.surge.textContent='⚡ SURGE READY'; this.el.surge.style.color='#34c759'; this.el.boostBtn.style.opacity='1'; }
+      else { this.el.surge.textContent='SURGE '+Math.ceil(p.surgeCd)+'s'; this.el.surge.style.color='rgba(255,255,255,.45)'; this.el.boostBtn.style.opacity='0.4'; }
       if(this._hide && performance.now()>this._hide && g.combo.count<2){ this.el.combo.style.opacity='0'; this._hide=0; }
     }
   }
@@ -688,18 +743,30 @@
       else if(g.momentum.isHigh()) this.state='HighMomentum';
       else this.state='Running';
     }
+    best(){ return +(localStorage.getItem('invrun_best')||0); }
     toGameOver(){
       if(this.state==='GameOver') return; this.state='GameOver';
       const g=this.game; g.audio.gameOver();
+      const score=Math.round(g.score.total);
+      const prev=this.best(); const isBest=score>prev;
+      if(isBest){ try{ localStorage.setItem('invrun_best',score); }catch(e){} }
+      const best=Math.max(score,prev);
       document.getElementById('gameover-stats').innerHTML=
-        `Score <b>${Math.round(g.score.total).toLocaleString()}</b><br>`+
-        `Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b><br>`+
-        `Distance <b>${Math.round(g.score.distance)} m</b>`;
+        (isBest?`<div style="color:#ffcc00;font-weight:800;font-size:22px;margin-bottom:4px">★ NEW BEST! ★</div>`:'')+
+        `Score <b>${score.toLocaleString()}</b><br>`+
+        `Best <b>${best.toLocaleString()}</b><br>`+
+        `Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b> · <b>${Math.round(g.score.distance)} m</b>`;
       document.getElementById('gameover-overlay').classList.remove('hidden');
+    }
+    refreshBestLine(){
+      const b=this.best();
+      const el=document.getElementById('best-line');
+      if(el) el.textContent = b>0 ? `BEST: ${b.toLocaleString()}` : '';
     }
     resetAll(){
       const g=this.game;
       g.city.reset(); g.effects.reset();
+      g.difficulty.reset();
       g.momentum.reset(); g.adrenaline.reset(); g.combo.reset(); g.score.reset();
       g.time.reset(); g.camera.reset(); g.player.reset();
       g.city.update();
@@ -730,6 +797,7 @@
       // systems
       this.input=new InputSystem();
       this.time=new TimeSystem();
+      this.difficulty=new DifficultySystem(this);
       this.momentum=new MomentumSystem(this);
       this.combo=new ComboSystem(this);
       this.adrenaline=new AdrenalineSystem(this);
@@ -744,6 +812,7 @@
       this.run=new RunStateManager(this);
 
       this.input.init(); this.player.reset(); this.city.update();
+      this.run.refreshBestLine();
       this._lastZ=this.player.pos.z;
       this._clock=new THREE.Clock();
 
@@ -763,25 +832,25 @@
 
       if(running){
         this.input.sample();
-        if(this.input.consumeSurge()){
-          this.momentum.addHit(6); this.player._smashPulse=Math.min(1,this.player._smashPulse+0.5);
-          this.camera.shake(0.2); this.audio.crash(TIERS[0],0);
+        if(this.input.consumeSurge() && this.player.trySurge()){
+          this.camera.shake(0.35); this.player._smashPulse=Math.min(1.4,this.player._smashPulse+0.6);
+          this.effects.flash(0.12); this.audio.surge();
         }
         this.player.update(dt,this.input.steer);
 
-        // ---- hit detection: dummy vs buildings ----
+        // ---- hit detection: dummy vs buildings (surge widens the catch radius) ----
         let guard=0, b;
-        while((b=this.city.queryHit(this.player.hitSphere())) && guard++<4){ this.impact.smash(b); }
-
-        this.momentum.update(dt);
-        this.adrenaline.update(dt);
-        this.combo.update();
-        this.city.update();
+        while((b=this.city.queryHit(this.player.hitSphere())) && guard++<5){ this.impact.smash(b); }
 
         const dz=this.player.pos.z-this._lastZ;
         if(dz>0&&dz<60) this.score.addDistance(dz);
         this._lastZ=this.player.pos.z;
 
+        this.difficulty.update();          // ramp from distance travelled
+        this.momentum.update(dt);
+        this.adrenaline.update(dt);
+        this.combo.update();
+        this.city.update();
         this.run.tick();
       } else if(this.run.state==='READY'){
         // gentle idle drift so the menu scene looks alive
