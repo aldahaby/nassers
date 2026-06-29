@@ -68,8 +68,11 @@
     .pad { position:absolute; bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
            display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:1px; }
     #btn-boost { right:26px; width:96px; height:96px; background:rgba(255,204,0,.28); box-shadow:0 0 0 1px rgba(255,204,0,.55) inset; }
+    .zone { position:absolute; top:0; bottom:0; width:50%; display:flex; align-items:center; justify-content:center;
+            font-size:60px; color:rgba(255,255,255,.10); pointer-events:none; }
+    #zone-l { left:0; } #zone-r { right:0; }
     #drag-hint { position:absolute; bottom:60px; left:50%; transform:translateX(-50%); font-size:12px;
-                 letter-spacing:3px; opacity:.5; pointer-events:none; }
+                 letter-spacing:3px; opacity:.55; pointer-events:none; }
     body:not(.touch) #touch { display:none; }
     body:not(.touch) .keys-hint-mobile { display:none; }
     body.touch .keys-hint-desktop { display:none; }
@@ -92,9 +95,11 @@
     <div id="surge-tag">⚡ SURGE READY</div>
   </div>
 
-  <!-- Touch: drag anywhere left/right to steer; tap SURGE for a burst -->
+  <!-- Touch: hold the left or right side of the screen to steer; tap SURGE for a burst -->
   <div id="touch">
-    <div id="drag-hint">DRAG LEFT / RIGHT</div>
+    <div id="zone-l" class="zone">‹</div>
+    <div id="zone-r" class="zone">›</div>
+    <div id="drag-hint">HOLD LEFT / RIGHT TO STEER</div>
     <div id="btn-boost" class="pad">SURGE</div>
   </div>
 
@@ -106,7 +111,7 @@
        skyscrapers. Every building you smash refuels your momentum — <b>miss too many and you drop
        out of the sky.</b></p>
     <p class="keys keys-hint-desktop"><b>A / D or ← / →</b> steer left-right · <b>SHIFT</b> surge · <b>R</b> restart</p>
-    <p class="keys keys-hint-mobile"><b>Drag left / right</b> to steer · <b>SURGE</b> for a burst</p>
+    <p class="keys keys-hint-mobile"><b>Hold left / right side</b> to steer · <b>SURGE</b> button for a boost</p>
     <p>Buildings get sparser, narrower and faster the longer you survive. Smash to refuel —
        and save your <b>SURGE</b> (bigger reach + speed) for the desperate stretches.</p>
     <div id="best-line"></div>
@@ -156,11 +161,11 @@
   const rand  = (a,b)=>a+Math.random()*(b-a);
 
   // ===================================================================================
-  // INPUT — LEFT/RIGHT only. Keyboard (A/D, arrows) + drag-anywhere on screen.
-  // Outputs a single horizontal steer value [-1,1] + a surge edge.
+  // INPUT — LEFT/RIGHT only, fully RESPONSIVE: hold the left or right side of the screen to
+  // steer that way instantly (no drag distance). Keyboard A/D + arrows also work. + surge edge.
   // ===================================================================================
   class InputSystem {
-    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.drag={active:false,x:0}; }
+    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.hold=0; }
     init(){
       addEventListener('keydown',e=>{
         if(e.repeat) return; this.keys.add(e.code);
@@ -168,31 +173,36 @@
         if(e.code==='KeyR') this._restart=true;
       });
       addEventListener('keyup',e=>this.keys.delete(e.code));
-      this._bindDrag();
+      this._bindTouch();
     }
     sample(){
       let x=0;
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
-      if(this.drag.active) x+=this.drag.x;
+      x+=this.hold;                                   // touch/mouse hold-zone
       this.steer.x=clamp(x,-1,1); this.steer.y=0;     // no vertical, ever
     }
     consumeSurge(){ const v=this._surge; this._surge=false; return v; }
     consumeRestart(){ const v=this._restart; this._restart=false; return v; }
-    _bindDrag(){
+    _bindTouch(){
       if(matchMedia('(pointer: coarse)').matches||'ontouchstart' in window) document.body.classList.add('touch');
-      // press-and-drag "slider": full deflection ~20% of screen width from the press point.
-      let startX=null;
-      const span=()=>Math.max(120, innerWidth*0.2);
-      const down=(cx,target)=>{ if(target&&target.closest&&target.closest('button')) return; startX=cx; this.drag.active=true; this.drag.x=0; };
-      const move=cx=>{ if(startX==null) return; this.drag.x=clamp((cx-startX)/span(),-1,1); };
-      const up=()=>{ startX=null; this.drag.active=false; this.drag.x=0; };
-      addEventListener('touchstart',e=>{ const t=e.touches[0]; down(t.clientX,e.target); },{passive:true});
-      addEventListener('touchmove', e=>{ move(e.touches[0].clientX); },{passive:true});
-      addEventListener('touchend',up); addEventListener('touchcancel',up);
-      addEventListener('mousedown',e=>down(e.clientX,e.target));
-      addEventListener('mousemove',e=>move(e.clientX));
-      addEventListener('mouseup',up);
+      const isSurge=t=> t && t.target && t.target.id==='btn-boost';
+      // the most recent finger that ISN'T on the surge button decides the steer side
+      const recalc=(e)=>{
+        let side=0;
+        for(let i=0;i<e.touches.length;i++){ const t=e.touches[i]; if(isSurge(t)) continue;
+          side = t.clientX < innerWidth/2 ? -1 : 1; }
+        this.hold=side;
+      };
+      document.addEventListener('touchstart',recalc,{passive:true});
+      document.addEventListener('touchmove',recalc,{passive:true});
+      document.addEventListener('touchend',recalc,{passive:true});
+      document.addEventListener('touchcancel',recalc,{passive:true});
+      // mouse (desktop): hold the left or right half
+      let md=false;
+      document.addEventListener('mousedown',e=>{ if(e.target.id==='btn-boost') return; md=true; this.hold=e.clientX<innerWidth/2?-1:1; });
+      document.addEventListener('mousemove',e=>{ if(md) this.hold=e.clientX<innerWidth/2?-1:1; });
+      document.addEventListener('mouseup',()=>{ md=false; this.hold=0; });
       const boost=document.getElementById('btn-boost');
       if(boost){
         boost.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._surge=true; },{passive:false});
@@ -228,15 +238,15 @@
     // progression is driven by TIME SURVIVED so it CLEARLY accelerates the longer you last.
     update(dt){
       this.elapsed+=dt;
-      this.level=this.elapsed/5;                          // ~1 "level" every 5 seconds
-      this.densityP=clamp(this.level/4.5,0,1);            // city thins over the first ~22s, then plateaus
+      this.level=this.elapsed/4;                          // ~1 "level" every 4 seconds (ramps sooner)
+      this.densityP=clamp(this.level/5,0,1);              // city thins over the first ~20s, then plateaus
     }
-    stepGap(){ return lerp(19,54,this.densityP); }        // spacing between in-line buildings
+    stepGap(){ return lerp(19,52,this.densityP); }        // spacing between in-line buildings
     buildingW(){ return rand(9,14); }                     // wide, full size — never narrowed
-    // base speed is the DOMINANT, ever-rising floor: it climbs steadily every second so you
-    // visibly get faster as the run goes on, no matter how much you're smashing.
-    baseSpeed(){ return 30 + this.level*12; }             // 30 m/s -> +12 m/s every 5s, forever
-    decay(){ return lerp(6,11,this.densityP) + this.level*0.9; }  // climbs forever -> finite run
+    // base speed is the DOMINANT, ever-rising floor: climbs fast so you get noticeably quicker
+    // within seconds and keep accelerating the whole run.
+    baseSpeed(){ return 34 + this.level*14; }             // 34 m/s -> +14 m/s every 4s, forever
+    decay(){ return lerp(6,11,this.densityP) + this.level*0.8; }  // climbs forever -> finite run
     reset(){ this.level=0; this.densityP=0; this.elapsed=0; }
   }
 
@@ -324,8 +334,21 @@
         const m=new THREE.Mesh(rgeo,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
         m.visible=false; game.scene.add(m); this.rings.push({mesh:m,life:0,max:1});
       }
+      // SPEED LINES — thin streaks that rush past the camera; more/brighter the faster you go.
+      this.streaks=[];
+      const sgeo=new THREE.BoxGeometry(0.12,0.12,1);
+      const smat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
+      for(let i=0;i<60;i++){
+        const m=new THREE.Mesh(sgeo,smat.clone()); m.visible=false; game.scene.add(m);
+        this.streaks.push({mesh:m});
+      }
       this.flashEl=document.getElementById('flash');
       this._dPtr=0; this._rPtr=0;
+    }
+    // recycle a streak ahead of / around the player so it whooshes past
+    _seedStreak(s,p){
+      const ang=rand(0,Math.PI*2), rad=rand(10,30);
+      s.mesh.position.set(p.pos.x+Math.cos(ang)*rad, clamp(p.pos.y+Math.sin(ang)*rad,3,55), p.pos.z+rand(40,120));
     }
     burst(pos,color,power,count){
       for(let i=0;i<count;i++){
@@ -372,8 +395,25 @@
         r.mesh.material.opacity=(1-t)*0.45;
         if(r.life<=0) r.mesh.visible=false;
       }
+      // speed lines: intensity from speed; they stream toward/past the camera and stretch with speed
+      const p=this.game.player, spd=p.speed();
+      const surge=p.surgeActive>0;
+      const intensity=clamp((spd-45)/90,0,1);          // appear once you're moving quick
+      const want=Math.round((surge?1:intensity)*this.streaks.length);
+      const len=8+spd*0.25, op=(surge?0.5:0.28)*Math.max(intensity,surge?1:0);
+      for(let i=0;i<this.streaks.length;i++){
+        const s=this.streaks[i];
+        if(i>=want){ if(s.mesh.visible) s.mesh.visible=false; continue; }
+        if(!s.mesh.visible){ s.mesh.visible=true; this._seedStreak(s,p); }
+        s.mesh.position.z -= (spd+60)*dt;               // rush backwards past the camera
+        if(s.mesh.position.z < p.pos.z-25){ this._seedStreak(s,p); }
+        s.mesh.scale.set(1,1,len);
+        s.mesh.material.color.setHex(surge?0xffe08a:0xcfe6ff);
+        s.mesh.material.opacity=op;
+      }
     }
-    reset(){ for(const d of this.debris){d.life=0;d.mesh.visible=false;} for(const r of this.rings){r.life=0;r.mesh.visible=false;} }
+    reset(){ for(const d of this.debris){d.life=0;d.mesh.visible=false;} for(const r of this.rings){r.life=0;r.mesh.visible=false;}
+             for(const s of this.streaks){s.mesh.visible=false;} }
   }
 
   // ===================================================================================
@@ -465,7 +505,7 @@
       this.dummyGrip=2.9;            // world-Z lead of the gripped head (the smash point)
 
       this._smashPulse=0;
-      this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=2.6; this.SURGE_CD=6.5;
+      this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=3.0; this.SURGE_CD=6.0;
     }
     speed(){ return this.vel.length(); }
     position(){ return this.pos; }
@@ -485,20 +525,21 @@
       this.surgeActive=Math.max(0,this.surgeActive-dt);
       this.surgeCd=Math.max(0,this.surgeCd-dt);
       this.rush=damp(this.rush,0,0.5,dt);          // rush lingers, bleeds slowly
-      const surgeMul=this.surgeActive>0?1.5:1;
+      const surgeMul=this.surgeActive>0?2.0:1;     // SURGE = strong speed boost
 
       // SPEED is the time-driven BASE (which only ever rises) plus a small, brief rush pop on
       // each smash. The base is the floor, so the felt speed climbs CONSISTENTLY the whole run;
       // hits add a little kick on top but can't make it feel slower.
-      const base=g.difficulty.baseSpeed()*surgeMul;
+      const base=g.difficulty.baseSpeed()*surgeMul;  // surge gives a strong, clear speed boost
       const target=base + this.rush;                 // rush is small (<=8) and bleeds off
-      this.fwdNow=damp(this.fwdNow,target,5,dt);
-      if(this.fwdNow<base) this.fwdNow=base;         // hard floor that only climbs with time
+      this.fwdNow=damp(this.fwdNow,target, this.surgeActive>0?9:5, dt);
+      if(this.fwdNow<base && this.surgeActive<=0) this.fwdNow=base;  // floor only climbs with time
 
-      // LEFT/RIGHT ONLY. sx flips steer.x so RIGHT = screen-right. Altitude is FIXED (no up/down).
-      const STRAFE=40+(this.surgeActive>0?18:0);
+      // LEFT/RIGHT ONLY, very responsive. Strafe is fast and scales with flight speed so you can
+      // always reach the next building; surge makes it faster still. sx flips so RIGHT = screen-right.
+      const STRAFE=(54 + clamp(this.fwdNow*0.32,0,34)) * (this.surgeActive>0?1.5:1);
       const sx=-steer.x;
-      this.vel.x=damp(this.vel.x,sx*STRAFE,11,dt);
+      this.vel.x=damp(this.vel.x,sx*STRAFE,15,dt);   // snappy
       this.vel.y=0;
       this.vel.z=this.fwdNow;
       this.pos.x+=this.vel.x*dt;
@@ -535,7 +576,7 @@
     // led forward to the dummy/hammer's z. Tight radius -> precision matters. Surge widens it.
     // zPrev enables a swept test so fast flight can't tunnel through thin buildings.
     hitSphere(){ return { c:{x:this.pos.x, y:this.dummy.position.y, z:this.dummy.position.z},
-                          r:this.surgeActive>0?5.0:2.1, zPrev:this._dummyPrevZ }; }
+                          r:this.surgeActive>0?7.5:2.1, zPrev:this._dummyPrevZ }; }
   }
 
   // ===================================================================================
@@ -550,54 +591,93 @@
       this.gap=20;             // distance between building rows (denser city)
       this.aheadDist=440;      // how far ahead to keep populated
       this._ground();
+      this._buildRoad();
       const geo=new THREE.BoxGeometry(1,1,1);
       this._geo=geo;
       for(let i=0;i<130;i++){
-        const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.85,metalness:.08}));
+        const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.8,metalness:.05}));
         m.castShadow=m.receiveShadow=true; m.visible=false; game.scene.add(m);
-        this.pool.push({mesh:m,active:false,w:1,h:1,d:1,hit:false});
-        // lit windows look
+        // outline used to MARK hittable targets (bright) vs decor houses (dim)
         const edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo),
-                    new THREE.LineBasicMaterial({color:0x2b3650}));
+                    new THREE.LineBasicMaterial({color:0xffb13b,transparent:true}));
         m.add(edge);
+        this.pool.push({mesh:m,edge,active:false,w:1,h:1,d:1,hit:false,decor:false});
       }
     }
     _ground(){
       const g=this.game;
-      const floor=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),
-                  new THREE.MeshStandardMaterial({color:0x070a12,roughness:1}));
+      const floor=new THREE.Mesh(new THREE.PlaneGeometry(6000,6000),
+                  new THREE.MeshStandardMaterial({color:0x6f8f55,roughness:1}));   // grass
       floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; g.scene.add(floor);
-      const grid=new THREE.GridHelper(4000,400,0x1b2740,0x0d1320); g.scene.add(grid);
+    }
+    // a winding ROAD ribbon that follows the building path, so it's obvious where to fly/hit.
+    _buildRoad(){
+      this.roadN=90; this.roadHalf=14;
+      const verts=new Float32Array((this.roadN+1)*2*3);
+      const geo=new THREE.BufferGeometry();
+      geo.setAttribute('position',new THREE.BufferAttribute(verts,3));
+      const idx=[]; for(let i=0;i<this.roadN;i++){ const a=i*2,b=a+1,c=a+2,d=a+3; idx.push(a,b,c, b,d,c); }
+      geo.setIndex(idx);
+      const mat=new THREE.MeshStandardMaterial({color:0x35373d,roughness:.95});
+      this.road=new THREE.Mesh(geo,mat); this.road.receiveShadow=true; this.road.frustumCulled=false;
+      this.game.scene.add(this.road);
+      // dashed centre line
+      const lverts=new Float32Array((this.roadN+1)*3);
+      const lgeo=new THREE.BufferGeometry(); lgeo.setAttribute('position',new THREE.BufferAttribute(lverts,3));
+      this.roadLine=new THREE.LineSegments(lgeo,new THREE.LineBasicMaterial({color:0xf2d873}));
+      this.roadLine.frustumCulled=false; this.game.scene.add(this.roadLine);
+    }
+    updateRoad(){
+      if(!this.road) return;
+      const pz=this.game.player.pos.z;
+      const z0=pz-50, seg=(this.aheadDist+90)/this.roadN;
+      const pos=this.road.geometry.attributes.position.array;
+      const lp=this.roadLine.geometry.attributes.position.array;
+      for(let i=0;i<=this.roadN;i++){
+        const z=z0+i*seg, x=this._pathX(z);
+        pos[i*6+0]=x-this.roadHalf; pos[i*6+1]=0.06; pos[i*6+2]=z;
+        pos[i*6+3]=x+this.roadHalf; pos[i*6+4]=0.06; pos[i*6+5]=z;
+        lp[i*3+0]=x; lp[i*3+1]=0.08; lp[i*3+2]=z;
+      }
+      this.road.geometry.attributes.position.needsUpdate=true;
+      this.road.geometry.computeVertexNormals();
+      this.roadLine.geometry.attributes.position.needsUpdate=true;
     }
     _take(){ return this.pool.find(p=>!p.active); }
-    // The buildings form a single PATH along the flight direction — they sit IN FRONT of each
-    // other, not scattered side-by-side, so you plow through them in sequence. The path starts
-    // nearly STRAIGHT (easy, satisfying chain) and snakes more the further you get.
+    // Buildings form a single winding PATH (along the road) — in front of each other, not
+    // scattered. Followable but real: you must steer to thread each one. Widens as you survive.
     _pathX(z){
-      // WIDE weave (amplitude > the catch window) so sitting at centre misses — you must
-      // actively chase the path left/right. Snakes even wider the longer you survive.
-      const amp=clamp(0.55+this.game.difficulty.level/4,0.55,1.25);
-      return (26*Math.sin(z*0.019) + 12*Math.sin(z*0.05+1.3))*amp;
+      const amp=clamp(0.5+this.game.difficulty.level/6,0.5,1.0);
+      return (22*Math.sin(z*0.016) + 9*Math.sin(z*0.045+1.3))*amp;
     }
     _place(b,x,z,w,h,d,decor){
       b.mesh.visible=true; b.active=true; b.hit=false; b.decor=!!decor; b.w=w; b.h=h; b.d=d;
       b.mesh.scale.set(w,h,d);
-      b.mesh.position.set(clamp(x,-42,42), h/2, z);
-      const c=new THREE.Color().setHSL(0.58+Math.random()*0.07, 0.35, (decor?0.10:0.18)+Math.random()*0.1);
-      b.mesh.material.color.copy(c);
-      b.mesh.material.emissive.setHSL(0.58,0.5,decor?0.02:0.05);
+      b.mesh.position.set(clamp(x,-44,44), h/2, z);
+      const m=b.mesh.material;
+      if(decor){ // houses lining the road: warm, varied, dim outline
+        m.color.setHSL(rand(0.03,0.12),0.4,0.34+Math.random()*0.12);
+        m.emissive.setRGB(0,0,0);
+        b.edge.material.color.set(0x3a2a18); b.edge.material.opacity=0.5;
+      } else {    // HITTABLE towers: light concrete + glowing orange outline = clear target
+        m.color.setHSL(0.6,0.08,0.62+Math.random()*0.08);
+        m.emissive.setHex(0x5a2a00);
+        b.edge.material.color.set(0xffb13b); b.edge.material.opacity=1;
+      }
       this.buildings.push(b);
     }
     _spawnAt(z){
       const px=this._pathX(z);
-      // ONE smashable building per step, right on the weaving path -> you must thread it.
+      // ONE smashable TOWER per step, right on the road -> you must thread it.
       const b=this._take(); if(!b) return;
-      this._place(b, px, z, rand(8,12), rand(22,42), rand(6,9), false);
-      // distant skyline blocks far off the path: DECOR only (not smashable) for depth/atmosphere
-      if(Math.random()<0.6){
-        const nb=this._take();
-        if(nb) this._place(nb, clamp(px+(Math.random()<0.5?-1:1)*rand(34,52),-42,42),
-                           z+rand(-4,4), rand(7,11), rand(16,34), rand(6,9), true);
+      this._place(b, px, z, rand(8,12), rand(22,40), rand(6,9), false);
+      // HOUSES lining the road on both sides: DECOR only (not smashable), short + cosy.
+      for(const side of [-1,1]){
+        if(Math.random()<0.7){
+          const nb=this._take();
+          if(nb) this._place(nb, clamp(px+side*rand(20,30),-44,44),
+                             z+rand(-4,4), rand(6,10), rand(7,15), rand(6,10), true);
+        }
       }
     }
     shatter(b){
@@ -613,6 +693,7 @@
         const b=this.buildings[i];
         if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; this.buildings.splice(i,1); }
       }
+      this.updateRoad();
     }
     // swept sphere-vs-AABB for the dummy; returns first un-hit building it overlaps. The z axis
     // is treated as a SWEPT segment (zPrev..z) so fast flight can't tunnel past thin buildings.
@@ -667,8 +748,8 @@
       this.cam.position.y=p.pos.y+height;
       this.cam.up.set(0,1,0);                              // never roll
 
-      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8;  // speed flares the FOV
-      this.cam.fov=damp(this.cam.fov,fov,6,realDt); this.cam.updateProjectionMatrix();
+      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0);
+      this.cam.fov=damp(this.cam.fov,fov, p.surgeActive>0?10:6, realDt); this.cam.updateProjectionMatrix();
 
       // look straight DOWN-AHEAD along the path (no sideways/bank offset -> level horizon)
       this._look.set(p.pos.x, p.pos.y-1.4, p.pos.z+8);
@@ -810,13 +891,27 @@
       document.getElementById('app').appendChild(this.renderer.domElement);
 
       this.scene=new THREE.Scene();
-      this.scene.background=new THREE.Color(0x070912);
-      this.scene.fog=new THREE.Fog(0x070912,120,460);
+      const HORIZON=0x9fd0ff;
+      this.scene.fog=new THREE.Fog(HORIZON,160,620);            // buildings fade into the sky
 
-      this.scene.add(new THREE.HemisphereLight(0x8aa0ff,0x0a0a12,0.8));
-      const sun=new THREE.DirectionalLight(0xffffff,1.15); sun.position.set(40,80,-30); sun.castShadow=true;
+      // ----- gradient SKY dome (follows the camera) -----
+      const skyGeo=new THREE.SphereGeometry(900,32,16);
+      const skyMat=new THREE.ShaderMaterial({
+        side:THREE.BackSide, depthWrite:false,
+        uniforms:{ top:{value:new THREE.Color(0x2f7be0)}, mid:{value:new THREE.Color(HORIZON)}, bot:{value:new THREE.Color(0xe9f6ff)} },
+        vertexShader:`varying float h; void main(){ h=normalize(position).y; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+        fragmentShader:`varying float h; uniform vec3 top; uniform vec3 mid; uniform vec3 bot;
+          void main(){ float t=clamp(h,0.0,1.0); float b=clamp(-h*2.0,0.0,1.0);
+            vec3 c=mix(mid,top,t); c=mix(c,bot,b); gl_FragColor=vec4(c,1.0); }`
+      });
+      this.sky=new THREE.Mesh(skyGeo,skyMat); this.scene.add(this.sky);
+
+      // ----- lights: bright daytime -----
+      this.scene.add(new THREE.HemisphereLight(0xcfe6ff,0x6b7a55,1.0));   // sky / ground bounce
+      const sun=new THREE.DirectionalLight(0xfff2d6,1.5); sun.position.set(60,90,-20); sun.castShadow=true;
       sun.shadow.mapSize.set(1024,1024); const c=sun.shadow.camera;
-      c.left=-90;c.right=90;c.top=90;c.bottom=-90;c.near=1;c.far=300; this.scene.add(sun); this.sun=sun;
+      c.left=-100;c.right=100;c.top=100;c.bottom=-100;c.near=1;c.far=320; sun.shadow.bias=-0.0004;
+      this.scene.add(sun); this.scene.add(sun.target); this.sun=sun;
 
       // systems
       this.input=new InputSystem();
@@ -883,8 +978,9 @@
       }
 
       this.effects.update(running?dt:realDt);
-      this.sun.position.set(this.player.pos.x+40,this.player.pos.y+80,this.player.pos.z-30);
-      this.sun.target.position.copy(this.player.pos); this.sun.target.updateMatrixWorld();
+      this.sun.position.set(this.player.pos.x+60,this.player.pos.y+90,this.player.pos.z-20);
+      this.sun.target.position.set(this.player.pos.x,this.player.pos.y,this.player.pos.z+30); this.sun.target.updateMatrixWorld();
+      this.sky.position.copy(this.camera.cam.position);     // sky stays around the camera
       this.camera.update(realDt);
       this.ui.update();
       this.renderer.render(this.scene,this.camera.cam);
