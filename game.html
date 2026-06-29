@@ -67,10 +67,9 @@
     #touch { position:fixed; inset:0; z-index:15; pointer-events:none; }
     .pad { position:absolute; bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
            display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:1px; }
-    #stick-base { left:24px; width:132px; height:132px; background:rgba(255,255,255,.07); box-shadow:0 0 0 1px rgba(255,255,255,.14) inset; }
-    #stick-knob { position:absolute; left:41px; bottom:41px; width:50px; height:50px; background:rgba(255,255,255,.28);
-                  transition:transform .03s; }
     #btn-boost { right:26px; width:96px; height:96px; background:rgba(255,204,0,.28); box-shadow:0 0 0 1px rgba(255,204,0,.55) inset; }
+    #drag-hint { position:absolute; bottom:60px; left:50%; transform:translateX(-50%); font-size:12px;
+                 letter-spacing:3px; opacity:.5; pointer-events:none; }
     body:not(.touch) #touch { display:none; }
     body:not(.touch) .keys-hint-mobile { display:none; }
     body.touch .keys-hint-desktop { display:none; }
@@ -93,9 +92,9 @@
     <div id="surge-tag">⚡ SURGE READY</div>
   </div>
 
-  <!-- Touch -->
+  <!-- Touch: drag anywhere left/right to steer; tap SURGE for a burst -->
   <div id="touch">
-    <div id="stick-base" class="pad"><div id="stick-knob" class="pad"></div></div>
+    <div id="drag-hint">DRAG LEFT / RIGHT</div>
     <div id="btn-boost" class="pad">SURGE</div>
   </div>
 
@@ -106,8 +105,8 @@
     <p>You are unstoppable. Hold your invincible victim out front and plow him straight through
        skyscrapers. Every building you smash refuels your momentum — <b>miss too many and you drop
        out of the sky.</b></p>
-    <p class="keys keys-hint-desktop"><b>WASD / Arrows</b> steer · <b>SHIFT</b> surge · <b>R</b> restart</p>
-    <p class="keys keys-hint-mobile"><b>Left stick</b> steer · <b>SURGE</b> for a burst</p>
+    <p class="keys keys-hint-desktop"><b>A / D or ← / →</b> steer left-right · <b>SHIFT</b> surge · <b>R</b> restart</p>
+    <p class="keys keys-hint-mobile"><b>Drag left / right</b> to steer · <b>SURGE</b> for a burst</p>
     <p>Buildings get sparser, narrower and faster the longer you survive. Smash to refuel —
        and save your <b>SURGE</b> (bigger reach + speed) for the desperate stretches.</p>
     <div id="best-line"></div>
@@ -157,10 +156,11 @@
   const rand  = (a,b)=>a+Math.random()*(b-a);
 
   // ===================================================================================
-  // INPUT — keyboard + touch stick. Outputs a normalised steer vector + surge edge.
+  // INPUT — LEFT/RIGHT only. Keyboard (A/D, arrows) + drag-anywhere on screen.
+  // Outputs a single horizontal steer value [-1,1] + a surge edge.
   // ===================================================================================
   class InputSystem {
-    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.touch={active:false,x:0,y:0}; }
+    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.drag={active:false,x:0}; }
     init(){
       addEventListener('keydown',e=>{
         if(e.repeat) return; this.keys.add(e.code);
@@ -168,40 +168,36 @@
         if(e.code==='KeyR') this._restart=true;
       });
       addEventListener('keyup',e=>this.keys.delete(e.code));
-      this._bindTouch();
+      this._bindDrag();
     }
     sample(){
-      let x=0,y=0;
+      let x=0;
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
-      if(this.keys.has('KeyW')||this.keys.has('ArrowUp'))    y+=1;
-      if(this.keys.has('KeyS')||this.keys.has('ArrowDown'))  y-=1;
-      if(this.touch.active){ x+=this.touch.x; y+=this.touch.y; }
-      const m=Math.hypot(x,y); if(m>1){ x/=m; y/=m; }
-      this.steer.x=clamp(x,-1,1); this.steer.y=clamp(y,-1,1);
+      if(this.drag.active) x+=this.drag.x;
+      this.steer.x=clamp(x,-1,1); this.steer.y=0;     // no vertical, ever
     }
     consumeSurge(){ const v=this._surge; this._surge=false; return v; }
     consumeRestart(){ const v=this._restart; this._restart=false; return v; }
-    _bindTouch(){
-      const base=document.getElementById('stick-base'), knob=document.getElementById('stick-knob');
+    _bindDrag(){
       if(matchMedia('(pointer: coarse)').matches||'ontouchstart' in window) document.body.classList.add('touch');
-      let rect=null;
-      const start=e=>{ rect=base.getBoundingClientRect(); this.touch.active=true; move(e); };
-      const move=e=>{
-        if(!this.touch.active||!rect) return;
-        const t=e.touches?e.touches[0]:e;
-        let dx=(t.clientX-(rect.left+rect.width/2))/(rect.width/2);
-        let dy=(t.clientY-(rect.top+rect.height/2))/(rect.height/2);
-        const m=Math.hypot(dx,dy); if(m>1){dx/=m;dy/=m;}
-        this.touch.x=dx; this.touch.y=-dy;
-        knob.style.transform=`translate(${dx*38}px,${dy*38}px)`;
-      };
-      const end=()=>{ this.touch.active=false; this.touch.x=this.touch.y=0; knob.style.transform='translate(0,0)'; };
-      base.addEventListener('touchstart',start,{passive:true});
-      base.addEventListener('touchmove',move,{passive:true});
-      base.addEventListener('touchend',end); base.addEventListener('touchcancel',end);
+      // press-and-drag "slider": full deflection ~20% of screen width from the press point.
+      let startX=null;
+      const span=()=>Math.max(120, innerWidth*0.2);
+      const down=(cx,target)=>{ if(target&&target.closest&&target.closest('button')) return; startX=cx; this.drag.active=true; this.drag.x=0; };
+      const move=cx=>{ if(startX==null) return; this.drag.x=clamp((cx-startX)/span(),-1,1); };
+      const up=()=>{ startX=null; this.drag.active=false; this.drag.x=0; };
+      addEventListener('touchstart',e=>{ const t=e.touches[0]; down(t.clientX,e.target); },{passive:true});
+      addEventListener('touchmove', e=>{ move(e.touches[0].clientX); },{passive:true});
+      addEventListener('touchend',up); addEventListener('touchcancel',up);
+      addEventListener('mousedown',e=>down(e.clientX,e.target));
+      addEventListener('mousemove',e=>move(e.clientX));
+      addEventListener('mouseup',up);
       const boost=document.getElementById('btn-boost');
-      boost.addEventListener('touchstart',e=>{e.preventDefault(); this._surge=true;},{passive:false});
+      if(boost){
+        boost.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._surge=true; },{passive:false});
+        boost.addEventListener('mousedown',e=>{ e.stopPropagation(); this._surge=true; });
+      }
     }
   }
 
@@ -231,16 +227,16 @@
     constructor(game){ this.game=game; this.level=0; this.densityP=0; this.speedP=0; }
     update(){
       this.level=this.game.score.distance/620;          // ~1 "level" per 620 m
-      // PHASE A: the path of buildings spreads out over the first ~4.5 levels, then PLATEAUS.
+      // the path of buildings spreads out over the first ~4.5 levels, then PLATEAUS.
       this.densityP=clamp(this.level/4.5,0,1);
-      // PHASE B: raw flight speed keeps climbing past the stall -> you must HUNT the next one.
-      this.speedP=clamp(this.level/9,0,1);
     }
     stepGap(){ return lerp(19,54,this.densityP); }       // spacing between in-line buildings
     buildingW(){ return rand(9,14); }                    // wide, full size — never narrowed
-    baseSpeed(){ return lerp(24,86,this.speedP); }       // slow start -> very fast late
-    decay(){ return lerp(5,10,this.densityP) + this.speedP*6; }
-    reset(){ this.level=0; this.densityP=0; this.speedP=0; }
+    // speed ALWAYS rises (never caps): even with a full city you keep accelerating, so the
+    // thinning late game becomes a real test of catching the next one in time.
+    baseSpeed(){ return 24 + this.level*6.5; }
+    decay(){ return lerp(5,10,this.densityP) + this.level*1.1; }   // climbs forever -> finite run
+    reset(){ this.level=0; this.densityP=0; }
   }
 
   // ===================================================================================
@@ -474,9 +470,9 @@
     position(){ return this.pos; }
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
-    reset(){ this.pos.set(0,18,0); this.vel.set(0,0,26); this.fwdNow=26; this.rush=0;
+    reset(){ this.pos.set(0,16,0); this.vel.set(0,0,26); this.fwdNow=26; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(0,17.6,2.9); }
+             this.dummy.position.set(1.1,15.3,2.9); this._dummyPrevZ=2.9; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -485,37 +481,38 @@
 
     update(dt,steer){
       const g=this.game;
+      this._dummyPrevZ=this.dummy.position.z;      // for swept hit test (no tunnelling at speed)
       this.surgeActive=Math.max(0,this.surgeActive-dt);
       this.surgeCd=Math.max(0,this.surgeCd-dt);
       this.rush=damp(this.rush,0,0.5,dt);          // rush lingers, bleeds slowly
       const surgeMul=this.surgeActive>0?1.5:1;
 
-      // SPEED = slow difficulty base + rush from smashes + ADRENALINE high (more hits = more
-      // adrenaline = faster). Accelerates fast on a hit, decays slowly -> chase the high.
-      const target=(g.difficulty.baseSpeed() + this.rush + g.adrenaline.factor()*24) * surgeMul;
+      // SPEED = ever-rising difficulty base + rush from smashes + ADRENALINE high (more hits =
+      // more adrenaline = faster). Accelerates fast on a hit, decays slowly -> chase the high.
+      const target=(g.difficulty.baseSpeed() + this.rush + g.adrenaline.factor()*22) * surgeMul;
       this.fwdNow=damp(this.fwdNow,target, target>this.fwdNow?6:2, dt);
 
-      // smooth kinematic steering. sx flips steer.x so RIGHT = screen-right (no inversion).
-      const STRAFE=38+(this.surgeActive>0?16:0), CLIMB=34;
+      // LEFT/RIGHT ONLY. sx flips steer.x so RIGHT = screen-right. Altitude is FIXED (no up/down).
+      const STRAFE=40+(this.surgeActive>0?18:0);
       const sx=-steer.x;
       this.vel.x=damp(this.vel.x,sx*STRAFE,11,dt);
-      this.vel.y=damp(this.vel.y,steer.y*CLIMB,11,dt);
+      this.vel.y=0;
       this.vel.z=this.fwdNow;
-      this.pos.addScaledVector(this.vel,dt);
+      this.pos.x+=this.vel.x*dt;
+      this.pos.z+=this.vel.z*dt;
       this.pos.x=clamp(this.pos.x,-44,44);
-      this.pos.y=clamp(this.pos.y,5,38);
+      // pos.y stays constant -> the villain flies dead level
 
       this.bank =damp(this.bank, sx*0.55,9,dt);
-      this.pitch=damp(this.pitch, steer.y*0.30,9,dt);
       this._smashPulse=damp(this._smashPulse,0,4,dt);
 
       this.group.position.copy(this.pos);
-      this.group.rotation.set(this.pitch,0,this.bank);
+      this.group.rotation.set(0,0,this.bank);
       const now=performance.now();
 
-      // DUMMY head/grip point; held slightly to the GRIP-ARM side (so it peeks out from behind
-      // the villain) and below; x/y lead velocity so the limp body whips on turns.
-      const tx=this.pos.x+1.1+this.vel.x*0.04, ty=this.pos.y-0.7+this.vel.y*0.03, tz=this.pos.z+this.dummyGrip;
+      // DUMMY head/grip point; held slightly to the GRIP-ARM side (peeks out from behind the
+      // villain) and below; x leads velocity so the limp body whips on turns.
+      const tx=this.pos.x+1.1+this.vel.x*0.04, ty=this.pos.y-0.7, tz=this.pos.z+this.dummyGrip;
       this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
       this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
       this.dummy.position.z=tz;
@@ -532,7 +529,8 @@
       this.dLimbs[3].rotation.set(0.1+sw*0.12,0,-0.06-sw2*0.08);
     }
     // hit sphere on the gripped head (the smash point). Surge widens the catch radius.
-    hitSphere(){ return { c:this.dummy.position, r:this.surgeActive>0?5.8:2.6 }; }
+    // zPrev enables a swept test so fast flight can't tunnel through thin buildings.
+    hitSphere(){ return { c:this.dummy.position, r:this.surgeActive>0?5.8:2.6, zPrev:this._dummyPrevZ }; }
   }
 
   // ===================================================================================
@@ -610,16 +608,21 @@
         if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; this.buildings.splice(i,1); }
       }
     }
-    // sphere-vs-AABB test for the dummy; returns first un-hit building it overlaps
+    // swept sphere-vs-AABB for the dummy; returns first un-hit building it overlaps. The z axis
+    // is treated as a SWEPT segment (zPrev..z) so fast flight can't tunnel past thin buildings.
     queryHit(sphere){
+      const zNow=sphere.c.z, zPrev=(sphere.zPrev!==undefined?sphere.zPrev:zNow);
+      const zLo=Math.min(zNow,zPrev), zHi=Math.max(zNow,zPrev);
       for(const b of this.buildings){
         if(b.hit) continue;
         const p=b.mesh.position;
         const hw=b.w/2, hh=b.h/2, hd=b.d/2;
         const cx=clamp(sphere.c.x, p.x-hw, p.x+hw);
         const cy=clamp(sphere.c.y, p.y-hh, p.y+hh);
-        const cz=clamp(sphere.c.z, p.z-hd, p.z+hd);
-        const dx=sphere.c.x-cx, dy=sphere.c.y-cy, dz=sphere.c.z-cz;
+        const dx=sphere.c.x-cx, dy=sphere.c.y-cy;
+        // z overlaps if the building's depth-span intersects the swept segment (+ sphere radius)
+        const zHit = (p.z-hd) <= zHi+sphere.r && (p.z+hd) >= zLo-sphere.r;
+        const dz = zHit ? 0 : Math.min(Math.abs(zNow-(p.z-hd)),Math.abs(zNow-(p.z+hd)));
         if(dx*dx+dy*dy+dz*dz <= sphere.r*sphere.r) return b;
       }
       return null;
