@@ -231,20 +231,15 @@
     constructor(game){ this.game=game; this.level=0; this.densityP=0; this.speedP=0; }
     update(){
       this.level=this.game.score.distance/620;          // ~1 "level" per 620 m
-      // PHASE A: city thins out over the first ~4 levels, then PLATEAUS (the "stall").
-      this.densityP=clamp(this.level/4,0,1);
-      // PHASE B: raw flight speed keeps climbing well past the stall -> catching gets hard.
+      // PHASE A: the path of buildings spreads out over the first ~4.5 levels, then PLATEAUS.
+      this.densityP=clamp(this.level/4.5,0,1);
+      // PHASE B: raw flight speed keeps climbing past the stall -> you must HUNT the next one.
       this.speedP=clamp(this.level/9,0,1);
     }
-    rowGap(){ return lerp(15,34,this.densityP); }        // fewer rows, plateaus
-    perRow(){ return Math.max(1,Math.round(lerp(5,1,this.densityP))); } // 5 -> 1 building/row
-    laneGuarantee(){ return this.level<2; }              // free in-lane target only early
-    laneSpread(){ return lerp(7,32,clamp(this.level/2,0,1)); }
-    buildingW(){ return rand(8,12); }                    // FULL size — never narrowed
-    gapRowChance(){ return this.densityP*0.35; }         // occasional empty stretch, plateaus
-    baseSpeed(){ return lerp(22,98,this.speedP); }       // slow start -> very fast late
-    // decay climbs with both thinning city AND raw speed -> high speed = desperate
-    decay(){ return lerp(5,11,this.densityP) + this.speedP*7; }
+    stepGap(){ return lerp(19,54,this.densityP); }       // spacing between in-line buildings
+    buildingW(){ return rand(9,14); }                    // wide, full size — never narrowed
+    baseSpeed(){ return lerp(24,86,this.speedP); }       // slow start -> very fast late
+    decay(){ return lerp(5,10,this.densityP) + this.speedP*6; }
     reset(){ this.level=0; this.densityP=0; this.speedP=0; }
   }
 
@@ -296,11 +291,8 @@
     isChaos(){ return this.value>=this.CHAOS; }
     factor(){ return this.value/this.MAX; }
     scoreMul(){ return 1+this.factor(); }
-    speedMul(){ return 1+this.factor()*0.3; }
-    update(dt){
-      const fill=clamp((this.game.momentum.factor()-0.4),0,1)*5*dt;
-      this.value=clamp(this.value+fill-4*dt,0,this.MAX);
-    }
+    // adrenaline is EARNED by smashing and FADES when you stop -> the high you keep chasing
+    update(dt){ this.value=clamp(this.value-7*dt,0,this.MAX); }
     reset(){ this.value=0; }
   }
 
@@ -345,8 +337,8 @@
         d.mesh.position.copy(pos).add(new THREE.Vector3(rand(-2,2),rand(-2,2),rand(-2,2)));
         const s=rand(0.4,1.4); d.mesh.scale.setScalar(s);
         d.mesh.material.color.copy(color).offsetHSL(0,0,rand(-0.05,0.05));
-        d.vel.set(rand(-1,1),rand(0.2,1.2),rand(-1,1)).normalize().multiplyScalar(power*rand(0.4,1.1));
-        d.vel.z+=power*0.3; // bias debris forward along flight
+        d.vel.set(rand(-1,1),rand(0.15,1.1),rand(-1,1)).normalize().multiplyScalar(power*rand(0.5,1.2));
+        // no forward bias: the villain overtakes the debris so it streams PAST the camera (speed!)
         d.spin.set(rand(-8,8),rand(-8,8),rand(-8,8));
         d.life=d.max=rand(0.8,1.6);
       }
@@ -443,40 +435,36 @@
 
       // ----- villain rig, BUILT IN FLIGHT POSE (head forward, arm outstretched) -----
       this.group=new THREE.Group(); game.scene.add(this.group);
-      this.rig=new THREE.Group(); this.group.add(this.rig); this.group.scale.setScalar(1.7); // BIGGER
+      this.rig=new THREE.Group(); this.group.add(this.rig); this.group.scale.setScalar(1.5);
       const skin=new THREE.MeshStandardMaterial({color:0xf1c9a5,roughness:.6});
-      const suit=new THREE.MeshStandardMaterial({color:0xf3f4f8,roughness:.5,metalness:.12});
-      const cape=new THREE.MeshStandardMaterial({color:0xcc1f2a,roughness:.6,side:THREE.DoubleSide,emissive:0x350000});
+      const suit=new THREE.MeshStandardMaterial({color:0xd9534f,roughness:.5,metalness:.1}); // red-ish villain suit (no cape)
       const torso=new THREE.Mesh(new THREE.CapsuleGeometry(0.55,1.3,4,10),suit);
       torso.rotation.x=Math.PI/2; torso.castShadow=true;
       const head=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,16),skin); head.position.z=1.15;
       const mstache=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.14),new THREE.MeshStandardMaterial({color:0x141414}));
       mstache.position.set(0,-0.08,1.44);
-      // ONE arm outstretched forward (the gripping arm), other tucked
+      // ONE arm outstretched forward (the gripping arm), other tucked at the side
       const armGeo=new THREE.CapsuleGeometry(0.17,1.5,4,6);
-      this.gripArm=new THREE.Mesh(armGeo,suit); this.gripArm.rotation.x=Math.PI/2; this.gripArm.position.set(0.15,-0.05,1.5);
+      this.gripArm=new THREE.Mesh(armGeo,suit); this.gripArm.rotation.set(Math.PI/2,-0.25,0); this.gripArm.position.set(0.45,-0.05,1.5);
       const armR=new THREE.Mesh(new THREE.CapsuleGeometry(0.16,0.8,4,6),suit); armR.rotation.x=Math.PI/2-0.5; armR.position.set(-0.5,-0.1,0.7);
-      this.hand=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10),skin); this.hand.position.set(0.12,-0.1,1.68); // grips dummy head
-      // cape trails BACK toward the camera (slim so it doesn't dominate the view)
-      this.capeMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.0,1,8),cape);
-      this.capeMesh.rotation.x=-Math.PI/2; this.capeMesh.position.set(0,0.15,-1.25);
-      this.rig.add(torso,head,mstache,this.gripArm,armR,this.hand,this.capeMesh);
+      this.hand=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10),skin); this.hand.position.set(0.72,-0.05,1.95); // grips dummy head (held out to the side)
+      this.rig.add(torso,head,mstache,this.gripArm,armR,this.hand);
 
-      // ----- dummy: gripped BY THE HEAD (frontmost), body hanging LIMP behind -----
-      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(1.7); // BIGGER
+      // ----- dummy: gripped BY THE HEAD up top, body DANGLING straight down (limp) -----
+      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(1.4);
       const dsuit=new THREE.MeshStandardMaterial({color:0x4f9d3a,roughness:.55,emissive:0x06180a});
       const dskin=new THREE.MeshStandardMaterial({color:0xf1c9a5,roughness:.6});
-      const dhead=new THREE.Mesh(new THREE.SphereGeometry(0.4,16,16),dskin); dhead.position.set(0,0,0.15); dhead.castShadow=true;
+      const dhead=new THREE.Mesh(new THREE.SphereGeometry(0.4,16,16),dskin); dhead.position.set(0,0,0); dhead.castShadow=true;
       this.dummy.add(dhead);
-      // torso + limbs live under a neck pivot so the whole body can swing limply
-      this.dTorso=new THREE.Group(); this.dTorso.position.set(0,0,-0.2); this.dummy.add(this.dTorso);
-      const dbody=new THREE.Mesh(new THREE.CapsuleGeometry(0.42,1.0,4,8),dsuit);
-      dbody.rotation.x=Math.PI/2; dbody.position.set(0,-0.1,-0.7); dbody.castShadow=true; this.dTorso.add(dbody);
+      // torso + limbs live under a NECK pivot so the whole body swings limply beneath the head
+      this.dTorso=new THREE.Group(); this.dTorso.position.set(0,-0.45,0); this.dummy.add(this.dTorso);
+      const dbody=new THREE.Mesh(new THREE.CapsuleGeometry(0.42,1.0,4,8),dsuit); // vertical -> hangs down
+      dbody.position.set(0,-0.55,0); dbody.castShadow=true; this.dTorso.add(dbody);
       this.dLimbs=[];
       const mk=(x,y,z)=>{ const l=new THREE.Mesh(new THREE.CapsuleGeometry(0.13,0.7,4,6),dsuit);
         l.position.set(x,y,z); this.dTorso.add(l); this.dLimbs.push(l); return l; };
-      mk(-0.34,-0.35,-0.4); mk(0.34,-0.35,-0.4);   // arms, hang down from the shoulders
-      mk(-0.2,-0.55,-1.2);  mk(0.2,-0.55,-1.2);    // legs, dangle from the hips
+      mk(-0.32,-0.5,0); mk(0.32,-0.5,0);     // arms dangle down from the shoulders
+      mk(-0.18,-1.25,0); mk(0.18,-1.25,0);   // legs dangle further down from the hips
       this.dummyGrip=2.9;            // world-Z lead of the gripped head (the smash point)
 
       this._smashPulse=0;
@@ -489,9 +477,11 @@
     reset(){ this.pos.set(0,18,0); this.vel.set(0,0,26); this.fwdNow=26; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this.dummy.position.set(0,17.6,2.9); }
-    // each smash injects speed (more for bigger hits) -> the run accelerates as you chain
-    onSmash(tier){ this._smashPulse=Math.min(1.4,this._smashPulse+0.4+tier.mom*0.012);
-                   this.rush=Math.min(this.RUSH_MAX,this.rush+3+tier.mom*0.18); }
+    // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
+    // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
+    onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
+                   this.rush=Math.min(this.RUSH_MAX,this.rush+3+tier.mom*0.18);
+                   this.fwdNow+=5; }
 
     update(dt,steer){
       const g=this.game;
@@ -500,8 +490,9 @@
       this.rush=damp(this.rush,0,0.5,dt);          // rush lingers, bleeds slowly
       const surgeMul=this.surgeActive>0?1.5:1;
 
-      // SPEED = slow difficulty base + rush from smashes; accelerates fast, decays slow.
-      const target=(g.difficulty.baseSpeed() + this.rush + g.momentum.factor()*6) * surgeMul;
+      // SPEED = slow difficulty base + rush from smashes + ADRENALINE high (more hits = more
+      // adrenaline = faster). Accelerates fast on a hit, decays slowly -> chase the high.
+      const target=(g.difficulty.baseSpeed() + this.rush + g.adrenaline.factor()*24) * surgeMul;
       this.fwdNow=damp(this.fwdNow,target, target>this.fwdNow?6:2, dt);
 
       // smooth kinematic steering. sx flips steer.x so RIGHT = screen-right (no inversion).
@@ -521,26 +512,24 @@
       this.group.position.copy(this.pos);
       this.group.rotation.set(this.pitch,0,this.bank);
       const now=performance.now();
-      const sp=clamp(this.speed()/80,0,1);
-      this.capeMesh.rotation.z=this.bank*0.6+Math.sin(now*0.02)*0.1*sp;
 
-      // DUMMY head/grip lead point; held a touch LOWER & x/y lead velocity (whips on turns)
-      const tx=this.pos.x+this.vel.x*0.045, ty=this.pos.y-1.0+this.vel.y*0.035, tz=this.pos.z+this.dummyGrip;
+      // DUMMY head/grip point; held slightly to the GRIP-ARM side (so it peeks out from behind
+      // the villain) and below; x/y lead velocity so the limp body whips on turns.
+      const tx=this.pos.x+1.1+this.vel.x*0.04, ty=this.pos.y-0.7+this.vel.y*0.03, tz=this.pos.z+this.dummyGrip;
       this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
       this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
       this.dummy.position.z=tz;
-      this.dummy.rotation.z=this.bank*1.1;
-      // LIMP body: the torso swings slowly behind the gripped head + reacts to turns/speed
+      this.dummy.rotation.z=this.bank*0.8;
+      // LIMP body DANGLING below the head: a slight backward trail from drag + slow sway
       const t=now*0.004;
-      this.dTorso.rotation.x=0.25+Math.sin(t)*0.12;             // gentle bob (drag)
-      this.dTorso.rotation.z=Math.sin(t*1.3)*0.15 - this.bank*0.8;
-      this.dTorso.rotation.y=this.vel.x*0.006;
-      // limbs dangle loosely with a slow sway (limp, not energetic)
+      this.dTorso.rotation.x=-0.35+Math.sin(t)*0.1;            // trails back a touch from wind
+      this.dTorso.rotation.z=Math.sin(t*1.3)*0.12 - this.bank*0.6;
+      // limbs hang and sway loosely (limp, not energetic flailing)
       const sw=Math.sin(now*0.005), sw2=Math.cos(now*0.0045);
-      this.dLimbs[0].rotation.set(0.2+sw*0.2,0,0.3+sw*0.15);
-      this.dLimbs[1].rotation.set(0.2+sw2*0.2,0,-0.3-sw2*0.15);
-      this.dLimbs[2].rotation.set(0.15+sw2*0.15,0,0.1+sw*0.1);
-      this.dLimbs[3].rotation.set(0.15+sw*0.15,0,-0.1-sw2*0.1);
+      this.dLimbs[0].rotation.set(0.15+sw*0.18,0,0.18+sw*0.12);
+      this.dLimbs[1].rotation.set(0.15+sw2*0.18,0,-0.18-sw2*0.12);
+      this.dLimbs[2].rotation.set(0.1+sw2*0.12,0,0.06+sw*0.08);
+      this.dLimbs[3].rotation.set(0.1+sw*0.12,0,-0.06-sw2*0.08);
     }
     // hit sphere on the gripped head (the smash point). Surge widens the catch radius.
     hitSphere(){ return { c:this.dummy.position, r:this.surgeActive>0?5.8:2.6 }; }
@@ -578,26 +567,33 @@
       const grid=new THREE.GridHelper(4000,400,0x1b2740,0x0d1320); g.scene.add(grid);
     }
     _take(){ return this.pool.find(p=>!p.active); }
-    _spawnRow(z){
+    // The buildings form a single PATH along the flight direction — they sit IN FRONT of each
+    // other, not scattered side-by-side, so you plow through them in sequence. The path starts
+    // nearly STRAIGHT (easy, satisfying chain) and snakes more the further you get.
+    _pathX(z){
+      const amp=clamp(this.game.difficulty.level/3.5,0,1);   // 0 = straight tunnel -> 1 = full snake
+      return (20*Math.sin(z*0.016) + 9*Math.sin(z*0.043+1.3))*amp;
+    }
+    _place(b,x,z,w,h,d){
+      b.mesh.visible=true; b.active=true; b.hit=false; b.w=w; b.h=h; b.d=d;
+      b.mesh.scale.set(w,h,d);
+      b.mesh.position.set(clamp(x,-42,42), h/2, z);
+      const c=new THREE.Color().setHSL(0.58+Math.random()*0.07, 0.35, 0.16+Math.random()*0.12);
+      b.mesh.material.color.copy(c);
+      b.mesh.material.emissive.setHSL(0.58,0.5,0.04);
+      this.buildings.push(b);
+    }
+    _spawnAt(z){
       const D=this.game.difficulty;
-      if(Math.random()<D.gapRowChance()) return;        // empty stretch -> survival tension
-      const n=D.perRow();
-      const px=this.game.player ? this.game.player.pos.x : 0;
-      const xs=[];
-      // EARLY game guarantees a catchable in-lane target; that help fades as you progress.
-      if(D.laneGuarantee()) xs.push(clamp(px+rand(-D.laneSpread(),D.laneSpread()),-44,44));
-      while(xs.length<n) xs.push(rand(-44,44));
-      for(const x of xs){
-        const b=this._take(); if(!b) break;
-        const w=D.buildingW(), d=D.buildingW(), h=rand(16,42);
-        b.mesh.visible=true; b.active=true; b.hit=false;
-        b.w=w; b.h=h; b.d=d;
-        b.mesh.scale.set(w,h,d);
-        b.mesh.position.set(x, h/2, z+rand(-5,5));
-        const c=new THREE.Color().setHSL(0.58+Math.random()*0.07, 0.35, 0.16+Math.random()*0.12);
-        b.mesh.material.color.copy(c);
-        b.mesh.material.emissive.setHSL(0.58,0.5,0.04);
-        this.buildings.push(b);
+      const px=this._pathX(z);
+      // main building right on the path (tall + wide, shallow depth = a distinct block to plow)
+      let b=this._take(); if(!b) return;
+      this._place(b, px+rand(-2,2), z, D.buildingW(), rand(20,40), rand(6,9));
+      // sometimes a buddy hugging the path so it reads as a city, still essentially in-line
+      if(Math.random()<0.3){
+        const nb=this._take();
+        if(nb) this._place(nb, px + (Math.random()<0.5?-1:1)*rand(12,18), z+rand(-2,2),
+                           D.buildingW(), rand(18,36), rand(6,9));
       }
     }
     shatter(b){
@@ -606,8 +602,8 @@
     }
     update(){
       const pz=this.game.player.pos.z;
-      const gap=this.game.difficulty.rowGap();
-      while(this.nextZ < pz + this.aheadDist){ this._spawnRow(this.nextZ); this.nextZ+=gap; }
+      const gap=this.game.difficulty.stepGap();
+      while(this.nextZ < pz + this.aheadDist){ this._spawnAt(this.nextZ); this.nextZ+=gap; }
       // recycle behind
       for(let i=this.buildings.length-1;i>=0;i--){
         const b=this.buildings[i];
@@ -651,25 +647,20 @@
       else if(g.momentum.isHigh()) this.state='highspeed';
       else this.state='normal';
 
-      const speedF=clamp(p.speed()/100,0,1);
-      // OVER-THE-SHOULDER: camera sits behind AND above, angled DOWN, so we see past the
-      // villain to the dummy he's shoving ahead and the city below (villain no longer blocks).
-      const dist=9.5+speedF*4;
-      const height=6+speedF*2;
-      // Forward (z) tracks RIGIDLY so the camera never lags at speed (characters stay big);
-      // x/y are smoothed for a soft, game-y feel.
-      // slight SIDE offset -> 3/4 hero angle so the villain doesn't sit dead in front of the
-      // dummy (both stay visible); the dummy is the star being shoved into the city.
-      const SIDE=3.2;
+      const speedF=clamp(p.speed()/120,0,1);
+      // Behind + above, looking down the path: villain's back, victim dangling below, and the
+      // line of oncoming buildings all readable (not face-planted into one wall).
+      const dist=11+speedF*4;
+      const height=6.5+speedF*1.5;
       this.cam.position.z=p.pos.z-dist;
-      this.cam.position.x=damp(this.cam.position.x, p.pos.x + SIDE - p.bank*3, 8, realDt);
+      this.cam.position.x=damp(this.cam.position.x, p.pos.x - p.bank*3, 8, realDt);
       this.cam.position.y=damp(this.cam.position.y, p.pos.y+height, 8, realDt);
 
-      const fov=60 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*7;
+      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8;  // speed flares the FOV
       this.cam.fov=damp(this.cam.fov,fov,6,realDt); this.cam.updateProjectionMatrix();
 
-      // look DOWN-AHEAD at the dummy (~z+2.9) + the city, so both characters read clearly
-      this._look.set(p.pos.x - 0.6 + p.bank*2.5, p.pos.y-1.6+p.pitch*3, p.pos.z+6);
+      // look DOWN-AHEAD along the path so the villain, dangling victim and oncoming buildings read
+      this._look.set(p.pos.x + p.bank*2.5, p.pos.y-1.4+p.pitch*3, p.pos.z+8);
       this.cam.up.set(Math.sin(p.bank*0.4),Math.cos(p.bank*0.4),0);
       this.cam.lookAt(this._look);
 
