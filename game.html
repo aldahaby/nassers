@@ -29,9 +29,16 @@
     #adrenaline-wrap { top:60px; }
     #adrenaline-bar > i { background:linear-gradient(90deg,#5856d6,#af52de,#ff2d55); }
 
-    #score-box { position:absolute; top:14px; right:16px; text-align:right; }
-    #score { font-size:38px; font-weight:800; line-height:1; text-shadow:0 2px 12px rgba(0,0,0,.6); }
+    #score-box { position:absolute; top:14px; right:62px; text-align:right; }
+    #coins { font-size:18px; font-weight:800; color:#ffd23b; text-shadow:0 2px 8px rgba(0,0,0,.6); margin-bottom:1px; }
+    #score { font-size:34px; font-weight:800; line-height:1; text-shadow:0 2px 12px rgba(0,0,0,.6); }
     #score-sub { font-size:12px; opacity:.85; margin-top:3px; }
+    #pause-btn { position:fixed; top:12px; right:12px; z-index:16; width:42px; height:42px; border-radius:10px;
+                 background:rgba(0,0,0,.32); color:#fff; border:1px solid rgba(255,255,255,.28); font-size:13px;
+                 letter-spacing:1px; cursor:pointer; pointer-events:auto; display:flex; align-items:center; justify-content:center; }
+    #pause-btn:active { transform:scale(.94); }
+    .btn-sec { background:rgba(255,255,255,.14) !important; color:#fff !important; box-shadow:none !important;
+               font-size:15px !important; padding:11px 30px !important; }
 
     #combo { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) scale(1);
              font-size:clamp(40px,12vw,72px); font-weight:900; opacity:0; color:var(--warn);
@@ -87,13 +94,14 @@
   <div id="hud">
     <div id="momentum-wrap" class="bar-wrap"><div class="bar-label">Momentum</div><div id="momentum-bar" class="bar"><i></i></div></div>
     <div id="adrenaline-wrap" class="bar-wrap"><div class="bar-label">Adrenaline</div><div id="adrenaline-bar" class="bar"><i></i></div></div>
-    <div id="score-box"><div id="score">0</div><div id="score-sub">0 m · 0 hits</div></div>
+    <div id="score-box"><div id="coins">🪙 0</div><div id="score">0</div><div id="score-sub">0 m · 0 hits</div></div>
     <div id="combo"><span id="combo-num">x0</span><small>COMBO</small></div>
     <div id="warning">LOW MOMENTUM — HIT A BUILDING!</div>
     <div id="state-tag">READY</div>
     <div id="speed-tag">0 km/h</div>
     <div id="surge-tag">⚡ SURGE READY</div>
   </div>
+  <button id="pause-btn" title="Pause">❚❚</button>
 
   <!-- Touch: hold the left or right side of the screen to steer; tap SURGE for a burst -->
   <div id="touch">
@@ -106,14 +114,14 @@
   <!-- Overlays -->
   <div id="start-overlay" class="overlay">
     <h1>INVINCIBLE RUN</h1>
-    <h2>FLY THE DUMMY THROUGH THE CITY</h2>
-    <p>You are unstoppable. Hold your invincible victim out front and plow him straight through
-       skyscrapers. Every building you smash refuels your momentum — <b>miss too many and you drop
-       out of the sky.</b></p>
-    <p class="keys keys-hint-desktop"><b>A / D or ← / →</b> steer left-right · <b>SHIFT</b> surge · <b>R</b> restart</p>
-    <p class="keys keys-hint-mobile"><b>Hold left / right side</b> to steer · <b>SURGE</b> button for a boost</p>
-    <p>Buildings get sparser, narrower and faster the longer you survive. Smash to refuel —
-       and save your <b>SURGE</b> (bigger reach + speed) for the desperate stretches.</p>
+    <h2>SMASH DOWN THE ROAD</h2>
+    <p>Weave down the winding road and plow your invincible victim through the glowing towers.
+       Each smash refuels momentum — grab <b>🪙 coins</b> for score and <b>energy drinks</b> for a
+       big momentum + adrenaline boost.</p>
+    <p class="keys keys-hint-desktop"><b>A / D or ← / →</b> steer · <b>SHIFT</b> surge · <b>R</b> restart</p>
+    <p class="keys keys-hint-mobile"><b>Hold left / right side</b> of the screen to steer · <b>SURGE</b> to boost</p>
+    <p>You keep getting faster — but it stays fair: drive well and you keep going. Tap <b>SURGE</b>
+       for double speed and a huge catch radius when you need it.</p>
     <div id="best-line"></div>
     <button id="start-btn" class="btn">Start Flight</button>
   </div>
@@ -122,6 +130,13 @@
     <h1>YOU FELL</h1>
     <div id="gameover-stats"></div>
     <button id="retry-btn" class="btn">Fly Again</button>
+    <button id="menu-btn2" class="btn btn-sec">Main Menu</button>
+  </div>
+
+  <div id="pause-overlay" class="overlay hidden">
+    <h1>PAUSED</h1>
+    <button id="resume-btn" class="btn">Resume</button>
+    <button id="menu-btn" class="btn btn-sec">Main Menu</button>
   </div>
 
   <script type="importmap">
@@ -238,15 +253,16 @@
     // progression is driven by TIME SURVIVED so it CLEARLY accelerates the longer you last.
     update(dt){
       this.elapsed+=dt;
-      this.level=this.elapsed/4;                          // ~1 "level" every 4 seconds (ramps sooner)
-      this.densityP=clamp(this.level/5,0,1);              // city thins over the first ~20s, then plateaus
+      this.level=this.elapsed/4;
+      this.densityP=clamp(this.level/5,0,1);              // road thins over the first ~20s, then plateaus
     }
-    stepGap(){ return lerp(19,52,this.densityP); }        // spacing between in-line buildings
-    buildingW(){ return rand(9,14); }                     // wide, full size — never narrowed
-    // base speed is the DOMINANT, ever-rising floor: climbs fast so you get noticeably quicker
-    // within seconds and keep accelerating the whole run.
-    baseSpeed(){ return 34 + this.level*14; }             // 34 m/s -> +14 m/s every 4s, forever
-    decay(){ return lerp(6,11,this.densityP) + this.level*0.8; }  // climbs forever -> finite run
+    stepGap(){ return lerp(19,50,this.densityP); }        // spacing between buildings on the road
+    buildingW(){ return rand(9,14); }
+    // FAIR speed: rises quickly at first then soft-PLATEAUS at a high but controllable cap, so the
+    // game never outruns your reflexes — skilled play can keep going. (cap ~114 m/s ≈ 410 km/h)
+    baseSpeed(){ return 34 + 80*(1-Math.exp(-this.elapsed/32)); }
+    // decay CAPS so hitting most buildings always sustains you -> no rigged timer death.
+    decay(){ return lerp(6,9,this.densityP); }      // gentle, capped -> good driving always sustains
     reset(){ this.level=0; this.densityP=0; this.elapsed=0; }
   }
 
@@ -310,7 +326,65 @@
     constructor(){ this.reset(); }
     addHit(p){ this.total+=p; this.hits++; this.destroyed++; }
     addDistance(m){ this.distance+=m; this.total+=m*0.5; }
-    reset(){ this.total=0; this.hits=0; this.distance=0; this.destroyed=0; }
+    reset(){ this.total=0; this.hits=0; this.distance=0; this.destroyed=0; this.coins=0; }
+  }
+
+  // ===================================================================================
+  // PICKUPS — gold COINS (score) lining the road + ENERGY DRINKS (momentum + adrenaline).
+  // Collected by threading the road, so good driving is rewarded.
+  // ===================================================================================
+  class PickupSystem {
+    constructor(game){
+      this.game=game; this.coins=[]; this.drinks=[]; this.spin=0;
+      this.coinNextZ=40; this.drinkNextZ=160; this.coinGap=6.5;
+      const cgeo=new THREE.CylinderGeometry(1.15,1.15,0.25,16);
+      for(let i=0;i<130;i++){
+        const m=new THREE.Mesh(cgeo,new THREE.MeshStandardMaterial({color:0xffd23b,emissive:0x7a5200,metalness:.7,roughness:.3}));
+        m.rotation.x=Math.PI/2; m.visible=false; game.scene.add(m);
+        this.coins.push({mesh:m,active:false,x:0,z:0});
+      }
+      const dgeo=new THREE.CylinderGeometry(0.85,0.85,2.6,12);
+      for(let i=0;i<12;i++){
+        const m=new THREE.Mesh(dgeo,new THREE.MeshStandardMaterial({color:0x2bd66e,emissive:0x0c6a34,metalness:.4,roughness:.3}));
+        m.visible=false; game.scene.add(m);
+        this.drinks.push({mesh:m,active:false,x:0,z:0});
+      }
+    }
+    _path(z){ return this.game.city._pathX(z); }
+    update(dt){
+      const p=this.game.player, pz=p.pos.z, ahead=this.game.city.aheadDist;
+      this.spin+=dt*4;
+      while(this.coinNextZ < pz+ahead){
+        const c=this.coins.find(o=>!o.active);
+        if(c){ c.active=true; c.mesh.visible=true; c.x=this._path(this.coinNextZ); c.z=this.coinNextZ; c.mesh.position.set(c.x,15,c.z); }
+        this.coinNextZ+=this.coinGap;
+      }
+      while(this.drinkNextZ < pz+ahead){
+        const d=this.drinks.find(o=>!o.active);
+        if(d){ d.active=true; d.mesh.visible=true; d.x=this._path(this.drinkNextZ); d.z=this.drinkNextZ; d.mesh.position.set(d.x,15.6,d.z); }
+        this.drinkNextZ+=rand(90,140);
+      }
+      const dz=p.dummy.position.z;
+      for(const c of this.coins){
+        if(!c.active) continue;
+        c.mesh.rotation.z=this.spin;
+        if(c.z < pz-30){ c.active=false; c.mesh.visible=false; continue; }
+        if(c.z<=dz+1 && c.z>=pz-3 && Math.abs(c.x-p.pos.x)<5.5){ c.active=false; c.mesh.visible=false; this._coin(c); }
+      }
+      for(const d of this.drinks){
+        if(!d.active) continue;
+        d.mesh.rotation.y=this.spin*1.6;
+        if(d.z < pz-30){ d.active=false; d.mesh.visible=false; continue; }
+        if(d.z<=dz+1 && d.z>=pz-3 && Math.abs(d.x-p.pos.x)<5.0){ d.active=false; d.mesh.visible=false; this._drink(d); }
+      }
+    }
+    _coin(c){ const g=this.game; g.score.coins++; g.score.total+=60; g.audio.coin();
+      g.effects.ring(new THREE.Vector3(c.x,15,c.z),new THREE.Color(0xffd23b),5); }
+    _drink(d){ const g=this.game; g.momentum.addHit(28); g.adrenaline.value=clamp(g.adrenaline.value+42,0,g.adrenaline.MAX);
+      g.score.total+=160; g.audio.drink(); g.effects.flash(0.16);
+      g.effects.burst(new THREE.Vector3(d.x,15,d.z),new THREE.Color(0x2bd66e),16,12); }
+    reset(){ for(const c of this.coins){c.active=false;c.mesh.visible=false;} for(const d of this.drinks){d.active=false;d.mesh.visible=false;}
+             this.coinNextZ=this.game.player.pos.z+30; this.drinkNextZ=this.game.player.pos.z+150; }
   }
 
   // ===================================================================================
@@ -422,10 +496,10 @@
   // mom = momentum refilled per smash. Kept modest so you must hit CONSISTENTLY to survive
   // (one lucky hit no longer floods the bar) — this is what makes the late game finite.
   const TIERS=[
-    {name:'glance',  min:0,   score:40,  mom:4,  adr:8,  shake:0.25, debris:6,  flash:0.08},
-    {name:'smash',   min:140, score:120, mom:6,  adr:14, shake:0.5,  debris:10, flash:0.14},
-    {name:'crush',   min:380, score:300, mom:8,  adr:22, shake:0.85, debris:15, flash:0.22},
-    {name:'level',   min:820, score:650, mom:10, adr:32, shake:1.2,  debris:22, flash:0.32},
+    {name:'glance',  min:0,   score:40,  mom:7,  adr:8,  shake:0.25, debris:6,  flash:0.08},
+    {name:'smash',   min:140, score:120, mom:10, adr:14, shake:0.5,  debris:10, flash:0.14},
+    {name:'crush',   min:380, score:300, mom:13, adr:22, shake:0.85, debris:15, flash:0.22},
+    {name:'level',   min:820, score:650, mom:16, adr:32, shake:1.2,  debris:22, flash:0.32},
   ];
   class ImpactSystem {
     constructor(game){ this.game=game; }
@@ -535,11 +609,12 @@
       this.fwdNow=damp(this.fwdNow,target, this.surgeActive>0?9:5, dt);
       if(this.fwdNow<base && this.surgeActive<=0) this.fwdNow=base;  // floor only climbs with time
 
-      // LEFT/RIGHT ONLY, very responsive. Strafe is fast and scales with flight speed so you can
-      // always reach the next building; surge makes it faster still. sx flips so RIGHT = screen-right.
-      const STRAFE=(54 + clamp(this.fwdNow*0.32,0,34)) * (this.surgeActive>0?1.5:1);
+      // LEFT/RIGHT ONLY, very responsive. Strafe scales WITH flight speed (and surge already
+      // doubles fwdNow) so threading the weaving road is ALWAYS physically possible -> fair at any
+      // speed; the challenge is reaction/precision, never an impossible wall. sx flips so RIGHT=right.
+      const STRAFE=this.fwdNow*0.95 + 30;
       const sx=-steer.x;
-      this.vel.x=damp(this.vel.x,sx*STRAFE,15,dt);   // snappy
+      this.vel.x=damp(this.vel.x,sx*STRAFE,22,dt);   // very snappy -> precise, easy to stay on the road
       this.vel.y=0;
       this.vel.z=this.fwdNow;
       this.pos.x+=this.vel.x*dt;
@@ -576,7 +651,7 @@
     // led forward to the dummy/hammer's z. Tight radius -> precision matters. Surge widens it.
     // zPrev enables a swept test so fast flight can't tunnel through thin buildings.
     hitSphere(){ return { c:{x:this.pos.x, y:this.dummy.position.y, z:this.dummy.position.z},
-                          r:this.surgeActive>0?7.5:2.1, zPrev:this._dummyPrevZ }; }
+                          r:this.surgeActive>0?7.5:2.7, zPrev:this._dummyPrevZ }; }
   }
 
   // ===================================================================================
@@ -594,7 +669,7 @@
       this._buildRoad();
       const geo=new THREE.BoxGeometry(1,1,1);
       this._geo=geo;
-      for(let i=0;i<130;i++){
+      for(let i=0;i<240;i++){
         const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.8,metalness:.05}));
         m.castShadow=m.receiveShadow=true; m.visible=false; game.scene.add(m);
         // outline used to MARK hittable targets (bright) vs decor houses (dim)
@@ -647,8 +722,11 @@
     // Buildings form a single winding PATH (along the road) — in front of each other, not
     // scattered. Followable but real: you must steer to thread each one. Widens as you survive.
     _pathX(z){
-      const amp=clamp(0.5+this.game.difficulty.level/6,0.5,1.0);
-      return (22*Math.sin(z*0.016) + 9*Math.sin(z*0.045+1.3))*amp;
+      // Lower spatial FREQUENCY so the road's lateral speed stays trackable even at top flight
+      // speed -> you can always stay on it with good driving (fair). Amplitude still demands real
+      // steering. Curves get a touch sharper as you survive, but never untrackable.
+      const amp=clamp(0.5+this.game.difficulty.level/7,0.5,1.0);
+      return (17*Math.sin(z*0.011) + 6*Math.sin(z*0.026+1.3))*amp;
     }
     _place(b,x,z,w,h,d,decor){
       b.mesh.visible=true; b.active=true; b.hit=false; b.decor=!!decor; b.w=w; b.h=h; b.d=d;
@@ -784,6 +862,8 @@
     crash(tier,combo){ const base={glance:160,smash:110,crush:70,level:45}[tier.name];
       this._tone(base+combo*8,0.25,'square',0.3); this._noise(0.08+tier.shake*0.18,0.35+tier.shake*0.35); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
+    coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
+    drink(){ this._tone(440,0.12,'sine',0.3); this._tone(660,0.16,'sine',0.28); this._tone(880,0.2,'sine',0.24); }
     surge(){ this._tone(260,0.3,'sawtooth',0.3); this._tone(680,0.35,'sine',0.22); this._noise(0.2,0.2); }
     gameOver(){ this._tone(200,0.5,'sawtooth',0.4); setTimeout(()=>this._tone(90,0.9,'sawtooth',0.4),120); }
   }
@@ -799,7 +879,8 @@
         combo:document.getElementById('combo'), comboNum:document.getElementById('combo-num'),
         warn:document.getElementById('warning'), state:document.getElementById('state-tag'),
         speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette'),
-        surge:document.getElementById('surge-tag'), boostBtn:document.getElementById('btn-boost') };
+        surge:document.getElementById('surge-tag'), boostBtn:document.getElementById('btn-boost'),
+        coins:document.getElementById('coins') };
       this._hide=0;
     }
     flashCombo(n){
@@ -814,6 +895,7 @@
       this.el.mom.style.width=g.momentum.value+'%';
       this.el.adr.style.width=g.adrenaline.value+'%';
       this.el.score.textContent=Math.round(g.score.total).toLocaleString();
+      this.el.coins.textContent='🪙 '+g.score.coins;
       this.el.sub.textContent=`${Math.round(g.score.distance)} m · ${g.score.hits} hits`;
       this.el.state.textContent=g.run.state;
       this.el.speed.textContent=Math.round(g.player.speed()*3.6)+' km/h';
@@ -860,7 +942,7 @@
         (isBest?`<div style="color:#ffcc00;font-weight:800;font-size:22px;margin-bottom:4px">★ NEW BEST! ★</div>`:'')+
         `Score <b>${score.toLocaleString()}</b><br>`+
         `Best <b>${best.toLocaleString()}</b><br>`+
-        `Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b> · <b>${Math.round(g.score.distance)} m</b>`;
+        `🪙 <b>${g.score.coins}</b> · Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b> · <b>${Math.round(g.score.distance)} m</b>`;
       document.getElementById('gameover-overlay').classList.remove('hidden');
     }
     refreshBestLine(){
@@ -868,13 +950,25 @@
       const el=document.getElementById('best-line');
       if(el) el.textContent = b>0 ? `BEST: ${b.toLocaleString()}` : '';
     }
+    togglePause(){
+      if(this.state==='Paused'){ this.state=this._prePause||'Running'; document.getElementById('pause-overlay').classList.add('hidden'); }
+      else if(this.state!=='READY'&&this.state!=='GameOver'){ this._prePause=this.state; this.state='Paused';
+        document.getElementById('pause-overlay').classList.remove('hidden'); }
+    }
+    toMenu(){
+      this.state='READY';
+      document.getElementById('pause-overlay').classList.add('hidden');
+      document.getElementById('gameover-overlay').classList.add('hidden');
+      document.getElementById('start-overlay').classList.remove('hidden');
+      this.resetAll(); this.refreshBestLine();
+    }
     resetAll(){
       const g=this.game;
       g.city.reset(); g.effects.reset();
       g.difficulty.reset();
       g.momentum.reset(); g.adrenaline.reset(); g.combo.reset(); g.score.reset();
       g.time.reset(); g.camera.reset(); g.player.reset();
-      g.city.update();
+      g.city.update(); g.pickups.reset();      // after player.reset so spawn anchors at the start
       this._lastZ=g.player.pos.z;
     }
   }
@@ -926,6 +1020,7 @@
       this.player=new FlightPlayer(this);
       this.camera=new CameraSystem(this);
       this.city=new CitySystem(this);
+      this.pickups=new PickupSystem(this);
       this.ui=new UISystem(this);
       this.audio=new AudioSystem();
       this.run=new RunStateManager(this);
@@ -938,6 +1033,10 @@
       addEventListener('resize',()=>{ this.renderer.setSize(innerWidth,innerHeight); this.camera.resize(); });
       document.getElementById('start-btn').onclick=()=>this.run.startRun();
       document.getElementById('retry-btn').onclick=()=>this.run.startRun();
+      document.getElementById('pause-btn').onclick=()=>this.run.togglePause();
+      document.getElementById('resume-btn').onclick=()=>this.run.togglePause();
+      document.getElementById('menu-btn').onclick=()=>this.run.toMenu();
+      document.getElementById('menu-btn2').onclick=()=>this.run.toMenu();
 
       this._loop=this._loop.bind(this); requestAnimationFrame(this._loop);
     }
@@ -946,7 +1045,7 @@
       const realDt=Math.min(0.05,this._clock.getDelta());
       if(this.input.consumeRestart()) this.run.startRun();
 
-      const running=this.run.state!=='READY'&&this.run.state!=='GameOver';
+      const running=this.run.state!=='READY'&&this.run.state!=='GameOver'&&this.run.state!=='Paused';
       const dt=this.time.update(realDt);
 
       if(running){
@@ -970,6 +1069,7 @@
         this.adrenaline.update(dt);
         this.combo.update();
         this.city.update();
+        this.pickups.update(dt);
         this.run.tick();
       } else if(this.run.state==='READY'){
         // gentle idle drift so the menu scene looks alive
