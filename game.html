@@ -257,14 +257,14 @@
       this.level=this.elapsed/4;
       this.densityP=clamp(this.level/5,0,1);              // road thins over the first ~20s, then plateaus
     }
-    stepGap(){ return lerp(20,46,this.densityP); }        // spacing between buildings on the road
+    stepGap(){ return lerp(30,56,this.densityP); }        // SPARSE: real road between towers (combo must be earned)
     buildingW(){ return rand(9,14); }
-    // Speed CLIMBS FOREVER (no plateau): the faster you go, the less time you have to read & reach
-    // each building -> high speed is what eventually beats you. Better players reach far higher
-    // speeds before they start missing, so it's finite but skill-driven (not a rigged timer).
-    baseSpeed(){ return 38 + this.elapsed*1.45; }
+    // Speed rises over the first ~2 min to a HIGH but maintainable PLATEAU (Subway-Surfers style):
+    // it keeps demanding more skill but a good player can hold it FOREVER — the only limiter is
+    // your own mistakes (missing towers), never a rigged wall.
+    baseSpeed(){ return 38 + 88*(1-Math.exp(-this.elapsed/40)); }   // -> ~126 m/s (~454 km/h)
     decay(){ return lerp(5,8,this.densityP); }            // light bleed; the REAL danger is MISSING
-    missPenalty(){ return 8 + this.level*0.6; }           // each missed tower costs momentum (grows)
+    missPenalty(){ return lerp(7,12,this.densityP); }     // missing hurts, but PLATEAUS -> sustainable
     reset(){ this.level=0; this.densityP=0; this.elapsed=0; }
   }
 
@@ -632,10 +632,9 @@
       // LEFT/RIGHT ONLY, very responsive. Strafe scales WITH flight speed (and surge already
       // doubles fwdNow) so threading the weaving road is ALWAYS physically possible -> fair at any
       // speed; the challenge is reaction/precision, never an impossible wall. sx flips so RIGHT=right.
-      // Strafe is CAPPED: it grows with speed but tops out, so once you're very fast you can't
-      // always reach the next (jittered) building in time -> speed is what beats you. Tuned slower
-      // and weightier for a realistic feel (analog, no deadzone, but not stiff).
-      const STRAFE=34 + Math.min(this.fwdNow*0.45, 56);   // ~51 early -> caps ~90
+      // Strafe scales with speed so you can ALWAYS reach the next scattered tower with good play
+      // (the limiter is your reaction/precision, never an impossible wall). Weighty, analog feel.
+      const STRAFE=34 + Math.min(this.fwdNow*0.5, 62);    // ~53 early -> caps ~96
       const sx=-steer.x;
       this.vel.x=damp(this.vel.x,sx*STRAFE,12,dt);         // weightier response
       this.vel.y=0;
@@ -689,8 +688,10 @@
     // hit sphere: centred on the PLAYER's x (so you aim with your own position, intuitive),
     // led forward to the dummy/hammer's z. Tight radius -> precision matters. Surge widens it.
     // zPrev enables a swept test so fast flight can't tunnel through thin buildings.
+    // base radius rewards precision; SURGE makes it HUGE (covers the whole lane) so you auto-blast
+    // a combo through the next stretch despite the 2x speed -> surge is a clear reward, not a risk.
     hitSphere(){ return { c:{x:this.pos.x, y:this.dummy.position.y, z:this.dummy.position.z},
-                          r:this.surgeActive>0?7.5:2.7, zPrev:this._dummyPrevZ }; }
+                          r:this.surgeActive>0?17:2.7, zPrev:this._dummyPrevZ }; }
   }
 
   // ===================================================================================
@@ -704,7 +705,7 @@
       this.nextZ=40;
       this.gap=20;             // distance between building rows (denser city)
       this.aheadDist=620;      // keep buildings populated out to the fog so they fade in (no pop-in)
-      this.stackLeft=0;        // remaining buildings in the current satisfying combo-stack
+      this.lastTowerX=0;       // running x of the tower path (bounded random walk -> always reachable)
       this._ground();
       this._buildRoad();
       const geo=new THREE.BoxGeometry(1,1,1);
@@ -728,7 +729,7 @@
     }
     // a winding ROAD ribbon that follows the building path, so it's obvious where to fly/hit.
     _buildRoad(){
-      this.roadN=150; this.roadHalf=14; this.roadAhead=760; this.roadBack=60;  // extends PAST the fog -> never visibly ends
+      this.roadN=150; this.roadHalf=22; this.roadAhead=760; this.roadBack=60;  // WIDE road; extends past the fog
       const verts=new Float32Array((this.roadN+1)*2*3);
       const geo=new THREE.BufferGeometry();
       geo.setAttribute('position',new THREE.BufferAttribute(verts,3));
@@ -768,8 +769,8 @@
       // Lower spatial FREQUENCY so the road's lateral speed stays trackable even at top flight
       // speed -> you can always stay on it with good driving (fair). Amplitude still demands real
       // steering. Curves get a touch sharper as you survive, but never untrackable.
-      const amp=clamp(0.5+this.game.difficulty.level/7,0.5,1.0);
-      return (17*Math.sin(z*0.011) + 6*Math.sin(z*0.026+1.3))*amp;
+      const amp=clamp(0.4+this.game.difficulty.level/9,0.4,0.85);
+      return (13*Math.sin(z*0.010) + 5*Math.sin(z*0.024+1.3))*amp;
     }
     _place(b,x,z,w,h,d,decor){
       b.mesh.visible=true; b.active=true; b.hit=false; b.missed=false; b.decor=!!decor; b.w=w; b.h=h; b.d=d;
@@ -788,17 +789,22 @@
       this.buildings.push(b);
     }
     _spawnAt(z){
-      const px=this._pathX(z);
-      // RANDOM tower placement: jitter left/right within the road (grows as you survive) so you
-      // must read & steer to each one. Sometimes they line up (easy streak), sometimes they zig-zag.
-      const jit=lerp(3,8,clamp(this.game.difficulty.level/6,0,1));
+      const D=this.game.difficulty, px=this._pathX(z);
+      // Each tower steps left/right from the last by a RANDOM but REACHABLE amount (how far you can
+      // strafe before it arrives). So a skilled player can always chain them (sustainable, Subway-
+      // Surfers style) yet must steer constantly — and the randomness keeps it from being trivial.
+      const lane=lerp(11,18,clamp(D.level/6,0,1));
+      const spd=Math.max(40,this.game.player.fwdNow||40);
+      const strafe=34+Math.min(spd*0.5,62);
+      const reach=clamp(strafe*(D.stepGap()*0.8/spd)*0.5, 5, lane);   // a fraction of what's reachable
+      this.lastTowerX=clamp(this.lastTowerX + (Math.random()<0.5?-1:1)*rand(reach*0.4,reach), -lane, lane);
       const b=this._take(); if(!b) return;
-      this._place(b, px+rand(-jit,jit), z, rand(8,11), rand(22,40), rand(6,9), false);
+      this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
       // HOUSES lining the road on both sides: DECOR only (not smashable), short + cosy.
       for(const side of [-1,1]){
-        if(Math.random()<0.7){
+        if(Math.random()<0.6){
           const nb=this._take();
-          if(nb) this._place(nb, clamp(px+side*rand(22,32),-44,44),
+          if(nb) this._place(nb, clamp(px+side*rand(this.roadHalf+4,this.roadHalf+16),-60,60),
                              z+rand(-4,4), rand(6,10), rand(7,15), rand(6,10), true);
         }
       }
@@ -810,17 +816,8 @@
     update(){
       const pz=this.game.player.pos.z;
       while(this.nextZ < pz + this.aheadDist){
-        if(this.stackLeft>0){
-          // SATISFYING STACK: a tight run of aligned towers on the road -> chain a big combo
-          // (best blasted with SURGE's wide hitbox). Easy to read, very rewarding.
-          const b=this._take();
-          if(b) this._place(b, this._pathX(this.nextZ)+rand(-1.5,1.5), this.nextZ, rand(9,12), rand(24,40), rand(6,8), false);
-          this.nextZ += rand(9,13); this.stackLeft--;
-        } else {
-          this._spawnAt(this.nextZ);
-          this.nextZ += this.game.difficulty.stepGap()*rand(0.7,1.4);  // random spacing: clusters + gaps
-          if(Math.random()<0.14) this.stackLeft = 4 + (Math.random()*4|0);   // occasionally kick off a stack
-        }
+        this._spawnAt(this.nextZ);
+        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35);  // sparse, randomised spacing
       }
       const playing=this.game.run.state!=='READY'&&this.game.run.state!=='GameOver'&&this.game.run.state!=='Paused';
       for(let i=this.buildings.length-1;i>=0;i--){
@@ -851,7 +848,7 @@
       }
       return null;
     }
-    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; } this.buildings.length=0; this.nextZ=40; }
+    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; }
   }
 
   // ===================================================================================
