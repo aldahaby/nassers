@@ -119,12 +119,12 @@
     <h1>INVINCIBLE RUN</h1>
     <h2>SMASH DOWN THE ROAD</h2>
     <p>Weave down the winding road and plow your invincible victim through the glowing towers.
-       Each smash refuels momentum — grab <b>🪙 coins</b> for score and <b>energy drinks</b> for a
-       big momentum + adrenaline boost.</p>
+       <b>Miss a tower and you lose momentum &amp; your streak</b> — chain hits to set yourself
+       ON FIRE. Grab <b>🪙 coins</b> and <b>energy drinks</b> (momentum + adrenaline) along the way.</p>
     <p class="keys keys-hint-desktop"><b>A / D or ← / →</b> steer · <b>SHIFT</b> surge · <b>R</b> restart</p>
-    <p class="keys keys-hint-mobile"><b>Hold left / right side</b> of the screen to steer · <b>SURGE</b> to boost</p>
-    <p>You keep getting faster — but it stays fair: drive well and you keep going. Tap <b>SURGE</b>
-       for double speed and a huge catch radius when you need it.</p>
+    <p class="keys keys-hint-mobile"><b>Slide the joystick</b> to steer · <b>SURGE</b> to blast a stack</p>
+    <p>You <b>keep getting faster</b> — eventually too fast to catch every tower. Build a <b>x6
+       combo</b> to unlock <b>SURGE</b> (double speed + huge catch radius) and rip through a stack.</p>
     <div id="best-line"></div>
     <button id="start-btn" class="btn">Start Flight</button>
   </div>
@@ -257,13 +257,14 @@
       this.level=this.elapsed/4;
       this.densityP=clamp(this.level/5,0,1);              // road thins over the first ~20s, then plateaus
     }
-    stepGap(){ return lerp(19,50,this.densityP); }        // spacing between buildings on the road
+    stepGap(){ return lerp(20,46,this.densityP); }        // spacing between buildings on the road
     buildingW(){ return rand(9,14); }
-    // FAIR speed: starts brisk (not trivial) and rises to a high but controllable PLATEAU, so the
-    // game never outruns your reflexes — skilled play can keep going. (cap ~116 m/s ≈ 420 km/h)
-    baseSpeed(){ return 40 + 76*(1-Math.exp(-this.elapsed/28)); }
-    // decay CAPS so hitting most buildings always sustains you -> no rigged timer death.
-    decay(){ return lerp(6,9,this.densityP); }      // gentle, capped -> good driving always sustains
+    // Speed CLIMBS FOREVER (no plateau): the faster you go, the less time you have to read & reach
+    // each building -> high speed is what eventually beats you. Better players reach far higher
+    // speeds before they start missing, so it's finite but skill-driven (not a rigged timer).
+    baseSpeed(){ return 38 + this.elapsed*1.45; }
+    decay(){ return lerp(5,8,this.densityP); }            // light bleed; the REAL danger is MISSING
+    missPenalty(){ return 8 + this.level*0.6; }           // each missed tower costs momentum (grows)
     reset(){ this.level=0; this.densityP=0; this.elapsed=0; }
   }
 
@@ -272,10 +273,13 @@
   // ===================================================================================
   class MomentumSystem {
     constructor(game){ this.game=game; this.value=0; this.MAX=100; this.HIGH=66; }
-    start(){ this.value=58; }
+    start(){ this.value=60; }
     addHit(amount){ this.value=clamp(this.value+amount,0,this.MAX); }
+    // MISSING a tower hurts -> at high speed you miss more, so speed is what eventually kills you.
+    onMiss(){ this.value=clamp(this.value-this.game.difficulty.missPenalty(),0,this.MAX);
+              if(this.value<=0) this.game.run.toGameOver(); }
     isHigh(){ return this.value>=this.HIGH; }
-    isLow(){ return this.value<=24; }
+    isLow(){ return this.value<=26; }
     factor(){ return this.value/this.MAX; }
     update(dt){
       // decay scales with difficulty AND current momentum; surge eases it (your lifeline)
@@ -594,11 +598,12 @@
       this.dummyGrip=2.9;            // world-Z lead of the gripped head (the smash point)
 
       this._smashPulse=0;
-      this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=3.0; this.SURGE_CD=6.0;
+      this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=2.8; this.SURGE_CD=9.0; this.SURGE_COMBO=6;
     }
     speed(){ return this.vel.length(); }
     position(){ return this.pos; }
-    surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0; }
+    // SURGE must be EARNED: only available once you've built a combo (and off cooldown).
+    surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,26); this.fwdNow=26; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
@@ -627,11 +632,12 @@
       // LEFT/RIGHT ONLY, very responsive. Strafe scales WITH flight speed (and surge already
       // doubles fwdNow) so threading the weaving road is ALWAYS physically possible -> fair at any
       // speed; the challenge is reaction/precision, never an impossible wall. sx flips so RIGHT=right.
-      // Strafe scales with flight speed so the road is always trackable, but tuned for a CALM,
-      // controllable feel with the analog stick (not twitchy). steer can be partial (joystick).
-      const STRAFE=this.fwdNow*0.8 + 26;
+      // Strafe is CAPPED: it grows with speed but tops out, so once you're very fast you can't
+      // always reach the next (jittered) building in time -> speed is what beats you. Tuned slower
+      // and weightier for a realistic feel (analog, no deadzone, but not stiff).
+      const STRAFE=34 + Math.min(this.fwdNow*0.45, 56);   // ~51 early -> caps ~90
       const sx=-steer.x;
-      this.vel.x=damp(this.vel.x,sx*STRAFE,16,dt);
+      this.vel.x=damp(this.vel.x,sx*STRAFE,12,dt);         // weightier response
       this.vel.y=0;
       this.vel.z=this.fwdNow;
       this.pos.x+=this.vel.x*dt;
@@ -639,7 +645,7 @@
       this.pos.x=clamp(this.pos.x,-44,44);
       // pos.y stays constant -> the villain flies dead level
 
-      this.bank =damp(this.bank, sx*0.55,9,dt);
+      this.bank =damp(this.bank, sx*0.7,8,dt);     // leans into turns (visual weight)
       this._smashPulse=damp(this._smashPulse,0,4,dt);
 
       this.group.position.copy(this.pos);
@@ -698,6 +704,7 @@
       this.nextZ=40;
       this.gap=20;             // distance between building rows (denser city)
       this.aheadDist=620;      // keep buildings populated out to the fog so they fade in (no pop-in)
+      this.stackLeft=0;        // remaining buildings in the current satisfying combo-stack
       this._ground();
       this._buildRoad();
       const geo=new THREE.BoxGeometry(1,1,1);
@@ -803,13 +810,24 @@
     update(){
       const pz=this.game.player.pos.z;
       while(this.nextZ < pz + this.aheadDist){
-        this._spawnAt(this.nextZ);
-        this.nextZ += this.game.difficulty.stepGap()*rand(0.7,1.4);   // RANDOM spacing: clusters + gaps
+        if(this.stackLeft>0){
+          // SATISFYING STACK: a tight run of aligned towers on the road -> chain a big combo
+          // (best blasted with SURGE's wide hitbox). Easy to read, very rewarding.
+          const b=this._take();
+          if(b) this._place(b, this._pathX(this.nextZ)+rand(-1.5,1.5), this.nextZ, rand(9,12), rand(24,40), rand(6,8), false);
+          this.nextZ += rand(9,13); this.stackLeft--;
+        } else {
+          this._spawnAt(this.nextZ);
+          this.nextZ += this.game.difficulty.stepGap()*rand(0.7,1.4);  // random spacing: clusters + gaps
+          if(Math.random()<0.14) this.stackLeft = 4 + (Math.random()*4|0);   // occasionally kick off a stack
+        }
       }
+      const playing=this.game.run.state!=='READY'&&this.game.run.state!=='GameOver'&&this.game.run.state!=='Paused';
       for(let i=this.buildings.length-1;i>=0;i--){
         const b=this.buildings[i];
-        // MISS: a hittable tower slipped just behind you without being smashed -> break the streak
-        if(!b.decor && !b.hit && !b.missed && b.mesh.position.z < pz-1.5){ b.missed=true; this.game.combo.miss(); }
+        // MISS (only while actually playing): a hittable tower slipped behind you unsmashed ->
+        // break the streak AND lose momentum. Skipped in the menu so it can't end the run on load.
+        if(playing && !b.decor && !b.hit && !b.missed && b.mesh.position.z < pz-1.5){ b.missed=true; this.game.combo.miss(); this.game.momentum.onMiss(); }
         if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; this.buildings.splice(i,1); }
       }
       this.updateRoad();
@@ -962,7 +980,8 @@
       const p=g.player;
       if(p.surgeActive>0){ this.el.surge.textContent='⚡ SURGING'; this.el.surge.style.color='#ffcc00'; this.el.boostBtn.style.opacity='1'; }
       else if(p.surgeReady()){ this.el.surge.textContent='⚡ SURGE READY'; this.el.surge.style.color='#34c759'; this.el.boostBtn.style.opacity='1'; }
-      else { this.el.surge.textContent='SURGE '+Math.ceil(p.surgeCd)+'s'; this.el.surge.style.color='rgba(255,255,255,.45)'; this.el.boostBtn.style.opacity='0.4'; }
+      else if(p.surgeCd>0){ this.el.surge.textContent='SURGE '+Math.ceil(p.surgeCd)+'s'; this.el.surge.style.color='rgba(255,255,255,.45)'; this.el.boostBtn.style.opacity='0.4'; }
+      else { this.el.surge.textContent='SURGE @ x'+p.SURGE_COMBO+' COMBO'; this.el.surge.style.color='rgba(255,255,255,.5)'; this.el.boostBtn.style.opacity='0.4'; }
       if(this._hide && performance.now()>this._hide && g.combo.count<2){ this.el.combo.style.opacity='0'; this._hide=0; }
     }
   }
