@@ -259,9 +259,9 @@
     }
     stepGap(){ return lerp(19,50,this.densityP); }        // spacing between buildings on the road
     buildingW(){ return rand(9,14); }
-    // FAIR speed: rises quickly at first then soft-PLATEAUS at a high but controllable cap, so the
-    // game never outruns your reflexes — skilled play can keep going. (cap ~114 m/s ≈ 410 km/h)
-    baseSpeed(){ return 34 + 80*(1-Math.exp(-this.elapsed/32)); }
+    // FAIR speed: starts brisk (not trivial) and rises to a high but controllable PLATEAU, so the
+    // game never outruns your reflexes — skilled play can keep going. (cap ~116 m/s ≈ 420 km/h)
+    baseSpeed(){ return 40 + 76*(1-Math.exp(-this.elapsed/28)); }
     // decay CAPS so hitting most buildings always sustains you -> no rigged timer death.
     decay(){ return lerp(6,9,this.densityP); }      // gentle, capped -> good driving always sustains
     reset(){ this.level=0; this.densityP=0; this.elapsed=0; }
@@ -289,21 +289,30 @@
   }
 
   // ===================================================================================
-  // COMBO — consecutive building smashes within a time window.
+  // COMBO — consecutive smashes with NO miss. Missing a tower BREAKS the streak. A high
+  // streak sets the villain ON FIRE (escalating reward, like Paint Hit's color blast).
   // ===================================================================================
   class ComboSystem {
-    constructor(game){ this.game=game; this.count=0; this.best=0; this.windowMs=2600; this.lastAt=0; }
+    constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=8; }
     hit(){
-      const now=performance.now();
-      this.count = (now-this.lastAt<=this.windowMs) ? this.count+1 : 1;
-      this.lastAt=now; this.best=Math.max(this.best,this.count);
+      this.count++; this.best=Math.max(this.best,this.count);
       this.game.ui.flashCombo(this.count);
       if(this.count>=2 && this.count%5===0) this.game.audio.comboMilestone(this.count);
+      if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); }  // ignite!
       return this.count;
     }
-    multiplier(){ return 1+Math.max(0,this.count-1)*0.3; }
-    update(){ if(this.count>0 && performance.now()-this.lastAt>this.windowMs){ this.count=0; this.game.ui.flashCombo(0); } }
-    reset(){ this.count=0; this.lastAt=0; }
+    miss(){
+      if(this.count<=0) return;
+      const wasFire=this.onFire();
+      this.count=0; this.game.ui.flashCombo(0);
+      if(wasFire) this.game.audio.fireOut();
+    }
+    onFire(){ return this.count>=this.FIRE; }
+    fireLevel(){ return clamp((this.count-this.FIRE)/14,0,1); }   // 0..1 over the fire range
+    // multiplier grows faster once on fire -> streaks are very rewarding
+    multiplier(){ const m=1+Math.max(0,this.count-1)*0.35; return this.onFire()? m*1.5 : m; }
+    update(){}
+    reset(){ this.count=0; }
   }
 
   // ===================================================================================
@@ -472,7 +481,7 @@
       }
       // speed lines: intensity from speed; they stream toward/past the camera and stretch with speed
       const p=this.game.player, spd=p.speed();
-      const surge=p.surgeActive>0;
+      const surge=p.surgeActive>0, fire=this.game.combo.onFire();
       const intensity=clamp((spd-45)/90,0,1);          // appear once you're moving quick
       const want=Math.round((surge?1:intensity)*this.streaks.length);
       const len=8+spd*0.25, op=(surge?0.5:0.28)*Math.max(intensity,surge?1:0);
@@ -483,8 +492,8 @@
         s.mesh.position.z -= (spd+60)*dt;               // rush backwards past the camera
         if(s.mesh.position.z < p.pos.z-25){ this._seedStreak(s,p); }
         s.mesh.scale.set(1,1,len);
-        s.mesh.material.color.setHex(surge?0xffe08a:0xcfe6ff);
-        s.mesh.material.opacity=op;
+        s.mesh.material.color.setHex(fire?0xff6a1a:surge?0xffe08a:0xcfe6ff);
+        s.mesh.material.opacity=op*(fire?1.5:1);
       }
     }
     reset(){ for(const d of this.debris){d.life=0;d.mesh.visible=false;} for(const r of this.rings){r.life=0;r.mesh.visible=false;}
@@ -561,10 +570,15 @@
       const armR=new THREE.Mesh(new THREE.CapsuleGeometry(0.16,0.8,4,6),suit); armR.rotation.x=Math.PI/2-0.5; armR.position.set(-0.5,-0.1,0.7);
       this.hand=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10),skin); this.hand.position.set(0.72,-0.05,1.95); // grips dummy head (held out to the side)
       this.rig.add(torso,head,mstache,this.gripArm,armR,this.hand);
+      this.suitMat=suit;                              // recoloured/lit when ON FIRE
+      // FIRE AURA — additive glow that engulfs the villain on a hot streak
+      this.fireAura=new THREE.Mesh(new THREE.SphereGeometry(1.7,14,14),
+        new THREE.MeshBasicMaterial({color:0xff5a14,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+      this.fireAura.position.z=0.6; this.fireAura.visible=false; this.rig.add(this.fireAura);
 
       // ----- dummy: gripped BY THE HEAD up top, body DANGLING straight down (limp) -----
       this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(1.4);
-      const dsuit=new THREE.MeshStandardMaterial({color:0x4f9d3a,roughness:.55,emissive:0x06180a});
+      const dsuit=new THREE.MeshStandardMaterial({color:0x4f9d3a,roughness:.55,emissive:0x06180a}); this.dsuitMat=dsuit;
       const dskin=new THREE.MeshStandardMaterial({color:0xf1c9a5,roughness:.6});
       const dhead=new THREE.Mesh(new THREE.SphereGeometry(0.4,16,16),dskin); dhead.position.set(0,0,0); dhead.castShadow=true;
       this.dummy.add(dhead);
@@ -649,6 +663,22 @@
       this.dLimbs[1].rotation.set(0.15+sw2*0.18,0,-0.18-sw2*0.12);
       this.dLimbs[2].rotation.set(0.1+sw2*0.12,0,0.06+sw*0.08);
       this.dLimbs[3].rotation.set(0.1+sw*0.12,0,-0.06-sw2*0.08);
+
+      // ----- ON FIRE: streak reward — the villain (and victim) ignite with a pulsing glow -----
+      const fire=g.combo.onFire(), fl=g.combo.fireLevel();
+      if(fire){
+        const pulse=0.55+0.45*Math.sin(now*0.022);
+        this.fireAura.visible=true;
+        this.fireAura.material.opacity=0.4+0.35*pulse+fl*0.2;
+        this.fireAura.scale.setScalar(1+0.5*fl+0.18*pulse);
+        const e=0.5+0.5*pulse+fl*0.4;
+        this.suitMat.emissive.setRGB(e,e*0.35,0);
+        this.dsuitMat.emissive.setRGB(e*0.9,e*0.3,0);
+      } else if(this.fireAura.visible){
+        this.fireAura.visible=false;
+        this.suitMat.emissive.setRGB(0,0,0);
+        this.dsuitMat.emissive.setHex(0x06180a);
+      }
     }
     // hit sphere: centred on the PLAYER's x (so you aim with your own position, intuitive),
     // led forward to the dummy/hammer's z. Tight radius -> precision matters. Surge widens it.
@@ -684,9 +714,10 @@
     }
     _ground(){
       const g=this.game;
-      const floor=new THREE.Mesh(new THREE.PlaneGeometry(6000,6000),
+      this.floor=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),
                   new THREE.MeshStandardMaterial({color:0x6f8f55,roughness:1}));   // grass
-      floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; g.scene.add(floor);
+      this.floor.rotation.x=-Math.PI/2; this.floor.receiveShadow=true; this.floor.frustumCulled=false;
+      g.scene.add(this.floor);
     }
     // a winding ROAD ribbon that follows the building path, so it's obvious where to fly/hit.
     _buildRoad(){
@@ -720,6 +751,8 @@
       this.road.geometry.attributes.position.needsUpdate=true;
       this.road.geometry.computeVertexNormals();
       this.roadLine.geometry.attributes.position.needsUpdate=true;
+      // INFINITE FLOOR: the grass follows the player so it never runs out (no flying into sky).
+      if(this.floor) this.floor.position.set(pz*0+this.game.player.pos.x, 0, pz);
     }
     _take(){ return this.pool.find(p=>!p.active); }
     // Buildings form a single winding PATH (along the road) — in front of each other, not
@@ -732,7 +765,7 @@
       return (17*Math.sin(z*0.011) + 6*Math.sin(z*0.026+1.3))*amp;
     }
     _place(b,x,z,w,h,d,decor){
-      b.mesh.visible=true; b.active=true; b.hit=false; b.decor=!!decor; b.w=w; b.h=h; b.d=d;
+      b.mesh.visible=true; b.active=true; b.hit=false; b.missed=false; b.decor=!!decor; b.w=w; b.h=h; b.d=d;
       b.mesh.scale.set(w,h,d);
       b.mesh.position.set(clamp(x,-44,44), h/2, z);
       const m=b.mesh.material;
@@ -749,14 +782,16 @@
     }
     _spawnAt(z){
       const px=this._pathX(z);
-      // ONE smashable TOWER per step, right on the road -> you must thread it.
+      // RANDOM tower placement: jitter left/right within the road (grows as you survive) so you
+      // must read & steer to each one. Sometimes they line up (easy streak), sometimes they zig-zag.
+      const jit=lerp(3,8,clamp(this.game.difficulty.level/6,0,1));
       const b=this._take(); if(!b) return;
-      this._place(b, px, z, rand(8,12), rand(22,40), rand(6,9), false);
+      this._place(b, px+rand(-jit,jit), z, rand(8,11), rand(22,40), rand(6,9), false);
       // HOUSES lining the road on both sides: DECOR only (not smashable), short + cosy.
       for(const side of [-1,1]){
         if(Math.random()<0.7){
           const nb=this._take();
-          if(nb) this._place(nb, clamp(px+side*rand(20,30),-44,44),
+          if(nb) this._place(nb, clamp(px+side*rand(22,32),-44,44),
                              z+rand(-4,4), rand(6,10), rand(7,15), rand(6,10), true);
         }
       }
@@ -767,11 +802,14 @@
     }
     update(){
       const pz=this.game.player.pos.z;
-      const gap=this.game.difficulty.stepGap();
-      while(this.nextZ < pz + this.aheadDist){ this._spawnAt(this.nextZ); this.nextZ+=gap; }
-      // recycle behind
+      while(this.nextZ < pz + this.aheadDist){
+        this._spawnAt(this.nextZ);
+        this.nextZ += this.game.difficulty.stepGap()*rand(0.7,1.4);   // RANDOM spacing: clusters + gaps
+      }
       for(let i=this.buildings.length-1;i>=0;i--){
         const b=this.buildings[i];
+        // MISS: a hittable tower slipped just behind you without being smashed -> break the streak
+        if(!b.decor && !b.hit && !b.missed && b.mesh.position.z < pz-1.5){ b.missed=true; this.game.combo.miss(); }
         if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; this.buildings.splice(i,1); }
       }
       this.updateRoad();
@@ -871,6 +909,8 @@
       this._tone(base+combo*8,0.25,'square',0.3); this._noise(0.08+tier.shake*0.18,0.35+tier.shake*0.35); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
     coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
+    fire(){ this._tone(180,0.5,'sawtooth',0.35); this._tone(90,0.6,'square',0.25); this._noise(0.5,0.3); }
+    fireOut(){ this._tone(300,0.25,'sine',0.25); this._tone(150,0.3,'sine',0.2); }
     drink(){ this._tone(440,0.12,'sine',0.3); this._tone(660,0.16,'sine',0.28); this._tone(880,0.2,'sine',0.24); }
     surge(){ this._tone(260,0.3,'sawtooth',0.3); this._tone(680,0.35,'sine',0.22); this._noise(0.2,0.2); }
     gameOver(){ this._tone(200,0.5,'sawtooth',0.4); setTimeout(()=>this._tone(90,0.9,'sawtooth',0.4),120); }
@@ -892,8 +932,13 @@
       this._hide=0;
     }
     flashCombo(n){
-      if(n>=2){ this.el.comboNum.textContent='x'+n; this.el.combo.style.opacity='1';
-        this.el.combo.style.transform='translate(-50%,-50%) scale(1.3)';
+      if(n>=2){
+        const fire=this.game.combo.onFire();
+        this.el.comboNum.textContent=(fire?'🔥x':'x')+n;
+        this.el.combo.querySelector('small').textContent=fire?'ON FIRE':'COMBO';
+        this.el.combo.style.color=fire?'#ff5a1e':'var(--warn)';
+        this.el.combo.style.opacity='1';
+        this.el.combo.style.transform='translate(-50%,-50%) scale(1.35)';
         requestAnimationFrame(()=>this.el.combo.style.transform='translate(-50%,-50%) scale(1)');
         this._hide=performance.now()+1300;
       } else this.el.combo.style.opacity='0';
@@ -909,7 +954,10 @@
       this.el.speed.textContent=Math.round(g.player.speed()*3.6)+' km/h';
       const low=g.momentum.isLow() && g.run.state!=='READY' && g.run.state!=='GameOver';
       this.el.warn.style.opacity=low?'1':'0';
-      this.el.vig.style.boxShadow=low?'inset 0 0 200px 50px rgba(160,0,0,.5)':'inset 0 0 200px 40px rgba(120,0,0,0)';
+      // screen edge glow: red when low momentum, fiery orange when ON FIRE, else none
+      if(low) this.el.vig.style.boxShadow='inset 0 0 200px 50px rgba(160,0,0,.5)';
+      else if(g.combo.onFire()) this.el.vig.style.boxShadow='inset 0 0 220px 60px rgba(255,90,0,.35)';
+      else this.el.vig.style.boxShadow='inset 0 0 200px 40px rgba(120,0,0,0)';
       // surge indicator: SURGING / READY / cooldown countdown
       const p=g.player;
       if(p.surgeActive>0){ this.el.surge.textContent='⚡ SURGING'; this.el.surge.style.color='#ffcc00'; this.el.boostBtn.style.opacity='1'; }
