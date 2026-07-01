@@ -8,9 +8,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>INVINCIBLE RUN — Omni Flight</title>
   <style>
-    :root { --hud:#f4f4f4; --accent:#ff3b30; --good:#34c759; --warn:#ffcc00; }
+    :root { --hud:#eceff1; --accent:#e0563b; --good:#4f9d63; --warn:#d9a441; --panel:#232a33; --teal:#3f8f7a; }
     * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#05060a;
+    html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#12161c;
                 touch-action:none; overscroll-behavior:none; }
     body { font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif; color:var(--hud); user-select:none; -webkit-user-select:none; }
     #app { position:fixed; inset:0; }
@@ -25,50 +25,49 @@
     #hud { position:fixed; inset:0; pointer-events:none; z-index:10; padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
     .bar-wrap { position:absolute; left:16px; width:min(260px,44vw); }
     .bar-label { font-size:11px; letter-spacing:2px; opacity:.85; margin-bottom:4px; text-transform:uppercase; }
-    .bar { height:13px; border-radius:8px; background:rgba(255,255,255,.12); overflow:hidden; box-shadow:0 0 0 1px rgba(255,255,255,.08) inset; }
-    .bar > i { display:block; height:100%; width:0%; border-radius:8px; transition:width .08s linear; }
+    .bar { height:14px; border-radius:7px; background:rgba(255,255,255,.13); overflow:hidden; }
+    .bar > i { display:block; height:100%; width:0%; border-radius:7px; transition:width .08s linear; }
     #momentum-wrap { top:14px; }
-    #momentum-bar > i { background:linear-gradient(90deg,#ff3b30,#ff9500,#ffcc00); }
+    #momentum-bar > i { background:#4f9d63; }        /* matte green */
     #adrenaline-wrap { top:60px; }
-    #adrenaline-bar > i { background:linear-gradient(90deg,#5856d6,#af52de,#ff2d55); }
+    #adrenaline-bar > i { background:#d98a3d; }       /* matte amber (no purple) */
 
     #score-box { position:absolute; top:14px; right:62px; text-align:right; }
-    #coins { font-size:18px; font-weight:800; color:#ffd23b; text-shadow:0 2px 8px rgba(0,0,0,.6); margin-bottom:1px; }
-    #score { font-size:34px; font-weight:800; line-height:1; text-shadow:0 2px 12px rgba(0,0,0,.6); }
-    #score-sub { font-size:12px; opacity:.85; margin-top:3px; }
+    #coins { font-size:18px; font-weight:800; color:#d9a441; text-shadow:0 1px 2px rgba(0,0,0,.5); margin-bottom:1px; }
+    #score { font-size:34px; font-weight:800; line-height:1; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+    #score-sub { font-size:12px; opacity:.8; margin-top:3px; }
     #pause-btn { position:fixed; top:12px; right:12px; z-index:16; width:42px; height:42px; border-radius:10px;
-                 background:rgba(0,0,0,.32); color:#fff; border:1px solid rgba(255,255,255,.28); font-size:13px;
+                 background:rgba(35,42,51,.72); color:#eceff1; border:1px solid rgba(255,255,255,.18); font-size:13px;
                  letter-spacing:1px; cursor:pointer; pointer-events:auto; display:flex; align-items:center; justify-content:center; }
     #pause-btn:active { transform:scale(.94); }
-    .btn-sec { background:rgba(255,255,255,.14) !important; color:#fff !important; box-shadow:none !important;
-               font-size:15px !important; padding:11px 30px !important; }
+    .btn-sec { background:#3a434f !important; color:#eceff1 !important; box-shadow:0 3px 0 rgba(0,0,0,.28) !important;
+               font-size:15px !important; padding:12px 30px !important; }
 
     #combo { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) scale(1);
              font-size:clamp(40px,12vw,72px); font-weight:900; opacity:0; color:var(--warn);
-             text-shadow:0 4px 24px rgba(0,0,0,.7); transition:opacity .15s; white-space:nowrap; }
+             text-shadow:0 2px 5px rgba(0,0,0,.55); transition:opacity .15s; white-space:nowrap; }
     #combo small { display:block; font-size:16px; letter-spacing:4px; opacity:.85; text-align:center; }
 
     #warning { position:absolute; bottom:30%; left:50%; transform:translate(-50%,0);
                font-size:clamp(18px,5vw,26px); font-weight:800; color:var(--accent); opacity:0;
-               letter-spacing:2px; text-shadow:0 0 18px rgba(255,0,0,.6); transition:opacity .15s; }
-    #state-tag { position:absolute; bottom:14px; left:16px; font-size:11px; letter-spacing:3px; text-transform:uppercase; opacity:.6; }
-    #speed-tag { position:absolute; bottom:14px; right:16px; font-size:11px; letter-spacing:2px; opacity:.6; }
+               letter-spacing:2px; text-shadow:0 1px 3px rgba(0,0,0,.5); transition:opacity .15s; }
+    #state-tag { position:absolute; bottom:14px; left:16px; font-size:11px; letter-spacing:3px; text-transform:uppercase; opacity:.55; }
+    #speed-tag { position:absolute; bottom:14px; right:16px; font-size:11px; letter-spacing:2px; opacity:.55; }
     #surge-tag { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font-size:12px;
-                 font-weight:800; letter-spacing:2px; color:#34c759; }
+                 font-weight:800; letter-spacing:2px; color:var(--good); }
     #best-line { font-size:14px; font-weight:800; letter-spacing:2px; color:var(--warn); margin-top:6px; min-height:18px; }
 
     /* ---------- Overlays ---------- */
     .overlay { position:fixed; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center;
-               text-align:center; background:radial-gradient(circle at 50% 35%,rgba(20,22,34,.85),rgba(3,4,8,.96)); padding:24px; }
-    .overlay h1 { font-size:clamp(34px,9vw,82px); margin:0; letter-spacing:3px; line-height:1;
-                  background:linear-gradient(90deg,#ff3b30,#ffcc00); -webkit-background-clip:text; background-clip:text; color:transparent; }
-    .overlay h2 { font-size:clamp(14px,4vw,20px); margin:6px 0 0; opacity:.8; font-weight:600; letter-spacing:2px; }
-    .overlay p { max-width:520px; font-size:14px; line-height:1.6; opacity:.85; }
-    .overlay .keys { font-size:12px; opacity:.65; margin-top:4px; }
-    .btn { pointer-events:auto; margin-top:20px; padding:15px 42px; font-size:18px; font-weight:800; letter-spacing:2px;
-           color:#05060a; background:linear-gradient(90deg,#ffcc00,#ff9500); border:none; border-radius:40px; cursor:pointer;
-           text-transform:uppercase; box-shadow:0 8px 30px rgba(255,150,0,.35); }
-    .btn:active { transform:scale(.96); }
+               text-align:center; background:rgba(20,24,30,.94); padding:24px; }
+    .overlay h1 { font-size:clamp(34px,9vw,74px); margin:0; letter-spacing:2px; line-height:1.05; color:var(--hud); font-weight:900; }
+    .overlay h2 { font-size:clamp(13px,3.6vw,18px); margin:8px 0 0; opacity:.72; font-weight:600; letter-spacing:2px; color:var(--warn); }
+    .overlay p { max-width:520px; font-size:14px; line-height:1.6; opacity:.82; }
+    .overlay .keys { font-size:12px; opacity:.62; margin-top:4px; }
+    .btn { pointer-events:auto; margin-top:20px; padding:15px 44px; font-size:18px; font-weight:800; letter-spacing:2px;
+           color:#fff; background:var(--teal); border:none; border-radius:14px; cursor:pointer;
+           text-transform:uppercase; box-shadow:0 4px 0 rgba(0,0,0,.3); }
+    .btn:active { transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,.3); }
     #gameover-stats { font-size:15px; opacity:.9; margin-top:8px; line-height:1.9; }
     #gameover-stats b { color:var(--warn); }
     .hidden { display:none !important; }
@@ -77,14 +76,14 @@
     #touch { position:fixed; inset:0; z-index:15; pointer-events:none; }
     .pad { position:absolute; bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
            display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:1px; }
-    #btn-boost { right:26px; width:96px; height:96px; background:rgba(255,204,0,.28); box-shadow:0 0 0 1px rgba(255,204,0,.55) inset; }
-    /* analog joystick (joycon style) */
+    #btn-boost { right:26px; width:96px; height:96px; color:#eceff1; background:rgba(63,143,122,.5);
+                 border:2px solid rgba(255,255,255,.22); }
+    /* analog joystick (flat matte) */
     #joy-base { position:absolute; left:24px; bottom:max(28px,env(safe-area-inset-bottom)); width:138px; height:138px;
-                border-radius:50%; background:rgba(255,255,255,.07); box-shadow:0 0 0 2px rgba(255,255,255,.18) inset;
+                border-radius:50%; background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.16);
                 pointer-events:auto; touch-action:none; }
     #joy-knob { position:absolute; left:39px; top:39px; width:60px; height:60px; border-radius:50%;
-                background:radial-gradient(circle at 40% 32%, #ffffff, #b9c4d2); box-shadow:0 5px 14px rgba(0,0,0,.45);
-                will-change:transform; }
+                background:#cfd6dd; box-shadow:0 2px 6px rgba(0,0,0,.35); will-change:transform; }
     body:not(.touch) #touch { display:none; }
     body:not(.touch) .keys-hint-mobile { display:none; }
     body.touch .keys-hint-desktop { display:none; }
@@ -691,7 +690,7 @@
     // base radius rewards precision; SURGE makes it HUGE (covers the whole lane) so you auto-blast
     // a combo through the next stretch despite the 2x speed -> surge is a clear reward, not a risk.
     hitSphere(){ return { c:{x:this.pos.x, y:this.dummy.position.y, z:this.dummy.position.z},
-                          r:this.surgeActive>0?17:2.7, zPrev:this._dummyPrevZ }; }
+                          r:this.surgeActive>0?9:2.6, zPrev:this._dummyPrevZ }; }
   }
 
   // ===================================================================================
@@ -798,15 +797,16 @@
       const lane=lerp(14,22,clamp(D.level/6,0,1));
       const spd=Math.max(45,this.game.player.fwdNow||45);
       const strafe=28+spd*0.72;
-      const reach=clamp(strafe*(D.stepGap()/spd)*0.72, 8, lane);
-      // Individual towers stay very HITTABLE with good play (so you rarely miss and survive the harsh
-      // penalty) — but a long COMBO is still hard because any single miss resets it. Ramps up a bit.
-      const hard=clamp(D.level/8,0,1);
-      const fHi=lerp(0.22,0.46,hard), fLo=fHi*0.4;
+      // "reach" = the demanding distance you must strafe before this tower arrives. Towers land near
+      // the FAR EDGE of it, so every one needs a fast, precise swing — near-perfect play just makes
+      // them (skill = keep going), any lapse misses. This is what makes it genuinely HARD.
+      const reach=clamp(strafe*(D.stepGap()/spd)*0.8, 8, lane*1.3);
+      const hard=clamp(D.level/7,0,1);
+      const fHi=lerp(0.72,1.0,hard), fLo=lerp(0.5,0.8,hard);
       let mag;
-      if(this.luckyLeft>0){ mag=rand(0.0,0.16)*reach; this.luckyLeft--; }        // aligned -> easy combo
-      else { mag=rand(fLo,fHi)*reach;                                            // spread -> earned combo
-             if(Math.random()<0.10) this.luckyLeft=3+(Math.random()*5|0); }      // ~1-in-10 lucky run
+      if(this.luckyLeft>0){ mag=rand(0.06,0.26)*reach; this.luckyLeft--; }       // rare LUCKY run -> easier
+      else { mag=rand(fLo,fHi)*reach;                                            // far apart -> earned
+             if(Math.random()<0.06) this.luckyLeft=2+(Math.random()*3|0); }      // ~1-in-16 lucky run, short
       this.lastTowerX=clamp(this.lastTowerX + (Math.random()<0.5?-1:1)*mag, -lane, lane);
       const b=this._take(); if(!b) return;
       this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
@@ -858,7 +858,7 @@
       }
       return null;
     }
-    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=5; } // easy intro run to establish a combo
+    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=2; } // short easy intro to establish a combo
   }
 
   // ===================================================================================
@@ -961,7 +961,7 @@
         const fire=this.game.combo.onFire();
         this.el.comboNum.textContent=(fire?'🔥x':'x')+n;
         this.el.combo.querySelector('small').textContent=fire?'ON FIRE':'COMBO';
-        this.el.combo.style.color=fire?'#ff5a1e':'var(--warn)';
+        this.el.combo.style.color=fire?'#e0653b':'var(--warn)';
         this.el.combo.style.opacity='1';
         this.el.combo.style.transform='translate(-50%,-50%) scale(1.35)';
         requestAnimationFrame(()=>this.el.combo.style.transform='translate(-50%,-50%) scale(1)');
@@ -985,8 +985,8 @@
       else this.el.vig.style.boxShadow='inset 0 0 200px 40px rgba(120,0,0,0)';
       // surge indicator: SURGING / READY / cooldown countdown
       const p=g.player;
-      if(p.surgeActive>0){ this.el.surge.textContent='⚡ SURGING'; this.el.surge.style.color='#ffcc00'; this.el.boostBtn.style.opacity='1'; }
-      else if(p.surgeReady()){ this.el.surge.textContent='⚡ SURGE READY'; this.el.surge.style.color='#34c759'; this.el.boostBtn.style.opacity='1'; }
+      if(p.surgeActive>0){ this.el.surge.textContent='⚡ SURGING'; this.el.surge.style.color='#d9a441'; this.el.boostBtn.style.opacity='1'; }
+      else if(p.surgeReady()){ this.el.surge.textContent='⚡ SURGE READY'; this.el.surge.style.color='#4f9d63'; this.el.boostBtn.style.opacity='1'; }
       else if(p.surgeCd>0){ this.el.surge.textContent='SURGE '+Math.ceil(p.surgeCd)+'s'; this.el.surge.style.color='rgba(255,255,255,.45)'; this.el.boostBtn.style.opacity='0.4'; }
       else { this.el.surge.textContent='SURGE @ x'+p.SURGE_COMBO+' COMBO'; this.el.surge.style.color='rgba(255,255,255,.5)'; this.el.boostBtn.style.opacity='0.4'; }
       if(this._hide && performance.now()>this._hide && g.combo.count<2){ this.el.combo.style.opacity='0'; this._hide=0; }
@@ -1021,7 +1021,7 @@
       if(isBest){ try{ localStorage.setItem('invrun_best',score); }catch(e){} }
       const best=Math.max(score,prev);
       document.getElementById('gameover-stats').innerHTML=
-        (isBest?`<div style="color:#ffcc00;font-weight:800;font-size:22px;margin-bottom:4px">★ NEW BEST! ★</div>`:'')+
+        (isBest?`<div style="color:#d9a441;font-weight:800;font-size:22px;margin-bottom:4px">★ NEW BEST! ★</div>`:'')+
         `Score <b>${score.toLocaleString()}</b><br>`+
         `Best <b>${best.toLocaleString()}</b><br>`+
         `🪙 <b>${g.score.coins}</b> · Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b> · <b>${Math.round(g.score.distance)} m</b>`;
