@@ -87,6 +87,53 @@
     body:not(.touch) #touch { display:none; }
     body:not(.touch) .keys-hint-mobile { display:none; }
     body.touch .keys-hint-desktop { display:none; }
+
+    /* live BEST readout (high-score emphasis) */
+    #score-best { font-size:12px; font-weight:800; letter-spacing:1px; color:var(--warn); margin-top:4px; }
+    #score.lead { color:var(--warn); }
+
+    /* ---------- Main menu (classic mobile layout) ---------- */
+    .overlay.menu { justify-content:flex-start; padding-top:max(7vh,54px); background:rgba(18,22,28,.96); }
+    .brand { text-align:center; margin-bottom:auto; }
+    .logo { font-size:clamp(38px,13vw,84px); font-weight:900; letter-spacing:1px; line-height:.9; color:#eef2f5; text-shadow:0 3px 0 rgba(0,0,0,.28); }
+    .logo span { display:block; color:var(--accent); }
+    .tagline { margin-top:12px; font-size:clamp(11px,3.2vw,14px); letter-spacing:4px; color:var(--warn); font-weight:700; opacity:.92; }
+    .best-card { display:flex; align-items:center; gap:16px; background:var(--panel); border:1px solid rgba(255,255,255,.08);
+                 border-radius:16px; padding:14px 30px; margin:0 0 24px; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+    .best-card .tro { font-size:36px; }
+    .best-card .best-cap { font-size:11px; letter-spacing:3px; opacity:.6; text-align:left; }
+    .best-card #best-num { font-size:34px; font-weight:900; color:var(--warn); line-height:1; }
+    .btn-play { pointer-events:auto; width:min(340px,82vw); padding:20px; font-size:24px; font-weight:900; letter-spacing:3px;
+                color:#fff; background:var(--accent); border:none; border-radius:18px; cursor:pointer; text-transform:uppercase;
+                box-shadow:0 5px 0 #a2331f; margin:0; }
+    .btn-play:active { transform:translateY(3px); box-shadow:0 2px 0 #a2331f; }
+    .menu-row { display:flex; gap:14px; margin-top:20px; margin-bottom:auto; }
+    .chip { pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:7px; width:94px; padding:14px 8px;
+            background:var(--panel); color:#eceff1; border:1px solid rgba(255,255,255,.08); border-radius:14px; cursor:pointer;
+            font-size:12px; font-weight:700; letter-spacing:1px; box-shadow:0 4px 0 rgba(0,0,0,.28); }
+    .chip .ic { font-size:26px; }
+    .chip span { opacity:.85; }
+    .chip:active { transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,.28); }
+    .menu-foot { margin-top:16px; font-size:11px; letter-spacing:1px; opacity:.4; }
+
+    /* ---------- Modal sheets ---------- */
+    .modal { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:rgba(10,13,17,.68); padding:20px; }
+    .sheet { width:min(440px,94vw); background:#1c222a; border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:20px 20px 24px; box-shadow:0 14px 44px rgba(0,0,0,.55); }
+    .sheet-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .sheet-head span { font-size:20px; font-weight:900; letter-spacing:2px; }
+    .x { pointer-events:auto; width:38px; height:38px; border-radius:11px; background:#2b333d; color:#eceff1; border:none; font-size:20px; cursor:pointer; }
+    .x:active { transform:scale(.94); }
+    .opt { display:flex; align-items:center; justify-content:space-between; padding:15px 4px; border-top:1px solid rgba(255,255,255,.06); font-size:16px; }
+    .opt:first-of-type { border-top:none; }
+    .toggle { pointer-events:auto; min-width:66px; padding:9px 18px; border-radius:20px; border:none; cursor:pointer; font-weight:800; letter-spacing:1px; font-size:13px; background:#3a434f; color:#aeb6bf; }
+    .toggle.on { background:var(--good); color:#fff; }
+    .sheet-note { font-size:12px; opacity:.55; margin:2px 0 14px; letter-spacing:1px; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .card { aspect-ratio:1/1; border-radius:14px; background:#2b333d; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; font-weight:800; font-size:13px; border:2px solid transparent; }
+    .card .big { font-size:30px; }
+    .card small { font-weight:600; opacity:.55; font-size:10px; letter-spacing:1px; }
+    .card.sel { border-color:var(--good); background:#26332c; }
+    .card.lock { color:#6b747e; }
   </style>
 </head>
 <body>
@@ -98,7 +145,7 @@
   <div id="hud">
     <div id="momentum-wrap" class="bar-wrap"><div class="bar-label">Momentum</div><div id="momentum-bar" class="bar"><i></i></div></div>
     <div id="adrenaline-wrap" class="bar-wrap"><div class="bar-label">Adrenaline</div><div id="adrenaline-bar" class="bar"><i></i></div></div>
-    <div id="score-box"><div id="coins">🪙 0</div><div id="score">0</div><div id="score-sub">0 m · 0 hits</div></div>
+    <div id="score-box"><div id="coins">🪙 0</div><div id="score">0</div><div id="score-sub">0 m · 0 hits</div><div id="score-best">🏆 BEST 0</div></div>
     <div id="combo"><span id="combo-num">x0</span><small>COMBO</small></div>
     <div id="warning">LOW MOMENTUM — HIT A BUILDING!</div>
     <div id="state-tag">READY</div>
@@ -114,19 +161,59 @@
   </div>
 
   <!-- Overlays -->
-  <div id="start-overlay" class="overlay">
-    <h1>INVINCIBLE RUN</h1>
-    <h2>SMASH DOWN THE ROAD</h2>
-    <p>Weave down the winding road and plow your invincible victim through the glowing towers.
-       <b>Miss a tower and you lose momentum &amp; your streak</b> — chain hits to set yourself
-       ON FIRE. Grab <b>🪙 coins</b> and <b>energy drinks</b> (momentum + adrenaline) along the way.</p>
-    <p class="keys keys-hint-desktop"><b>A / D or ← / →</b> steer · <b>SHIFT</b> surge · <b>R</b> restart</p>
-    <p class="keys keys-hint-mobile"><b>Slide the joystick</b> to steer · <b>SURGE</b> to blast a stack</p>
-    <p>You <b>keep getting faster</b> — eventually too fast to catch every tower. Build a <b>x6
-       combo</b> to unlock <b>SURGE</b> (double speed + huge catch radius) and rip through a stack.</p>
-    <div id="best-line"></div>
-    <button id="gyro-btn" class="btn btn-sec">🎮 Gyro Aim: Off</button>
-    <button id="start-btn" class="btn">Start Flight</button>
+  <div id="start-overlay" class="overlay menu">
+    <div class="brand">
+      <div class="logo">INVINCIBLE<span>RUN</span></div>
+      <div class="tagline">SMASH THROUGH NEW YORK</div>
+    </div>
+    <div class="best-card">
+      <div class="tro">🏆</div>
+      <div><div class="best-cap">BEST SCORE</div><div id="best-num">0</div></div>
+    </div>
+    <button id="start-btn" class="btn-play">▶ Play</button>
+    <div class="menu-row">
+      <button id="settings-btn" class="chip"><span class="ic">⚙️</span><span>Settings</span></button>
+      <button id="skins-btn" class="chip"><span class="ic">🎭</span><span>Skins</span></button>
+      <button id="maps-btn" class="chip"><span class="ic">🗺️</span><span>Maps</span></button>
+    </div>
+    <div class="menu-foot">Weave the streets · smash towers · dodge the drones</div>
+  </div>
+
+  <!-- Settings / Skins / Maps sheets -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Settings</span><button class="x" data-close>×</button></div>
+      <div class="opt"><span>🎮 Gyro Aim <small style="opacity:.5">(tilt to steer)</small></span><button id="gyro-btn" class="toggle">OFF</button></div>
+      <div class="opt"><span>🔊 Sound</span><button id="sound-btn" class="toggle on">ON</button></div>
+    </div>
+  </div>
+  <div id="skins-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Skins</span><button class="x" data-close>×</button></div>
+      <div class="sheet-note">Rip through the city in style — more coming soon.</div>
+      <div class="grid">
+        <div class="card sel"><span class="big">🦸</span>Omni<small>Selected</small></div>
+        <div class="card lock"><span class="big">🔒</span>Titan<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Rogue<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Neon<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Ghost<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Gold<small>Soon</small></div>
+      </div>
+    </div>
+  </div>
+  <div id="maps-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Maps</span><button class="x" data-close>×</button></div>
+      <div class="sheet-note">Choose your city — more coming soon.</div>
+      <div class="grid">
+        <div class="card sel"><span class="big">🏙️</span>New York<small>Selected</small></div>
+        <div class="card lock"><span class="big">🔒</span>Tokyo<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Dubai<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Miami<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Paris<small>Soon</small></div>
+        <div class="card lock"><span class="big">🔒</span>Mars<small>Soon</small></div>
+      </div>
+    </div>
   </div>
 
   <div id="gameover-overlay" class="overlay hidden">
@@ -213,18 +300,19 @@
       const btn=document.getElementById('gyro-btn');
       if(btn) btn.addEventListener('click',(ev)=>{ ev.stopPropagation(); this.toggleGyro(btn); });
     }
+    _setGyroBtn(btn,txt,on){ if(!btn) return; btn.textContent=txt; btn.classList.toggle('on',!!on); }
     toggleGyro(btn){
       if(this.gyroOn){ this.gyroOn=false; this.gyro=0; this.gyroBase=null;
-        if(btn) btn.textContent='🎮 Gyro Aim: Off'; try{localStorage.setItem('invrun_gyro','0');}catch(e){} return; }
+        this._setGyroBtn(btn,'OFF',false); try{localStorage.setItem('invrun_gyro','0');}catch(e){} return; }
       const start=()=>{ this.gyroOn=true; this.gyroBase=null; addEventListener('deviceorientation',this._onOrient);
-        if(btn) btn.textContent='🎮 Gyro Aim: On'; try{localStorage.setItem('invrun_gyro','1');}catch(e){} };
+        this._setGyroBtn(btn,'ON',true); try{localStorage.setItem('invrun_gyro','1');}catch(e){} };
       // iOS 13+ requires an explicit permission request from inside a user gesture
       const DOE=window.DeviceOrientationEvent;
       if(DOE && typeof DOE.requestPermission==='function'){
         DOE.requestPermission().then(r=>{ if(r==='granted') start();
-          else if(btn) btn.textContent='🎮 Gyro Aim: (denied)'; }).catch(()=>{ if(btn) btn.textContent='🎮 Gyro: n/a'; });
+          else this._setGyroBtn(btn,'DENIED',false); }).catch(()=>this._setGyroBtn(btn,'N/A',false));
       } else if(DOE){ start(); }
-      else if(btn){ btn.textContent='🎮 Gyro: unsupported'; }
+      else this._setGyroBtn(btn,'N/A',false);
     }
     consumeSurge(){ const v=this._surge; this._surge=false; return v; }
     consumeRestart(){ const v=this._restart; this._restart=false; return v; }
@@ -287,7 +375,9 @@
     buildingW(){ return rand(9,14); }
     // Speed ramps up QUICKLY in the first ~30s (you feel it get fast fast) then settles at a high,
     // demanding PLATEAU (~122 m/s ≈ 440 km/h). Not endless — fast, then held so skill can sustain it.
-    baseSpeed(){ return 42 + 80*(1-Math.exp(-this.elapsed/18)); }
+    // Faster off the line (~194 km/h) with a quick early ramp, PLUS a gentle perpetual climb so the
+    // longer you last the faster you go (soft-capped ~+70 so it never becomes literally uncontrollable).
+    baseSpeed(){ return 54 + 78*(1-Math.exp(-this.elapsed/15)) + Math.min(this.elapsed*0.45, 70); }
     decay(){ return lerp(4,7,this.densityP); }            // light bleed; the REAL danger is MISSING
     reset(){ this.level=0; this.densityP=0; this.elapsed=0; }
   }
@@ -736,7 +826,7 @@
     // SURGE must be EARNED: only available once you've built a combo (and off cooldown).
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
-    reset(){ this.pos.set(0,16,0); this.vel.set(0,0,26); this.fwdNow=26; this.rush=0;
+    reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this.dummy.position.set(1.1,15.3,2.9); this._dummyPrevZ=2.9; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
@@ -885,58 +975,70 @@
     _ground(){
       const g=this.game;
       this.floor=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),
-                  new THREE.MeshStandardMaterial({color:0x6f8f55,roughness:1}));   // grass
+                  new THREE.MeshStandardMaterial({color:0x5f8a4a,roughness:1}));   // Central Park grass
       this.floor.rotation.x=-Math.PI/2; this.floor.receiveShadow=true; this.floor.frustumCulled=false;
       g.scene.add(this.floor);
     }
-    // a winding ROAD ribbon that follows the building path, so it's obvious where to fly/hit.
-    _buildRoad(){
-      this.roadN=150; this.roadHalf=22; this.roadAhead=760; this.roadBack=60;  // WIDE road; extends past the fog
-      const verts=new Float32Array((this.roadN+1)*2*3);
+    // ASPHALT texture with real painted markings: white edge lines + dashed double-yellow centre.
+    _roadTexture(){
+      const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+      x.fillStyle='#5a5e65'; x.fillRect(0,0,128,128);                        // asphalt grey
+      for(let i=0;i<700;i++){ const v=88+(Math.random()*70|0);               // speckle/grain
+        x.fillStyle=`rgba(${v},${v},${v+4},.10)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+      x.fillStyle='#dfe3e7'; x.fillRect(7,0,4,128); x.fillRect(117,0,4,128); // solid white edge lines
+      x.fillStyle='#e6c24e'; for(let y=0;y<128;y+=32){ x.fillRect(59,y,3,20); x.fillRect(66,y,3,20); } // dashed double-yellow
+      const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+    }
+    // CONCRETE sidewalk: darker curb on both edges + expansion joints -> a real pavement.
+    _sidewalkTexture(){
+      const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+      x.fillStyle='#8a8f97'; x.fillRect(0,0,128,128);
+      for(let i=0;i<400;i++){ const v=120+(Math.random()*50|0); x.fillStyle=`rgba(${v},${v},${v},.10)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+      x.fillStyle='#565b63'; x.fillRect(0,0,9,128); x.fillRect(119,0,9,128);   // curbs (both edges)
+      x.fillStyle='rgba(0,0,0,.16)'; for(let y=0;y<128;y+=24) x.fillRect(0,y,128,2); // slab joints
+      const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+    }
+    // one winding, infinite ground RIBBON (road or sidewalk) that follows the path
+    _ribbon(inner,outer,y,tex,vScale){
+      const N=this.roadN;
+      const pos=new Float32Array((N+1)*2*3), uv=new Float32Array((N+1)*2*2), nrm=new Float32Array((N+1)*2*3);
+      for(let i=0;i<nrm.length;i+=3) nrm[i+1]=1;                              // flat -> normals point up
       const geo=new THREE.BufferGeometry();
-      geo.setAttribute('position',new THREE.BufferAttribute(verts,3));
-      const idx=[]; for(let i=0;i<this.roadN;i++){ const a=i*2,b=a+1,c=a+2,d=a+3; idx.push(a,b,c, b,d,c); }
+      geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+      geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+      geo.setAttribute('normal',new THREE.BufferAttribute(nrm,3));
+      const idx=[]; for(let i=0;i<N;i++){ const a=i*2,b=a+1,c=a+2,d=a+3; idx.push(a,b,c, b,d,c); }
       geo.setIndex(idx);
-      const mat=new THREE.MeshStandardMaterial({color:0x35373d,roughness:.95});
-      this.road=new THREE.Mesh(geo,mat); this.road.receiveShadow=true; this.road.frustumCulled=false;
-      this.game.scene.add(this.road);
-      // dashed centre line
-      const lverts=new Float32Array((this.roadN+1)*3);
-      const lgeo=new THREE.BufferGeometry(); lgeo.setAttribute('position',new THREE.BufferAttribute(lverts,3));
-      this.roadLine=new THREE.LineSegments(lgeo,new THREE.LineBasicMaterial({color:0xf2d873}));
-      this.roadLine.frustumCulled=false; this.game.scene.add(this.roadLine);
-      // solid EDGE lines both sides -> reads clearly as a real, infinite road
-      this.roadEdges=[];
-      for(let s=0;s<2;s++){
-        const ev=new Float32Array((this.roadN+1)*3);
-        const eg=new THREE.BufferGeometry(); eg.setAttribute('position',new THREE.BufferAttribute(ev,3));
-        const el=new THREE.Line(eg,new THREE.LineBasicMaterial({color:0xe9edf1}));
-        el.frustumCulled=false; this.game.scene.add(el); this.roadEdges.push(el);
-      }
+      const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:tex,roughness:.96}));
+      m.receiveShadow=true; m.frustumCulled=false; this.game.scene.add(m);
+      return {mesh:m, inner, outer, y, vScale};
+    }
+    _buildRoad(){
+      this.roadN=170; this.roadHalf=22; this.roadAhead=760; this.roadBack=60;   // WIDE road; extends past the fog
+      const sw=8;                                                               // sidewalk width
+      this.ribbons=[
+        this._ribbon(-this.roadHalf, this.roadHalf, 0.06, this._roadTexture(), 1/26),        // asphalt
+        this._ribbon(-this.roadHalf-sw, -this.roadHalf, 0.16, this._sidewalkTexture(), 1/10), // left pavement (raised)
+        this._ribbon(this.roadHalf, this.roadHalf+sw, 0.16, this._sidewalkTexture(), 1/10),   // right pavement (raised)
+      ];
     }
     updateRoad(){
-      if(!this.road) return;
+      if(!this.ribbons) return;
       const pz=this.game.player.pos.z;
       const z0=pz-this.roadBack, seg=(this.roadAhead+this.roadBack)/this.roadN;
-      const pos=this.road.geometry.attributes.position.array;
-      const lp=this.roadLine.geometry.attributes.position.array;
-      const eL=this.roadEdges[0].geometry.attributes.position.array;
-      const eR=this.roadEdges[1].geometry.attributes.position.array;
-      for(let i=0;i<=this.roadN;i++){
-        const z=z0+i*seg, x=this._pathX(z);
-        pos[i*6+0]=x-this.roadHalf; pos[i*6+1]=0.06; pos[i*6+2]=z;
-        pos[i*6+3]=x+this.roadHalf; pos[i*6+4]=0.06; pos[i*6+5]=z;
-        lp[i*3+0]=x; lp[i*3+1]=0.08; lp[i*3+2]=z;
-        eL[i*3+0]=x-this.roadHalf+0.5; eL[i*3+1]=0.09; eL[i*3+2]=z;
-        eR[i*3+0]=x+this.roadHalf-0.5; eR[i*3+1]=0.09; eR[i*3+2]=z;
+      for(const rib of this.ribbons){
+        const pos=rib.mesh.geometry.attributes.position.array, uv=rib.mesh.geometry.attributes.uv.array;
+        for(let i=0;i<=this.roadN;i++){
+          const z=z0+i*seg, x=this._pathX(z), v=z*rib.vScale;
+          pos[i*6+0]=x+rib.inner; pos[i*6+1]=rib.y; pos[i*6+2]=z;
+          pos[i*6+3]=x+rib.outer; pos[i*6+4]=rib.y; pos[i*6+5]=z;
+          uv[i*4+0]=0; uv[i*4+1]=v; uv[i*4+2]=1; uv[i*4+3]=v;
+        }
+        rib.mesh.geometry.attributes.position.needsUpdate=true;
+        rib.mesh.geometry.attributes.uv.needsUpdate=true;
       }
-      this.road.geometry.attributes.position.needsUpdate=true;
-      this.road.geometry.computeVertexNormals();
-      this.roadLine.geometry.attributes.position.needsUpdate=true;
-      this.roadEdges[0].geometry.attributes.position.needsUpdate=true;
-      this.roadEdges[1].geometry.attributes.position.needsUpdate=true;
       // INFINITE FLOOR: the grass follows the player so it never runs out (no flying into sky).
-      if(this.floor) this.floor.position.set(pz*0+this.game.player.pos.x, 0, pz);
+      if(this.floor) this.floor.position.set(this.game.player.pos.x, 0, pz);
     }
     _take(){ return this.pool.find(p=>!p.active); }
     // Buildings form a single winding PATH (along the road) — in front of each other, not
@@ -951,15 +1053,16 @@
     _place(b,x,z,w,h,d,decor){
       b.mesh.visible=true; b.active=true; b.hit=false; b.missed=false; b.decor=!!decor; b.w=w; b.h=h; b.d=d;
       b.mesh.scale.set(w,h,d);
-      b.mesh.position.set(clamp(x,-44,44), h/2, z);
+      b.mesh.position.set(clamp(x, decor?-100:-44, decor?100:44), h/2, z);
       const m=b.mesh.material;
       // tile the window texture to the building's real size so panes look consistent (detail!)
       if(m.map){ m.map.repeat.set(Math.max(1,Math.round(w/3.2)), Math.max(2,Math.round(h/5)));
                  m.map.offset.set(Math.random(),Math.random()); }
-      if(decor){ // houses lining the road: warm, varied, dim outline
-        m.color.setHSL(rand(0.03,0.12),0.4,0.46+Math.random()*0.12);
+      if(decor){ // NYC street wall: mix of brownstone + grey concrete high-rises, dim outline
+        if(Math.random()<0.5) m.color.setHSL(0.075,0.28,0.38+Math.random()*0.12);   // warm brownstone
+        else                  m.color.setHSL(0.6,0.05,0.44+Math.random()*0.16);      // grey concrete
         m.emissive.setRGB(0,0,0);
-        b.edge.material.color.set(0x3a2a18); b.edge.material.opacity=0.5;
+        b.edge.material.color.set(0x2c333c); b.edge.material.opacity=0.45;
       } else {    // HITTABLE towers: light concrete + glowing orange outline = clear target
         m.color.setHSL(0.6,0.08,0.72+Math.random()*0.08);
         m.emissive.setHex(0x3a1c00);
@@ -990,12 +1093,15 @@
       this.lastTowerX=clamp(this.lastTowerX + (Math.random()<0.5?-1:1)*mag, -lane, lane);
       const b=this._take(); if(!b) return;
       this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
-      // HOUSES lining the road on both sides: DECOR only (not smashable), short + cosy.
+      // NYC STREET WALL: taller buildings crowd both sides just past the sidewalk (decor, not smashable).
+      const edge=this.roadHalf+8;                         // just beyond the pavement
       for(const side of [-1,1]){
-        if(Math.random()<0.6){
-          const nb=this._take();
-          if(nb) this._place(nb, clamp(px+side*rand(this.roadHalf+4,this.roadHalf+16),-60,60),
-                             z+rand(-4,4), rand(6,10), rand(7,15), rand(6,10), true);
+        const rows = Math.random()<0.88 ? (Math.random()<0.4?2:1) : 0;   // usually 1, often 2 deep
+        for(let k=0;k<rows;k++){
+          const nb=this._take(); if(!nb) break;
+          const off=edge + k*rand(11,16) + rand(0,5);
+          this._place(nb, px+side*off, z+rand(-7,7),
+                      rand(9,15), rand(14,44), rand(9,15), true);   // tall high-rises line the street
         }
       }
     }
@@ -1196,9 +1302,10 @@
   // AUDIO — synthesised WebAudio crash/whoosh/combo hooks. No assets.
   // ===================================================================================
   class AudioSystem {
-    constructor(){ this.ctx=null; }
+    constructor(){ this.ctx=null; this.muted=false; }
     _ensure(){ if(this.ctx) return; this.ctx=new (window.AudioContext||window.webkitAudioContext)();
-      this.master=this.ctx.createGain(); this.master.gain.value=0.35; this.master.connect(this.ctx.destination); }
+      this.master=this.ctx.createGain(); this.master.gain.value=this.muted?0:0.35; this.master.connect(this.ctx.destination); }
+    setMuted(m){ this.muted=m; if(this.master) this.master.gain.value=m?0:0.35; }
     resume(){ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume(); }
     // iOS / home-screen (standalone) need the AudioContext created+resumed inside a user gesture,
     // and a silent buffer played to fully unlock. Safe to call repeatedly.
@@ -1249,7 +1356,7 @@
         warn:document.getElementById('warning'), state:document.getElementById('state-tag'),
         speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette'),
         surge:document.getElementById('surge-tag'), boostBtn:document.getElementById('btn-boost'),
-        coins:document.getElementById('coins') };
+        coins:document.getElementById('coins'), best:document.getElementById('score-best') };
       this._hide=0;
     }
     flashCombo(n){
@@ -1268,9 +1375,14 @@
       const g=this.game;
       this.el.mom.style.width=g.momentum.value+'%';
       this.el.adr.style.width=g.adrenaline.value+'%';
-      this.el.score.textContent=Math.round(g.score.total).toLocaleString();
+      const total=Math.round(g.score.total), best=g.run.best();
+      this.el.score.textContent=total.toLocaleString();
       this.el.coins.textContent='🪙 '+g.score.coins;
       this.el.sub.textContent=`${Math.round(g.score.distance)} m · ${g.score.hits} hits`;
+      // HIGH-SCORE emphasis: show best; once you pass it, the score goes gold + "NEW BEST"
+      const beating = total>best && best>0;
+      this.el.best.textContent = beating ? '🏆 NEW BEST!' : ('🏆 BEST '+best.toLocaleString());
+      this.el.score.classList.toggle('lead', beating);
       this.el.state.textContent=g.run.state;
       this.el.speed.textContent=Math.round(g.player.speed()*3.6)+' km/h';
       const low=g.momentum.isLow() && g.run.state!=='READY' && g.run.state!=='GameOver';
@@ -1327,8 +1439,8 @@
     }
     refreshBestLine(){
       const b=this.best();
-      const el=document.getElementById('best-line');
-      if(el) el.textContent = b>0 ? `BEST: ${b.toLocaleString()}` : '';
+      const el=document.getElementById('best-num');
+      if(el) el.textContent = b.toLocaleString();
     }
     togglePause(){
       if(this.state==='Paused'){ this.state=this._prePause||'Running'; document.getElementById('pause-overlay').classList.add('hidden'); }
@@ -1419,6 +1531,25 @@
       document.getElementById('resume-btn').onclick=()=>this.run.togglePause();
       document.getElementById('menu-btn').onclick=()=>this.run.toMenu();
       document.getElementById('menu-btn2').onclick=()=>this.run.toMenu();
+
+      // ----- classic menu: settings / skins / maps sheets -----
+      const openM=(id)=>document.getElementById(id).classList.remove('hidden');
+      const closeAll=()=>document.querySelectorAll('.modal').forEach(m=>m.classList.add('hidden'));
+      document.getElementById('settings-btn').onclick=()=>openM('settings-modal');
+      document.getElementById('skins-btn').onclick=()=>openM('skins-modal');
+      document.getElementById('maps-btn').onclick=()=>openM('maps-modal');
+      document.querySelectorAll('.modal').forEach(m=>{
+        m.addEventListener('click',e=>{ if(e.target===m||e.target.hasAttribute('data-close')) closeAll(); });
+      });
+      // sound toggle (persisted)
+      const soundBtn=document.getElementById('sound-btn');
+      const applySound=(on)=>{ this.audio.setMuted(!on); soundBtn.textContent=on?'ON':'OFF'; soundBtn.classList.toggle('on',on);
+        try{localStorage.setItem('invrun_sound',on?'1':'0');}catch(e){} };
+      soundBtn.onclick=()=>applySound(this.audio.muted);   // muted->true means currently off, so turn on
+      applySound((localStorage.getItem('invrun_sound')??'1')==='1');
+      // restore gyro preference (still needs a tap on iOS for permission, so only auto-on where allowed)
+      if(localStorage.getItem('invrun_gyro')==='1'){ const gb=document.getElementById('gyro-btn');
+        const DOE=window.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission!=='function') this.input.toggleGyro(gb); }
 
       // AUDIO unlock: home-screen/standalone (esp. iOS) start the audio context suspended, so
       // unlock it on the very first user gesture and re-resume whenever the app returns to view.
