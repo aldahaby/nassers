@@ -302,15 +302,14 @@
   // ===================================================================================
   class ComboSystem {
     constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26;
-      this.EPIC_GRACE=3.5; this.epicTime=0; }        // once EPIC, you keep it for a grace window
+      this.EPIC_TIME=5.0; this.epicTime=0; }         // EPIC is a fixed 5s burst, then it ENDS
     hit(){
       this.count++; this.best=Math.max(this.best,this.count);
       this.game.ui.flashCombo(this.count);
       if(this.count>=2 && this.count%5===0) this.game.audio.comboMilestone(this.count);
       if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); }   // ignite
-      if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); }  // EPIC!
-      // being at/above EPIC (re)charges the grace window -> keep soaring by keeping the streak alive
-      if(this.count>=this.EPIC) this.epicTime=this.EPIC_GRACE;
+      // EPIC fires ONCE on crossing 26 and lasts a FIXED 5s (NOT refreshed by later hits) -> it ends.
+      if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME; }
       return this.count;
     }
     miss(){
@@ -1017,7 +1016,7 @@
   // ===================================================================================
   class DroneSystem {
     constructor(game){
-      this.game=game; this.drones=[]; this.BAND=16; this.START_Y=80; this.HITR=3.0;
+      this.game=game; this.drones=[]; this.BAND=16; this.START_Y=56; this.HITR=3.0;
       const bodyMat=new THREE.MeshStandardMaterial({color:0x2b3038,roughness:0.5,metalness:0.6,flatShading:true});
       const armMat=new THREE.MeshStandardMaterial({color:0x14171c,roughness:0.7,flatShading:true});
       const eyeMat=()=>new THREE.MeshBasicMaterial({color:0xff2a1e});
@@ -1039,9 +1038,13 @@
         const mk=new THREE.Mesh(new THREE.RingGeometry(1.6,2.4,28),
           new THREE.MeshBasicMaterial({color:0xff2a1e,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
         mk.rotation.x=-Math.PI/2; mk.visible=false; game.scene.add(mk);
-        this.drones.push({grp,rotors,eye,mk,active:false,x:0,z:0,y:0,vy:0,warn:0});
+        // targeting beam: a red column from the ground up to the drone so the incoming attack is unmistakable
+        const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,1,8),
+          new THREE.MeshBasicMaterial({color:0xff3a2a,transparent:true,opacity:0.28,depthWrite:false,blending:THREE.AdditiveBlending}));
+        beam.visible=false; game.scene.add(beam);
+        this.drones.push({grp,rotors,eye,mk,beam,active:false,x:0,z:0,y:0,vy:0,warn:0});
       }
-      this._timer=2.5;
+      this._timer=1.4;
     }
     _spawn(){
       const g=this.game, p=g.player, D=g.difficulty;
@@ -1057,6 +1060,7 @@
       d.active=true;
       d.grp.position.set(d.x,d.y,d.z); d.grp.visible=true;
       d.mk.position.set(d.x,0.2,d.z); d.mk.visible=true;
+      d.beam.position.set(d.x,d.y/2,d.z); d.beam.scale.y=d.y; d.beam.visible=true;
       g.audio.droneWarn();
     }
     _explode(d,onPlayer){
@@ -1066,18 +1070,16 @@
       g.effects.ring(pos,new THREE.Color(0xffa02a),onPlayer?16:8);
       if(onPlayer){ g.effects.flash(0.4); g.camera.shake(0.7); g.momentum.hitByDrone(); }
       g.audio.droneBoom(onPlayer);
-      d.active=false; d.grp.visible=false; d.mk.visible=false;
+      d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false;
     }
     update(dt){
       const g=this.game, p=g.player, D=g.difficulty;
-      // no drones in the opening seconds; then they arrive more often the longer you survive
-      if(D.elapsed>5){
-        this._timer-=dt;
-        if(this._timer<=0){
-          const hard=clamp(D.level/8,0,1);
-          this._timer=lerp(3.4,1.15,hard)*rand(0.8,1.2);
-          this._spawn();
-        }
+      // drones attack from the very start; they arrive MORE often the longer you survive
+      this._timer-=dt;
+      if(this._timer<=0){
+        const hard=clamp(D.level/8,0,1);
+        this._timer=lerp(2.0,0.8,hard)*rand(0.8,1.15);
+        this._spawn();
       }
       for(const d of this.drones){
         if(!d.active) continue;
@@ -1089,6 +1091,7 @@
           continue;
         }
         d.y-=d.vy*dt; d.grp.position.y=d.y;
+        d.beam.position.y=d.y/2; d.beam.scale.y=Math.max(0.1,d.y); // beam tracks the plunging drone
         d.mk.material.opacity=clamp((d.y-this.BAND)/40,0,1)*0.5;  // marker fades as it lands
         // collision with the villain: close in x AND z, while passing through the flight band
         if(Math.abs(d.x-p.pos.x)<this.HITR && Math.abs(d.z-p.pos.z)<this.HITR+1 && Math.abs(d.y-this.BAND)<5){
@@ -1097,7 +1100,7 @@
         if(d.y<=1.3){ this._explode(d,false); }          // hit the ground behind/around you -> puff
       }
     }
-    reset(){ this._timer=2.5; for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; } }
+    reset(){ this._timer=1.4; for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false; } }
   }
 
   // ===================================================================================
