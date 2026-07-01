@@ -125,6 +125,7 @@
     <p>You <b>keep getting faster</b> — eventually too fast to catch every tower. Build a <b>x6
        combo</b> to unlock <b>SURGE</b> (double speed + huge catch radius) and rip through a stack.</p>
     <div id="best-line"></div>
+    <button id="gyro-btn" class="btn btn-sec">🎮 Gyro Aim: Off</button>
     <button id="start-btn" class="btn">Start Flight</button>
   </div>
 
@@ -182,7 +183,8 @@
   // steer that way instantly (no drag distance). Keyboard A/D + arrows also work. + surge edge.
   // ===================================================================================
   class InputSystem {
-    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.joy=0; }
+    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.joy=0;
+      this.gyro=0; this.gyroOn=false; this.gyroBase=null; }
     init(){
       addEventListener('keydown',e=>{
         if(e.repeat) return; this.keys.add(e.code);
@@ -191,13 +193,38 @@
       });
       addEventListener('keyup',e=>this.keys.delete(e.code));
       this._bindTouch();
+      this._bindGyro();
     }
     sample(){
       let x=0;
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
       x+=this.joy;                                    // ANALOG joystick (partial = partial steer)
+      if(this.gyroOn) x+=this.gyro;                   // TILT the phone side to side to steer
       this.steer.x=clamp(x,-1,1); this.steer.y=0;     // no vertical, ever
+    }
+    // GYRO AIMING: tilt the phone left/right (portrait roll = gamma) to steer the villain.
+    _bindGyro(){
+      this._onOrient=(e)=>{
+        if(!this.gyroOn || e.gamma==null) return;
+        if(this.gyroBase==null) this.gyroBase=e.gamma;        // first reading = your neutral hold angle
+        this.gyro=clamp((e.gamma-this.gyroBase)/24, -1, 1);   // ~24° tilt = full steer
+      };
+      const btn=document.getElementById('gyro-btn');
+      if(btn) btn.addEventListener('click',(ev)=>{ ev.stopPropagation(); this.toggleGyro(btn); });
+    }
+    toggleGyro(btn){
+      if(this.gyroOn){ this.gyroOn=false; this.gyro=0; this.gyroBase=null;
+        if(btn) btn.textContent='🎮 Gyro Aim: Off'; try{localStorage.setItem('invrun_gyro','0');}catch(e){} return; }
+      const start=()=>{ this.gyroOn=true; this.gyroBase=null; addEventListener('deviceorientation',this._onOrient);
+        if(btn) btn.textContent='🎮 Gyro Aim: On'; try{localStorage.setItem('invrun_gyro','1');}catch(e){} };
+      // iOS 13+ requires an explicit permission request from inside a user gesture
+      const DOE=window.DeviceOrientationEvent;
+      if(DOE && typeof DOE.requestPermission==='function'){
+        DOE.requestPermission().then(r=>{ if(r==='granted') start();
+          else if(btn) btn.textContent='🎮 Gyro Aim: (denied)'; }).catch(()=>{ if(btn) btn.textContent='🎮 Gyro: n/a'; });
+      } else if(DOE){ start(); }
+      else if(btn){ btn.textContent='🎮 Gyro: unsupported'; }
     }
     consumeSurge(){ const v=this._surge; this._surge=false; return v; }
     consumeRestart(){ const v=this._restart; this._restart=false; return v; }
@@ -301,8 +328,8 @@
   // streak sets the villain ON FIRE (escalating reward, like Paint Hit's color blast).
   // ===================================================================================
   class ComboSystem {
-    constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26;
-      this.EPIC_TIME=5.0; this.epicTime=0; }         // EPIC is a fixed 5s burst, then it ENDS
+    constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26; this.ETHEREAL=42;
+      this.EPIC_TIME=5.0; this.ETH_TIME=5.0; this.epicTime=0; this.etherealTime=0; }  // fixed 5s bursts, then they END
     hit(){
       this.count++; this.best=Math.max(this.best,this.count);
       this.game.ui.flashCombo(this.count);
@@ -310,31 +337,36 @@
       if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); }   // ignite
       // EPIC fires ONCE on crossing 26 and lasts a FIXED 5s (NOT refreshed by later hits) -> it ends.
       if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME; }
+      // ETHEREAL: only reachable by chaining ANOTHER 16 smashes DURING epic -> a rarer, faster super state.
+      if(this.count===this.ETHEREAL){ this.game.audio.ethereal(); this.game.effects.flash(0.75); this.etherealTime=this.ETH_TIME; }
       return this.count;
     }
     miss(){
-      // FAIR: while the EPIC grace window is live, a missed tower does NOT drop you — you stay epic.
-      if(this.epicTime>0) return;
+      // FAIR: while a super window (epic OR ethereal) is live, a missed tower does NOT drop you.
+      if(this.epicTime>0 || this.etherealTime>0) return;
       if(this.count<=0) return;
       const lit=this.onFire();
       this.count=0; this.game.ui.flashCombo(0);
       if(lit) this.game.audio.fireOut();
     }
-    onFire(){ return this.count>=this.FIRE || this.epicTime>0; }
-    onEpic(){ return this.epicTime>0; }                          // timed buff: soar faster than surge
+    onFire(){ return this.count>=this.FIRE || this.epicTime>0 || this.etherealTime>0; }
+    onEpic(){ return this.epicTime>0 || this.etherealTime>0; }   // epic-or-better
+    onEthereal(){ return this.etherealTime>0; }                  // the fastest state: purple, super speed
     fireLevel(){ return clamp((this.count-this.FIRE)/(this.EPIC-this.FIRE),0,1); }
-    epicLevel(){ return this.epicTime>0 ? clamp(0.25+(this.count-this.EPIC)/22,0,1) : 0; }
-    // multiplier SOARS once EPIC -> a huge streak is hugely rewarding
-    multiplier(){ const m=1+Math.max(0,this.count-1)*0.35; return this.onEpic()? m*2.3 : this.onFire()? m*1.5 : m; }
+    epicLevel(){ return this.onEpic()? clamp(0.25+(this.count-this.EPIC)/22,0,1):0; }
+    etherealLevel(){ return this.etherealTime>0? clamp(0.3+(this.count-this.ETHEREAL)/24,0,1):0; }
+    // multiplier SOARS: ethereal is the biggest reward of all
+    multiplier(){ const m=1+Math.max(0,this.count-1)*0.35;
+      return this.onEthereal()? m*3.1 : this.onEpic()? m*2.3 : this.onFire()? m*1.5 : m; }
     update(dt){
-      if(this.epicTime>0){
-        this.epicTime-=dt;
-        if(this.epicTime<=0){                                    // window expired -> now the streak drops
-          this.epicTime=0; this.count=0; this.game.ui.flashCombo(0); this.game.audio.fireOut();
-        }
+      const was = this.epicTime>0 || this.etherealTime>0;
+      if(this.epicTime>0) this.epicTime=Math.max(0,this.epicTime-dt);
+      if(this.etherealTime>0) this.etherealTime=Math.max(0,this.etherealTime-dt);
+      if(was && !(this.epicTime>0 || this.etherealTime>0)){      // BOTH windows expired -> the streak drops
+        this.count=0; this.game.ui.flashCombo(0); this.game.audio.fireOut();
       }
     }
-    reset(){ this.count=0; this.epicTime=0; }
+    reset(){ this.count=0; this.epicTime=0; this.etherealTime=0; }
   }
 
   // ===================================================================================
@@ -479,9 +511,9 @@
     }
     // FIRE TRAIL: spawn embers between the villain and the dummy that peel off and stream backward.
     // intensity (0..1) grows the deeper into EPIC you are -> denser, longer, hotter trail.
-    fireTrail(playerPos,dummyPos,intensity,dt){
+    fireTrail(playerPos,dummyPos,intensity,dt,purple){
       // spawn rate scales with intensity; accumulate so it's frame-rate independent
-      this._emberAcc += (34+intensity*46)*dt;
+      this._emberAcc += ((purple?46:34)+intensity*46)*dt;
       let n=this._emberAcc|0; this._emberAcc-=n;
       const spd=this.game.player.speed();
       while(n-->0){
@@ -496,8 +528,9 @@
         // drift outward + fall slightly, then the villain outruns them => they stream PAST as a tail
         e.vel.set(rand(-3,3),rand(-1.5,3.5),-spd*rand(0.15,0.4)-6);
         e.life=e.max=rand(0.35,0.7)+intensity*0.4;
-        e.hue=rand(0,0.09);
-        const s=rand(0.5,1.2)+intensity*0.7; e.mesh.scale.setScalar(s); e.baseS=s;
+        e.baseHue=purple? rand(0.74,0.82) : rand(0.02,0.11);   // violet vs orange embers
+        e.sat=purple?0.85:1;
+        const s=(purple?0.7:0.5)+rand(0,0.7)+intensity*0.7; e.mesh.scale.setScalar(s); e.baseS=s;
       }
     }
     // recycle a streak ahead of / around the player so it whooshes past
@@ -557,7 +590,7 @@
         e.mesh.position.addScaledVector(e.vel,dt);
         e.vel.y+=6*dt;                 // buoyant embers curl upward
         const t=clamp(e.life/e.max,0,1);
-        e.mesh.material.color.setHSL(0.02+e.hue+(1-t)*0.0, 1, 0.35+t*0.35); // hotter when fresh
+        e.mesh.material.color.setHSL(e.baseHue, e.sat, 0.4+t*0.4); // fresh = brighter/shinier
         e.mesh.material.opacity=t*0.9;
         e.mesh.scale.setScalar(e.baseS*(0.25+t*0.9));
         if(e.life<=0) e.mesh.visible=false;
@@ -718,7 +751,7 @@
       this.surgeCd=Math.max(0,this.surgeCd-dt);
       this.rush=damp(this.rush,0,0.5,dt);          // rush lingers, bleeds slowly
       // EPIC (a huge combo) makes you SOAR even faster than a surge. Whichever is stronger wins.
-      const surgeMul=Math.max(g.combo.onEpic()?2.35:1, this.surgeActive>0?2.0:1);
+      const surgeMul=Math.max(g.combo.onEthereal()?3.15 : g.combo.onEpic()?2.35:1, this.surgeActive>0?2.0:1);
 
       // SPEED is the time-driven BASE (which only ever rises) plus a small, brief rush pop on
       // each smash. The base is the floor, so the felt speed climbs CONSISTENTLY the whole run;
@@ -766,17 +799,30 @@
       this.dLimbs[3].rotation.set(0.1+sw*0.12,0,-0.06-sw2*0.08);
 
       // ----- ON FIRE: streak reward — the villain (and victim) ignite with a pulsing glow -----
-      const fire=g.combo.onFire(), epic=g.combo.onEpic(), fl=g.combo.fireLevel();
+      // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
+      const fire=g.combo.onFire(), epic=g.combo.onEpic(), eth=g.combo.onEthereal(), fl=g.combo.fireLevel();
       if(fire){
         const pulse=0.55+0.45*Math.sin(now*0.022);
         this.fireAura.visible=true;
-        // at EPIC the ring/aura tightens and a streaking FIRE TRAIL takes over
-        this.fireAura.material.opacity=(epic?0.22:0.4)+0.3*pulse+fl*0.2;
-        this.fireAura.scale.setScalar((epic?0.8:1)+0.5*fl+0.18*pulse);
-        const e=(epic?0.95:0.5)+0.5*pulse+fl*0.4;
-        this.suitMat.emissive.setRGB(e, e*(epic?0.26:0.35), 0);
-        this.dsuitMat.emissive.setRGB(e*0.9, e*0.3, 0);
-        if(epic) g.effects.fireTrail(this.group.position, this.dummy.position, g.combo.epicLevel(), dt);
+        if(eth){
+          // PURPLE ETHEREAL aura: bigger, shinier, pulsing violet
+          this.fireAura.material.color.setHex(0x9b3bff);
+          this.fireAura.material.opacity=0.34+0.34*pulse+g.combo.etherealLevel()*0.25;
+          this.fireAura.scale.setScalar(1.25+0.5*g.combo.etherealLevel()+0.28*pulse);
+          const v=0.85+0.6*pulse;
+          this.suitMat.emissive.setRGB(v*0.6, v*0.15, v);      // violet glow
+          this.dsuitMat.emissive.setRGB(v*0.5, v*0.12, v*0.9);
+          g.effects.fireTrail(this.group.position, this.dummy.position, g.combo.etherealLevel(), dt, true);
+        } else {
+          this.fireAura.material.color.setHex(0xff5a14);
+          // at EPIC the aura tightens and a streaking FIRE TRAIL takes over
+          this.fireAura.material.opacity=(epic?0.22:0.4)+0.3*pulse+fl*0.2;
+          this.fireAura.scale.setScalar((epic?0.8:1)+0.5*fl+0.18*pulse);
+          const e=(epic?0.95:0.5)+0.5*pulse+fl*0.4;
+          this.suitMat.emissive.setRGB(e, e*(epic?0.26:0.35), 0);
+          this.dsuitMat.emissive.setRGB(e*0.9, e*0.3, 0);
+          if(epic) g.effects.fireTrail(this.group.position, this.dummy.position, g.combo.epicLevel(), dt, false);
+        }
       } else if(this.fireAura.visible){
         this.fireAura.visible=false;
         this.suitMat.emissive.setRGB(0,0,0);
@@ -789,7 +835,7 @@
     // base radius rewards precision; SURGE makes it HUGE (covers the whole lane) so you auto-blast
     // a combo through the next stretch despite the 2x speed -> surge is a clear reward, not a risk.
     hitSphere(){ return { c:{x:this.pos.x, y:this.dummy.position.y, z:this.dummy.position.z},
-                          r:this.surgeActive>0?9:(this.game.combo.onEpic()?4.2:2.6), zPrev:this._dummyPrevZ }; }
+                          r:this.surgeActive>0?9:(this.game.combo.onEthereal()?6:this.game.combo.onEpic()?4.2:2.6), zPrev:this._dummyPrevZ }; }
   }
 
   // ===================================================================================
@@ -807,10 +853,12 @@
       this.luckyLeft=0;        // towers remaining in a rare "lucky" aligned easy-combo run
       this._ground();
       this._buildRoad();
+      this._winTex=this._winTexture();     // shared source; each building gets a clone for its own tiling
       const geo=new THREE.BoxGeometry(1,1,1);
       this._geo=geo;
       for(let i=0;i<240;i++){
-        const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.8,metalness:.05}));
+        const map=this._winTex.clone(); map.needsUpdate=true;   // windows/detail on every face
+        const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.72,metalness:.08,map}));
         m.castShadow=m.receiveShadow=true; m.visible=false; game.scene.add(m);
         // outline used to MARK hittable targets (bright) vs decor houses (dim)
         const edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo),
@@ -818,6 +866,21 @@
         m.add(edge);
         this.pool.push({mesh:m,edge,active:false,w:1,h:1,d:1,hit:false,decor:false});
       }
+    }
+    // procedural WINDOW texture: rows of glass panes + a few lit ones -> buildings read as real
+    _winTexture(){
+      const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
+      x.fillStyle='#cdd3da'; x.fillRect(0,0,64,64);                 // concrete facade
+      const cols=3, rows=3, pad=7, gap=6;
+      const ww=(64-pad*2-gap*(cols-1))/cols, wh=(64-pad*2-gap*(rows-1))/rows;
+      for(let r=0;r<rows;r++) for(let cc=0;cc<cols;cc++){
+        const wx=pad+cc*(ww+gap), wy=pad+r*(wh+gap), lit=Math.random()<0.16;
+        x.fillStyle= lit? '#ffe6ad' : (Math.random()<0.5?'#39485a':'#4a5a6d');
+        x.fillRect(wx,wy,ww,wh);
+        x.fillStyle='rgba(255,255,255,.18)'; x.fillRect(wx,wy,ww,2);   // sill highlight
+      }
+      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+      t.anisotropy=4; return t;
     }
     _ground(){
       const g=this.game;
@@ -842,6 +905,14 @@
       const lgeo=new THREE.BufferGeometry(); lgeo.setAttribute('position',new THREE.BufferAttribute(lverts,3));
       this.roadLine=new THREE.LineSegments(lgeo,new THREE.LineBasicMaterial({color:0xf2d873}));
       this.roadLine.frustumCulled=false; this.game.scene.add(this.roadLine);
+      // solid EDGE lines both sides -> reads clearly as a real, infinite road
+      this.roadEdges=[];
+      for(let s=0;s<2;s++){
+        const ev=new Float32Array((this.roadN+1)*3);
+        const eg=new THREE.BufferGeometry(); eg.setAttribute('position',new THREE.BufferAttribute(ev,3));
+        const el=new THREE.Line(eg,new THREE.LineBasicMaterial({color:0xe9edf1}));
+        el.frustumCulled=false; this.game.scene.add(el); this.roadEdges.push(el);
+      }
     }
     updateRoad(){
       if(!this.road) return;
@@ -849,15 +920,21 @@
       const z0=pz-this.roadBack, seg=(this.roadAhead+this.roadBack)/this.roadN;
       const pos=this.road.geometry.attributes.position.array;
       const lp=this.roadLine.geometry.attributes.position.array;
+      const eL=this.roadEdges[0].geometry.attributes.position.array;
+      const eR=this.roadEdges[1].geometry.attributes.position.array;
       for(let i=0;i<=this.roadN;i++){
         const z=z0+i*seg, x=this._pathX(z);
         pos[i*6+0]=x-this.roadHalf; pos[i*6+1]=0.06; pos[i*6+2]=z;
         pos[i*6+3]=x+this.roadHalf; pos[i*6+4]=0.06; pos[i*6+5]=z;
         lp[i*3+0]=x; lp[i*3+1]=0.08; lp[i*3+2]=z;
+        eL[i*3+0]=x-this.roadHalf+0.5; eL[i*3+1]=0.09; eL[i*3+2]=z;
+        eR[i*3+0]=x+this.roadHalf-0.5; eR[i*3+1]=0.09; eR[i*3+2]=z;
       }
       this.road.geometry.attributes.position.needsUpdate=true;
       this.road.geometry.computeVertexNormals();
       this.roadLine.geometry.attributes.position.needsUpdate=true;
+      this.roadEdges[0].geometry.attributes.position.needsUpdate=true;
+      this.roadEdges[1].geometry.attributes.position.needsUpdate=true;
       // INFINITE FLOOR: the grass follows the player so it never runs out (no flying into sky).
       if(this.floor) this.floor.position.set(pz*0+this.game.player.pos.x, 0, pz);
     }
@@ -876,13 +953,16 @@
       b.mesh.scale.set(w,h,d);
       b.mesh.position.set(clamp(x,-44,44), h/2, z);
       const m=b.mesh.material;
+      // tile the window texture to the building's real size so panes look consistent (detail!)
+      if(m.map){ m.map.repeat.set(Math.max(1,Math.round(w/3.2)), Math.max(2,Math.round(h/5)));
+                 m.map.offset.set(Math.random(),Math.random()); }
       if(decor){ // houses lining the road: warm, varied, dim outline
-        m.color.setHSL(rand(0.03,0.12),0.4,0.34+Math.random()*0.12);
+        m.color.setHSL(rand(0.03,0.12),0.4,0.46+Math.random()*0.12);
         m.emissive.setRGB(0,0,0);
         b.edge.material.color.set(0x3a2a18); b.edge.material.opacity=0.5;
       } else {    // HITTABLE towers: light concrete + glowing orange outline = clear target
-        m.color.setHSL(0.6,0.08,0.62+Math.random()*0.08);
-        m.emissive.setHex(0x5a2a00);
+        m.color.setHSL(0.6,0.08,0.72+Math.random()*0.08);
+        m.emissive.setHex(0x3a1c00);
         b.edge.material.color.set(0xffb13b); b.edge.material.opacity=1;
       }
       this.buildings.push(b);
@@ -1088,12 +1168,12 @@
         for(const r of d.rotors) r.rotation.y+=dt*40;   // whirring blades
         d.y-=d.vy*dt;
         if(!d.locked && d.y>d.commitY){
-          // TRACKING: it homes onto YOUR x and hovers a strike-window ahead & above, hunting you down
-          d.x=damp(d.x,p.pos.x,11,dt);
+          // TRACKING: it LOCKS ONTO YOU hard and even leads your sideways movement, hunting only you
+          d.x=damp(d.x, clamp(p.pos.x + p.vel.x*0.14, -44, 44), 18, dt);
           d.z=p.pos.z + p.speed()*d.commitT;
         } else if(!d.locked){
           // COMMIT: lock the strike right where you ARE, then plunge -> juke NOW to survive
-          d.locked=true; d.lockX=p.pos.x; d.lockZ=p.pos.z + p.speed()*d.commitT; g.audio.droneWarn();
+          d.locked=true; d.lockX=clamp(p.pos.x + p.vel.x*0.09,-44,44); d.lockZ=p.pos.z + p.speed()*d.commitT; g.audio.droneWarn();
         }
         if(d.locked){ d.x=d.lockX; d.z=d.lockZ; }
         d.grp.position.set(d.x,d.y,d.z);
@@ -1143,6 +1223,9 @@
     epic(){ this._tone(220,0.5,'sawtooth',0.34); this._tone(330,0.55,'sawtooth',0.3);
       setTimeout(()=>{ this._tone(440,0.4,'square',0.3); this._tone(660,0.45,'triangle',0.26); },90);
       this._noise(0.5,0.32); }
+    // ETHEREAL: a shimmering ascending chord — otherworldly, above even EPIC
+    ethereal(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>this._tone(f,0.6,'triangle',0.26),i*70));
+      this._tone(196,0.8,'sine',0.3); this._noise(0.6,0.18); }
     drink(){ this._tone(440,0.12,'sine',0.3); this._tone(660,0.16,'sine',0.28); this._tone(880,0.2,'sine',0.24); }
     surge(){ this._tone(260,0.3,'sawtooth',0.3); this._tone(680,0.35,'sine',0.22); this._noise(0.2,0.2); }
     gameOver(){ this._tone(200,0.5,'sawtooth',0.4); setTimeout(()=>this._tone(90,0.9,'sawtooth',0.4),120); }
@@ -1171,12 +1254,12 @@
     }
     flashCombo(n){
       if(n>=2){
-        const fire=this.game.combo.onFire(), epic=this.game.combo.onEpic();
-        this.el.comboNum.textContent=(fire?'🔥x':'x')+n;
-        this.el.combo.querySelector('small').textContent=epic?'EPIC':fire?'ON FIRE':'COMBO';
-        this.el.combo.style.color=epic?'#f2b23c':fire?'#e0653b':'var(--warn)';
+        const fire=this.game.combo.onFire(), epic=this.game.combo.onEpic(), eth=this.game.combo.onEthereal();
+        this.el.comboNum.textContent=((eth?'✦x':fire?'🔥x':'x'))+n;
+        this.el.combo.querySelector('small').textContent=eth?'ETHEREAL':epic?'EPIC':fire?'ON FIRE':'COMBO';
+        this.el.combo.style.color=eth?'#b06bff':epic?'#f2b23c':fire?'#e0653b':'var(--warn)';
         this.el.combo.style.opacity='1';
-        this.el.combo.style.transform='translate(-50%,-50%) scale('+(epic?1.6:1.35)+')';
+        this.el.combo.style.transform='translate(-50%,-50%) scale('+(eth?1.8:epic?1.6:1.35)+')';
         requestAnimationFrame(()=>this.el.combo.style.transform='translate(-50%,-50%) scale(1)');
         this._hide=performance.now()+1300;
       } else this.el.combo.style.opacity='0';
@@ -1194,6 +1277,7 @@
       this.el.warn.style.opacity=low?'1':'0';
       // screen edge glow: red when low momentum, fiery orange when ON FIRE, else none
       if(low) this.el.vig.style.boxShadow='inset 0 0 200px 50px rgba(160,0,0,.5)';
+      else if(g.combo.onEthereal()) this.el.vig.style.boxShadow='inset 0 0 300px 100px rgba(155,60,255,.55)';
       else if(g.combo.onEpic()) this.el.vig.style.boxShadow='inset 0 0 260px 80px rgba(255,140,20,.5)';
       else if(g.combo.onFire()) this.el.vig.style.boxShadow='inset 0 0 220px 60px rgba(255,90,0,.35)';
       else this.el.vig.style.boxShadow='inset 0 0 200px 40px rgba(120,0,0,0)';
