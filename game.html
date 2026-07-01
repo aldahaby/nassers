@@ -765,6 +765,8 @@
       if(snd==='bubble') g.audio.bubble(combo);
       else if(snd==='brick') g.audio.brick(combo);
       else g.audio.crash(tier,combo);
+      // the invincible VICTIM yelps on impact — goofy, and always on the bigger smashes
+      if(Math.random()<0.5 || tier.name==='crush' || tier.name==='level') g.audio.scream();
       g.player.onSmash(tier);
 
       g.city.shatter(building);   // remove + recycle the building
@@ -953,8 +955,9 @@
       const geo=new THREE.BoxGeometry(1,1,1);
       this._geo=geo;
       const roofGeo=new THREE.ConeGeometry(0.72,1,4);   // pointed watch-tower roof (medieval)
+      const capGeo=new THREE.CylinderGeometry(0.5,0.5,1,10);   // rooftop: NYC water tank / Aero antenna
       this._merlonTex=this._merlonTexture();            // crenellation (battlement) crown texture
-      for(let i=0;i<240;i++){
+      for(let i=0;i<420;i++){                            // bigger pool -> a DENSE, never-empty skyline
         const map=new THREE.CanvasTexture(this._bldgCanvas); map.wrapS=map.wrapT=THREE.RepeatWrapping; map.anisotropy=4;
         const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.72,metalness:.08,map}));
         m.castShadow=m.receiveShadow=true; m.visible=false; game.scene.add(m);
@@ -969,7 +972,9 @@
                      transparent:true, alphaTest:0.5, side:THREE.DoubleSide, roughness:.9, color:0x8a744f}));
         crown.material.map.wrapS=THREE.RepeatWrapping; crown.material.map.needsUpdate=true;
         crown.visible=false; crown.castShadow=true; game.scene.add(crown);
-        this.pool.push({mesh:m,edge,roof,crown,active:false,w:1,h:1,d:1,hit:false,decor:false});
+        const cap=new THREE.Mesh(capGeo,new THREE.MeshStandardMaterial({color:0x555a61,roughness:.8,flatShading:true}));
+        cap.visible=false; game.scene.add(cap);
+        this.pool.push({mesh:m,edge,roof,crown,cap,active:false,w:1,h:1,d:1,hit:false,decor:false});
       }
       this._buildEnv();
     }
@@ -1019,13 +1024,39 @@
         m.visible=false; g.scene.add(m);
         this.bubbles.push({mesh:m,ph:rand(0,6.28),rad:rand(0,1),sz:rand(3,11),x:0,y:0,z:0});
       }
+      // MOUNTAINS: pushed FAR to the sides so they frame the horizon and never cover the road/player.
       this.mountains=[];
       const mgeo=new THREE.ConeGeometry(1,1,5);
-      for(let i=0;i<8;i++){
-        const m=new THREE.Mesh(mgeo,new THREE.MeshStandardMaterial({color:0x6d7360,roughness:1,flatShading:true}));
-        m.visible=false; g.scene.add(m);
-        this.mountains.push({mesh:m,side:i%2?1:-1,off:rand(85,150),h:rand(70,130),w:rand(90,150),z:i*130});
+      for(let i=0;i<10;i++){
+        const m=new THREE.Mesh(mgeo,new THREE.MeshStandardMaterial({color:0x707663,roughness:1,flatShading:true}));
+        m.visible=false; m.castShadow=false; g.scene.add(m);
+        this.mountains.push({mesh:m,side:i%2?1:-1,off:rand(210,360),h:rand(80,150),w:rand(150,260),z:i*150});
       }
+      // DISTANT SKYLINE: a far band of building silhouettes so the landscape is never empty.
+      this.skyline=[];
+      const sgeo=new THREE.BoxGeometry(1,1,1);
+      for(let i=0;i<34;i++){
+        const m=new THREE.Mesh(sgeo,new THREE.MeshStandardMaterial({color:0x8090a0,roughness:1}));
+        m.visible=false; m.castShadow=false; g.scene.add(m);
+        this.skyline.push({mesh:m,side:i%2?1:-1,off:rand(105,210),w:rand(12,26),h:rand(26,96),z:(i>>1)*70+rand(-20,20)});
+      }
+      // DISTANT CLOUDS: big soft billboards drifting on the horizon (Aero) for a real, deep sky.
+      this.cloudBills=[]; const cspr=this._cloudSprite(); const cgeo=new THREE.PlaneGeometry(1,1);
+      for(let i=0;i<10;i++){
+        const m=new THREE.Mesh(cgeo,new THREE.MeshBasicMaterial({map:cspr,transparent:true,opacity:0.9,depthWrite:false,fog:true}));
+        m.visible=false; g.scene.add(m);
+        this.cloudBills.push({mesh:m,x:rand(-260,260),y:rand(55,120),z:0,w:rand(120,240),h:rand(60,120)});
+      }
+    }
+    // a single soft puffy cloud with transparency -> distant billboard clouds
+    _cloudSprite(){
+      const c=document.createElement('canvas'); c.width=256; c.height=160; const x=c.getContext('2d');
+      const puff=(cx,cy,r,a)=>{ const g=x.createRadialGradient(cx,cy,0,cx,cy,r);
+        g.addColorStop(0,`rgba(255,255,255,${a})`); g.addColorStop(0.55,`rgba(245,250,255,${a*0.6})`); g.addColorStop(1,'rgba(245,250,255,0)');
+        x.fillStyle=g; x.beginPath(); x.arc(cx,cy,r,0,6.2832); x.fill(); };
+      for(let j=0;j<4;j++) puff(128+(Math.random()-0.5)*120, 96+Math.random()*24, 40+Math.random()*22, 0.34);  // grey base
+      for(let j=0;j<9;j++) puff(128+(Math.random()-0.5)*150, 78+(Math.random()-0.5)*44, 34+Math.random()*30, 0.9);
+      const t=new THREE.CanvasTexture(c); return t;
     }
     // called by MapSystem when the player selects a map
     applyTheme(t){
@@ -1035,9 +1066,11 @@
       // repaint the road/sidewalks for this map
       this.ribbons[0].mesh.material.map=this._roadTexture(t.road);
       this.ribbons[1].mesh.material.map=this.ribbons[2].mesh.material.map=this._sidewalkTexture(t.road);
-      // env visibility
+      // env visibility + theming
       for(const b of this.bubbles) b.mesh.visible=!!t.bubbles;
-      for(const mn of this.mountains) mn.mesh.visible=!!t.mountains;
+      for(const mn of this.mountains){ mn.mesh.visible=!!t.mountains; mn.mesh.material.color.setHex(0x707663); }
+      for(const s of this.skyline){ s.mesh.visible=true; s.mesh.material.color.setHSL(t.building.tower[0], t.building.tower[1]*0.6, t.building.tower[2]*0.7); }
+      for(const cb of this.cloudBills) cb.mesh.visible=!!t.clouds;
     }
     _winTexture(){   // retained for compatibility (unused)
       const c=document.createElement('canvas'); c.width=c.height=64;
@@ -1132,12 +1165,16 @@
     _place(b,x,z,w,h,d,decor){
       b.mesh.visible=true; b.active=true; b.hit=false; b.missed=false; b.decor=!!decor; b.w=w; b.h=h; b.d=d;
       b.mesh.scale.set(w,h,d);
-      b.mesh.position.set(clamp(x, decor?-100:-44, decor?100:44), h/2, z);
+      b.mesh.position.set(clamp(x, decor?-150:-44, decor?150:44), h/2, z);
       const m=b.mesh.material;
       // tile the facade texture to the building's real size so panes/blocks look consistent (detail!)
       if(m.map){ m.map.repeat.set(Math.max(1,Math.round(w/3.2)), Math.max(2,Math.round(h/5)));
                  m.map.offset.set(Math.random(),Math.random()); }
       const B=this.game.theme.building, R=Math.random();
+      // per-map surface finish: Aero glass is shiny/reflective, stone is matte, NYC concrete in between
+      if(B.style==='glass'){ m.roughness=0.14; m.metalness=0.55; }
+      else if(B.style==='stone'){ m.roughness=0.94; m.metalness=0.0; }
+      else { m.roughness=0.62; m.metalness=0.12; }
       if(decor){ // street wall: two palette variants per map, dim outline
         const col = R<0.5 ? B.decorA : B.decorB;
         m.color.setHSL(col[0],col[1],col[2]+Math.random()*0.12);
@@ -1150,18 +1187,29 @@
       }
       // MEDIEVAL: a crenellated CROWN (battlements) tops every building; hittable = WATCH TOWERS with
       // a pointed roof above the merlons; decor = castle walls/keeps with an open notched top.
-      const bx=b.mesh.position.x;
-      if(this.game.theme.roofs){
+      const bx=b.mesh.position.x, style=B.style;
+      b.roof.visible=false; b.crown.visible=false; b.cap.visible=false;
+      if(style==='stone'){
+        // MEDIEVAL: crenellated CROWN on every building; hittable = WATCH TOWER with a pointed spire
         const crownH=clamp(h*0.12+2, 2.5, 5);
         b.crown.visible=true; b.crown.position.set(bx, h+crownH/2, z); b.crown.scale.set(w*1.06, crownH, d*1.06);
-        b.crown.material.map.repeat.set(Math.max(2,Math.round(w/3)),1);
-        b.crown.material.color.setHSL(0.09,0.22,0.5);
-        if(!decor){   // watch-tower spire above the battlements
-          const rh=Math.max(w,d)*0.85+4;
+        b.crown.material.map.repeat.set(Math.max(2,Math.round(w/3)),1); b.crown.material.color.setHSL(0.09,0.22,0.5);
+        if(!decor){ const rh=Math.max(w,d)*0.85+4;
           b.roof.visible=true; b.roof.position.set(bx, h+crownH+rh/2-0.4, z); b.roof.scale.set(w*1.02, rh, d*1.02);
-          b.roof.material.color.setHex(0x7d3a2c);
-        } else b.roof.visible=false;
-      } else { b.roof.visible=false; b.crown.visible=false; }
+          b.roof.material.color.setHex(0x7d3a2c); }
+      } else if(style==='window' && decor && R<0.4){
+        // NYC: iconic wooden ROOFTOP WATER TANK (cylinder body + little conical lid) on some roofs
+        const r=Math.min(w,d)*0.24+0.6, bodyH=r*2.2;
+        b.cap.visible=true; b.cap.position.set(bx+rand(-w*0.2,w*0.2), h+bodyH/2, z+rand(-d*0.2,d*0.2)); b.cap.scale.set(r,bodyH,r);
+        b.cap.material.color.setHex(0x6e5033); b.cap.material.emissive.setHex(0x000000);
+        b.roof.visible=true; b.roof.position.copy(b.cap.position); b.roof.position.y=h+bodyH+r*0.5; b.roof.scale.set(r*2.1,r*1.3,r*2.1);
+        b.roof.material.color.setHex(0x30302c);
+      } else if(style==='glass' && R<0.55){
+        // FRUTIGER AERO: sleek glowing ANTENNA/spire on futuristic towers
+        const capH=h*(0.18+Math.random()*0.22)+4, r=Math.min(w,d)*0.06+0.25;
+        b.cap.visible=true; b.cap.position.set(bx, h+capH/2, z); b.cap.scale.set(r,capH,r);
+        b.cap.material.color.setHex(0xbdf4ff); b.cap.material.emissive.setHex(0x2ab8d8);
+      }
       this.buildings.push(b);
     }
     _spawnAt(z){
@@ -1190,20 +1238,23 @@
       // hittable: NYC/Aero towers vs medieval WATCH TOWERS (narrower & taller, square footprint)
       if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
       else this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
-      // STREET WALL / CASTLE KEEPS lining both sides just past the pavement (decor, not smashable).
+      // DENSE CITY BLOCKS crowding both sides — several rows deep so the landscape is never empty.
       const edge=this.roadHalf+8;
       for(const side of [-1,1]){
-        const rows = Math.random()<0.88 ? (Math.random()<0.4?2:1) : 0;   // usually 1, often 2 deep
+        const rows = med ? (3+(Math.random()*2|0)) : (4+(Math.random()*3|0));   // 3-4 (med) / 4-6 (city) deep
+        let off=edge + rand(0,4);
         for(let k=0;k<rows;k++){
           const nb=this._take(); if(!nb) break;
-          const off=edge + k*rand(11,16) + rand(0,5);
-          if(med){ const dw=rand(12,20); this._place(nb, px+side*off, z+rand(-7,7), dw, rand(12,30), rand(12,20), true); } // wide castle keeps/walls
-          else this._place(nb, px+side*off, z+rand(-7,7), rand(9,15), rand(14,44), rand(9,15), true);   // tall high-rises
+          if(med){ const dw=rand(11,20); this._place(nb, px+side*off, z+rand(-9,9), dw, rand(12,34), rand(11,20), true); off+=dw*0.55+rand(9,15); }
+          else {   // NYC/Aero high-rises: pack them tight & tall, taller the farther back = real skyline depth
+            const dw=rand(9,16), dh=rand(16,44)+k*rand(2,7);
+            this._place(nb, px+side*off, z+rand(-9,9), dw, dh, rand(9,16), true); off+=dw*0.6+rand(6,12); }
+          nb.mesh.castShadow = k<2;   // only near rows cast shadows (keeps the dense skyline cheap)
         }
       }
     }
     shatter(b){
-      b.active=false; b.hit=true; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false;
+      b.active=false; b.hit=true; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false;
       const i=this.buildings.indexOf(b); if(i>=0) this.buildings.splice(i,1);
     }
     update(){
@@ -1218,7 +1269,7 @@
         // MISS (only while actually playing): a hittable tower slipped behind you unsmashed ->
         // break the streak AND lose momentum. Skipped in the menu so it can't end the run on load.
         if(playing && !b.decor && !b.hit && !b.missed && b.mesh.position.z < pz-1.5){ b.missed=true; this.game.combo.miss(); this.game.momentum.onMiss(); }
-        if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; this.buildings.splice(i,1); }
+        if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false; this.buildings.splice(i,1); }
       }
       this._updateEnv();
       this.updateRoad();
@@ -1235,9 +1286,24 @@
       }
       if(this.mountains && this.mountains[0].mesh.visible){
         for(const mn of this.mountains){
-          if(mn.z < pz-100) mn.z+=this.mountains.length*130;
-          mn.mesh.position.set(px+mn.side*mn.off, mn.h/2-8, mn.z);
+          if(mn.z < pz-120) mn.z+=this.mountains.length*150;
+          mn.mesh.position.set(px+mn.side*mn.off, mn.h/2-10, mn.z);   // FAR to the sides -> never covers gameplay
           mn.mesh.scale.set(mn.w,mn.h,mn.w);
+        }
+      }
+      if(this.skyline){   // far background city silhouette, always on, fills the horizon
+        for(const s of this.skyline){
+          if(s.z < pz-140) s.z+=Math.ceil(this.skyline.length/2)*70;
+          s.mesh.position.set(px+s.side*s.off, s.h/2, s.z); s.mesh.scale.set(s.w,s.h,s.w);
+        }
+      }
+      if(this.cloudBills && this.cloudBills[0].mesh.visible){   // distant billboard clouds, face the camera
+        const cam=this.game.camera.cam;
+        for(const cb of this.cloudBills){
+          if(cb.z===0 || cb.z < pz-120){ cb.z=pz+rand(240,560); cb.x=px+rand(-300,300); cb.y=rand(50,120); }
+          cb.z-=(p.speed()*0.12+2)*0.016;                        // slow parallax drift
+          cb.mesh.position.set(cb.x, cb.y, cb.z); cb.mesh.scale.set(cb.w,cb.h,1);
+          cb.mesh.lookAt(cam.position.x, cb.y, cam.position.z);
         }
       }
     }
@@ -1260,7 +1326,12 @@
       }
       return null;
     }
-    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=1; } // one easy tower only, then it's earned
+    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=1; this._resetEnv(); } // one easy tower only, then it's earned
+    _resetEnv(){ const pz=this.game.player?this.game.player.pos.z:0;   // re-seed distant env near the player so a restart isn't left empty
+      if(this.mountains) this.mountains.forEach((mn,i)=>mn.z=pz+i*150);
+      if(this.skyline) this.skyline.forEach((s,i)=>s.z=pz+(i>>1)*70+rand(-20,20));
+      if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
+      if(this.bubbles) this.bubbles.forEach(bb=>bb.z=0); }
   }
 
   // ===================================================================================
@@ -1454,11 +1525,26 @@
       gn.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
       o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.24);
       this._tone(f*3.6,0.05,'sine',0.24); this._fnoise(0.05,0.22,1900,'bandpass',2); }  // sparkle + wet pop
-    // sharp crack + stony crumble -> a real BRICK breaking (Medieval map)
-    brick(combo){ this._fnoise(0.05,0.6,2800,'highpass',0.9);                     // the crack
-      this._tone(84,0.14,'square',0.34); this._tone(58,0.18,'sine',0.26);        // low knock/thud
-      this._fnoise(0.12,0.34,420,'lowpass',0.7);                                  // stone body
-      for(let i=0;i<4;i++) setTimeout(()=>this._fnoise(0.05,0.2,600+Math.random()*700,'bandpass',3), 28+i*42); } // crumbling debris
+    // a HARD, fast head-on BRICK SMASH — loud sharp crack + heavy body + tight grit (Medieval map)
+    brick(combo){ if(!this.ctx) return; const t=this.ctx.currentTime;
+      this._fnoise(0.03,1.0,2400,'bandpass',0.7);                                 // loud broadband CRACK
+      this._fnoise(0.016,0.9,5200,'highpass',0.5);                                // sharp click edge
+      const o=this.ctx.createOscillator(), gn=this.ctx.createGain();              // heavy low body (the mass)
+      o.type='square'; o.frequency.setValueAtTime(165,t); o.frequency.exponentialRampToValueAtTime(46,t+0.11);
+      gn.gain.setValueAtTime(0.6,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.15);
+      o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.15);
+      this._fnoise(0.1,0.5,1100,'lowpass',0.9);                                   // stony rubble burst
+      for(let i=0;i<3;i++) setTimeout(()=>this._fnoise(0.035,0.34,1400+Math.random()*1000,'bandpass',2.5), 16+i*26); } // fast crumble
+    // goofy VICTIM scream — a warbling, wobbling yelp that pitch-drops (Toss-the-Buddy style)
+    scream(){ if(!this.ctx) return; const t=this.ctx.currentTime;
+      const o=this.ctx.createOscillator(), gn=this.ctx.createGain(), lfo=this.ctx.createOscillator(), lg=this.ctx.createGain();
+      o.type='sawtooth'; const base=500+Math.random()*280;
+      o.frequency.setValueAtTime(base,t); o.frequency.exponentialRampToValueAtTime(base*1.5,t+0.05);
+      o.frequency.exponentialRampToValueAtTime(base*0.45,t+0.33);
+      lfo.type='sine'; lfo.frequency.value=17+Math.random()*12; lg.gain.value=46; lfo.connect(lg); lg.connect(o.frequency); // goofy wobble
+      gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(0.26,t+0.03);
+      gn.gain.setValueAtTime(0.24,t+0.2); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.36);
+      o.connect(gn); gn.connect(this.master); o.start(); lfo.start(); o.stop(t+0.38); lfo.stop(t+0.38); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
     coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
     fire(){ this._tone(180,0.5,'sawtooth',0.35); this._tone(90,0.6,'square',0.25); this._noise(0.5,0.3); }
