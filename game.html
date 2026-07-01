@@ -8,11 +8,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>INVINCIBLE RUN — Omni Flight</title>
   <style>
-    :root { --hud:#eceff1; --accent:#e0563b; --good:#4f9d63; --warn:#d9a441; --panel:#232a33; --teal:#3f8f7a; }
+    :root { --cream:#f7ead1; --parch:#f0dcac; --wood:#3f2d1a; --wood2:#563c22; --line:#8a6a38; --ink:#2c2013;
+            --gold:#f2b431; --gold-d:#a9701a; --red:#cf4436; --red-d:#8f2a20; --green:#5aa03e; --green-d:#396823;
+            --blue:#3877ab; --hud:#f7ead1; --warn:#f2b431; --good:#5aa03e; --accent:#cf4436; --teal:#5a4026; --panel:#3f2d1a; }
     * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#12161c;
+    html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#241a10;
                 touch-action:none; overscroll-behavior:none; }
-    body { font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif; color:var(--hud); user-select:none; -webkit-user-select:none; }
+    body { font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif; font-weight:700; color:var(--cream); user-select:none; -webkit-user-select:none; }
     #app { position:fixed; inset:0; }
     canvas { display:block; }
 
@@ -23,117 +25,125 @@
 
     /* ---------- HUD ---------- */
     #hud { position:fixed; inset:0; pointer-events:none; z-index:10; padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
-    .bar-wrap { position:absolute; left:16px; width:min(260px,44vw); }
-    .bar-label { font-size:11px; letter-spacing:2px; opacity:.85; margin-bottom:4px; text-transform:uppercase; }
-    .bar { height:14px; border-radius:7px; background:rgba(255,255,255,.13); overflow:hidden; }
-    .bar > i { display:block; height:100%; width:0%; border-radius:7px; transition:width .08s linear; }
-    #momentum-wrap { top:14px; }
-    #momentum-bar > i { background:#4f9d63; }        /* matte green */
-    #adrenaline-wrap { top:60px; }
-    #adrenaline-bar > i { background:#d98a3d; }       /* matte amber (no purple) */
+    .bar-wrap { position:absolute; left:14px; width:min(240px,46vw); }
+    .bar-label { font-size:11px; letter-spacing:2px; margin:0 0 3px 2px; text-transform:uppercase; color:var(--cream); text-shadow:0 1px 2px #1c130a; }
+    .bar { height:17px; border-radius:9px; background:#2a1d10; border:2px solid var(--line); overflow:hidden;
+           box-shadow:0 2px 3px rgba(0,0,0,.4), inset 0 2px 3px rgba(0,0,0,.5); }
+    .bar > i { display:block; height:100%; width:0%; border-radius:6px; transition:width .08s linear; }
+    #momentum-wrap { top:12px; }
+    #momentum-bar > i { background:linear-gradient(#7ac85a,#4c8a30); }   /* glossy classic green */
+    #adrenaline-wrap { top:58px; }
+    #adrenaline-bar > i { background:linear-gradient(#f2c04a,#c8892a); } /* glossy gold */
 
-    #score-box { position:absolute; top:14px; right:62px; text-align:right; }
-    #coins { font-size:18px; font-weight:800; color:#d9a441; text-shadow:0 1px 2px rgba(0,0,0,.5); margin-bottom:1px; }
-    #score { font-size:34px; font-weight:800; line-height:1; text-shadow:0 1px 3px rgba(0,0,0,.5); }
-    #score-sub { font-size:12px; opacity:.8; margin-top:3px; }
-    #pause-btn { position:fixed; top:12px; right:12px; z-index:16; width:42px; height:42px; border-radius:10px;
-                 background:rgba(35,42,51,.72); color:#eceff1; border:1px solid rgba(255,255,255,.18); font-size:13px;
-                 letter-spacing:1px; cursor:pointer; pointer-events:auto; display:flex; align-items:center; justify-content:center; }
-    #pause-btn:active { transform:scale(.94); }
-    .btn-sec { background:#3a434f !important; color:#eceff1 !important; box-shadow:0 3px 0 rgba(0,0,0,.28) !important;
-               font-size:15px !important; padding:12px 30px !important; }
+    #score-box { position:absolute; top:12px; right:60px; text-align:right; }
+    #coins { display:inline-block; font-size:16px; font-weight:800; color:#fff2c8; background:var(--wood); border:2px solid var(--line);
+             border-radius:9px; padding:2px 9px; margin-bottom:3px; text-shadow:0 1px 1px #000; }
+    #score { font-size:37px; font-weight:800; line-height:1; color:#fff; letter-spacing:1px;
+             text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 3px 4px rgba(0,0,0,.5); }
+    #score.lead { color:var(--gold); }
+    #score-sub { font-size:12px; color:var(--cream); margin-top:2px; text-shadow:0 1px 2px #000; }
+    #pause-btn { position:fixed; top:12px; right:12px; z-index:16; width:44px; height:44px; border-radius:11px;
+                 background:var(--wood); color:var(--cream); border:2px solid var(--line); font-size:14px; letter-spacing:1px;
+                 cursor:pointer; pointer-events:auto; display:flex; align-items:center; justify-content:center;
+                 box-shadow:0 3px 0 #1c130a, inset 0 2px 2px rgba(255,255,255,.08); }
+    #pause-btn:active { transform:translateY(2px); box-shadow:0 1px 0 #1c130a; }
+    .btn-sec { background:linear-gradient(var(--wood2),var(--wood)) !important; color:var(--cream) !important; border-color:var(--line) !important;
+               box-shadow:0 5px 0 #1c130a, 0 7px 8px rgba(0,0,0,.4) !important; font-size:15px !important; padding:12px 30px !important; }
 
-    #combo { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) scale(1);
-             font-size:clamp(40px,12vw,72px); font-weight:900; opacity:0; color:var(--warn);
-             text-shadow:0 2px 5px rgba(0,0,0,.55); transition:opacity .15s; white-space:nowrap; }
-    #combo small { display:block; font-size:16px; letter-spacing:4px; opacity:.85; text-align:center; }
+    #combo { position:absolute; top:29%; left:50%; transform:translate(-50%,-50%) scale(1);
+             font-size:clamp(42px,13vw,76px); font-weight:800; opacity:0; color:var(--gold);
+             text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 4px 6px rgba(0,0,0,.5);
+             transition:opacity .15s; white-space:nowrap; }
+    #combo small { display:block; font-size:16px; letter-spacing:4px; text-align:center; margin-top:2px; }
 
-    #warning { position:absolute; bottom:30%; left:50%; transform:translate(-50%,0);
-               font-size:clamp(18px,5vw,26px); font-weight:800; color:var(--accent); opacity:0;
-               letter-spacing:2px; text-shadow:0 1px 3px rgba(0,0,0,.5); transition:opacity .15s; }
-    #state-tag { position:absolute; bottom:14px; left:16px; font-size:11px; letter-spacing:3px; text-transform:uppercase; opacity:.55; }
-    #speed-tag { position:absolute; bottom:14px; right:16px; font-size:11px; letter-spacing:2px; opacity:.55; }
-    #surge-tag { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font-size:12px;
-                 font-weight:800; letter-spacing:2px; color:var(--good); }
-    #best-line { font-size:14px; font-weight:800; letter-spacing:2px; color:var(--warn); margin-top:6px; min-height:18px; }
+    #warning { position:absolute; bottom:31%; left:50%; transform:translate(-50%,0);
+               font-size:clamp(15px,4.4vw,21px); font-weight:800; color:#fff; background:var(--red); border:2px solid #fff; border-radius:12px;
+               padding:8px 16px; opacity:0; letter-spacing:1px; text-shadow:0 1px 2px #000; transition:opacity .15s; box-shadow:0 4px 0 var(--red-d); }
+    #state-tag { position:absolute; bottom:13px; left:14px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--cream); opacity:.7; text-shadow:0 1px 2px #000; }
+    #speed-tag { position:absolute; bottom:13px; right:14px; font-size:12px; font-weight:800; letter-spacing:1px; color:var(--cream); text-shadow:0 1px 2px #000; }
+    #surge-tag { position:absolute; bottom:11px; left:50%; transform:translateX(-50%); font-size:12px; font-weight:800; letter-spacing:1px;
+                 color:var(--green); background:var(--wood); border:2px solid var(--line); border-radius:9px; padding:4px 12px; text-shadow:0 1px 1px #000; }
+    #best-line { font-size:14px; font-weight:800; letter-spacing:2px; color:var(--gold); margin-top:6px; min-height:18px; }
 
     /* ---------- Overlays ---------- */
     .overlay { position:fixed; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center;
-               text-align:center; background:rgba(20,24,30,.94); padding:24px; }
-    .overlay h1 { font-size:clamp(34px,9vw,74px); margin:0; letter-spacing:2px; line-height:1.05; color:var(--hud); font-weight:900; }
-    .overlay h2 { font-size:clamp(13px,3.6vw,18px); margin:8px 0 0; opacity:.72; font-weight:600; letter-spacing:2px; color:var(--warn); }
-    .overlay p { max-width:520px; font-size:14px; line-height:1.6; opacity:.82; }
-    .overlay .keys { font-size:12px; opacity:.62; margin-top:4px; }
-    .btn { pointer-events:auto; margin-top:20px; padding:15px 44px; font-size:18px; font-weight:800; letter-spacing:2px;
-           color:#fff; background:var(--teal); border:none; border-radius:14px; cursor:pointer;
-           text-transform:uppercase; box-shadow:0 4px 0 rgba(0,0,0,.3); }
-    .btn:active { transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,.3); }
-    #gameover-stats { font-size:15px; opacity:.9; margin-top:8px; line-height:1.9; }
-    #gameover-stats b { color:var(--warn); }
+               text-align:center; padding:24px; color:var(--cream); background:radial-gradient(circle at 50% 28%, #4a3620, #241a10 78%); }
+    .overlay h1 { font-size:clamp(34px,9vw,72px); margin:0; letter-spacing:1px; line-height:1.05; color:var(--gold); font-weight:800;
+                  text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 3px var(--ink),0 5px 6px rgba(0,0,0,.5); }
+    .overlay h2 { font-size:clamp(13px,3.6vw,18px); margin:8px 0 0; font-weight:800; letter-spacing:2px; color:var(--cream); text-shadow:0 2px 3px #000; }
+    .overlay p { max-width:520px; font-size:14px; line-height:1.6; }
+    .overlay .keys { font-size:12px; opacity:.7; margin-top:4px; }
+    .btn { pointer-events:auto; margin-top:18px; padding:15px 44px; font-size:18px; font-weight:800; letter-spacing:1px;
+           color:#fff; background:linear-gradient(var(--green),var(--green-d)); border:2px solid #fff; border-radius:14px; cursor:pointer;
+           text-transform:uppercase; box-shadow:0 5px 0 var(--green-d), 0 7px 8px rgba(0,0,0,.4); text-shadow:0 1px 2px rgba(0,0,0,.4); }
+    .btn:active { transform:translateY(3px); box-shadow:0 2px 0 var(--green-d); }
+    #gameover-stats { font-size:15px; margin-top:8px; line-height:1.9; color:var(--cream); background:var(--wood); border:2px solid var(--line);
+                      border-radius:14px; padding:14px 22px; box-shadow:inset 0 2px 4px rgba(0,0,0,.4); }
+    #gameover-stats b { color:var(--gold); }
     .hidden { display:none !important; }
 
-    /* ---------- Touch controls ---------- */
+    /* ---------- Touch controls (solid, classic) ---------- */
     #touch { position:fixed; inset:0; z-index:15; pointer-events:none; }
     .pad { position:absolute; bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
-           display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:1px; }
-    #btn-boost { right:26px; width:96px; height:96px; color:#eceff1; background:rgba(63,143,122,.5);
-                 border:2px solid rgba(255,255,255,.22); }
-    /* analog joystick (flat matte) */
-    #joy-base { position:absolute; left:24px; bottom:max(28px,env(safe-area-inset-bottom)); width:138px; height:138px;
-                border-radius:50%; background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.16);
-                pointer-events:auto; touch-action:none; }
-    #joy-knob { position:absolute; left:39px; top:39px; width:60px; height:60px; border-radius:50%;
-                background:#cfd6dd; box-shadow:0 2px 6px rgba(0,0,0,.35); will-change:transform; }
+           display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; letter-spacing:1px; text-shadow:0 1px 2px #000; }
+    #btn-boost { right:24px; width:98px; height:98px; color:#fff; background:radial-gradient(circle at 50% 38%, #f2c04a, #c8892a);
+                 border:3px solid #fff5d8; box-shadow:0 5px 0 #8f5f18, 0 8px 10px rgba(0,0,0,.4); }
+    #btn-boost:active { transform:translateY(3px); box-shadow:0 2px 0 #8f5f18; }
+    #joy-base { position:absolute; left:22px; bottom:max(26px,env(safe-area-inset-bottom)); width:140px; height:140px;
+                border-radius:50%; background:radial-gradient(circle at 50% 40%, #3f2d1a, #241a10); border:3px solid var(--line);
+                pointer-events:auto; touch-action:none; box-shadow:inset 0 3px 8px rgba(0,0,0,.5); }
+    #joy-knob { position:absolute; left:38px; top:38px; width:64px; height:64px; border-radius:50%;
+                background:radial-gradient(circle at 50% 35%, #f7ead1, #b79b6e); box-shadow:0 3px 6px rgba(0,0,0,.45), inset 0 2px 3px rgba(255,255,255,.4); will-change:transform; }
     body:not(.touch) #touch { display:none; }
     body:not(.touch) .keys-hint-mobile { display:none; }
     body.touch .keys-hint-desktop { display:none; }
 
     /* live BEST readout (high-score emphasis) */
-    #score-best { font-size:12px; font-weight:800; letter-spacing:1px; color:var(--warn); margin-top:4px; }
-    #score.lead { color:var(--warn); }
+    #score-best { font-size:12px; font-weight:800; letter-spacing:.5px; color:var(--gold); margin-top:3px; text-shadow:0 1px 2px #000; }
 
-    /* ---------- Main menu (classic mobile layout) ---------- */
-    .overlay.menu { justify-content:flex-start; padding-top:max(7vh,54px); background:rgba(18,22,28,.96); }
+    /* ---------- Main menu (classic solid layout) ---------- */
+    .overlay.menu { justify-content:flex-start; padding-top:max(7vh,54px); }
     .brand { text-align:center; margin-bottom:auto; }
-    .logo { font-size:clamp(38px,13vw,84px); font-weight:900; letter-spacing:1px; line-height:.9; color:#eef2f5; text-shadow:0 3px 0 rgba(0,0,0,.28); }
-    .logo span { display:block; color:var(--accent); }
-    .tagline { margin-top:12px; font-size:clamp(11px,3.2vw,14px); letter-spacing:4px; color:var(--warn); font-weight:700; opacity:.92; }
-    .best-card { display:flex; align-items:center; gap:16px; background:var(--panel); border:1px solid rgba(255,255,255,.08);
-                 border-radius:16px; padding:14px 30px; margin:0 0 24px; box-shadow:0 6px 18px rgba(0,0,0,.35); }
-    .best-card .tro { font-size:36px; }
-    .best-card .best-cap { font-size:11px; letter-spacing:3px; opacity:.6; text-align:left; }
-    .best-card #best-num { font-size:34px; font-weight:900; color:var(--warn); line-height:1; }
-    .btn-play { pointer-events:auto; width:min(340px,82vw); padding:20px; font-size:24px; font-weight:900; letter-spacing:3px;
-                color:#fff; background:var(--accent); border:none; border-radius:18px; cursor:pointer; text-transform:uppercase;
-                box-shadow:0 5px 0 #a2331f; margin:0; }
-    .btn-play:active { transform:translateY(3px); box-shadow:0 2px 0 #a2331f; }
-    .menu-row { display:flex; gap:14px; margin-top:20px; margin-bottom:auto; }
-    .chip { pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:7px; width:94px; padding:14px 8px;
-            background:var(--panel); color:#eceff1; border:1px solid rgba(255,255,255,.08); border-radius:14px; cursor:pointer;
-            font-size:12px; font-weight:700; letter-spacing:1px; box-shadow:0 4px 0 rgba(0,0,0,.28); }
-    .chip .ic { font-size:26px; }
-    .chip span { opacity:.85; }
-    .chip:active { transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,.28); }
-    .menu-foot { margin-top:16px; font-size:11px; letter-spacing:1px; opacity:.4; }
+    .logo { font-size:clamp(40px,13vw,86px); font-weight:800; letter-spacing:1px; line-height:.9; color:var(--gold);
+            text-shadow:-3px 0 var(--ink),3px 0 var(--ink),0 -3px var(--ink),0 4px var(--ink),0 7px 8px rgba(0,0,0,.55); }
+    .logo span { display:block; color:var(--red); }
+    .tagline { margin-top:12px; font-size:clamp(11px,3.2vw,14px); letter-spacing:3px; color:var(--cream); font-weight:800; text-shadow:0 2px 3px #000; }
+    .best-card { display:flex; align-items:center; gap:16px; background:linear-gradient(var(--wood2),var(--wood)); border:3px solid var(--line);
+                 border-radius:16px; padding:12px 28px; margin:0 0 24px; box-shadow:0 5px 0 #1c130a, 0 8px 12px rgba(0,0,0,.45); }
+    .best-card .tro { font-size:38px; }
+    .best-card .best-cap { font-size:11px; letter-spacing:2px; color:var(--parch); text-align:left; }
+    .best-card #best-num { font-size:34px; font-weight:800; color:var(--gold); line-height:1; text-shadow:0 2px 2px #000; }
+    .btn-play { pointer-events:auto; width:min(330px,80vw); padding:19px; font-size:26px; font-weight:800; letter-spacing:2px;
+                color:#fff; background:linear-gradient(#e05a44,#b6351f); border:3px solid #fff; border-radius:18px; cursor:pointer; text-transform:uppercase;
+                box-shadow:0 6px 0 #8f2a1a, 0 9px 12px rgba(0,0,0,.45); text-shadow:0 2px 3px rgba(0,0,0,.4); margin:0; }
+    .btn-play:active { transform:translateY(4px); box-shadow:0 2px 0 #8f2a1a; }
+    .menu-row { display:flex; gap:12px; margin-top:20px; margin-bottom:auto; }
+    .chip { pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:6px; width:96px; padding:13px 8px;
+            background:linear-gradient(var(--wood2),var(--wood)); color:var(--cream); border:2px solid var(--line); border-radius:14px; cursor:pointer;
+            font-size:12px; font-weight:800; letter-spacing:.5px; box-shadow:0 4px 0 #1c130a, 0 6px 8px rgba(0,0,0,.35); text-shadow:0 1px 2px #000; }
+    .chip .ic { font-size:27px; }
+    .chip:active { transform:translateY(2px); box-shadow:0 2px 0 #1c130a; }
+    .menu-foot { margin-top:16px; font-size:11px; letter-spacing:1px; color:var(--parch); opacity:.7; text-shadow:0 1px 2px #000; }
 
-    /* ---------- Modal sheets ---------- */
-    .modal { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:rgba(10,13,17,.68); padding:20px; }
-    .sheet { width:min(440px,94vw); background:#1c222a; border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:20px 20px 24px; box-shadow:0 14px 44px rgba(0,0,0,.55); }
-    .sheet-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-    .sheet-head span { font-size:20px; font-weight:900; letter-spacing:2px; }
-    .x { pointer-events:auto; width:38px; height:38px; border-radius:11px; background:#2b333d; color:#eceff1; border:none; font-size:20px; cursor:pointer; }
-    .x:active { transform:scale(.94); }
-    .opt { display:flex; align-items:center; justify-content:space-between; padding:15px 4px; border-top:1px solid rgba(255,255,255,.06); font-size:16px; }
+    /* ---------- Modal sheets (solid) ---------- */
+    .modal { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:rgba(20,13,6,.72); padding:20px; }
+    .sheet { width:min(440px,94vw); background:linear-gradient(#4a3620,#33230f); border:3px solid var(--line); border-radius:20px;
+             padding:18px 18px 22px; box-shadow:0 12px 40px rgba(0,0,0,.6); color:var(--cream); }
+    .sheet-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .sheet-head span { font-size:20px; font-weight:800; letter-spacing:1px; color:var(--gold); text-shadow:0 2px 2px #000; }
+    .x { pointer-events:auto; width:38px; height:38px; border-radius:11px; background:var(--red); color:#fff; border:2px solid #fff; font-size:20px; cursor:pointer; box-shadow:0 3px 0 var(--red-d); }
+    .x:active { transform:translateY(2px); box-shadow:0 1px 0 var(--red-d); }
+    .opt { display:flex; align-items:center; justify-content:space-between; padding:14px 4px; border-top:2px solid rgba(255,255,255,.08); font-size:16px; }
     .opt:first-of-type { border-top:none; }
-    .toggle { pointer-events:auto; min-width:66px; padding:9px 18px; border-radius:20px; border:none; cursor:pointer; font-weight:800; letter-spacing:1px; font-size:13px; background:#3a434f; color:#aeb6bf; }
-    .toggle.on { background:var(--good); color:#fff; }
-    .sheet-note { font-size:12px; opacity:.55; margin:2px 0 14px; letter-spacing:1px; }
+    .toggle { pointer-events:auto; min-width:66px; padding:9px 18px; border-radius:20px; border:2px solid var(--line); cursor:pointer; font-weight:800; letter-spacing:1px; font-size:13px; background:#2a1d10; color:#b7a074; }
+    .toggle.on { background:linear-gradient(var(--green),var(--green-d)); color:#fff; border-color:#fff; }
+    .sheet-note { font-size:12px; color:var(--parch); margin:2px 0 14px; letter-spacing:.5px; }
     .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-    .card { aspect-ratio:1/1; border-radius:14px; background:#2b333d; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; font-weight:800; font-size:13px; border:2px solid transparent; }
+    .card { aspect-ratio:1/1; border-radius:14px; background:#33230f; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; font-weight:800; font-size:13px; border:3px solid #5a4026; color:var(--cream); box-shadow:inset 0 2px 4px rgba(0,0,0,.4); }
     .card .big { font-size:30px; }
-    .card small { font-weight:600; opacity:.55; font-size:10px; letter-spacing:1px; }
-    .card.sel { border-color:var(--good); background:#26332c; }
-    .card.lock { color:#6b747e; }
+    .card small { font-weight:700; color:var(--parch); opacity:.75; font-size:10px; letter-spacing:.5px; }
+    .card.sel { border-color:var(--gold); background:#4a3a1a; }
+    .card.lock { color:#7a684a; }
   </style>
 </head>
 <body>
@@ -375,9 +385,9 @@
     buildingW(){ return rand(9,14); }
     // Speed ramps up QUICKLY in the first ~30s (you feel it get fast fast) then settles at a high,
     // demanding PLATEAU (~122 m/s ≈ 440 km/h). Not endless — fast, then held so skill can sustain it.
-    // Faster off the line (~194 km/h) with a quick early ramp, PLUS a gentle perpetual climb so the
-    // longer you last the faster you go (soft-capped ~+70 so it never becomes literally uncontrollable).
-    baseSpeed(){ return 54 + 78*(1-Math.exp(-this.elapsed/15)) + Math.min(this.elapsed*0.45, 70); }
+    // EASES IN slow (~140 km/h) so the opening is forgiving, then keeps climbing the longer you last
+    // until it plateaus at a demanding speed only a skilled player can sustain forever (~700+ km/h).
+    baseSpeed(){ return 39 + 70*(1-Math.exp(-this.elapsed/22)) + Math.min(this.elapsed*0.55, 92); }
     decay(){ return lerp(4,7,this.densityP); }            // light bleed; the REAL danger is MISSING
     reset(){ this.level=0; this.densityP=0; this.elapsed=0; }
   }
@@ -765,8 +775,6 @@
       if(snd==='bubble') g.audio.bubble(combo);
       else if(snd==='brick') g.audio.brick(combo);
       else g.audio.crash(tier,combo);
-      // the invincible VICTIM yelps on impact — goofy, and always on the bigger smashes
-      if(Math.random()<0.5 || tier.name==='crush' || tier.name==='level') g.audio.scream();
       g.player.onSmash(tier);
 
       g.city.shatter(building);   // remove + recycle the building
@@ -1423,9 +1431,9 @@
       const g=this.game, p=g.player, D=g.difficulty;
       const d=this.drones.find(x=>!x.active); if(!d) return;
       const hard=clamp(D.level/8,0,1);
-      // Fast plunge: total approach ~2.0s early -> ~1.1s late (they come at you FASTER over time).
-      d.react=lerp(2.0,1.1,hard);
-      d.commitT=clamp(d.react*0.5,0.65,1.0);            // the final juke window once it locks onto you
+      // Approach EASES from slow & very readable (~3.0s) early to a fast plunge (~1.1s) late.
+      d.react=lerp(3.0,1.1,hard);
+      d.commitT=clamp(d.react*0.5,0.7,1.3);             // the final juke window once it locks onto you
       d.vy=(this.START_Y-this.BAND)/d.react;
       d.commitY=this.BAND + d.vy*d.commitT;             // below this height it has COMMITTED to the strike
       d.locked=false;
@@ -1448,11 +1456,13 @@
     }
     update(dt){
       const g=this.game, p=g.player, D=g.difficulty;
-      // relentless single-file assault: one drone hunts you, then the next, tighter the longer you last
+      // Drones hold off for the first few seconds, arrive rarely at first, then ramp to a relentless
+      // single-file assault -> the opening is gentle; only later does it demand real skill.
+      if(D.elapsed<5) return;                            // calm opening: no drones for the first 5s
+      const hard=clamp(D.level/8,0,1);
       this._timer-=dt;
       if(this._timer<=0){
-        const hard=clamp(D.level/8,0,1);
-        this._timer=lerp(1.5,0.75,hard)*rand(0.9,1.1);
+        this._timer=lerp(3.2,0.75,hard)*rand(0.9,1.1);   // sparse early -> frequent late
         this._spawn();
       }
       const nowMs=performance.now();
@@ -1507,44 +1517,53 @@
       const dat=buf.getChannelData(0); for(let i=0;i<n;i++) dat[i]=(Math.random()*2-1)*(1-i/n);
       const src=this.ctx.createBufferSource(); src.buffer=buf; const gn=this.ctx.createGain(); gn.gain.value=g;
       src.connect(gn); gn.connect(this.master); src.start(); }
-    crash(tier,combo){ const base={glance:160,smash:110,crush:70,level:45}[tier.name];
-      this._tone(base+combo*8,0.25,'square',0.3); this._noise(0.08+tier.shake*0.18,0.35+tier.shake*0.35); }
-    // filtered noise burst (shapes noise into cracks / crumbles / wet pops)
+    // filtered noise burst (shapes noise into cracks / crumbles / rubble)
     _fnoise(d,g,freq,type,q){ if(!this.ctx) return; const n=Math.max(1,this.ctx.sampleRate*d|0);
       const buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate); const dat=buf.getChannelData(0);
       for(let i=0;i<n;i++) dat[i]=(Math.random()*2-1)*(1-i/n);
       const src=this.ctx.createBufferSource(); src.buffer=buf;
       const f=this.ctx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq; f.Q.value=q||1.4;
       const gn=this.ctx.createGain(); gn.gain.value=g; src.connect(f); f.connect(gn); gn.connect(this.master); src.start(); }
-    // LOUD, wet "gloop" -> a proper bubble pop (Frutiger Aero map)
+    // NEW YORK — GLASS BREAKING: a sharp crack, then a cascade of high tinkling shards
+    crash(tier,combo){ if(!this.ctx) return;
+      this._fnoise(0.03,0.6,4200,'highpass',0.7);                                 // the initial shatter crack
+      this._tone(560,0.05,'square',0.16);                                         // window-frame thunk
+      const n=5+((combo||0)%4);                                                   // falling shards
+      for(let i=0;i<n;i++){ const f=2400+Math.random()*3200;
+        setTimeout(()=>this._tone(f, 0.05+Math.random()*0.05, 'triangle', 0.15), i*32+Math.random()*22); } }
+    // FRUTIGER AERO — a LOUD, clean fidget "pop-it" pop: quick pitch drop + a tock click
     bubble(combo){ if(!this.ctx) return; const t=this.ctx.currentTime, o=this.ctx.createOscillator(), gn=this.ctx.createGain();
-      o.type='sine'; const f=250+((combo||0)%10)*55;
-      o.frequency.setValueAtTime(f*0.55,t); o.frequency.exponentialRampToValueAtTime(f*3.0,t+0.08);
-      o.frequency.exponentialRampToValueAtTime(f*1.5,t+0.19);                     // down-up = that "bloop"
-      gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(0.6,t+0.02);
-      gn.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
-      o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.24);
-      this._tone(f*3.6,0.05,'sine',0.24); this._fnoise(0.05,0.22,1900,'bandpass',2); }  // sparkle + wet pop
-    // a HARD, fast head-on BRICK SMASH — loud sharp crack + heavy body + tight grit (Medieval map)
+      o.type='sine'; const f=360+((combo||0)%8)*28;
+      o.frequency.setValueAtTime(f*2.4,t); o.frequency.exponentialRampToValueAtTime(f,t+0.05);   // snappy downward "pop"
+      gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(0.75,t+0.006); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.1);
+      o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.11);
+      this._fnoise(0.02,0.35,1500,'bandpass',3.5); }                              // the hollow "tock"
+    // MEDIEVAL — plowing THROUGH A BRICK WALL: sub boom + heavy crack + tumbling rubble tail
     brick(combo){ if(!this.ctx) return; const t=this.ctx.currentTime;
-      this._fnoise(0.03,1.0,2400,'bandpass',0.7);                                 // loud broadband CRACK
-      this._fnoise(0.016,0.9,5200,'highpass',0.5);                                // sharp click edge
-      const o=this.ctx.createOscillator(), gn=this.ctx.createGain();              // heavy low body (the mass)
-      o.type='square'; o.frequency.setValueAtTime(165,t); o.frequency.exponentialRampToValueAtTime(46,t+0.11);
-      gn.gain.setValueAtTime(0.6,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.15);
-      o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.15);
-      this._fnoise(0.1,0.5,1100,'lowpass',0.9);                                   // stony rubble burst
-      for(let i=0;i<3;i++) setTimeout(()=>this._fnoise(0.035,0.34,1400+Math.random()*1000,'bandpass',2.5), 16+i*26); } // fast crumble
-    // goofy VICTIM scream — a warbling, wobbling yelp that pitch-drops (Toss-the-Buddy style)
-    scream(){ if(!this.ctx) return; const t=this.ctx.currentTime;
-      const o=this.ctx.createOscillator(), gn=this.ctx.createGain(), lfo=this.ctx.createOscillator(), lg=this.ctx.createGain();
-      o.type='sawtooth'; const base=500+Math.random()*280;
-      o.frequency.setValueAtTime(base,t); o.frequency.exponentialRampToValueAtTime(base*1.5,t+0.05);
-      o.frequency.exponentialRampToValueAtTime(base*0.45,t+0.33);
-      lfo.type='sine'; lfo.frequency.value=17+Math.random()*12; lg.gain.value=46; lfo.connect(lg); lg.connect(o.frequency); // goofy wobble
-      gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(0.26,t+0.03);
-      gn.gain.setValueAtTime(0.24,t+0.2); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.36);
-      o.connect(gn); gn.connect(this.master); o.start(); lfo.start(); o.stop(t+0.38); lfo.stop(t+0.38); }
+      const o=this.ctx.createOscillator(), gn=this.ctx.createGain();             // big low impact (breaking through the mass)
+      o.type='square'; o.frequency.setValueAtTime(190,t); o.frequency.exponentialRampToValueAtTime(40,t+0.19);
+      gn.gain.setValueAtTime(0.75,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.23);
+      o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.23);
+      const s=this.ctx.createOscillator(), sg=this.ctx.createGain();             // sub boom underneath
+      s.type='sine'; s.frequency.setValueAtTime(72,t); s.frequency.exponentialRampToValueAtTime(30,t+0.26);
+      sg.gain.setValueAtTime(0.55,t); sg.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
+      s.connect(sg); sg.connect(this.master); s.start(); s.stop(t+0.3);
+      this._fnoise(0.05,1.0,1700,'bandpass',0.6);                                 // the broadband CRACK
+      this._fnoise(0.16,0.7,650,'lowpass',0.8);                                   // crunchy stone body
+      for(let i=0;i<8;i++) setTimeout(()=>this._fnoise(0.06,0.34,450+Math.random()*1300,'bandpass',2.4), 24+i*34); } // long brick rubble
+    // a single, more human SCREAM (vowel formants + vibrato) — played once when the run starts
+    humanScream(){ if(!this.ctx) return; const t=this.ctx.currentTime;
+      const a=this.ctx.createOscillator(), b=this.ctx.createOscillator(), base=340;
+      a.type='sawtooth'; b.type='sawtooth';
+      a.frequency.setValueAtTime(base*0.9,t); a.frequency.linearRampToValueAtTime(base*1.25,t+0.15); a.frequency.linearRampToValueAtTime(base*0.7,t+0.85);
+      b.frequency.setValueAtTime(base*1.85,t); b.frequency.linearRampToValueAtTime(base*1.4,t+0.85);
+      const lfo=this.ctx.createOscillator(), lg=this.ctx.createGain(); lfo.frequency.value=6; lg.gain.value=13; lfo.connect(lg); lg.connect(a.frequency);
+      const f1=this.ctx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=800; f1.Q.value=6;   // "ah" formants
+      const f2=this.ctx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.value=1180; f2.Q.value=8;
+      const mix=this.ctx.createGain(), gn=this.ctx.createGain();
+      a.connect(mix); b.connect(mix); mix.connect(f1); mix.connect(f2); f1.connect(gn); f2.connect(gn); gn.connect(this.master);
+      gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(0.5,t+0.06); gn.gain.setValueAtTime(0.44,t+0.62); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.92);
+      a.start(); b.start(); lfo.start(); a.stop(t+0.94); b.stop(t+0.94); lfo.stop(t+0.94); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
     coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
     fire(){ this._tone(180,0.5,'sawtooth',0.35); this._tone(90,0.6,'square',0.25); this._noise(0.5,0.3); }
@@ -1634,6 +1653,7 @@
     startRun(){
       const g=this.game; this.resetAll(); g.momentum.start(); this.state='Running';
       g.audio.resume();
+      setTimeout(()=>g.audio.humanScream(), 90);   // the victim screams once as the villain grabs him
       document.getElementById('start-overlay').classList.add('hidden');
       document.getElementById('gameover-overlay').classList.add('hidden');
     }
