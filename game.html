@@ -280,6 +280,8 @@
       this.value = clamp(this.value - pen, 0, this.MAX);  // much softer while you're in the zone.
       if(this.value<=0) this.game.run.toGameOver();
     }
+    // A DRONE strike rips away almost all your momentum -> a brutal, dodgeable punish.
+    hitByDrone(){ this.value=clamp(this.value*0.12,0,this.MAX); if(this.value<=0) this.game.run.toGameOver(); }
     isHigh(){ return this.value>=this.HIGH; }
     isLow(){ return this.value<=26; }
     factor(){ return this.value/this.MAX; }
@@ -299,29 +301,41 @@
   // streak sets the villain ON FIRE (escalating reward, like Paint Hit's color blast).
   // ===================================================================================
   class ComboSystem {
-    constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26; }
+    constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26;
+      this.EPIC_GRACE=3.5; this.epicTime=0; }        // once EPIC, you keep it for a grace window
     hit(){
       this.count++; this.best=Math.max(this.best,this.count);
       this.game.ui.flashCombo(this.count);
       if(this.count>=2 && this.count%5===0) this.game.audio.comboMilestone(this.count);
       if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); }   // ignite
       if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); }  // EPIC!
+      // being at/above EPIC (re)charges the grace window -> keep soaring by keeping the streak alive
+      if(this.count>=this.EPIC) this.epicTime=this.EPIC_GRACE;
       return this.count;
     }
     miss(){
+      // FAIR: while the EPIC grace window is live, a missed tower does NOT drop you — you stay epic.
+      if(this.epicTime>0) return;
       if(this.count<=0) return;
       const lit=this.onFire();
       this.count=0; this.game.ui.flashCombo(0);
       if(lit) this.game.audio.fireOut();
     }
-    onFire(){ return this.count>=this.FIRE; }
-    onEpic(){ return this.count>=this.EPIC; }                     // way past fire -> soar faster than surge
+    onFire(){ return this.count>=this.FIRE || this.epicTime>0; }
+    onEpic(){ return this.epicTime>0; }                          // timed buff: soar faster than surge
     fireLevel(){ return clamp((this.count-this.FIRE)/(this.EPIC-this.FIRE),0,1); }
-    epicLevel(){ return clamp((this.count-this.EPIC)/22,0,1); }
+    epicLevel(){ return this.epicTime>0 ? clamp(0.25+(this.count-this.EPIC)/22,0,1) : 0; }
     // multiplier SOARS once EPIC -> a huge streak is hugely rewarding
     multiplier(){ const m=1+Math.max(0,this.count-1)*0.35; return this.onEpic()? m*2.3 : this.onFire()? m*1.5 : m; }
-    update(){}
-    reset(){ this.count=0; }
+    update(dt){
+      if(this.epicTime>0){
+        this.epicTime-=dt;
+        if(this.epicTime<=0){                                    // window expired -> now the streak drops
+          this.epicTime=0; this.count=0; this.game.ui.flashCombo(0); this.game.audio.fireOut();
+        }
+      }
+    }
+    reset(){ this.count=0; this.epicTime=0; }
   }
 
   // ===================================================================================
@@ -446,8 +460,23 @@
         this.embers.push({mesh:m,vel:new THREE.Vector3(),life:0,max:1,hue:0});
       }
       this._ePtr=0; this._emberAcc=0;
+      // WIND / AIR-RESISTANCE — long arcing translucent ribbons that bow around the villain and
+      // rush past when you SOAR (surge). Reads like airflow over a body / a wind-bender's slipstream.
+      this.wind=[];
+      const wgeo=new THREE.PlaneGeometry(0.22,7);
+      for(let i=0;i<56;i++){
+        const m=new THREE.Mesh(wgeo,new THREE.MeshBasicMaterial({color:0xdff1ff,transparent:true,opacity:0,
+                 side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
+        m.visible=false; game.scene.add(m);
+        this.wind.push({mesh:m,ang:rand(0,Math.PI*2),rad:rand(3,12),phase:rand(0,Math.PI*2),z:0});
+      }
+      this._windAmt=0;
       this.flashEl=document.getElementById('flash');
       this._dPtr=0; this._rPtr=0;
+    }
+    _seedWind(w,p){
+      w.ang=rand(0,Math.PI*2); w.rad=rand(3.5,13); w.phase=rand(0,Math.PI*2);
+      w.z=p.pos.z+rand(30,90);
     }
     // FIRE TRAIL: spawn embers between the villain and the dummy that peel off and stream backward.
     // intensity (0..1) grows the deeper into EPIC you are -> denser, longer, hotter trail.
@@ -536,6 +565,24 @@
       }
       // speed lines: intensity from speed; they stream toward/past the camera and stretch with speed
       const p=this.game.player, spd=p.speed();
+      // WIND slipstream: ramps in while soaring (surge), eases out after. Ribbons arc around the
+      // villain (radius wobbles with a sine -> a bowing, turbulent airflow) and rush past.
+      const windTarget=p.surgeActive>0?1:0;
+      this._windAmt=damp(this._windAmt,windTarget,6,dt);
+      const wActive=this._windAmt>0.02;
+      const now2=performance.now()*0.001;
+      for(const w of this.wind){
+        if(!wActive){ if(w.mesh.visible) w.mesh.visible=false; continue; }
+        if(!w.mesh.visible){ w.mesh.visible=true; this._seedWind(w,p); }
+        w.z -= (spd+90)*dt;                          // hurtle past the camera
+        if(w.z < p.pos.z-20) this._seedWind(w,p);
+        // arc: radius breathes with a sine so the ribbon bows like air flowing over the body
+        const r=w.rad*(0.8+0.3*Math.sin(now2*3+w.phase));
+        w.mesh.position.set(p.pos.x+Math.cos(w.ang)*r, clamp(p.pos.y+Math.sin(w.ang)*r,3,52), w.z);
+        w.mesh.lookAt(p.pos.x,w.mesh.position.y,w.z-40); // face travel direction so it streaks
+        w.mesh.scale.set(1,1.1+spd*0.006,1);
+        w.mesh.material.opacity=this._windAmt*(0.16+0.12*Math.sin(now2*6+w.phase));
+      }
       const surge=p.surgeActive>0, fire=this.game.combo.onFire();
       const intensity=clamp((spd-45)/90,0,1);          // appear once you're moving quick
       const want=Math.round((surge?1:intensity)*this.streaks.length);
@@ -552,7 +599,8 @@
       }
     }
     reset(){ for(const d of this.debris){d.life=0;d.mesh.visible=false;} for(const r of this.rings){r.life=0;r.mesh.visible=false;}
-             for(const s of this.streaks){s.mesh.visible=false;} for(const e of this.embers){e.life=0;e.mesh.visible=false;} }
+             for(const s of this.streaks){s.mesh.visible=false;} for(const e of this.embers){e.life=0;e.mesh.visible=false;}
+             for(const w of this.wind){w.mesh.visible=false;} this._windAmt=0; }
   }
 
   // ===================================================================================
@@ -963,6 +1011,96 @@
   }
 
   // ===================================================================================
+  // DRONES — government interceptors that drop STRAIGHT DOWN out of the sky onto the villain.
+  // A ground marker telegraphs the drop (fair: you can dodge by strafing off that x). Touching one
+  // costs you almost all your momentum + a little explosion. They fall FASTER the longer you last.
+  // ===================================================================================
+  class DroneSystem {
+    constructor(game){
+      this.game=game; this.drones=[]; this.BAND=16; this.START_Y=80; this.HITR=3.0;
+      const bodyMat=new THREE.MeshStandardMaterial({color:0x2b3038,roughness:0.5,metalness:0.6,flatShading:true});
+      const armMat=new THREE.MeshStandardMaterial({color:0x14171c,roughness:0.7,flatShading:true});
+      const eyeMat=()=>new THREE.MeshBasicMaterial({color:0xff2a1e});
+      const rotorGeo=new THREE.CylinderGeometry(1.0,1.0,0.08,12);
+      const rotorMat=new THREE.MeshBasicMaterial({color:0x0a0c0f,transparent:true,opacity:0.5});
+      for(let i=0;i<9;i++){
+        const grp=new THREE.Group();
+        const body=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.7,1.6),bodyMat); grp.add(body);
+        const rotors=[];
+        for(const [ax,az] of [[-1.4,-1.4],[1.4,-1.4],[-1.4,1.4],[1.4,1.4]]){
+          const arm=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.18,0.25),armMat);
+          arm.position.set(ax,0.1,az); arm.scale.set(Math.abs(ax)*2.4,1,Math.abs(az)*2.4); grp.add(arm);
+          const rot=new THREE.Mesh(rotorGeo,rotorMat.clone()); rot.position.set(ax,0.34,az); grp.add(rot); rotors.push(rot);
+        }
+        const eye=new THREE.Mesh(new THREE.SphereGeometry(0.28,10,8),eyeMat());
+        eye.position.set(0,-0.15,0.85); grp.add(eye);
+        grp.visible=false; game.scene.add(grp);
+        // ground target marker: a red ring lying flat where the drone will land
+        const mk=new THREE.Mesh(new THREE.RingGeometry(1.6,2.4,28),
+          new THREE.MeshBasicMaterial({color:0xff2a1e,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
+        mk.rotation.x=-Math.PI/2; mk.visible=false; game.scene.add(mk);
+        this.drones.push({grp,rotors,eye,mk,active:false,x:0,z:0,y:0,vy:0,warn:0});
+      }
+      this._timer=2.5;
+    }
+    _spawn(){
+      const g=this.game, p=g.player, D=g.difficulty;
+      const d=this.drones.find(x=>!x.active); if(!d) return;
+      const hard=clamp(D.level/8,0,1);
+      const react=lerp(1.7,0.75,hard);                 // warning/travel time SHRINKS -> they fall faster
+      const lead=Math.max(30,p.speed()*react);
+      d.x=clamp(p.pos.x+rand(-2.5,2.5),-40,40);         // aimed at you -> must dodge
+      d.z=p.pos.z+lead;
+      d.y=this.START_Y;
+      d.vy=(this.START_Y-this.BAND)/react + rand(0,8);  // arrives at the flight band as you get there
+      d.warn=0.55;                                      // brief pre-drop telegraph
+      d.active=true;
+      d.grp.position.set(d.x,d.y,d.z); d.grp.visible=true;
+      d.mk.position.set(d.x,0.2,d.z); d.mk.visible=true;
+      g.audio.droneWarn();
+    }
+    _explode(d,onPlayer){
+      const g=this.game, pos=new THREE.Vector3(d.x,onPlayer?this.BAND:1.2,d.z);
+      g.effects.burst(pos,new THREE.Color(0xff6a1a),onPlayer?22:9,onPlayer?26:10);
+      g.effects.burst(pos,new THREE.Color(0x555a61),onPlayer?10:5,onPlayer?12:6);
+      g.effects.ring(pos,new THREE.Color(0xffa02a),onPlayer?16:8);
+      if(onPlayer){ g.effects.flash(0.4); g.camera.shake(0.7); g.momentum.hitByDrone(); }
+      g.audio.droneBoom(onPlayer);
+      d.active=false; d.grp.visible=false; d.mk.visible=false;
+    }
+    update(dt){
+      const g=this.game, p=g.player, D=g.difficulty;
+      // no drones in the opening seconds; then they arrive more often the longer you survive
+      if(D.elapsed>5){
+        this._timer-=dt;
+        if(this._timer<=0){
+          const hard=clamp(D.level/8,0,1);
+          this._timer=lerp(3.4,1.15,hard)*rand(0.8,1.2);
+          this._spawn();
+        }
+      }
+      for(const d of this.drones){
+        if(!d.active) continue;
+        for(const r of d.rotors) r.rotation.y+=dt*40;   // whirring blades
+        if(d.warn>0){                                   // hovering + telegraphing before the plunge
+          d.warn-=dt;
+          d.mk.material.opacity=0.35+0.35*Math.sin(performance.now()*0.02);
+          d.mk.scale.setScalar(1+0.1*Math.sin(performance.now()*0.02));
+          continue;
+        }
+        d.y-=d.vy*dt; d.grp.position.y=d.y;
+        d.mk.material.opacity=clamp((d.y-this.BAND)/40,0,1)*0.5;  // marker fades as it lands
+        // collision with the villain: close in x AND z, while passing through the flight band
+        if(Math.abs(d.x-p.pos.x)<this.HITR && Math.abs(d.z-p.pos.z)<this.HITR+1 && Math.abs(d.y-this.BAND)<5){
+          this._explode(d,true); continue;
+        }
+        if(d.y<=1.3){ this._explode(d,false); }          // hit the ground behind/around you -> puff
+      }
+    }
+    reset(){ this._timer=2.5; for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; } }
+  }
+
+  // ===================================================================================
   // AUDIO — synthesised WebAudio crash/whoosh/combo hooks. No assets.
   // ===================================================================================
   class AudioSystem {
@@ -996,6 +1134,12 @@
     drink(){ this._tone(440,0.12,'sine',0.3); this._tone(660,0.16,'sine',0.28); this._tone(880,0.2,'sine',0.24); }
     surge(){ this._tone(260,0.3,'sawtooth',0.3); this._tone(680,0.35,'sine',0.22); this._noise(0.2,0.2); }
     gameOver(){ this._tone(200,0.5,'sawtooth',0.4); setTimeout(()=>this._tone(90,0.9,'sawtooth',0.4),120); }
+    // a short high descending beep as a drone locks on and drops
+    droneWarn(){ this._tone(1500,0.08,'square',0.14); setTimeout(()=>this._tone(1100,0.08,'square',0.12),70); }
+    // explosion: noise burst + low boom; bigger/lower when it actually hits the villain
+    droneBoom(onPlayer){ this._noise(onPlayer?0.32:0.16, onPlayer?0.5:0.28);
+      this._tone(onPlayer?70:120,onPlayer?0.4:0.2,'sawtooth',onPlayer?0.4:0.22);
+      if(onPlayer) setTimeout(()=>this._tone(45,0.5,'sawtooth',0.35),60); }
   }
 
   // ===================================================================================
@@ -1109,6 +1253,7 @@
       g.momentum.reset(); g.adrenaline.reset(); g.combo.reset(); g.score.reset();
       g.time.reset(); g.camera.reset(); g.player.reset();
       g.city.update(); g.pickups.reset();      // after player.reset so spawn anchors at the start
+      g.drones.reset();
       this._lastZ=g.player.pos.z;
     }
   }
@@ -1161,6 +1306,7 @@
       this.camera=new CameraSystem(this);
       this.city=new CitySystem(this);
       this.pickups=new PickupSystem(this);
+      this.drones=new DroneSystem(this);
       this.ui=new UISystem(this);
       this.audio=new AudioSystem();
       this.run=new RunStateManager(this);
@@ -1214,9 +1360,10 @@
         this.difficulty.update(dt);        // time-based ramp (speed climbs the longer you survive)
         this.momentum.update(dt);
         this.adrenaline.update(dt);
-        this.combo.update();
+        this.combo.update(dt);
         this.city.update();
         this.pickups.update(dt);
+        this.drones.update(dt);
         this.run.tick();
       } else if(this.run.state==='READY'){
         // gentle idle drift so the menu scene looks alive
