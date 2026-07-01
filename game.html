@@ -1050,20 +1050,14 @@
       const g=this.game, p=g.player, D=g.difficulty;
       const d=this.drones.find(x=>!x.active); if(!d) return;
       const hard=clamp(D.level/8,0,1);
-      // the WHOLE slow descent IS the dodge window: generous (~2.7s) early, tighter (~1.5s) later.
-      const react=lerp(2.7,1.5,hard);
-      const lead=Math.max(40,p.speed()*react);
-      const z=p.pos.z+lead;
-      // aim at your RACING LINE (where you're heading) so you have to actively weave out of the column
-      let x=clamp(p.pos.x + p.vel.x*react*0.6 + rand(-2,2), -40, 40);
-      // ...but NEVER dead-on a smashable tower, so you can always still line the building up after dodging
-      let bx=null,bd=1e9;
-      for(const b of g.city.buildings){ if(b.decor||b.hit||!b.active) continue;
-        const dz=Math.abs(b.mesh.position.z - z); if(dz<bd){ bd=dz; bx=b.mesh.position.x; } }
-      if(bx!==null && bd<14 && Math.abs(x-bx)<5.5){ x=clamp(bx+(x>=bx?1:-1)*6.5,-40,40);
-        if(Math.abs(x-bx)<5.5) x=clamp(bx-(x-bx),-40,40); }
-      d.x=x; d.z=z; d.y=this.START_Y;
-      d.vy=(this.START_Y-this.BAND)/react;              // reaches the flight band exactly as you arrive
+      // Fast plunge: total approach ~2.0s early -> ~1.1s late (they come at you FASTER over time).
+      d.react=lerp(2.0,1.1,hard);
+      d.commitT=clamp(d.react*0.5,0.65,1.0);            // the final juke window once it locks onto you
+      d.vy=(this.START_Y-this.BAND)/d.react;
+      d.commitY=this.BAND + d.vy*d.commitT;             // below this height it has COMMITTED to the strike
+      d.locked=false;
+      // starts high, directly above & a hair ahead of YOU — it hunts only the player, nowhere else
+      d.x=p.pos.x; d.y=this.START_Y; d.z=p.pos.z + p.speed()*d.commitT;
       d.active=true;
       d.grp.position.set(d.x,d.y,d.z); d.grp.visible=true;
       d.mk.position.set(d.x,0.2,d.z); d.mk.visible=true;
@@ -1081,28 +1075,38 @@
     }
     update(dt){
       const g=this.game, p=g.player, D=g.difficulty;
-      // a CONSISTENT rain of drones from the very start; more frequent (and volleys) the longer you last
+      // relentless single-file assault: one drone hunts you, then the next, tighter the longer you last
       this._timer-=dt;
       if(this._timer<=0){
         const hard=clamp(D.level/8,0,1);
-        this._timer=lerp(1.5,0.7,hard)*rand(0.85,1.15);
+        this._timer=lerp(1.5,0.75,hard)*rand(0.9,1.1);
         this._spawn();
-        if(hard>0.45 && Math.random()<0.35) this._spawn();  // volley: two lanes threatened at once
       }
       const nowMs=performance.now();
       for(const d of this.drones){
         if(!d.active) continue;
         for(const r of d.rotors) r.rotation.y+=dt*40;   // whirring blades
-        d.y-=d.vy*dt; d.grp.position.y=d.y;
-        d.beam.position.y=d.y/2; d.beam.scale.y=Math.max(0.1,d.y);   // beam tracks the plunging drone
-        d.beam.material.opacity=0.22+0.12*Math.sin(nowMs*0.02);      // pulsing warning column
-        d.mk.material.opacity=(0.3+0.2*Math.sin(nowMs*0.02))*clamp((d.y-this.BAND)/40+0.3,0,1);
-        d.mk.scale.setScalar(1+0.08*Math.sin(nowMs*0.02));
+        d.y-=d.vy*dt;
+        if(!d.locked && d.y>d.commitY){
+          // TRACKING: it homes onto YOUR x and hovers a strike-window ahead & above, hunting you down
+          d.x=damp(d.x,p.pos.x,11,dt);
+          d.z=p.pos.z + p.speed()*d.commitT;
+        } else if(!d.locked){
+          // COMMIT: lock the strike right where you ARE, then plunge -> juke NOW to survive
+          d.locked=true; d.lockX=p.pos.x; d.lockZ=p.pos.z + p.speed()*d.commitT; g.audio.droneWarn();
+        }
+        if(d.locked){ d.x=d.lockX; d.z=d.lockZ; }
+        d.grp.position.set(d.x,d.y,d.z);
+        d.beam.position.set(d.x,d.y/2,d.z); d.beam.scale.y=Math.max(0.1,d.y);
+        d.beam.material.opacity=(d.locked?0.4:0.22)+0.12*Math.sin(nowMs*0.03);   // flares when it commits
+        d.mk.position.set(d.x,0.2,d.z);
+        d.mk.material.opacity=(d.locked?0.6:0.3)+0.2*Math.sin(nowMs*0.03);
+        d.mk.scale.setScalar((d.locked?1.15:1)+0.08*Math.sin(nowMs*0.03));
         // collision with the villain: close in x AND z while it passes through the flight band
         if(Math.abs(d.x-p.pos.x)<this.HITR && Math.abs(d.z-p.pos.z)<this.HITR+1 && Math.abs(d.y-this.BAND)<5){
           this._explode(d,true); continue;
         }
-        if(d.y<=1.3){ this._explode(d,false); }          // hit the ground around you -> harmless puff
+        if(d.y<=1.3){ this._explode(d,false); }          // missed you and hit the ground -> harmless puff
       }
     }
     reset(){ this._timer=1.4; for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false; } }
