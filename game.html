@@ -220,14 +220,14 @@
   <div id="skins-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Skins</span><button class="x" data-close>×</button></div>
-      <div class="sheet-note">Rip through the city in style — more coming soon.</div>
+      <div class="sheet-note">Unlock new looks with the coins you collect.</div>
       <div class="grid">
-        <div class="card sel"><span class="big">🦸</span>Omni<small>Selected</small></div>
-        <div class="card lock"><span class="big">🔒</span>Titan<small>Soon</small></div>
-        <div class="card lock"><span class="big">🔒</span>Rogue<small>Soon</small></div>
-        <div class="card lock"><span class="big">🔒</span>Neon<small>Soon</small></div>
-        <div class="card lock"><span class="big">🔒</span>Ghost<small>Soon</small></div>
-        <div class="card lock"><span class="big">🔒</span>Gold<small>Soon</small></div>
+        <div class="card sel"><span class="big">🦸</span>Dominus<small>Selected</small></div>
+        <div class="card lock"><span class="big">🔒</span>Reaper<small>800 🪙</small></div>
+        <div class="card lock"><span class="big">🔒</span>Warden<small>1500 🪙</small></div>
+        <div class="card lock"><span class="big">🔒</span>Phantom<small>2500 🪙</small></div>
+        <div class="card lock"><span class="big">🔒</span>Onyx<small>4000 🪙</small></div>
+        <div class="card lock"><span class="big">🔒</span>Aureus<small>7500 🪙</small></div>
       </div>
     </div>
   </div>
@@ -449,7 +449,7 @@
   // streak sets the villain ON FIRE (escalating reward, like Paint Hit's color blast).
   // ===================================================================================
   class ComboSystem {
-    constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26; this.ETHEREAL=42;
+    constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26; this.ETHEREAL=37;
       this.EPIC_TIME=5.0; this.ETH_TIME=5.0; this.epicTime=0; this.etherealTime=0; }  // fixed 5s bursts, then they END
     hit(){
       this.count++; this.best=Math.max(this.best,this.count);
@@ -487,7 +487,7 @@
         this.count=0; this.game.ui.flashCombo(0); this.game.audio.fireOut();
       }
     }
-    reset(){ this.count=0; this.epicTime=0; this.etherealTime=0; }
+    reset(){ this.count=0; this.best=0; this.epicTime=0; this.etherealTime=0; }
   }
 
   // ===================================================================================
@@ -816,42 +816,60 @@
 
       // ----- villain rig, BUILT IN FLIGHT POSE (head forward, arm outstretched) -----
       this.group=new THREE.Group(); game.scene.add(this.group);
-      this.rig=new THREE.Group(); this.group.add(this.rig); this.group.scale.setScalar(1.5);
-      const skin=new THREE.MeshStandardMaterial({color:0xf1c9a5,roughness:.6});
-      const suit=new THREE.MeshStandardMaterial({color:0xd9534f,roughness:.5,metalness:.1}); // red-ish villain suit (no cape)
-      const torso=new THREE.Mesh(new THREE.CapsuleGeometry(0.55,1.3,4,10),suit);
-      torso.rotation.x=Math.PI/2; torso.castShadow=true;
-      const head=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,16),skin); head.position.z=1.15;
-      const mstache=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.14),new THREE.MeshStandardMaterial({color:0x141414}));
-      mstache.position.set(0,-0.08,1.44);
-      // ONE arm outstretched forward (the gripping arm), other tucked at the side
-      const armGeo=new THREE.CapsuleGeometry(0.17,1.5,4,6);
-      this.gripArm=new THREE.Mesh(armGeo,suit); this.gripArm.rotation.set(Math.PI/2,-0.25,0); this.gripArm.position.set(0.45,-0.05,1.5);
-      const armR=new THREE.Mesh(new THREE.CapsuleGeometry(0.16,0.8,4,6),suit); armR.rotation.x=Math.PI/2-0.5; armR.position.set(-0.5,-0.1,0.7);
-      this.hand=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10),skin); this.hand.position.set(0.72,-0.05,1.95); // grips dummy head (held out to the side)
-      this.rig.add(torso,head,mstache,this.gripArm,armR,this.hand);
-      this.suitMat=suit;                              // recoloured/lit when ON FIRE
+      this.rig=new THREE.Group(); this.group.add(this.rig); this.group.scale.setScalar(1.65);   // BIG & dominant
+      // ===== VILLAIN — a buff flying strongman (Omni-style archetype, wholly original design) =====
+      const skin=new THREE.MeshStandardMaterial({color:0xe6b085,roughness:.62});
+      const suit=new THREE.MeshStandardMaterial({color:0x28407e,roughness:.5,metalness:.14});  // royal-blue suit
+      const suitDk=new THREE.MeshStandardMaterial({color:0x14213f,roughness:.5,metalness:.22}); // navy gloves/boots
+      const accent=new THREE.MeshStandardMaterial({color:0xc23a30,roughness:.5});              // red stripe
+      const gold=new THREE.MeshStandardMaterial({color:0xe0a828,roughness:.4,metalness:.4});   // belt
+      const hairM=new THREE.MeshStandardMaterial({color:0x9a9ca0,roughness:.85});              // grey hair
+      const dark=new THREE.MeshStandardMaterial({color:0x181818,roughness:.75});               // mustache
+      this.suitMat=suit;
+      const torso=new THREE.Mesh(new THREE.CapsuleGeometry(0.62,1.5,6,12),suit); torso.rotation.x=Math.PI/2; torso.castShadow=true;
+      const back=new THREE.Mesh(new THREE.SphereGeometry(0.64,14,12),suit); back.position.set(0,0.2,0.35); back.scale.set(1.3,0.8,1.15); back.castShadow=true;   // muscular back/traps
+      const shL=new THREE.Mesh(new THREE.SphereGeometry(0.42,12,12),suit); shL.position.set(-0.74,0.04,0.32); shL.castShadow=true;   // broad shoulders
+      const shR=new THREE.Mesh(new THREE.SphereGeometry(0.42,12,12),suit); shR.position.set(0.74,0.04,0.32); shR.castShadow=true;
+      const stripe=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.18,1.4),accent); stripe.position.set(0,0.36,0.2);   // red back stripe
+      const belt=new THREE.Mesh(new THREE.BoxGeometry(1.08,0.3,0.72),gold); belt.position.set(0,-0.06,-0.55);
+      const head=new THREE.Mesh(new THREE.SphereGeometry(0.45,16,16),skin); head.position.set(0,0.06,1.28); head.castShadow=true;
+      const hair=new THREE.Mesh(new THREE.SphereGeometry(0.47,16,12),hairM); hair.position.set(0,0.18,1.2); hair.scale.set(1,0.72,1);
+      const mstache=new THREE.Mesh(new THREE.BoxGeometry(0.54,0.13,0.16),dark); mstache.position.set(0,-0.13,1.62);
+      // GRIP ARM — thick, outstretched forward, fist clamped on the victim's ankles
+      const upperArm=new THREE.Mesh(new THREE.CapsuleGeometry(0.25,0.7,6,8),suit); upperArm.rotation.set(Math.PI/2,0,-0.16); upperArm.position.set(0.62,-0.02,0.72); upperArm.castShadow=true;
+      const foreArm=new THREE.Mesh(new THREE.CapsuleGeometry(0.23,0.8,6,8),skin); foreArm.rotation.set(Math.PI/2,0,-0.05); foreArm.position.set(0.84,-0.06,1.28);
+      const fist=new THREE.Mesh(new THREE.SphereGeometry(0.32,12,12),suitDk); fist.position.set(0.92,-0.08,1.72); this.hand=fist;
+      const upArmL=new THREE.Mesh(new THREE.CapsuleGeometry(0.24,0.8,6,8),suit); upArmL.rotation.set(Math.PI/2-0.5,0,0.24); upArmL.position.set(-0.72,-0.04,0.25);
+      const fistL=new THREE.Mesh(new THREE.SphereGeometry(0.27,12,12),suitDk); fistL.position.set(-0.82,0.02,0.92);
+      const legL=new THREE.Mesh(new THREE.CapsuleGeometry(0.27,1.2,6,8),suit); legL.rotation.x=Math.PI/2; legL.position.set(-0.3,-0.02,-1.15); legL.castShadow=true;
+      const legR=new THREE.Mesh(new THREE.CapsuleGeometry(0.27,1.2,6,8),suit); legR.rotation.x=Math.PI/2; legR.position.set(0.3,-0.02,-1.15); legR.castShadow=true;
+      const bootL=new THREE.Mesh(new THREE.CapsuleGeometry(0.29,0.5,6,8),suitDk); bootL.rotation.x=Math.PI/2; bootL.position.set(-0.3,-0.05,-1.98);
+      const bootR=new THREE.Mesh(new THREE.CapsuleGeometry(0.29,0.5,6,8),suitDk); bootR.rotation.x=Math.PI/2; bootR.position.set(0.3,-0.05,-1.98);
+      this.rig.add(torso,back,shL,shR,stripe,belt,head,hair,mstache,upperArm,foreArm,fist,upArmL,fistL,legL,legR,bootL,bootR);
+      this.gripArm=upperArm;
       // FIRE AURA — additive glow that engulfs the villain on a hot streak
-      this.fireAura=new THREE.Mesh(new THREE.SphereGeometry(1.7,14,14),
+      this.fireAura=new THREE.Mesh(new THREE.SphereGeometry(1.9,14,14),
         new THREE.MeshBasicMaterial({color:0xff5a14,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
-      this.fireAura.position.z=0.6; this.fireAura.visible=false; this.rig.add(this.fireAura);
+      this.fireAura.position.z=0.2; this.fireAura.visible=false; this.rig.add(this.fireAura);
 
-      // ----- dummy: gripped BY THE HEAD up top, body DANGLING straight down (limp) -----
-      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(1.4);
-      const dsuit=new THREE.MeshStandardMaterial({color:0x4f9d3a,roughness:.55,emissive:0x06180a}); this.dsuitMat=dsuit;
-      const dskin=new THREE.MeshStandardMaterial({color:0xf1c9a5,roughness:.6});
-      const dhead=new THREE.Mesh(new THREE.SphereGeometry(0.4,16,16),dskin); dhead.position.set(0,0,0); dhead.castShadow=true;
-      this.dummy.add(dhead);
-      // torso + limbs live under a NECK pivot so the whole body swings limply beneath the head
-      this.dTorso=new THREE.Group(); this.dTorso.position.set(0,-0.45,0); this.dummy.add(this.dTorso);
-      const dbody=new THREE.Mesh(new THREE.CapsuleGeometry(0.42,1.0,4,8),dsuit); // vertical -> hangs down
-      dbody.position.set(0,-0.55,0); dbody.castShadow=true; this.dTorso.add(dbody);
+      // ===== VICTIM — the villain's SON: a smaller young hero, held head-first as a battering ram =====
+      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(1.05);   // clearly smaller
+      const dsuit=new THREE.MeshStandardMaterial({color:0x2f78d8,roughness:.55,emissive:0x061024}); this.dsuitMat=dsuit;
+      const dacc=new THREE.MeshStandardMaterial({color:0xf2c531,roughness:.5});     // yellow accents
+      const dskin=new THREE.MeshStandardMaterial({color:0xe6b085,roughness:.6});
+      const dhairM=new THREE.MeshStandardMaterial({color:0x231a12,roughness:.85});
+      const dhead=new THREE.Mesh(new THREE.SphereGeometry(0.36,16,16),dskin); dhead.position.set(0,0,0.16); dhead.castShadow=true;   // head LEADS = smash point
+      const dhair=new THREE.Mesh(new THREE.SphereGeometry(0.38,14,12),dhairM); dhair.position.set(0,0.13,0.06); dhair.scale.set(1,0.72,1.06);
+      this.dummy.add(dhead,dhair);
+      this.dTorso=new THREE.Group(); this.dTorso.position.set(0,-0.05,-0.15); this.dummy.add(this.dTorso);   // body trails back (limp swing)
+      const dbody=new THREE.Mesh(new THREE.CapsuleGeometry(0.3,0.75,6,8),dsuit); dbody.rotation.x=Math.PI/2; dbody.position.set(0,0,-0.55); dbody.castShadow=true;
+      const dstripe=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.4,0.5),dacc); dstripe.position.set(0,0.15,-0.5);   // yellow chest
+      this.dTorso.add(dbody,dstripe);
       this.dLimbs=[];
-      const mk=(x,y,z)=>{ const l=new THREE.Mesh(new THREE.CapsuleGeometry(0.13,0.7,4,6),dsuit);
-        l.position.set(x,y,z); this.dTorso.add(l); this.dLimbs.push(l); return l; };
-      mk(-0.32,-0.5,0); mk(0.32,-0.5,0);     // arms dangle down from the shoulders
-      mk(-0.18,-1.25,0); mk(0.18,-1.25,0);   // legs dangle further down from the hips
-      this.dummyGrip=2.9;            // world-Z lead of the gripped head (the smash point)
+      const dmk=(x,y,z,len)=>{ const l=new THREE.Mesh(new THREE.CapsuleGeometry(0.12,len,5,6),dsuit); l.position.set(x,y,z); this.dTorso.add(l); this.dLimbs.push(l); return l; };
+      dmk(-0.34,0,-0.32,0.6); dmk(0.34,0,-0.32,0.6);     // arms flail back from the shoulders
+      dmk(-0.17,0,-1.08,0.7); dmk(0.17,0,-1.08,0.7);     // legs trail back to the gripped ankles
+      this.dummyGrip=4.0;            // world-Z lead of the leading head (the smash point)
 
       this._smashPulse=0;
       this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=2.8; this.SURGE_CD=9.0; this.SURGE_COMBO=6;
@@ -863,7 +881,7 @@
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(1.1,15.3,2.9); this._dummyPrevZ=2.9; }
+             this.dummy.position.set(1.44,15.92,4.0); this._dummyPrevZ=4.0; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -905,23 +923,23 @@
       this.group.rotation.set(0,0,this.bank);
       const now=performance.now();
 
-      // DUMMY head/grip point; held slightly to the GRIP-ARM side (peeks out from behind the
-      // villain) and below; x leads velocity so the limp body whips on turns.
-      const tx=this.pos.x+1.1+this.vel.x*0.04, ty=this.pos.y-0.7, tz=this.pos.z+this.dummyGrip;
+      // VICTIM held out front by the ankles: head LEADS (smash point), body trails toward the villain.
+      // x lines up with the villain's gripping fist; x leads velocity so the limp body whips on turns.
+      const tx=this.pos.x+1.44+this.vel.x*0.04, ty=this.pos.y-0.08, tz=this.pos.z+this.dummyGrip;
       this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
       this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
       this.dummy.position.z=tz;
       this.dummy.rotation.z=this.bank*0.8;
-      // LIMP body DANGLING below the head: a slight backward trail from drag + slow sway
+      // LIMP body trailing back from the head: a gentle wind flutter + side sway
       const t=now*0.004;
-      this.dTorso.rotation.x=-0.35+Math.sin(t)*0.1;            // trails back a touch from wind
+      this.dTorso.rotation.x=Math.sin(t)*0.09;                 // slight up/down flutter
       this.dTorso.rotation.z=Math.sin(t*1.3)*0.12 - this.bank*0.6;
-      // limbs hang and sway loosely (limp, not energetic flailing)
-      const sw=Math.sin(now*0.005), sw2=Math.cos(now*0.0045);
-      this.dLimbs[0].rotation.set(0.15+sw*0.18,0,0.18+sw*0.12);
-      this.dLimbs[1].rotation.set(0.15+sw2*0.18,0,-0.18-sw2*0.12);
-      this.dLimbs[2].rotation.set(0.1+sw2*0.12,0,0.06+sw*0.08);
-      this.dLimbs[3].rotation.set(0.1+sw*0.12,0,-0.06-sw2*0.08);
+      // limbs TRAIL BACKWARD from the wind (arms & legs streamed behind), with a loose flail
+      const sw=Math.sin(now*0.005), sw2=Math.cos(now*0.0045), TB=Math.PI*0.42;   // ~trail along -z
+      this.dLimbs[0].rotation.set(-TB+sw*0.2, 0.15, 0.2+sw*0.12);
+      this.dLimbs[1].rotation.set(-TB+sw2*0.2, -0.15, -0.2-sw2*0.12);
+      this.dLimbs[2].rotation.set(-TB+sw2*0.12, 0.06, 0.06+sw*0.08);
+      this.dLimbs[3].rotation.set(-TB+sw*0.12, -0.06, -0.06-sw2*0.08);
 
       // ----- ON FIRE: streak reward — the villain (and victim) ignite with a pulsing glow -----
       // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
