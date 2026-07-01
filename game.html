@@ -1050,13 +1050,20 @@
       const g=this.game, p=g.player, D=g.difficulty;
       const d=this.drones.find(x=>!x.active); if(!d) return;
       const hard=clamp(D.level/8,0,1);
-      const react=lerp(1.7,0.75,hard);                 // warning/travel time SHRINKS -> they fall faster
-      const lead=Math.max(30,p.speed()*react);
-      d.x=clamp(p.pos.x+rand(-2.5,2.5),-40,40);         // aimed at you -> must dodge
-      d.z=p.pos.z+lead;
-      d.y=this.START_Y;
-      d.vy=(this.START_Y-this.BAND)/react + rand(0,8);  // arrives at the flight band as you get there
-      d.warn=0.55;                                      // brief pre-drop telegraph
+      // the WHOLE slow descent IS the dodge window: generous (~2.7s) early, tighter (~1.5s) later.
+      const react=lerp(2.7,1.5,hard);
+      const lead=Math.max(40,p.speed()*react);
+      const z=p.pos.z+lead;
+      // aim at your RACING LINE (where you're heading) so you have to actively weave out of the column
+      let x=clamp(p.pos.x + p.vel.x*react*0.6 + rand(-2,2), -40, 40);
+      // ...but NEVER dead-on a smashable tower, so you can always still line the building up after dodging
+      let bx=null,bd=1e9;
+      for(const b of g.city.buildings){ if(b.decor||b.hit||!b.active) continue;
+        const dz=Math.abs(b.mesh.position.z - z); if(dz<bd){ bd=dz; bx=b.mesh.position.x; } }
+      if(bx!==null && bd<14 && Math.abs(x-bx)<5.5){ x=clamp(bx+(x>=bx?1:-1)*6.5,-40,40);
+        if(Math.abs(x-bx)<5.5) x=clamp(bx-(x-bx),-40,40); }
+      d.x=x; d.z=z; d.y=this.START_Y;
+      d.vy=(this.START_Y-this.BAND)/react;              // reaches the flight band exactly as you arrive
       d.active=true;
       d.grp.position.set(d.x,d.y,d.z); d.grp.visible=true;
       d.mk.position.set(d.x,0.2,d.z); d.mk.visible=true;
@@ -1074,30 +1081,28 @@
     }
     update(dt){
       const g=this.game, p=g.player, D=g.difficulty;
-      // drones attack from the very start; they arrive MORE often the longer you survive
+      // a CONSISTENT rain of drones from the very start; more frequent (and volleys) the longer you last
       this._timer-=dt;
       if(this._timer<=0){
         const hard=clamp(D.level/8,0,1);
-        this._timer=lerp(2.0,0.8,hard)*rand(0.8,1.15);
+        this._timer=lerp(1.5,0.7,hard)*rand(0.85,1.15);
         this._spawn();
+        if(hard>0.45 && Math.random()<0.35) this._spawn();  // volley: two lanes threatened at once
       }
+      const nowMs=performance.now();
       for(const d of this.drones){
         if(!d.active) continue;
         for(const r of d.rotors) r.rotation.y+=dt*40;   // whirring blades
-        if(d.warn>0){                                   // hovering + telegraphing before the plunge
-          d.warn-=dt;
-          d.mk.material.opacity=0.35+0.35*Math.sin(performance.now()*0.02);
-          d.mk.scale.setScalar(1+0.1*Math.sin(performance.now()*0.02));
-          continue;
-        }
         d.y-=d.vy*dt; d.grp.position.y=d.y;
-        d.beam.position.y=d.y/2; d.beam.scale.y=Math.max(0.1,d.y); // beam tracks the plunging drone
-        d.mk.material.opacity=clamp((d.y-this.BAND)/40,0,1)*0.5;  // marker fades as it lands
-        // collision with the villain: close in x AND z, while passing through the flight band
+        d.beam.position.y=d.y/2; d.beam.scale.y=Math.max(0.1,d.y);   // beam tracks the plunging drone
+        d.beam.material.opacity=0.22+0.12*Math.sin(nowMs*0.02);      // pulsing warning column
+        d.mk.material.opacity=(0.3+0.2*Math.sin(nowMs*0.02))*clamp((d.y-this.BAND)/40+0.3,0,1);
+        d.mk.scale.setScalar(1+0.08*Math.sin(nowMs*0.02));
+        // collision with the villain: close in x AND z while it passes through the flight band
         if(Math.abs(d.x-p.pos.x)<this.HITR && Math.abs(d.z-p.pos.z)<this.HITR+1 && Math.abs(d.y-this.BAND)<5){
           this._explode(d,true); continue;
         }
-        if(d.y<=1.3){ this._explode(d,false); }          // hit the ground behind/around you -> puff
+        if(d.y<=1.3){ this._explode(d,false); }          // hit the ground around you -> harmless puff
       }
     }
     reset(){ this._timer=1.4; for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false; } }
