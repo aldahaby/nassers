@@ -204,13 +204,13 @@
   <div id="maps-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Maps</span><button class="x" data-close>×</button></div>
-      <div class="sheet-note">Choose your city — more coming soon.</div>
+      <div class="sheet-note">Choose your world — each plays &amp; sounds different.</div>
       <div class="grid">
-        <div class="card sel"><span class="big">🏙️</span>New York<small>Selected</small></div>
+        <div class="card map sel" data-map="nyc"><span class="big">🏙️</span>New York<small>Selected</small></div>
+        <div class="card map" data-map="aero"><span class="big">🫧</span>Frutiger Aero<small>Tap to play</small></div>
+        <div class="card map" data-map="medieval"><span class="big">🏰</span>Medieval<small>Tap to play</small></div>
         <div class="card lock"><span class="big">🔒</span>Tokyo<small>Soon</small></div>
-        <div class="card lock"><span class="big">🔒</span>Dubai<small>Soon</small></div>
         <div class="card lock"><span class="big">🔒</span>Miami<small>Soon</small></div>
-        <div class="card lock"><span class="big">🔒</span>Paris<small>Soon</small></div>
         <div class="card lock"><span class="big">🔒</span>Mars<small>Soon</small></div>
       </div>
     </div>
@@ -760,7 +760,11 @@
       g.camera.shake(tier.shake*(0.8+g.adrenaline.factor()*0.3));
       // NO slow-mo: instead each smash ADDS speed (handled in player.onSmash) so the run
       // accelerates the more you chain — start slow, get consistently faster.
-      g.audio.crash(tier,combo);
+      // hit SOUND depends on the map: NYC=crash, Frutiger Aero=bubble pop, Medieval=brick clack
+      const snd=g.maps?g.maps.hitSound:'crash';
+      if(snd==='bubble') g.audio.bubble(combo);
+      else if(snd==='brick') g.audio.brick(combo);
+      else g.audio.crash(tier,combo);
       g.player.onSmash(tier);
 
       g.city.shatter(building);   // remove + recycle the building
@@ -943,32 +947,81 @@
       this.luckyLeft=0;        // towers remaining in a rare "lucky" aligned easy-combo run
       this._ground();
       this._buildRoad();
-      this._winTex=this._winTexture();     // shared source; each building gets a clone for its own tiling
+      // ONE shared facade canvas, redrawn when the map changes (windows / glass / stone).
+      this._bldgCanvas=document.createElement('canvas'); this._bldgCanvas.width=this._bldgCanvas.height=64;
+      this._drawFacade('window');
       const geo=new THREE.BoxGeometry(1,1,1);
       this._geo=geo;
+      const roofGeo=new THREE.ConeGeometry(0.72,1,4);   // turret roof for the medieval map
       for(let i=0;i<240;i++){
-        const map=this._winTex.clone(); map.needsUpdate=true;   // windows/detail on every face
+        const map=new THREE.CanvasTexture(this._bldgCanvas); map.wrapS=map.wrapT=THREE.RepeatWrapping; map.anisotropy=4;
         const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.72,metalness:.08,map}));
         m.castShadow=m.receiveShadow=true; m.visible=false; game.scene.add(m);
         // outline used to MARK hittable targets (bright) vs decor houses (dim)
         const edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo),
                     new THREE.LineBasicMaterial({color:0xffb13b,transparent:true}));
         m.add(edge);
-        this.pool.push({mesh:m,edge,active:false,w:1,h:1,d:1,hit:false,decor:false});
+        const roof=new THREE.Mesh(roofGeo,new THREE.MeshStandardMaterial({color:0x7a3b2e,roughness:.85,flatShading:true}));
+        roof.visible=false; roof.rotation.y=Math.PI/4; game.scene.add(roof);
+        this.pool.push({mesh:m,edge,roof,active:false,w:1,h:1,d:1,hit:false,decor:false});
+      }
+      this._buildEnv();
+    }
+    // redraw the shared facade canvas for the active map's building style
+    _drawFacade(style){
+      const c=this._bldgCanvas, x=c.getContext('2d'); x.clearRect(0,0,64,64);
+      if(style==='stone'){
+        x.fillStyle='#b6a079'; x.fillRect(0,0,64,64);                       // sandstone
+        x.strokeStyle='rgba(70,52,30,.55)'; x.lineWidth=1.5;
+        for(let r=0;r<7;r++){ const y=r*10; x.beginPath(); x.moveTo(0,y); x.lineTo(64,y); x.stroke();
+          const off=(r%2)?0:16; for(let cc=-1;cc<5;cc++){ const bx=cc*22+off; x.beginPath(); x.moveTo(bx,y); x.lineTo(bx,y+10); x.stroke(); } }
+      } else if(style==='glass'){
+        x.fillStyle='#c8f2fa'; x.fillRect(0,0,64,64);                       // bright glass
+        const cols=3,rows=3,pad=6,gap=6, ww=(64-pad*2-gap*(cols-1))/cols, wh=(64-pad*2-gap*(rows-1))/rows;
+        for(let r=0;r<rows;r++) for(let cc=0;cc<cols;cc++){ const wx=pad+cc*(ww+gap), wy=pad+r*(wh+gap);
+          x.fillStyle=Math.random()<0.5?'#7fd4ea':'#a6e8f6'; x.fillRect(wx,wy,ww,wh);
+          x.fillStyle='rgba(255,255,255,.5)'; x.fillRect(wx,wy,ww*0.5,wh*0.32); }
+      } else {                                                              // window (NYC)
+        x.fillStyle='#cdd3da'; x.fillRect(0,0,64,64);
+        const cols=3,rows=3,pad=7,gap=6, ww=(64-pad*2-gap*(cols-1))/cols, wh=(64-pad*2-gap*(rows-1))/rows;
+        for(let r=0;r<rows;r++) for(let cc=0;cc<cols;cc++){ const wx=pad+cc*(ww+gap), wy=pad+r*(wh+gap), lit=Math.random()<0.16;
+          x.fillStyle= lit?'#ffe6ad':(Math.random()<0.5?'#39485a':'#4a5a6d'); x.fillRect(wx,wy,ww,wh);
+          x.fillStyle='rgba(255,255,255,.18)'; x.fillRect(wx,wy,ww,2); }
+      }
+      for(const p of this.pool){ if(p.mesh.material.map) p.mesh.material.map.needsUpdate=true; }
+    }
+    // env extras: Frutiger bubbles + Medieval mountains (shown per map)
+    _buildEnv(){
+      const g=this.game;
+      this.bubbles=[];
+      const bgeo=new THREE.SphereGeometry(1,16,12);
+      for(let i=0;i<16;i++){
+        const m=new THREE.Mesh(bgeo,new THREE.MeshStandardMaterial({color:0xbfeeff,transparent:true,opacity:0.28,
+                 roughness:0.05,metalness:0.0}));
+        m.visible=false; g.scene.add(m);
+        this.bubbles.push({mesh:m,ph:rand(0,6.28),rad:rand(0,1),sz:rand(3,9),x:0,y:0,z:0});
+      }
+      this.mountains=[];
+      const mgeo=new THREE.ConeGeometry(1,1,5);
+      for(let i=0;i<8;i++){
+        const m=new THREE.Mesh(mgeo,new THREE.MeshStandardMaterial({color:0x6d7360,roughness:1,flatShading:true}));
+        m.visible=false; g.scene.add(m);
+        this.mountains.push({mesh:m,side:i%2?1:-1,off:rand(85,150),h:rand(70,130),w:rand(90,150),z:i*130});
       }
     }
-    // procedural WINDOW texture: rows of glass panes + a few lit ones -> buildings read as real
-    _winTexture(){
-      const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
-      x.fillStyle='#cdd3da'; x.fillRect(0,0,64,64);                 // concrete facade
-      const cols=3, rows=3, pad=7, gap=6;
-      const ww=(64-pad*2-gap*(cols-1))/cols, wh=(64-pad*2-gap*(rows-1))/rows;
-      for(let r=0;r<rows;r++) for(let cc=0;cc<cols;cc++){
-        const wx=pad+cc*(ww+gap), wy=pad+r*(wh+gap), lit=Math.random()<0.16;
-        x.fillStyle= lit? '#ffe6ad' : (Math.random()<0.5?'#39485a':'#4a5a6d');
-        x.fillRect(wx,wy,ww,wh);
-        x.fillStyle='rgba(255,255,255,.18)'; x.fillRect(wx,wy,ww,2);   // sill highlight
-      }
+    // called by MapSystem when the player selects a map
+    applyTheme(t){
+      this.floor.material.color.setHex(t.ground);
+      this._drawFacade(t.building.style);
+      // repaint the road/sidewalks for this map
+      this.ribbons[0].mesh.material.map=this._roadTexture(t.road);
+      this.ribbons[1].mesh.material.map=this.ribbons[2].mesh.material.map=this._sidewalkTexture(t.road);
+      // env visibility
+      for(const b of this.bubbles) b.mesh.visible=!!t.bubbles;
+      for(const mn of this.mountains) mn.mesh.visible=!!t.mountains;
+    }
+    _winTexture(){   // retained for compatibility (unused)
+      const c=document.createElement('canvas'); c.width=c.height=64;
       const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
       t.anisotropy=4; return t;
     }
@@ -979,22 +1032,25 @@
       this.floor.rotation.x=-Math.PI/2; this.floor.receiveShadow=true; this.floor.frustumCulled=false;
       g.scene.add(this.floor);
     }
-    // ASPHALT texture with real painted markings: white edge lines + dashed double-yellow centre.
-    _roadTexture(){
+    // ROAD surface texture; colours + markings come from the map's road config.
+    _roadTexture(cfg){
+      cfg=cfg||{asphalt:'#141518',edge:'#e6e9ec',dash:'#e6c24e',dashed:true};
       const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
-      x.fillStyle='#5a5e65'; x.fillRect(0,0,128,128);                        // asphalt grey
-      for(let i=0;i<700;i++){ const v=88+(Math.random()*70|0);               // speckle/grain
-        x.fillStyle=`rgba(${v},${v},${v+4},.10)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
-      x.fillStyle='#dfe3e7'; x.fillRect(7,0,4,128); x.fillRect(117,0,4,128); // solid white edge lines
-      x.fillStyle='#e6c24e'; for(let y=0;y<128;y+=32){ x.fillRect(59,y,3,20); x.fillRect(66,y,3,20); } // dashed double-yellow
+      x.fillStyle=cfg.asphalt; x.fillRect(0,0,128,128);
+      for(let i=0;i<700;i++){ const v=(Math.random()*90|0); x.fillStyle=`rgba(${v},${v},${v+6},.12)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+      if(cfg.edge){ x.fillStyle=cfg.edge; x.fillRect(7,0,4,128); x.fillRect(117,0,4,128); }        // edge lines
+      if(cfg.dash){ x.fillStyle=cfg.dash;
+        if(cfg.dashed!==false){ for(let y=0;y<128;y+=32){ x.fillRect(59,y,3,20); x.fillRect(66,y,3,20); } }
+        else { x.fillRect(61,0,6,128); } }                                                          // centre line
       const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
     }
-    // CONCRETE sidewalk: darker curb on both edges + expansion joints -> a real pavement.
-    _sidewalkTexture(){
+    // SIDEWALK / pavement texture; colours from the map's road config.
+    _sidewalkTexture(cfg){
+      cfg=cfg||{sidewalk:'#8a8f97',curb:'#565b63'};
       const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
-      x.fillStyle='#8a8f97'; x.fillRect(0,0,128,128);
-      for(let i=0;i<400;i++){ const v=120+(Math.random()*50|0); x.fillStyle=`rgba(${v},${v},${v},.10)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
-      x.fillStyle='#565b63'; x.fillRect(0,0,9,128); x.fillRect(119,0,9,128);   // curbs (both edges)
+      x.fillStyle=cfg.sidewalk; x.fillRect(0,0,128,128);
+      for(let i=0;i<400;i++){ const v=(Math.random()*80|0); x.fillStyle=`rgba(${v},${v},${v},.10)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+      x.fillStyle=cfg.curb; x.fillRect(0,0,9,128); x.fillRect(119,0,9,128);   // curbs (both edges)
       x.fillStyle='rgba(0,0,0,.16)'; for(let y=0;y<128;y+=24) x.fillRect(0,y,128,2); // slab joints
       const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
     }
@@ -1009,8 +1065,11 @@
       geo.setAttribute('normal',new THREE.BufferAttribute(nrm,3));
       const idx=[]; for(let i=0;i<N;i++){ const a=i*2,b=a+1,c=a+2,d=a+3; idx.push(a,b,c, b,d,c); }
       geo.setIndex(idx);
-      const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:tex,roughness:.96}));
-      m.receiveShadow=true; m.frustumCulled=false; this.game.scene.add(m);
+      // polygonOffset pulls the road/pavement slightly toward the camera in depth so the big grass
+      // plane can never z-fight over it (the thin 0.06 height gap alone loses at far distances).
+      const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:tex,roughness:.96, side:THREE.DoubleSide,
+                 polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4}));
+      m.receiveShadow=true; m.frustumCulled=false; m.renderOrder=1; this.game.scene.add(m);
       return {mesh:m, inner, outer, y, vScale};
     }
     _buildRoad(){
@@ -1038,7 +1097,8 @@
         rib.mesh.geometry.attributes.uv.needsUpdate=true;
       }
       // INFINITE FLOOR: the grass follows the player so it never runs out (no flying into sky).
-      if(this.floor) this.floor.position.set(this.game.player.pos.x, 0, pz);
+      // sits a touch below the road so the asphalt clearly reads on top.
+      if(this.floor) this.floor.position.set(this.game.player.pos.x, -0.25, pz);
     }
     _take(){ return this.pool.find(p=>!p.active); }
     // Buildings form a single winding PATH (along the road) — in front of each other, not
@@ -1055,19 +1115,27 @@
       b.mesh.scale.set(w,h,d);
       b.mesh.position.set(clamp(x, decor?-100:-44, decor?100:44), h/2, z);
       const m=b.mesh.material;
-      // tile the window texture to the building's real size so panes look consistent (detail!)
+      // tile the facade texture to the building's real size so panes/blocks look consistent (detail!)
       if(m.map){ m.map.repeat.set(Math.max(1,Math.round(w/3.2)), Math.max(2,Math.round(h/5)));
                  m.map.offset.set(Math.random(),Math.random()); }
-      if(decor){ // NYC street wall: mix of brownstone + grey concrete high-rises, dim outline
-        if(Math.random()<0.5) m.color.setHSL(0.075,0.28,0.38+Math.random()*0.12);   // warm brownstone
-        else                  m.color.setHSL(0.6,0.05,0.44+Math.random()*0.16);      // grey concrete
+      const B=this.game.theme.building, R=Math.random();
+      if(decor){ // street wall: two palette variants per map, dim outline
+        const col = R<0.5 ? B.decorA : B.decorB;
+        m.color.setHSL(col[0],col[1],col[2]+Math.random()*0.12);
         m.emissive.setRGB(0,0,0);
-        b.edge.material.color.set(0x2c333c); b.edge.material.opacity=0.45;
-      } else {    // HITTABLE towers: light concrete + glowing orange outline = clear target
-        m.color.setHSL(0.6,0.08,0.72+Math.random()*0.08);
-        m.emissive.setHex(0x3a1c00);
-        b.edge.material.color.set(0xffb13b); b.edge.material.opacity=1;
+        b.edge.material.color.setHex(B.decorEdge); b.edge.material.opacity=0.45;
+      } else {    // HITTABLE tower: bright outline = a clear target to smash
+        m.color.setHSL(B.tower[0],B.tower[1],B.tower[2]+Math.random()*0.08);
+        m.emissive.setHex(B.towerEmissive);
+        b.edge.material.color.setHex(B.towerEdge); b.edge.material.opacity=1;
       }
+      // TURRET ROOF (medieval): a cone sitting on top of the building
+      if(this.game.theme.roofs){
+        const rh=Math.min(w,d)*0.9+3;
+        b.roof.visible=true; b.roof.position.set(b.mesh.position.x, h+rh/2, z);
+        b.roof.scale.set(w*0.62, rh, d*0.62);
+        b.roof.material.color.setHex(decor?0x7a3b2e:0x8a4436);
+      } else b.roof.visible=false;
       this.buildings.push(b);
     }
     _spawnAt(z){
@@ -1106,7 +1174,7 @@
       }
     }
     shatter(b){
-      b.active=false; b.hit=true; b.mesh.visible=false;
+      b.active=false; b.hit=true; b.mesh.visible=false; b.roof.visible=false;
       const i=this.buildings.indexOf(b); if(i>=0) this.buildings.splice(i,1);
     }
     update(){
@@ -1121,9 +1189,28 @@
         // MISS (only while actually playing): a hittable tower slipped behind you unsmashed ->
         // break the streak AND lose momentum. Skipped in the menu so it can't end the run on load.
         if(playing && !b.decor && !b.hit && !b.missed && b.mesh.position.z < pz-1.5){ b.missed=true; this.game.combo.miss(); this.game.momentum.onMiss(); }
-        if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; this.buildings.splice(i,1); }
+        if(b.mesh.position.z < pz-60){ b.active=false; b.mesh.visible=false; b.roof.visible=false; this.buildings.splice(i,1); }
       }
+      this._updateEnv();
       this.updateRoad();
+    }
+    // Frutiger bubbles drift up around you; medieval mountains sit on the horizon & follow you.
+    _updateEnv(){
+      const p=this.game.player, px=p.pos.x, pz=p.pos.z, now=performance.now()*0.001;
+      if(this.bubbles && this.bubbles[0].mesh.visible){
+        for(const bb of this.bubbles){
+          if(bb.z < pz-30 || bb.z===0){ bb.z=pz+rand(60,180); bb.x=px+rand(-70,70); bb.y=rand(4,44); bb.sz=rand(3,9); }
+          bb.z-=(p.speed()*0.55+8)*0.016; bb.y+=0.06*Math.sin(now*1.5+bb.ph);
+          bb.mesh.position.set(bb.x+Math.sin(now*0.6+bb.ph)*2, bb.y, bb.z); bb.mesh.scale.setScalar(bb.sz);
+        }
+      }
+      if(this.mountains && this.mountains[0].mesh.visible){
+        for(const mn of this.mountains){
+          if(mn.z < pz-100) mn.z+=this.mountains.length*130;
+          mn.mesh.position.set(px+mn.side*mn.off, mn.h/2-8, mn.z);
+          mn.mesh.scale.set(mn.w,mn.h,mn.w);
+        }
+      }
     }
     // swept sphere-vs-AABB for the dummy; returns first un-hit building it overlaps. The z axis
     // is treated as a SWEPT segment (zPrev..z) so fast flight can't tunnel past thin buildings.
@@ -1144,7 +1231,7 @@
       }
       return null;
     }
-    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=1; } // one easy tower only, then it's earned
+    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; b.roof.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=1; } // one easy tower only, then it's earned
   }
 
   // ===================================================================================
@@ -1322,6 +1409,13 @@
       src.connect(gn); gn.connect(this.master); src.start(); }
     crash(tier,combo){ const base={glance:160,smash:110,crush:70,level:45}[tier.name];
       this._tone(base+combo*8,0.25,'square',0.3); this._noise(0.08+tier.shake*0.18,0.35+tier.shake*0.35); }
+    // a rising sine "bloop" -> a soft bubble pop (Frutiger Aero map)
+    bubble(combo){ if(!this.ctx) return; const o=this.ctx.createOscillator(),gn=this.ctx.createGain(),t=this.ctx.currentTime;
+      o.type='sine'; const f=340+((combo||0)%12)*40; o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*2.6,t+0.12);
+      gn.gain.setValueAtTime(0.34,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+      o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.16); this._tone(f*3.2,0.05,'sine',0.12); }
+    // a dry low clack -> brick/stone hit (Medieval map)
+    brick(combo){ this._tone(150,0.09,'square',0.32); this._tone(90,0.12,'triangle',0.26); this._noise(0.05,0.3); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
     coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
     fire(){ this._tone(180,0.5,'sawtooth',0.35); this._tone(90,0.6,'square',0.25); this._noise(0.5,0.3); }
@@ -1467,6 +1561,46 @@
   }
 
   // ===================================================================================
+  // MAPS — swappable themes. Each retunes sky/light/ground/road/buildings + the hit sound.
+  // ===================================================================================
+  const THEMES = {
+    nyc: { name:'New York', tag:'SMASH THROUGH NEW YORK', hit:'crash',
+      ground:0x5f8a4a, skyTop:0x2f7be0, fog:0x9fd0ff, skyBot:0xe9f6ff,
+      hemiSky:0xcfe6ff, hemiGround:0x6b7a55, sunColor:0xfff2d6, sunInt:1.5,
+      road:{ asphalt:'#141518', edge:'#e6e9ec', dash:'#e6c24e', dashed:true, sidewalk:'#8a8f97', curb:'#565b63' },
+      building:{ style:'window', tower:[0.6,0.08,0.72], towerEmissive:0x3a1c00, towerEdge:0xffb13b,
+                 decorA:[0.075,0.28,0.38], decorB:[0.6,0.05,0.44], decorEdge:0x2c333c },
+      roofs:false, bubbles:false, mountains:false },
+    aero: { name:'Frutiger Aero', tag:'GLIDE THROUGH THE AERO', hit:'bubble',
+      ground:0x46c24a, skyTop:0x12a0f2, fog:0xc8f2ff, skyBot:0xeaffff,
+      hemiSky:0xd6f7ff, hemiGround:0x74d06a, sunColor:0xffffff, sunInt:1.55,
+      road:{ asphalt:'#7fd6ea', edge:'#ffffff', dash:'#ffffff', dashed:false, sidewalk:'#dcf6ff', curb:'#8fd0e0' },
+      building:{ style:'glass', tower:[0.5,0.55,0.62], towerEmissive:0x0a3a44, towerEdge:0x7cf0ff,
+                 decorA:[0.5,0.5,0.6], decorB:[0.46,0.42,0.66], decorEdge:0x9fe6ff },
+      roofs:false, bubbles:true, mountains:false },
+    medieval: { name:'Medieval', tag:'STORM THE OLD CITADEL', hit:'brick',
+      ground:0x707a38, skyTop:0x5f7fb0, fog:0xdcc9a0, skyBot:0xf1e2bf,
+      hemiSky:0xdcc7a0, hemiGround:0x5f5a3a, sunColor:0xffd6a0, sunInt:1.5,
+      road:{ asphalt:'#6b5a41', edge:'#7a6a4a', dash:null, dashed:false, sidewalk:'#8f8163', curb:'#5a4d38' },
+      building:{ style:'stone', tower:[0.09,0.32,0.5], towerEmissive:0x3a1e00, towerEdge:0xe0b054,
+                 decorA:[0.09,0.25,0.42], decorB:[0.1,0.14,0.5], decorEdge:0x4a3a24 },
+      roofs:true, bubbles:false, mountains:true },
+  };
+  class MapSystem {
+    constructor(game){ this.game=game; this.key=localStorage.getItem('invrun_map');
+      if(!THEMES[this.key]) this.key='nyc'; this.game.theme=THEMES[this.key]; }
+    get hitSound(){ return THEMES[this.key].hit; }
+    select(key){ if(!THEMES[key]) return; this.key=key; try{localStorage.setItem('invrun_map',key);}catch(e){} this.apply(); }
+    apply(){ const t=THEMES[this.key], g=this.game; g.theme=t;
+      g.skyMat.uniforms.top.value.setHex(t.skyTop); g.skyMat.uniforms.mid.value.setHex(t.fog); g.skyMat.uniforms.bot.value.setHex(t.skyBot);
+      g.scene.fog.color.setHex(t.fog);
+      g.hemi.color.setHex(t.hemiSky); g.hemi.groundColor.setHex(t.hemiGround); g.sun.color.setHex(t.sunColor); g.sun.intensity=t.sunInt;
+      g.city.applyTheme(t);
+      if(g.run && g.run.state==='READY'){ g.city.reset(); g.city.update(); }   // refresh the menu preview
+    }
+  }
+
+  // ===================================================================================
   // GAME — wires everything together.
   // ===================================================================================
   class Game {
@@ -1491,10 +1625,10 @@
           void main(){ float t=clamp(h,0.0,1.0); float b=clamp(-h*2.0,0.0,1.0);
             vec3 c=mix(mid,top,t); c=mix(c,bot,b); gl_FragColor=vec4(c,1.0); }`
       });
-      this.sky=new THREE.Mesh(skyGeo,skyMat); this.scene.add(this.sky);
+      this.sky=new THREE.Mesh(skyGeo,skyMat); this.skyMat=skyMat; this.scene.add(this.sky);
 
-      // ----- lights: bright daytime -----
-      this.scene.add(new THREE.HemisphereLight(0xcfe6ff,0x6b7a55,1.0));   // sky / ground bounce
+      // ----- lights: bright daytime (colours retuned per map) -----
+      this.hemi=new THREE.HemisphereLight(0xcfe6ff,0x6b7a55,1.0); this.scene.add(this.hemi);   // sky / ground bounce
       const sun=new THREE.DirectionalLight(0xfff2d6,1.5); sun.position.set(60,90,-20); sun.castShadow=true;
       sun.shadow.mapSize.set(1024,1024); const c=sun.shadow.camera;
       c.left=-100;c.right=100;c.top=100;c.bottom=-100;c.near=1;c.far=320; sun.shadow.bias=-0.0004;
@@ -1518,8 +1652,9 @@
       this.ui=new UISystem(this);
       this.audio=new AudioSystem();
       this.run=new RunStateManager(this);
+      this.maps=new MapSystem(this);
 
-      this.input.init(); this.player.reset(); this.city.update();
+      this.input.init(); this.player.reset(); this.maps.apply(); this.city.update();
       this.run.refreshBestLine();
       this._lastZ=this.player.pos.z;
       this._clock=new THREE.Clock();
@@ -1541,6 +1676,15 @@
       document.querySelectorAll('.modal').forEach(m=>{
         m.addEventListener('click',e=>{ if(e.target===m||e.target.hasAttribute('data-close')) closeAll(); });
       });
+      // map selection: tap a map card -> swap the whole theme (look + hit sound) live
+      const mapCards=document.querySelectorAll('#maps-modal .card.map');
+      const syncMaps=()=>mapCards.forEach(c=>{ const on=c.dataset.map===this.maps.key;
+        c.classList.toggle('sel',on); c.querySelector('small').textContent=on?'Selected':'Tap to play'; });
+      const tagEl=document.querySelector('#start-overlay .tagline');
+      mapCards.forEach(card=>card.addEventListener('click',()=>{ this.maps.select(card.dataset.map);
+        syncMaps(); if(tagEl) tagEl.textContent=THEMES[this.maps.key].tag; }));
+      syncMaps(); if(tagEl) tagEl.textContent=THEMES[this.maps.key].tag;
+
       // sound toggle (persisted)
       const soundBtn=document.getElementById('sound-btn');
       const applySound=(on)=>{ this.audio.setMuted(!on); soundBtn.textContent=on?'ON':'OFF'; soundBtn.classList.toggle('on',on);
