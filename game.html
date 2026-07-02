@@ -816,93 +816,101 @@
 
       // ----- villain rig, BUILT IN FLIGHT POSE (head forward, arm outstretched) -----
       this.group=new THREE.Group(); game.scene.add(this.group);
-      this.rig=new THREE.Group(); this.group.add(this.rig); this.group.scale.setScalar(1.62);   // BIG & dominant
-      // ===== VILLAIN — a powerful caped flying strongman (classic-hero ARCHETYPE, original design) =====
-      const skin=new THREE.MeshStandardMaterial({color:0xe3ac80,roughness:.62});
-      const suit=new THREE.MeshStandardMaterial({color:0xeef0ee,roughness:.42,metalness:.06});  // white suit  (recoloured on fire)
-      const red=new THREE.MeshStandardMaterial({color:0xb5342a,roughness:.5});                  // red trim / gloves / boots
-      const gold=new THREE.MeshStandardMaterial({color:0xd8a52a,roughness:.4,metalness:.5});    // belt / emblem
-      const hairM=new THREE.MeshStandardMaterial({color:0xb9bbbe,roughness:.85});               // steel-grey hair
-      const dark=new THREE.MeshStandardMaterial({color:0x232323,roughness:.8});                 // mustache / brow
+      this.rig=new THREE.Group(); this.group.add(this.rig); this.group.scale.setScalar(1.55);
+      // ===== VILLAIN — a clean, articulated flat-shaded superhero (original design) =====
+      const FS=true;   // FLAT SHADING everywhere -> crisp, faceted "3D show" look (no mushy smooth blobs)
+      const skin=new THREE.MeshStandardMaterial({color:0xe0a878,roughness:.65,flatShading:FS});
+      const suit=new THREE.MeshStandardMaterial({color:0x244a86,roughness:.45,metalness:.12,flatShading:FS}); // bold blue suit
+      const panel=new THREE.MeshStandardMaterial({color:0xd9dde2,roughness:.4,flatShading:FS});               // light chest/shoulder panel
+      const red=new THREE.MeshStandardMaterial({color:0xc23a2c,roughness:.5,flatShading:FS});                 // gloves / boots / cape
+      const gold=new THREE.MeshStandardMaterial({color:0xe6b52c,roughness:.35,metalness:.5,flatShading:FS});  // belt / emblem
+      const hairM=new THREE.MeshStandardMaterial({color:0xbdbfc2,roughness:.85,flatShading:FS});              // steel-grey hair
+      const dark=new THREE.MeshStandardMaterial({color:0x232323,roughness:.8,flatShading:FS});
       const eyeW=new THREE.MeshStandardMaterial({color:0xf6f6f6,roughness:.3});
-      const pupM=new THREE.MeshStandardMaterial({color:0x1a1a22,roughness:.4});
-      const capeM=new THREE.MeshStandardMaterial({color:0xa62c22,roughness:.62,side:THREE.DoubleSide}); this.capeMat=capeM;
+      const pupM=new THREE.MeshStandardMaterial({color:0x171720,roughness:.4});
+      const capeM=new THREE.MeshStandardMaterial({color:0xb5322a,roughness:.6,side:THREE.DoubleSide,flatShading:FS}); this.capeMat=capeM;
       this.suitMat=suit;
-      const add=(m,x,y,z,sx,sy,sz,cast)=>{ m.position.set(x,y,z); if(sx!==undefined) m.scale.set(sx,sy,sz); if(cast) m.castShadow=true; this.rig.add(m); return m; };
-      // ---- TORSO: broad chest tapering to a narrow waist (V-shape), muscular back seen from behind ----
-      add(new THREE.Mesh(new THREE.CapsuleGeometry(0.6,0.95,6,12),suit),0,0,0.42, 1.18,1,1, true).rotation.x=Math.PI/2;     // chest
-      add(new THREE.Mesh(new THREE.CapsuleGeometry(0.46,0.55,6,10),suit),0,0,-0.55, 1,1,1, true).rotation.x=Math.PI/2;      // waist (narrower)
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.5,14,12),suit),0,0.24,0.6, 1.55,0.7,0.9, true);                        // traps / upper back
-      const latL=add(new THREE.Mesh(new THREE.CapsuleGeometry(0.2,0.8,6,8),suit),-0.44,0.06,0.15); latL.rotation.set(Math.PI/2,0,0.55);
-      const latR=add(new THREE.Mesh(new THREE.CapsuleGeometry(0.2,0.8,6,8),suit),0.44,0.06,0.15); latR.rotation.set(Math.PI/2,0,-0.55);
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.32,12,12),suit),-0.3,-0.34,0.78, 1,0.72,1);                            // pec L (underside)
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.32,12,12),suit),0.3,-0.34,0.78, 1,0.72,1);                             // pec R
-      add(new THREE.Mesh(new THREE.OctahedronGeometry(0.2),gold),0,-0.5,0.75, 1,1.5,0.5);                                  // chest emblem (diamond)
-      add(new THREE.Mesh(new THREE.BoxGeometry(1.05,0.28,0.62),gold),0,-0.04,-0.5);                                       // belt
-      add(new THREE.Mesh(new THREE.CapsuleGeometry(0.5,0.4,6,10),red),0,0,-0.95, 1,1,1).rotation.x=Math.PI/2;              // red trunks
-      // ---- broad shoulders + thick arms ----
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,12),suit),-0.78,0.05,0.42,1,1,1,true);   // deltoid L
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,12),suit),0.78,0.05,0.42,1,1,1,true);    // deltoid R
-      // GRIP ARM (right) — outstretched, fist clamped on the victim's ankles
-      add(new THREE.Mesh(new THREE.CapsuleGeometry(0.26,0.55,6,8),suit),0.66,-0.02,0.72,1,1,1,true).rotation.set(Math.PI/2,0,-0.16); // bicep
-      add(new THREE.Mesh(new THREE.CapsuleGeometry(0.22,0.75,6,8),skin),0.86,-0.05,1.28,1,1,1).rotation.set(Math.PI/2,0,-0.05);      // forearm (skin)
-      this.hand=add(new THREE.Mesh(new THREE.SphereGeometry(0.29,12,12),red),0.94,-0.07,1.72,1,1,1);                                 // gloved fist
-      // LEFT ARM — powering back at the side
-      add(new THREE.Mesh(new THREE.CapsuleGeometry(0.25,0.7,6,8),suit),-0.74,-0.03,0.25,1,1,1,true).rotation.set(Math.PI/2-0.5,0,0.24);
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.26,12,12),red),-0.84,0.02,0.92);
-      // ---- legs trailing back, thigh -> calf -> boot ----
-      for(const s of [-1,1]){
-        add(new THREE.Mesh(new THREE.CapsuleGeometry(0.27,0.7,6,8),suit),s*0.3,-0.02,-1.05,1,1,1,true).rotation.x=Math.PI/2;
-        add(new THREE.Mesh(new THREE.CapsuleGeometry(0.23,0.7,6,8),suit),s*0.3,-0.03,-1.7,1,1,1).rotation.x=Math.PI/2;
-        add(new THREE.Mesh(new THREE.CapsuleGeometry(0.28,0.5,6,8),red),s*0.3,-0.06,-2.15,1,1,1).rotation.x=Math.PI/2;
-      }
+      const A=(mesh,x,y,z,rx,ry,rz,cast)=>{ mesh.position.set(x,y,z); if(rx||ry||rz) mesh.rotation.set(rx||0,ry||0,rz||0); if(cast) mesh.castShadow=true; this.rig.add(mesh); return mesh; };
+      // articulated LIMB helper: upper + elbow/knee joint + lower + hand/foot end, added to a parent
+      const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,4,8);
+      const limb=(parent,ox,oy,oz, dir, uR,uL, lR,lL, jR, endGeo,endMat, upMat,loMat)=>{
+        const g=new THREE.Group(); g.position.set(ox,oy,oz); parent.add(g);
+        const up=new THREE.Mesh(cap(uR,uL),upMat); up.rotation.x=Math.PI/2; up.position.z=dir*(uL*0.5); up.castShadow=true; g.add(up);
+        const j=new THREE.Mesh(new THREE.SphereGeometry(jR,8,8),upMat); j.position.z=dir*(uL+jR*0.4); g.add(j);
+        const lo=new THREE.Mesh(cap(lR,lL),loMat); lo.rotation.x=Math.PI/2; lo.position.z=dir*(uL+lL*0.5+jR*0.3); g.add(lo);
+        const end=new THREE.Mesh(endGeo,endMat); end.position.z=dir*(uL+lL+jR*0.4); end.castShadow=true; g.add(end);
+        return {g,end};
+      };
+      // ---- TORSO: a clean tapered form (broad chest at the front -> narrow waist) ----
+      A(new THREE.Mesh(new THREE.CylinderGeometry(0.64,0.42,1.7,10,1,false),suit),0,0,0, -Math.PI/2,0,0, true);
+      A(new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.4,0.6,10,1,true),panel),0,-0.24,0.5, -Math.PI/2,0,0);      // light chest panel
+      A(new THREE.Mesh(new THREE.OctahedronGeometry(0.17),gold),0,-0.52,0.62, 0,0,0).scale.set(1,1.5,0.5);         // chest emblem
+      A(new THREE.Mesh(new THREE.TorusGeometry(0.44,0.1,8,16),gold),0,0,-0.78, Math.PI/2,0,0);                     // belt
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.44,10,8),suit),-0.58,0.06,0.5, 0,0,0, false).castShadow=true;    // deltoid L
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.44,10,8),suit),0.58,0.06,0.5, 0,0,0, false).castShadow=true;     // deltoid R
+      // ---- ARMS (articulated). Right = outstretched grip; left = powering back ----
+      const gripArm=limb(this.rig, 0.58,-0.02,0.62, 1, 0.2,0.5, 0.17,0.5, 0.19, new THREE.BoxGeometry(0.32,0.3,0.34),red, suit,skin);
+      gripArm.g.rotation.set(0.05,-0.12,0); this.hand=gripArm.end;
+      const backArm=limb(this.rig, -0.58,0.0,0.4, 1, 0.2,0.5, 0.16,0.45, 0.18, new THREE.BoxGeometry(0.3,0.28,0.3),red, suit,suit);
+      backArm.g.rotation.set(-0.9,0.35,0);
+      // ---- LEGS (articulated), trailing back with boots ----
+      const legL=limb(this.rig, -0.28,0,-0.72, -1, 0.24,0.6, 0.2,0.55, 0.2, new THREE.BoxGeometry(0.36,0.3,0.6),red, suit,suit); legL.g.rotation.set(0.12,0,0);
+      const legR=limb(this.rig, 0.28,0,-0.72, -1, 0.24,0.6, 0.2,0.55, 0.2, new THREE.BoxGeometry(0.36,0.3,0.6),red, suit,suit); legR.g.rotation.set(0.12,0,0);
+      legL.end.position.y+=0.14; legR.end.position.y+=0.14;   // heel down = boot shape
       // ---- neck + HEAD with a real face ----
-      add(new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.26,0.3,10),skin),0,0.04,0.98,1,1,1).rotation.x=Math.PI/2;
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.44,18,16),skin),0,0.06,1.32,1,1.02,1,true);        // head
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.46,16,12),hairM),0,0.2,1.2, 1,0.72,1.02);          // swept-back grey hair
-      add(new THREE.Mesh(new THREE.BoxGeometry(0.52,0.1,0.14),dark),0,0.2,1.68);                       // brow ridge
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10),eyeW),-0.16,0.08,1.72);                  // eye L
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10),eyeW),0.16,0.08,1.72);                   // eye R
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.045,8,8),pupM),-0.16,0.07,1.79);                   // pupil L
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.045,8,8),pupM),0.16,0.07,1.79);                    // pupil R
-      add(new THREE.Mesh(new THREE.ConeGeometry(0.08,0.18,8),skin),0,-0.02,1.8,1,1,1).rotation.x=Math.PI/2; // nose
-      add(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.15,0.16),dark),0,-0.16,1.7);                      // thick mustache
-      this.gripArm=this.hand;
+      A(new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.26,0.34,10),skin),0,0.02,0.82, -Math.PI/2,0,0);
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.42,14,12),skin),0,0.06,1.2, 0,0,0, true).scale.set(0.98,1,1.02);
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.44,12,10),hairM),0,0.2,1.08, 0,0,0).scale.set(1,0.72,1.02);
+      A(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.09,0.12),dark),0,0.18,1.56);                       // brow
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.085,8,8),eyeW),-0.15,0.07,1.58);
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.085,8,8),eyeW),0.15,0.07,1.58);
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.042,6,6),pupM),-0.15,0.06,1.65);
+      A(new THREE.Mesh(new THREE.SphereGeometry(0.042,6,6),pupM),0.15,0.06,1.65);
+      A(new THREE.Mesh(new THREE.ConeGeometry(0.075,0.17,6),skin),0,-0.03,1.66, Math.PI/2,0,0);       // nose
+      A(new THREE.Mesh(new THREE.BoxGeometry(0.46,0.14,0.15),dark),0,-0.15,1.56);                     // mustache
+      this.gripArm=gripArm.g;
       // ---- flowing CAPE streaming back over the body (waves in update) ----
       { const N=9, W=0.72; const pos=new Float32Array((N+1)*2*3), uv=new Float32Array((N+1)*2*2);
-        for(let i=0;i<=N;i++){ const t=i/N, zz=0.45-t*3.0, yy=0.42-Math.pow(t,1.5)*1.15;
+        for(let i=0;i<=N;i++){ const t=i/N, zz=0.4-t*3.0, yy=0.4-Math.pow(t,1.5)*1.15;
           pos[i*6+0]=-W; pos[i*6+1]=yy; pos[i*6+2]=zz; pos[i*6+3]=W; pos[i*6+4]=yy; pos[i*6+5]=zz;
           uv[i*4+0]=0; uv[i*4+1]=t; uv[i*4+2]=1; uv[i*4+3]=t; }
         const cg=new THREE.BufferGeometry(); cg.setAttribute('position',new THREE.BufferAttribute(pos,3)); cg.setAttribute('uv',new THREE.BufferAttribute(uv,2));
         const idx=[]; for(let i=0;i<N;i++){ const a=i*2; idx.push(a,a+1,a+2,a+1,a+3,a+2); } cg.setIndex(idx); cg.computeVertexNormals();
         this.capeGeo=cg; this._capeBase=pos.slice();
         this.cape=new THREE.Mesh(cg,capeM); this.cape.castShadow=true; this.rig.add(this.cape); }
-      // FIRE AURA — additive glow that engulfs the villain on a hot streak
+      // FIRE AURA
       this.fireAura=new THREE.Mesh(new THREE.SphereGeometry(1.9,14,14),
         new THREE.MeshBasicMaterial({color:0xff5a14,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
       this.fireAura.position.z=0.2; this.fireAura.visible=false; this.rig.add(this.fireAura);
 
-      // ===== VICTIM — the villain's SON: a leaner young MASKED hero, held head-first as a battering ram =====
-      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(1.0);   // clearly smaller
-      const dsuit=new THREE.MeshStandardMaterial({color:0x2f6fce,roughness:.5,emissive:0x061024}); this.dsuitMat=dsuit;
-      const dacc=new THREE.MeshStandardMaterial({color:0xf2c531,roughness:.5});     // yellow accents
-      const dskin=new THREE.MeshStandardMaterial({color:0xe3ac80,roughness:.6});
-      const dmask=new THREE.MeshStandardMaterial({color:0x214a9e,roughness:.45});   // blue eye-mask
-      const dlens=new THREE.MeshStandardMaterial({color:0xf6f6f6,roughness:.3,emissive:0x223344});
-      const dadd=(m,x,y,z,cast)=>{ m.position.set(x,y,z); if(cast) m.castShadow=true; this.dummy.add(m); return m; };
-      dadd(new THREE.Mesh(new THREE.SphereGeometry(0.34,16,16),dskin),0,0,0.14,true);               // head LEADS (jaw/skin) = smash point
-      dadd(new THREE.Mesh(new THREE.SphereGeometry(0.35,14,12),dmask),0,0.12,0.16).scale.set(1,0.72,0.95); // mask over the upper face
-      dadd(new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8),dlens),-0.15,0.1,0.4);                  // eye lens L
-      dadd(new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8),dlens),0.15,0.1,0.4);                   // eye lens R
-      this.dTorso=new THREE.Group(); this.dTorso.position.set(0,-0.05,-0.15); this.dummy.add(this.dTorso);   // body trails back (limp swing)
-      const dbody=new THREE.Mesh(new THREE.CapsuleGeometry(0.29,0.7,6,8),dsuit); dbody.rotation.x=Math.PI/2; dbody.position.set(0,0,-0.52); dbody.castShadow=true;
-      const dstripe=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.36,0.46),dacc); dstripe.position.set(0,0.14,-0.48);   // yellow chest slash
-      const dbelt=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.16,0.36),dacc); dbelt.position.set(0,0,-0.92);          // yellow belt
-      this.dTorso.add(dbody,dstripe,dbelt);
+      // ===== VICTIM — the son: a FULL-SIZE young MASKED hero, held head-first as a battering ram =====
+      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(0.82);   // a touch smaller (teen)
+      const dsuit=new THREE.MeshStandardMaterial({color:0x2f6fce,roughness:.48,emissive:0x08142c,flatShading:FS}); this.dsuitMat=dsuit;
+      const dacc=new THREE.MeshStandardMaterial({color:0xf2c531,roughness:.5,flatShading:FS});   // yellow
+      const dskin=new THREE.MeshStandardMaterial({color:0xe0a878,roughness:.6,flatShading:FS});
+      const dmask=new THREE.MeshStandardMaterial({color:0x1d449a,roughness:.4,flatShading:FS});
+      const dlens=new THREE.MeshStandardMaterial({color:0xeaf4ff,roughness:.25,emissive:0x2a4466});
+      const dA=(m,x,y,z,cast)=>{ m.position.set(x,y,z); if(cast) m.castShadow=true; this.dummy.add(m); return m; };
+      dA(new THREE.Mesh(new THREE.SphereGeometry(0.34,14,12),dskin),0,0,0.12,true).scale.set(1,1.02,1);   // head LEADS = smash point
+      dA(new THREE.Mesh(new THREE.SphereGeometry(0.35,12,10),dmask),0,0.11,0.14).scale.set(1.02,0.7,0.98); // eye-mask
+      dA(new THREE.Mesh(new THREE.SphereGeometry(0.095,7,7),dlens),-0.15,0.09,0.36);
+      dA(new THREE.Mesh(new THREE.SphereGeometry(0.095,7,7),dlens),0.15,0.09,0.36);
+      this.dTorso=new THREE.Group(); this.dTorso.position.set(0,-0.05,-0.18); this.dummy.add(this.dTorso);
+      const dtor=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.24,0.95,8,1),dsuit); dtor.rotation.x=Math.PI/2; dtor.position.set(0,0,-0.55); dtor.castShadow=true;
+      const dstripe=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.5,0.34),dacc); dstripe.position.set(0,0.16,-0.5);
+      const dbelt=new THREE.Mesh(new THREE.TorusGeometry(0.26,0.06,6,12),dacc); dbelt.rotation.x=Math.PI/2; dbelt.position.set(0,0,-0.96);
+      this.dTorso.add(dtor,dstripe,dbelt);
       this.dLimbs=[];
-      const dmk=(x,y,z,len)=>{ const l=new THREE.Mesh(new THREE.CapsuleGeometry(0.11,len,5,6),dsuit); l.position.set(x,y,z); this.dTorso.add(l); this.dLimbs.push(l); return l; };
-      dmk(-0.32,0,-0.3,0.55); dmk(0.32,0,-0.3,0.55);     // arms flail back from the shoulders
-      dmk(-0.16,0,-1.02,0.66); dmk(0.16,0,-1.02,0.66);   // legs trail back to the gripped ankles
+      // victim limbs are pivot GROUPS (upper+joint+lower+end) that flail from the shoulders/hips
+      const vlimb=(ox,oy,oz, uL,lL, endGeo, gloveMat)=>{ const g=new THREE.Group(); g.position.set(ox,oy,oz); this.dTorso.add(g); this.dLimbs.push(g);
+        const up=new THREE.Mesh(cap(0.1,uL),dsuit); up.rotation.x=Math.PI/2; up.position.z=-uL*0.5; up.castShadow=true; g.add(up);
+        const j=new THREE.Mesh(new THREE.SphereGeometry(0.1,7,7),dsuit); j.position.z=-uL-0.03; g.add(j);
+        const lo=new THREE.Mesh(cap(0.09,lL),dsuit); lo.rotation.x=Math.PI/2; lo.position.z=-uL-lL*0.5-0.05; g.add(lo);
+        const end=new THREE.Mesh(endGeo,gloveMat); end.position.z=-uL-lL-0.08; g.add(end); return g; };
+      vlimb(-0.3,0.02,-0.28, 0.3,0.3, new THREE.BoxGeometry(0.15,0.14,0.16), dsuit);   // arm L
+      vlimb(0.3,0.02,-0.28, 0.3,0.3, new THREE.BoxGeometry(0.15,0.14,0.16), dsuit);    // arm R
+      vlimb(-0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);    // leg L (yellow boot)
+      vlimb(0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);     // leg R
       this.dummyGrip=4.0;            // world-Z lead of the leading head (the smash point)
 
       this._smashPulse=0;
@@ -915,7 +923,7 @@
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(1.44,15.92,4.0); this._dummyPrevZ=4.0; }
+             this.dummy.position.set(0.95,15.98,4.0); this._dummyPrevZ=4.0; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -966,7 +974,7 @@
 
       // VICTIM held out front by the ankles: head LEADS (smash point), body trails toward the villain.
       // x lines up with the villain's gripping fist; x leads velocity so the limp body whips on turns.
-      const tx=this.pos.x+1.44+this.vel.x*0.04, ty=this.pos.y-0.08, tz=this.pos.z+this.dummyGrip;
+      const tx=this.pos.x+0.95+this.vel.x*0.04, ty=this.pos.y-0.02, tz=this.pos.z+this.dummyGrip;
       this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
       this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
       this.dummy.position.z=tz;
@@ -975,12 +983,12 @@
       const t=now*0.004;
       this.dTorso.rotation.x=Math.sin(t)*0.09;                 // slight up/down flutter
       this.dTorso.rotation.z=Math.sin(t*1.3)*0.12 - this.bank*0.6;
-      // limbs TRAIL BACKWARD from the wind (arms & legs streamed behind), with a loose flail
-      const sw=Math.sin(now*0.005), sw2=Math.cos(now*0.0045), TB=Math.PI*0.42;   // ~trail along -z
-      this.dLimbs[0].rotation.set(-TB+sw*0.2, 0.15, 0.2+sw*0.12);
-      this.dLimbs[1].rotation.set(-TB+sw2*0.2, -0.15, -0.2-sw2*0.12);
-      this.dLimbs[2].rotation.set(-TB+sw2*0.12, 0.06, 0.06+sw*0.08);
-      this.dLimbs[3].rotation.set(-TB+sw*0.12, -0.06, -0.06-sw2*0.08);
+      // limb pivots already trail backward (-z); add a loose wind flail from the shoulders/hips
+      const sw=Math.sin(now*0.005), sw2=Math.cos(now*0.0045);
+      this.dLimbs[0].rotation.set(sw*0.3, 0.28, 0);      // arm L
+      this.dLimbs[1].rotation.set(sw2*0.3, -0.28, 0);    // arm R
+      this.dLimbs[2].rotation.set(sw2*0.16, 0.1, 0);     // leg L
+      this.dLimbs[3].rotation.set(sw*0.16, -0.1, 0);     // leg R
 
       // ----- ON FIRE: streak reward — the villain (and victim) ignite with a pulsing glow -----
       // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
