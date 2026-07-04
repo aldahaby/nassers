@@ -265,6 +265,7 @@
 
   <script type="module">
   import * as THREE from 'three';
+  import { GLTFLoader } from './vendor/GLTFLoader.js';
 
   /* =====================================================================================
    *  INVINCIBLE RUN — Omni Flight
@@ -830,7 +831,9 @@
       const pupM=new THREE.MeshStandardMaterial({color:0x171720,roughness:.4});
       const capeM=new THREE.MeshStandardMaterial({color:0xb5322a,roughness:.6,side:THREE.DoubleSide,flatShading:FS}); this.capeMat=capeM;
       this.suitMat=suit;
-      const A=(mesh,x,y,z,rx,ry,rz,cast)=>{ mesh.position.set(x,y,z); if(rx||ry||rz) mesh.rotation.set(rx||0,ry||0,rz||0); if(cast) mesh.castShadow=true; this.rig.add(mesh); return mesh; };
+      this.glowMats=[suit];                     // materials that light up ON FIRE (model mats get added on load)
+      this.villainBody=new THREE.Group(); this.rig.add(this.villainBody);   // procedural fallback (hidden when the GLB loads)
+      const A=(mesh,x,y,z,rx,ry,rz,cast)=>{ mesh.position.set(x,y,z); if(rx||ry||rz) mesh.rotation.set(rx||0,ry||0,rz||0); if(cast) mesh.castShadow=true; this.villainBody.add(mesh); return mesh; };
       // articulated LIMB helper: upper + elbow/knee joint + lower + hand/foot end, added to a parent
       const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,4,8);
       const limb=(parent,ox,oy,oz, dir, uR,uL, lR,lL, jR, endGeo,endMat, upMat,loMat)=>{
@@ -849,13 +852,13 @@
       A(new THREE.Mesh(new THREE.SphereGeometry(0.44,10,8),suit),-0.58,0.06,0.5, 0,0,0, false).castShadow=true;    // deltoid L
       A(new THREE.Mesh(new THREE.SphereGeometry(0.44,10,8),suit),0.58,0.06,0.5, 0,0,0, false).castShadow=true;     // deltoid R
       // ---- ARMS (articulated). Right = outstretched grip; left = powering back ----
-      const gripArm=limb(this.rig, 0.58,-0.02,0.62, 1, 0.2,0.5, 0.17,0.5, 0.19, new THREE.BoxGeometry(0.32,0.3,0.34),red, suit,skin);
+      const gripArm=limb(this.villainBody, 0.58,-0.02,0.62, 1, 0.2,0.5, 0.17,0.5, 0.19, new THREE.BoxGeometry(0.32,0.3,0.34),red, suit,skin);
       gripArm.g.rotation.set(0.05,-0.12,0); this.hand=gripArm.end;
-      const backArm=limb(this.rig, -0.58,0.0,0.4, 1, 0.2,0.5, 0.16,0.45, 0.18, new THREE.BoxGeometry(0.3,0.28,0.3),red, suit,suit);
+      const backArm=limb(this.villainBody, -0.58,0.0,0.4, 1, 0.2,0.5, 0.16,0.45, 0.18, new THREE.BoxGeometry(0.3,0.28,0.3),red, suit,suit);
       backArm.g.rotation.set(-0.9,0.35,0);
       // ---- LEGS (articulated), trailing back with boots ----
-      const legL=limb(this.rig, -0.28,0,-0.72, -1, 0.24,0.6, 0.2,0.55, 0.2, new THREE.BoxGeometry(0.36,0.3,0.6),red, suit,suit); legL.g.rotation.set(0.12,0,0);
-      const legR=limb(this.rig, 0.28,0,-0.72, -1, 0.24,0.6, 0.2,0.55, 0.2, new THREE.BoxGeometry(0.36,0.3,0.6),red, suit,suit); legR.g.rotation.set(0.12,0,0);
+      const legL=limb(this.villainBody, -0.28,0,-0.72, -1, 0.24,0.6, 0.2,0.55, 0.2, new THREE.BoxGeometry(0.36,0.3,0.6),red, suit,suit); legL.g.rotation.set(0.12,0,0);
+      const legR=limb(this.villainBody, 0.28,0,-0.72, -1, 0.24,0.6, 0.2,0.55, 0.2, new THREE.BoxGeometry(0.36,0.3,0.6),red, suit,suit); legR.g.rotation.set(0.12,0,0);
       legL.end.position.y+=0.14; legR.end.position.y+=0.14;   // heel down = boot shape
       // ---- neck + HEAD with a real face ----
       A(new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.26,0.34,10),skin),0,0.02,0.82, -Math.PI/2,0,0);
@@ -882,9 +885,10 @@
       this.fireAura=new THREE.Mesh(new THREE.SphereGeometry(1.9,14,14),
         new THREE.MeshBasicMaterial({color:0xff5a14,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
       this.fireAura.position.z=0.2; this.fireAura.visible=false; this.rig.add(this.fireAura);
+      this._loadVillainModel();   // swap in the real GLB model when it finishes loading
 
       // ===== VICTIM — the son: a FULL-SIZE young MASKED hero, held head-first as a battering ram =====
-      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(0.82);   // a touch smaller (teen)
+      this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(2.0);   // FULL-SIZE to match the villain
       const dsuit=new THREE.MeshStandardMaterial({color:0x2f6fce,roughness:.48,emissive:0x08142c,flatShading:FS}); this.dsuitMat=dsuit;
       const dacc=new THREE.MeshStandardMaterial({color:0xf2c531,roughness:.5,flatShading:FS});   // yellow
       const dskin=new THREE.MeshStandardMaterial({color:0xe0a878,roughness:.6,flatShading:FS});
@@ -911,19 +915,43 @@
       vlimb(0.3,0.02,-0.28, 0.3,0.3, new THREE.BoxGeometry(0.15,0.14,0.16), dsuit);    // arm R
       vlimb(-0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);    // leg L (yellow boot)
       vlimb(0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);     // leg R
-      this.dummyGrip=4.0;            // world-Z lead of the leading head (the smash point)
+      this.dummyGrip=3.9;            // world-Z lead of the leading head (the smash point)
 
       this._smashPulse=0;
       this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=2.8; this.SURGE_CD=9.0; this.SURGE_COMBO=6;
     }
     speed(){ return this.vel.length(); }
     position(){ return this.pos; }
+    // load the real GLB villain and swap it in for the procedural fallback
+    _loadVillainModel(){
+      const loader=new GLTFLoader();
+      loader.load('./assets/villain.glb',(gltf)=>{
+        const model=gltf.scene;
+        const box=new THREE.Box3().setFromObject(model), size=new THREE.Vector3(), ctr=new THREE.Vector3();
+        box.getSize(size); box.getCenter(ctr);
+        model.position.sub(ctr);                                  // centre the model on the origin
+        // WIND on the CAPE: displace the trailing cloth (back of the model, z<0) with a running ripple,
+        // injected into the standard shader so the model keeps its textures.
+        this._windU={value:0};
+        model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; if(o.material){ this.glowMats.push(o.material);
+          const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
+            sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+              '#include <begin_vertex>\n float cm=smoothstep(-0.04,-0.22,position.z);\n float rp=sin(position.y*7.0+uWind)*0.08*cm;\n transformed.x+=rp; transformed.y+=cos(position.y*6.0+uWind*1.1)*0.05*cm; transformed.z-=abs(rp)*0.6;'); };
+          mat.needsUpdate=true; } } });
+        const holder=new THREE.Group(); holder.add(model);
+        holder.rotation.set(this._mRotX!==undefined?this._mRotX:Math.PI/2, this._mRotY||0, 0);   // stand -> head-first flight pose
+        const targetLen=4.2; holder.scale.setScalar(targetLen/Math.max(0.001,size.y));
+        holder.position.set(0,0.1,0);
+        this.villainModel=holder; this.rig.add(holder);
+        this.villainBody.visible=false; if(this.cape) this.cape.visible=false;   // hide procedural body + red cape (model has its own)
+      }, undefined, (err)=>{ console.warn('villain GLB failed to load; using fallback',err); });
+    }
     // SURGE must be EARNED: only available once you've built a combo (and off cooldown).
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(0.95,15.98,4.0); this._dummyPrevZ=4.0; }
+             this.dummy.position.set(0.1,15.8,3.9); this._dummyPrevZ=3.9; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -964,9 +992,11 @@
       this.group.position.copy(this.pos);
       this.group.rotation.set(0,0,this.bank);
       const now=performance.now();
+      if(this._windU) this._windU.value=now*0.006;        // drives the model's flowing cape
+      if(this.villainModel) this.villainModel.rotation.z=(this._mRotZ||0) - this.bank*0.25;   // slight body lean into turns
 
-      // flowing CAPE: ripple the trailing vertices (wind wave + a lean with the turn)
-      if(this.cape){ const cp=this.capeGeo.attributes.position.array, base=this._capeBase, tt=now*0.006;
+      // flowing CAPE: ripple the trailing vertices (wind wave + a lean with the turn) [procedural fallback]
+      if(this.cape && this.cape.visible){ const cp=this.capeGeo.attributes.position.array, base=this._capeBase, tt=now*0.006;
         for(let i=0;i<=9;i++){ const t=i/9, w=Math.sin(i*0.9-tt)*0.16*t;
           cp[i*6+1]=base[i*6+1]+w;          cp[i*6+4]=base[i*6+4]+w;
           cp[i*6+0]=base[i*6+0]-this.bank*0.5*t; cp[i*6+3]=base[i*6+3]-this.bank*0.5*t; }
@@ -974,7 +1004,7 @@
 
       // VICTIM held out front by the ankles: head LEADS (smash point), body trails toward the villain.
       // x lines up with the villain's gripping fist; x leads velocity so the limp body whips on turns.
-      const tx=this.pos.x+0.95+this.vel.x*0.04, ty=this.pos.y-0.02, tz=this.pos.z+this.dummyGrip;
+      const tx=this.pos.x+0.1+this.vel.x*0.04, ty=this.pos.y-0.2, tz=this.pos.z+this.dummyGrip;
       this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
       this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
       this.dummy.position.z=tz;
@@ -993,6 +1023,7 @@
       // ----- ON FIRE: streak reward — the villain (and victim) ignite with a pulsing glow -----
       // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
       const fire=g.combo.onFire(), epic=g.combo.onEpic(), eth=g.combo.onEthereal(), fl=g.combo.fireLevel();
+      const glow=(r,gg,bb)=>{ for(const m of this.glowMats) if(m&&m.emissive) m.emissive.setRGB(r,gg,bb); };  // lights up the villain (model + fallback)
       if(fire){
         const pulse=0.55+0.45*Math.sin(now*0.022);
         this.fireAura.visible=true;
@@ -1002,7 +1033,7 @@
           this.fireAura.material.opacity=0.34+0.34*pulse+g.combo.etherealLevel()*0.25;
           this.fireAura.scale.setScalar(1.25+0.5*g.combo.etherealLevel()+0.28*pulse);
           const v=0.85+0.6*pulse;
-          this.suitMat.emissive.setRGB(v*0.6, v*0.15, v);      // violet glow
+          glow(v*0.6, v*0.15, v);      // violet glow (villain model + fallback)
           this.dsuitMat.emissive.setRGB(v*0.5, v*0.12, v*0.9);
           g.effects.fireTrail(this.group.position, this.dummy.position, g.combo.etherealLevel(), dt, true);
         } else {
@@ -1011,13 +1042,13 @@
           this.fireAura.material.opacity=(epic?0.22:0.4)+0.3*pulse+fl*0.2;
           this.fireAura.scale.setScalar((epic?0.8:1)+0.5*fl+0.18*pulse);
           const e=(epic?0.95:0.5)+0.5*pulse+fl*0.4;
-          this.suitMat.emissive.setRGB(e, e*(epic?0.26:0.35), 0);
+          glow(e, e*(epic?0.26:0.35), 0);
           this.dsuitMat.emissive.setRGB(e*0.9, e*0.3, 0);
           if(epic) g.effects.fireTrail(this.group.position, this.dummy.position, g.combo.epicLevel(), dt, false);
         }
       } else if(this.fireAura.visible){
         this.fireAura.visible=false;
-        this.suitMat.emissive.setRGB(0,0,0);
+        glow(0,0,0);
         this.dsuitMat.emissive.setHex(0x06180a);
       }
     }
