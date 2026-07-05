@@ -949,8 +949,9 @@
               '#include <begin_vertex>\n'+
               // CAPE ripple (back of the model)
               ' float cm=smoothstep(-0.04,-0.22,position.z);\n float rp=sin(position.y*7.0+uWind)*0.08*cm;\n transformed.x+=rp; transformed.y+=cos(position.y*6.0+uWind*1.1)*0.05*cm; transformed.z-=abs(rp)*0.6;\n'+
-              // LEG / lower-body sway — flutters with the airflow, grows toward the feet (not a rigid plank)
-              ' float lm=smoothstep(-0.15,-0.95,position.y);\n float lp=sin(position.y*4.0-uWind*1.25+position.x*2.0)*0.11*lm;\n transformed.x+=lp;\n transformed.z+=sin(uWind*0.85+position.x*3.0)*0.07*lm;\n transformed.y+=cos(uWind*0.7)*0.035*lm;'); };
+              // LEGS: each leg swings as ONE coherent limb from the hip (a gentle trailing kick),
+              // amount grows smoothly toward the feet. NO wave along the limb length -> no spaghetti.
+              ' float lm=smoothstep(-0.10,-0.92,position.y);\n float side=sign(position.x);\n transformed.z+=sin(uWind*0.7+side*1.05)*0.05*lm;\n transformed.x+=sin(uWind*0.5)*0.02*lm;'); };
           mat.needsUpdate=true; } } });
         const holder=new THREE.Group(); holder.add(model);
         this._mRotX=Math.PI/2-0.22; this._mBaseY=0.12;                 // heroic head-up arch (not a flat plank)
