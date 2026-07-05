@@ -801,12 +801,14 @@
       // Regular smashes stay FAST — no per-hit freeze. Each smash just ADDS speed (player.onSmash)
       // so chaining accelerates the run. The cinematic weight is saved for rare milestones (below).
 
-      // ===== SNYDER SHOT — only on the rare, EARNED peaks (EPIC / ETHEREAL) =====
-      // A hard freeze on THIS building's impact, then a brief slow-mo pull with the camera punching
-      // in to frame the villain AND the building he just detonated. Rare, so it never wears out and
-      // never gets in the way of play (you keep steering the whole time).
-      if(combo===g.combo.ETHEREAL) this._snyderShot(hitPos, building.mesh.material.color, true);
-      else if(combo===g.combo.EPIC) this._snyderShot(hitPos, building.mesh.material.color, false);
+      // ===== CINEMATIC "SNYDER SHOT" — a real movie beat on the earned milestones =====
+      // First one comes EARLY (the FIRE streak, x10) so you actually get to see it, then it escalates
+      // at EPIC and ETHEREAL. A cooldown keeps it special (never back-to-back). Ethereal always fires.
+      let cl=-1;
+      if(combo===g.combo.ETHEREAL) cl=2; else if(combo===g.combo.EPIC) cl=1; else if(combo===g.combo.FIRE) cl=0;
+      if(cl>=0){ const nowMs=performance.now();
+        if(cl===2 || nowMs-(this._lastCine||-1e9)>5000){ this._lastCine=nowMs;
+          this._snyderShot(hitPos, building.mesh.material.color, cl); } }
       // hit SOUND depends on the map: NYC=crash, Frutiger Aero=bubble pop, Medieval=brick clack
       const snd=g.maps?g.maps.hitSound:'crash';
       if(snd==='bubble') g.audio.bubble(combo);
@@ -816,19 +818,22 @@
 
       g.city.shatter(building);   // remove + recycle the building
     }
-    // The cinematic beat: freeze-on-impact -> slow-mo, with layered building-destruction FX.
-    // `big` = the rarer ETHEREAL peak (deeper, longer, bigger).
-    _snyderShot(hitPos,color,big){
+    // The cinematic beat: a freeze-frame on impact, then a DEEP, long slow-mo while the camera swings
+    // to a low hero angle on the villain + the one building he's detonating. level 0=fire 1=epic 2=ethereal.
+    _snyderShot(hitPos,color,level){
       const g=this.game;
-      g.time.hitstop(big?120:95);                                 // crisp freeze the instant it lands
-      g.time.requestSlowMo(big?0.66:0.58, big?0.8:0.62);          // then the eased slow-mo pull
-      // BUILDING IMPACT is the star: stacked shockwaves + a fat debris blast + a bright flash.
-      g.effects.ring(hitPos, color, big?28:21);
-      g.effects.ring(hitPos, new THREE.Color(0xffffff), big?20:15);
-      g.effects.burst(hitPos, color, big?42:32, big?26:20);
-      g.effects.flash(big?0.72:0.58);
-      g.camera.shake(big?1.7:1.25);
-      g.camera.cinematic(big?1:0.85);                             // frame villain + building, punch in
+      const S=[ {hs:110, slow:0.72, dur:1.05, ring:22, dbz:30, flash:0.60, shake:1.35},   // FIRE
+                {hs:130, slow:0.78, dur:1.2,  ring:26, dbz:36, flash:0.68, shake:1.6 },    // EPIC
+                {hs:150, slow:0.83, dur:1.4,  ring:30, dbz:40, flash:0.80, shake:1.9 } ][level];
+      g.time.hitstop(S.hs);                                       // freeze-frame the instant it lands
+      g.time.requestSlowMo(S.slow, S.dur);                        // then a DEEP, long slow-mo pull
+      // the ONE building gets obliterated in slow motion: stacked shockwaves + a big debris cloud + flash
+      g.effects.ring(hitPos, color, S.ring);
+      g.effects.ring(hitPos, new THREE.Color(0xffffff), S.ring*0.68);
+      g.effects.burst(hitPos, color, 16, S.dbz);
+      g.effects.flash(S.flash);
+      g.camera.shake(S.shake);
+      // (the camera detects the slow-mo and swings to the hero angle on its own — see CameraSystem)
     }
   }
 
@@ -944,16 +949,18 @@
       vlimb(0.3,0.02,-0.28, 0.3,0.3, new THREE.BoxGeometry(0.15,0.14,0.16), dsuit);    // arm R
       vlimb(-0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);    // leg L (yellow boot)
       vlimb(0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);     // leg R
-      // HEAD FACES THE BUILDINGS (+z, direction of travel); body trails back toward the villain.
-      // the smash point is the leading head-front — its world position is tracked each frame.
-      this.smashNode=new THREE.Object3D(); this.smashNode.position.set(0,0,0.34); this.dummy.add(this.smashNode);
+      // The victim HANGS by the head (see update): the model is built along +z (head) / -z (feet); a
+      // tilt in update() stands it up so the head is at the top in the villain's grip and the body
+      // dangles below. Smash CONTACT is the villain's own leading fist (computed in update, not here).
       this._smWorld=new THREE.Vector3();
-      // the VILLAIN'S GLOVED HAND clamps the BACK of the victim's head, fingers curling forward — "ready to squeeze"
+      this._vTilt=-1.12;        // hang angle (rad): stands the victim up so it dangles from the head
+      // the VILLAIN'S GLOVED HAND clamps the CROWN of the victim's head from above, fingers splaying
+      // down over the skull — he's holding the whole body up by the head (like the reference).
       { const glove=new THREE.MeshStandardMaterial({color:0x141d34,roughness:.5,metalness:.25,flatShading:true});
-        const hg=new THREE.Group(); hg.position.set(0,0.12,-0.06);
-        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.32,12,10),glove); palm.scale.set(1.15,0.7,1.0); palm.position.set(0,0,-0.06); palm.castShadow=true; hg.add(palm);
-        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.3,4,6),glove); f.position.set(-0.26+i*0.17,-0.12,0.22); f.rotation.x=-0.55; hg.add(f); } // fingers wrapping forward over the head
-        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.26,4,6),glove); thumb.position.set(0.3,-0.05,0.02); thumb.rotation.set(-0.2,0,1.0); hg.add(thumb);
+        const hg=new THREE.Group(); hg.position.set(0,0.02,0.42);       // sit on the crown (local +z = up once hung)
+        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.34,12,10),glove); palm.scale.set(1.15,1.0,0.78); palm.position.set(0,0,0.06); palm.castShadow=true; hg.add(palm);
+        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.075,0.36,4,6),glove); f.position.set(-0.26+i*0.17, 0.14, 0.16); f.rotation.x=-Math.PI/2+0.25; hg.add(f); } // fingers curl DOWN over the skull
+        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.32,4,6),glove); thumb.position.set(0.26,-0.16,0.16); thumb.rotation.set(-Math.PI/2+0.3,0,0.35); hg.add(thumb);
         this.dummy.add(hg); }
 
       this._smashPulse=0;
@@ -996,7 +1003,7 @@
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(-0.55,15.4,2.1); this._lastSmashZ=undefined; }
+             this.dummy.position.set(-0.3,14.65,1.5); this.dummy.rotation.set(this._vTilt,0,0); this._lastSmashZ=undefined; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -1051,26 +1058,28 @@
           cp[i*6+0]=base[i*6+0]-this.bank*0.5*t; cp[i*6+3]=base[i*6+3]-this.bank*0.5*t; }
         this.capeGeo.attributes.position.needsUpdate=true; }
 
-      // VICTIM gripped by the head, HEAD leading forward toward the buildings as the ram; body trails back to the villain.
-      // Held TIGHT: set directly (no damping) so it never lags behind the villain.
-      const tx=this.pos.x-0.55, ty=this.pos.y-0.6, tz=this.pos.z+2.1;
+      // VICTIM — held ALOFT by just the head, body hanging limp and dangling (like the reference).
+      // Set directly (no damping) so the grip never lags behind the villain.
+      const tx=this.pos.x-0.3, ty=this.pos.y-1.35, tz=this.pos.z+1.5;
       this.dummy.position.set(tx,ty,tz);
-      this.dummy.rotation.z=this.bank*0.7;
-      // track the leading smash point (feet) in world space for the swept hit test
-      this.dummy.updateMatrixWorld();
-      const curSmashZ=this.smashNode.getWorldPosition(this._smWorld).z;
+      // stand the victim up (head at top in the grip) + a slow, heavy dangle sway from the hang point
+      this.dummy.rotation.set(this._vTilt + Math.sin(now*0.0016)*0.05,
+                              Math.sin(now*0.0013)*0.06,
+                              this.bank*0.35 + Math.sin(now*0.0021)*0.05);
+      // SMASH CONTACT = the villain's own leading fist, independent of the victim cosmetics.
+      this._smWorld.set(this.pos.x, this.pos.y-0.3, this.pos.z+2.0);
+      const curSmashZ=this._smWorld.z;
       this._smashPrevZ=(this._lastSmashZ!==undefined)?this._lastSmashZ:curSmashZ;
       this._lastSmashZ=curSmashZ;
-      // LIMP body trailing back from the head: a gentle wind flutter + side sway
-      const t=now*0.004;
-      this.dTorso.rotation.x=Math.sin(t)*0.09;                 // slight up/down flutter
-      this.dTorso.rotation.z=Math.sin(t*1.3)*0.12 - this.bank*0.6;
-      // limb pivots already trail backward (-z); add a loose wind flail from the shoulders/hips
-      const sw=Math.sin(now*0.005), sw2=Math.cos(now*0.0045);
-      this.dLimbs[0].rotation.set(sw*0.3, 0.28, 0);      // arm L
-      this.dLimbs[1].rotation.set(sw2*0.3, -0.28, 0);    // arm R
-      this.dLimbs[2].rotation.set(sw2*0.16, 0.1, 0);     // leg L
-      this.dLimbs[3].rotation.set(sw*0.16, -0.1, 0);     // leg R
+      // LIMP dangle: the torso lolls, and the limbs (which rest pointing -z = straight DOWN once hung)
+      // swing gently like a rag-doll on a pendulum.
+      const t=now*0.004, sw=Math.sin(now*0.0035), sw2=Math.cos(now*0.003);
+      this.dTorso.rotation.x=Math.sin(t)*0.05;
+      this.dTorso.rotation.z=Math.sin(t*1.1)*0.06;
+      this.dLimbs[0].rotation.set(sw*0.14, 0.12, 0);     // arm L dangles
+      this.dLimbs[1].rotation.set(sw2*0.14, -0.12, 0);   // arm R dangles
+      this.dLimbs[2].rotation.set(sw2*0.09, 0.05, 0);    // leg L dangles
+      this.dLimbs[3].rotation.set(sw*0.09, -0.05, 0);    // leg R dangles
 
       // ----- ON FIRE: streak reward — the villain (and victim) ignite with a pulsing glow -----
       // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
@@ -1549,13 +1558,10 @@
       this.game=game;
       this.cam=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,0.1,2000);
       this.cam.position.set(0,20,-20);
-      this.shakeAmt=0; this.state='normal'; this._cine=0;
+      this.shakeAmt=0; this.state='normal';
       this._look=new THREE.Vector3();
     }
     shake(a){ this.shakeAmt=Math.min(1.6,this.shakeAmt+a); }
-    // SNYDER SHOT: punch the camera in to frame the villain + the building he just detonated.
-    // strength 0..1; decays over ~0.7s so the shot eases back to normal on its own.
-    cinematic(s){ this._cine=Math.max(this._cine, clamp(s,0,1)); }
     update(realDt){
       const g=this.game, p=g.player;
       // state
@@ -1565,24 +1571,29 @@
       else this.state='normal';
 
       const speedF=clamp(p.speed()/120,0,1);
-      this._cine=damp(this._cine,0,2.4,realDt);           // the Snyder shot eases back on its own
-      const cine=this._cine;                              // 0 normal -> 1 at the peak of the cinematic
-      // Behind + above, looking down the path. The camera stays DEAD LEVEL — it follows the
-      // player's x straight, never rolls or offsets with bank, so steering feels perfectly
-      // horizontal (no false "slope"). Forward (z) tracks rigidly so it never lags at speed.
-      // On a milestone the camera PUNCHES IN and drops lower to frame the villain against the blast.
-      const dist=11+speedF*4 - cine*3.2;                  // dolly CLOSER
-      const height=6.5+speedF*1.5 - cine*1.9;             // drop LOWER -> heroic up-angle
-      this.cam.position.z=p.pos.z-dist;
-      this.cam.position.x=damp(this.cam.position.x, p.pos.x, 10, realDt);
-      this.cam.position.y=p.pos.y+height;
+      // The cinematic blend is driven straight off the slow-mo (only a milestone slows time), so the
+      // camera move overlaps the slow-mo EXACTLY: 0 = normal chase, 1 = full hero shot.
+      const cRaw=clamp((1-g.time.scale)/0.7,0,1);
+      const cine=cRaw*cRaw*(3-2*cRaw);                    // eased in/out
+
+      // --- normal chase: behind + above, dead level, looking down the path ---
+      const dist=11+speedF*4, height=6.5+speedF*1.5;
+      const nX=damp(this.cam.position.x, p.pos.x, 10, realDt);
+      const nY=p.pos.y+height, nZ=p.pos.z-dist;
+      const nFov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0);
+      // --- HERO pose: a low SIDE-PROFILE tracking shot — the villain streaks across frame, cape
+      //     flowing, victim dangling beneath, the building blast behind him. Classic flying money shot. ---
+      const hX=p.pos.x+13.5, hY=p.pos.y+2.2, hZ=p.pos.z+1.0, hFov=54;
+
+      this.cam.position.set(lerp(nX,hX,cine), lerp(nY,hY,cine), lerp(nZ,hZ,cine));
       this.cam.up.set(0,1,0);                              // never roll
+      this.cam.fov=damp(this.cam.fov, lerp(nFov,hFov,cine), cine>0.02?12:(p.surgeActive>0?10:6), realDt);
+      this.cam.updateProjectionMatrix();
 
-      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0) - cine*17;
-      this.cam.fov=damp(this.cam.fov,fov, cine>0.05?14:(p.surgeActive>0?10:6), realDt); this.cam.updateProjectionMatrix();
-
-      // look DOWN-AHEAD along the path; during the cinematic, tilt up-into the villain + impact ahead.
-      this._look.set(p.pos.x, p.pos.y-1.4 - cine*1.0, p.pos.z+8 + cine*3.5);
+      // look: down-ahead normally; swing to the villain's profile (+ where he's smashing) on the shot
+      this._look.set( lerp(p.pos.x,     p.pos.x,      cine),
+                      lerp(p.pos.y-1.4, p.pos.y-0.3,  cine),
+                      lerp(p.pos.z+8,   p.pos.z+1.8,  cine) );
       this.cam.lookAt(this._look);
 
       if(this.shakeAmt>0.001){
@@ -1592,7 +1603,7 @@
       }
     }
     resize(){ this.cam.aspect=innerWidth/innerHeight; this.cam.updateProjectionMatrix(); }
-    reset(){ this.shakeAmt=0; this._cine=0; this.cam.position.set(0,20,-20); }
+    reset(){ this.shakeAmt=0; this.cam.position.set(0,20,-20); }
   }
 
   // ===================================================================================
