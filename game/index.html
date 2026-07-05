@@ -377,17 +377,24 @@
   // TIME — smooth slow-motion. Returns scaled dt for the simulation.
   // ===================================================================================
   class TimeSystem {
-    constructor(){ this.scale=1; this._t=1; this._until=0; }
+    constructor(){ this.scale=1; this._t=1; this._until=0; this._freezeUntil=0; }
+    // SLOW-MO: a smooth, EASED time-stretch. Reserved for rare peaks (combo milestones) so it reads
+    // as cinematic, not sluggish. strength 0..1 (how slow), dur in seconds.
     requestSlowMo(strength,dur){
       const s=clamp(1-strength,0.18,1);
       if(s<this._t||performance.now()>this._until){ this._t=s; this._until=performance.now()+dur*1000; }
     }
+    // HITSTOP: a HARD micro-freeze in milliseconds (NOT eased). Snaps back instantly, so it reads as
+    // IMPACT/weight, not as slowness. This is what makes a smash feel like it lands.
+    hitstop(ms){ this._freezeUntil=Math.max(this._freezeUntil, performance.now()+ms); }
+    frozen(){ return performance.now()<this._freezeUntil; }
     update(realDt){
       if(performance.now()>this._until) this._t=1;
       this.scale=damp(this.scale,this._t,10,realDt);
+      if(this.frozen()) return realDt*0.02;      // hard freeze-frame while the hitstop is live
       return realDt*this.scale;
     }
-    reset(){ this.scale=1; this._t=1; this._until=0; }
+    reset(){ this.scale=1; this._t=1; this._until=0; this._freezeUntil=0; }
   }
 
   // ===================================================================================
@@ -458,9 +465,13 @@
       if(this.count>=2 && this.count%5===0) this.game.audio.comboMilestone(this.count);
       if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); }   // ignite
       // EPIC fires ONCE on crossing 26 and lasts a FIXED 5s (NOT refreshed by later hits) -> it ends.
-      if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME; }
+      // This is a RARE peak, so it EARNS the cinematic slow-mo (a brief, eased time-stretch + camera
+      // punch-in) — the once-a-run "oh damn" beat. Common smashes never get this; that's why it lands.
+      if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME;
+        this.game.time.requestSlowMo(0.55,0.45); }
       // ETHEREAL: only reachable by chaining ANOTHER 16 smashes DURING epic -> a rarer, faster super state.
-      if(this.count===this.ETHEREAL){ this.game.audio.ethereal(); this.game.effects.flash(0.75); this.etherealTime=this.ETH_TIME; }
+      if(this.count===this.ETHEREAL){ this.game.audio.ethereal(); this.game.effects.flash(0.75); this.etherealTime=this.ETH_TIME;
+        this.game.time.requestSlowMo(0.62,0.55); }
       return this.count;
     }
     miss(){
@@ -738,9 +749,12 @@
         w.mesh.material.opacity=this._windAmt*(0.16+0.12*Math.sin(now2*6+w.phase));
       }
       const surge=p.surgeActive>0, fire=this.game.combo.onFire();
-      const intensity=clamp((spd-45)/90,0,1);          // appear once you're moving quick
+      // FLOW: as the combo climbs, the hitstop freezes fade (see ImpactSystem) and the reward shifts to
+      // continuous OVERWHELM — the screen fills with more, brighter streaks. Punctuation -> flow.
+      const comboFlow=clamp(this.game.combo.count/22,0,1);
+      const intensity=clamp(Math.max((spd-45)/90, comboFlow),0,1); // moving quick OR chaining hard
       const want=Math.round((surge?1:intensity)*this.streaks.length);
-      const len=8+spd*0.25, op=(surge?0.5:0.28)*Math.max(intensity,surge?1:0);
+      const len=8+spd*0.25, op=(surge?0.5:0.28+comboFlow*0.22)*Math.max(intensity,surge?1:0);
       for(let i=0;i<this.streaks.length;i++){
         const s=this.streaks[i];
         if(i>=want){ if(s.mesh.visible) s.mesh.visible=false; continue; }
@@ -762,11 +776,14 @@
   // ===================================================================================
   // mom = momentum refilled per smash. Kept modest so you must hit CONSISTENTLY to survive
   // (one lucky hit no longer floods the bar) — this is what makes the late game finite.
+  // hitstop = the per-tier micro-freeze on impact, in MILLISECONDS. This is the single biggest
+  // "weight" dial. It only applies at LOW combo (see ImpactSystem) — it fades to ~0 as you chain,
+  // so fast streaks stay smooth. Bigger buildings hit harder. Tune these freely.
   const TIERS=[
-    {name:'glance',  min:0,   score:40,  mom:11, adr:8,  shake:0.25, debris:6,  flash:0.08},
-    {name:'smash',   min:140, score:120, mom:15, adr:14, shake:0.5,  debris:10, flash:0.14},
-    {name:'crush',   min:380, score:300, mom:19, adr:22, shake:0.85, debris:15, flash:0.22},
-    {name:'level',   min:820, score:650, mom:23, adr:32, shake:1.2,  debris:22, flash:0.32},
+    {name:'glance',  min:0,   score:40,  mom:11, adr:8,  shake:0.25, debris:6,  flash:0.08, hitstop:26},
+    {name:'smash',   min:140, score:120, mom:15, adr:14, shake:0.5,  debris:10, flash:0.14, hitstop:44},
+    {name:'crush',   min:380, score:300, mom:19, adr:22, shake:0.85, debris:15, flash:0.22, hitstop:62},
+    {name:'level',   min:820, score:650, mom:23, adr:32, shake:1.2,  debris:22, flash:0.32, hitstop:84},
   ];
   class ImpactSystem {
     constructor(game){ this.game=game; }
@@ -790,8 +807,16 @@
       g.effects.ring(hitPos, building.mesh.material.color, building.w+building.d);
       g.effects.flash(tier.flash);
       g.camera.shake(tier.shake*(0.8+g.adrenaline.factor()*0.3));
-      // NO slow-mo: instead each smash ADDS speed (handled in player.onSmash) so the run
-      // accelerates the more you chain — start slow, get consistently faster.
+
+      // ===== GAME FEEL: hitstop that FADES as the combo climbs =====
+      // Early / deliberate hits get a crisp micro-freeze (weight). As you chain fast, the freeze
+      // melts away so the run turns into smooth, screaming FLOW instead of a stutter. This is the
+      // whole answer to "won't per-hit impact make it slow?" — impact scales INVERSELY with tempo.
+      const FLOW_AT=13;                                  // combo at which hitstop is fully gone (all flow)
+      const flow=clamp(1-(combo-1)/FLOW_AT,0,1);         // 1 at the first hit -> 0 once you're chaining
+      const freeze=tier.hitstop*flow;                    // big buildings still hit harder while it lasts
+      if(freeze>4) g.time.hitstop(freeze);
+      // each smash also ADDS speed (player.onSmash) so chaining accelerates the run.
       // hit SOUND depends on the map: NYC=crash, Frutiger Aero=bubble pop, Medieval=brick clack
       const snd=g.maps?g.maps.hitSound:'crash';
       if(snd==='bubble') g.audio.bubble(combo);
@@ -1533,17 +1558,18 @@
       else this.state='normal';
 
       const speedF=clamp(p.speed()/120,0,1);
+      const slowmo=clamp((1-g.time.scale)/0.5,0,1);       // 0 normal -> 1 deep in a milestone slow-mo
       // Behind + above, looking down the path. The camera stays DEAD LEVEL — it follows the
       // player's x straight, never rolls or offsets with bank, so steering feels perfectly
       // horizontal (no false "slope"). Forward (z) tracks rigidly so it never lags at speed.
-      const dist=11+speedF*4;
+      const dist=11+speedF*4 - slowmo*2.4;                // ease CLOSER on the cinematic peak
       const height=6.5+speedF*1.5;
       this.cam.position.z=p.pos.z-dist;
       this.cam.position.x=damp(this.cam.position.x, p.pos.x, 10, realDt);
       this.cam.position.y=p.pos.y+height;
       this.cam.up.set(0,1,0);                              // never roll
 
-      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0);
+      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0) - slowmo*13;
       this.cam.fov=damp(this.cam.fov,fov, p.surgeActive>0?10:6, realDt); this.cam.updateProjectionMatrix();
 
       // look straight DOWN-AHEAD along the path (no sideways/bank offset -> level horizon)
