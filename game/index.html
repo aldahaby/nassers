@@ -465,13 +465,10 @@
       if(this.count>=2 && this.count%5===0) this.game.audio.comboMilestone(this.count);
       if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); }   // ignite
       // EPIC fires ONCE on crossing 26 and lasts a FIXED 5s (NOT refreshed by later hits) -> it ends.
-      // This is a RARE peak, so it EARNS the cinematic slow-mo (a brief, eased time-stretch + camera
-      // punch-in) — the once-a-run "oh damn" beat. Common smashes never get this; that's why it lands.
-      if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME;
-        this.game.time.requestSlowMo(0.55,0.45); }
+      // (The cinematic "Snyder shot" for this peak is driven from ImpactSystem, tied to the building.)
+      if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME; }
       // ETHEREAL: only reachable by chaining ANOTHER 16 smashes DURING epic -> a rarer, faster super state.
-      if(this.count===this.ETHEREAL){ this.game.audio.ethereal(); this.game.effects.flash(0.75); this.etherealTime=this.ETH_TIME;
-        this.game.time.requestSlowMo(0.62,0.55); }
+      if(this.count===this.ETHEREAL){ this.game.audio.ethereal(); this.game.effects.flash(0.75); this.etherealTime=this.ETH_TIME; }
       return this.count;
     }
     miss(){
@@ -749,12 +746,9 @@
         w.mesh.material.opacity=this._windAmt*(0.16+0.12*Math.sin(now2*6+w.phase));
       }
       const surge=p.surgeActive>0, fire=this.game.combo.onFire();
-      // FLOW: as the combo climbs, the hitstop freezes fade (see ImpactSystem) and the reward shifts to
-      // continuous OVERWHELM — the screen fills with more, brighter streaks. Punctuation -> flow.
-      const comboFlow=clamp(this.game.combo.count/22,0,1);
-      const intensity=clamp(Math.max((spd-45)/90, comboFlow),0,1); // moving quick OR chaining hard
+      const intensity=clamp((spd-45)/90,0,1);          // appear once you're moving quick
       const want=Math.round((surge?1:intensity)*this.streaks.length);
-      const len=8+spd*0.25, op=(surge?0.5:0.28+comboFlow*0.22)*Math.max(intensity,surge?1:0);
+      const len=8+spd*0.25, op=(surge?0.5:0.28)*Math.max(intensity,surge?1:0);
       for(let i=0;i<this.streaks.length;i++){
         const s=this.streaks[i];
         if(i>=want){ if(s.mesh.visible) s.mesh.visible=false; continue; }
@@ -776,14 +770,11 @@
   // ===================================================================================
   // mom = momentum refilled per smash. Kept modest so you must hit CONSISTENTLY to survive
   // (one lucky hit no longer floods the bar) — this is what makes the late game finite.
-  // hitstop = the per-tier micro-freeze on impact, in MILLISECONDS. This is the single biggest
-  // "weight" dial. It only applies at LOW combo (see ImpactSystem) — it fades to ~0 as you chain,
-  // so fast streaks stay smooth. Bigger buildings hit harder. Tune these freely.
   const TIERS=[
-    {name:'glance',  min:0,   score:40,  mom:11, adr:8,  shake:0.25, debris:6,  flash:0.08, hitstop:26},
-    {name:'smash',   min:140, score:120, mom:15, adr:14, shake:0.5,  debris:10, flash:0.14, hitstop:44},
-    {name:'crush',   min:380, score:300, mom:19, adr:22, shake:0.85, debris:15, flash:0.22, hitstop:62},
-    {name:'level',   min:820, score:650, mom:23, adr:32, shake:1.2,  debris:22, flash:0.32, hitstop:84},
+    {name:'glance',  min:0,   score:40,  mom:11, adr:8,  shake:0.25, debris:6,  flash:0.08},
+    {name:'smash',   min:140, score:120, mom:15, adr:14, shake:0.5,  debris:10, flash:0.14},
+    {name:'crush',   min:380, score:300, mom:19, adr:22, shake:0.85, debris:15, flash:0.22},
+    {name:'level',   min:820, score:650, mom:23, adr:32, shake:1.2,  debris:22, flash:0.32},
   ];
   class ImpactSystem {
     constructor(game){ this.game=game; }
@@ -807,16 +798,15 @@
       g.effects.ring(hitPos, building.mesh.material.color, building.w+building.d);
       g.effects.flash(tier.flash);
       g.camera.shake(tier.shake*(0.8+g.adrenaline.factor()*0.3));
+      // Regular smashes stay FAST — no per-hit freeze. Each smash just ADDS speed (player.onSmash)
+      // so chaining accelerates the run. The cinematic weight is saved for rare milestones (below).
 
-      // ===== GAME FEEL: hitstop that FADES as the combo climbs =====
-      // Early / deliberate hits get a crisp micro-freeze (weight). As you chain fast, the freeze
-      // melts away so the run turns into smooth, screaming FLOW instead of a stutter. This is the
-      // whole answer to "won't per-hit impact make it slow?" — impact scales INVERSELY with tempo.
-      const FLOW_AT=13;                                  // combo at which hitstop is fully gone (all flow)
-      const flow=clamp(1-(combo-1)/FLOW_AT,0,1);         // 1 at the first hit -> 0 once you're chaining
-      const freeze=tier.hitstop*flow;                    // big buildings still hit harder while it lasts
-      if(freeze>4) g.time.hitstop(freeze);
-      // each smash also ADDS speed (player.onSmash) so chaining accelerates the run.
+      // ===== SNYDER SHOT — only on the rare, EARNED peaks (EPIC / ETHEREAL) =====
+      // A hard freeze on THIS building's impact, then a brief slow-mo pull with the camera punching
+      // in to frame the villain AND the building he just detonated. Rare, so it never wears out and
+      // never gets in the way of play (you keep steering the whole time).
+      if(combo===g.combo.ETHEREAL) this._snyderShot(hitPos, building.mesh.material.color, true);
+      else if(combo===g.combo.EPIC) this._snyderShot(hitPos, building.mesh.material.color, false);
       // hit SOUND depends on the map: NYC=crash, Frutiger Aero=bubble pop, Medieval=brick clack
       const snd=g.maps?g.maps.hitSound:'crash';
       if(snd==='bubble') g.audio.bubble(combo);
@@ -825,6 +815,20 @@
       g.player.onSmash(tier);
 
       g.city.shatter(building);   // remove + recycle the building
+    }
+    // The cinematic beat: freeze-on-impact -> slow-mo, with layered building-destruction FX.
+    // `big` = the rarer ETHEREAL peak (deeper, longer, bigger).
+    _snyderShot(hitPos,color,big){
+      const g=this.game;
+      g.time.hitstop(big?120:95);                                 // crisp freeze the instant it lands
+      g.time.requestSlowMo(big?0.66:0.58, big?0.8:0.62);          // then the eased slow-mo pull
+      // BUILDING IMPACT is the star: stacked shockwaves + a fat debris blast + a bright flash.
+      g.effects.ring(hitPos, color, big?28:21);
+      g.effects.ring(hitPos, new THREE.Color(0xffffff), big?20:15);
+      g.effects.burst(hitPos, color, big?42:32, big?26:20);
+      g.effects.flash(big?0.72:0.58);
+      g.camera.shake(big?1.7:1.25);
+      g.camera.cinematic(big?1:0.85);                             // frame villain + building, punch in
     }
   }
 
@@ -1545,10 +1549,13 @@
       this.game=game;
       this.cam=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,0.1,2000);
       this.cam.position.set(0,20,-20);
-      this.shakeAmt=0; this.state='normal';
+      this.shakeAmt=0; this.state='normal'; this._cine=0;
       this._look=new THREE.Vector3();
     }
     shake(a){ this.shakeAmt=Math.min(1.6,this.shakeAmt+a); }
+    // SNYDER SHOT: punch the camera in to frame the villain + the building he just detonated.
+    // strength 0..1; decays over ~0.7s so the shot eases back to normal on its own.
+    cinematic(s){ this._cine=Math.max(this._cine, clamp(s,0,1)); }
     update(realDt){
       const g=this.game, p=g.player;
       // state
@@ -1558,22 +1565,24 @@
       else this.state='normal';
 
       const speedF=clamp(p.speed()/120,0,1);
-      const slowmo=clamp((1-g.time.scale)/0.5,0,1);       // 0 normal -> 1 deep in a milestone slow-mo
+      this._cine=damp(this._cine,0,2.4,realDt);           // the Snyder shot eases back on its own
+      const cine=this._cine;                              // 0 normal -> 1 at the peak of the cinematic
       // Behind + above, looking down the path. The camera stays DEAD LEVEL — it follows the
       // player's x straight, never rolls or offsets with bank, so steering feels perfectly
       // horizontal (no false "slope"). Forward (z) tracks rigidly so it never lags at speed.
-      const dist=11+speedF*4 - slowmo*2.4;                // ease CLOSER on the cinematic peak
-      const height=6.5+speedF*1.5;
+      // On a milestone the camera PUNCHES IN and drops lower to frame the villain against the blast.
+      const dist=11+speedF*4 - cine*3.2;                  // dolly CLOSER
+      const height=6.5+speedF*1.5 - cine*1.9;             // drop LOWER -> heroic up-angle
       this.cam.position.z=p.pos.z-dist;
       this.cam.position.x=damp(this.cam.position.x, p.pos.x, 10, realDt);
       this.cam.position.y=p.pos.y+height;
       this.cam.up.set(0,1,0);                              // never roll
 
-      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0) - slowmo*13;
-      this.cam.fov=damp(this.cam.fov,fov, p.surgeActive>0?10:6, realDt); this.cam.updateProjectionMatrix();
+      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0) - cine*17;
+      this.cam.fov=damp(this.cam.fov,fov, cine>0.05?14:(p.surgeActive>0?10:6), realDt); this.cam.updateProjectionMatrix();
 
-      // look straight DOWN-AHEAD along the path (no sideways/bank offset -> level horizon)
-      this._look.set(p.pos.x, p.pos.y-1.4, p.pos.z+8);
+      // look DOWN-AHEAD along the path; during the cinematic, tilt up-into the villain + impact ahead.
+      this._look.set(p.pos.x, p.pos.y-1.4 - cine*1.0, p.pos.z+8 + cine*3.5);
       this.cam.lookAt(this._look);
 
       if(this.shakeAmt>0.001){
@@ -1583,7 +1592,7 @@
       }
     }
     resize(){ this.cam.aspect=innerWidth/innerHeight; this.cam.updateProjectionMatrix(); }
-    reset(){ this.shakeAmt=0; this.cam.position.set(0,20,-20); }
+    reset(){ this.shakeAmt=0; this._cine=0; this.cam.position.set(0,20,-20); }
   }
 
   // ===================================================================================
