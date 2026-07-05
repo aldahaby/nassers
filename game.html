@@ -915,17 +915,16 @@
       vlimb(0.3,0.02,-0.28, 0.3,0.3, new THREE.BoxGeometry(0.15,0.14,0.16), dsuit);    // arm R
       vlimb(-0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);    // leg L (yellow boot)
       vlimb(0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);     // leg R
-      // FLIP the victim so the BODY leads forward and the HEAD is held back near the villain's hand
-      this.dummy.rotation.y=Math.PI;
-      // the smash point is the leading FEET — its world position is tracked each frame for hit detection
-      this.smashNode=new THREE.Object3D(); this.smashNode.position.set(0,0,-1.95); this.dummy.add(this.smashNode);
+      // HEAD FACES THE BUILDINGS (+z, direction of travel); body trails back toward the villain.
+      // the smash point is the leading head-front — its world position is tracked each frame.
+      this.smashNode=new THREE.Object3D(); this.smashNode.position.set(0,0,0.34); this.dummy.add(this.smashNode);
       this._smWorld=new THREE.Vector3();
-      // the VILLAIN'S GLOVED HAND clamped on the victim's head — "held tight, ready to squeeze"
+      // the VILLAIN'S GLOVED HAND clamps the BACK of the victim's head, fingers curling forward — "ready to squeeze"
       { const glove=new THREE.MeshStandardMaterial({color:0x141d34,roughness:.5,metalness:.25,flatShading:true});
-        const hg=new THREE.Group(); hg.position.set(0,0.06,0.12);
-        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.34,12,10),glove); palm.scale.set(1.15,0.72,1.05); palm.castShadow=true; hg.add(palm);
-        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.28,4,6),glove); f.position.set(-0.24+i*0.16,-0.28,0.02); f.rotation.x=0.9; hg.add(f); } // fingers curling down over the face
-        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.24,4,6),glove); thumb.position.set(0.32,-0.06,-0.02); thumb.rotation.set(0.3,0,1.0); hg.add(thumb);
+        const hg=new THREE.Group(); hg.position.set(0,0.12,-0.06);
+        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.32,12,10),glove); palm.scale.set(1.15,0.7,1.0); palm.position.set(0,0,-0.06); palm.castShadow=true; hg.add(palm);
+        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.3,4,6),glove); f.position.set(-0.26+i*0.17,-0.12,0.22); f.rotation.x=-0.55; hg.add(f); } // fingers wrapping forward over the head
+        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.26,4,6),glove); thumb.position.set(0.3,-0.05,0.02); thumb.rotation.set(-0.2,0,1.0); hg.add(thumb);
         this.dummy.add(hg); }
 
       this._smashPulse=0;
@@ -947,7 +946,11 @@
         model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; if(o.material){ this.glowMats.push(o.material);
           const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
             sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',
-              '#include <begin_vertex>\n float cm=smoothstep(-0.04,-0.22,position.z);\n float rp=sin(position.y*7.0+uWind)*0.08*cm;\n transformed.x+=rp; transformed.y+=cos(position.y*6.0+uWind*1.1)*0.05*cm; transformed.z-=abs(rp)*0.6;'); };
+              '#include <begin_vertex>\n'+
+              // CAPE ripple (back of the model)
+              ' float cm=smoothstep(-0.04,-0.22,position.z);\n float rp=sin(position.y*7.0+uWind)*0.08*cm;\n transformed.x+=rp; transformed.y+=cos(position.y*6.0+uWind*1.1)*0.05*cm; transformed.z-=abs(rp)*0.6;\n'+
+              // LEG / lower-body sway — flutters with the airflow, grows toward the feet (not a rigid plank)
+              ' float lm=smoothstep(-0.15,-0.95,position.y);\n float lp=sin(position.y*4.0-uWind*1.25+position.x*2.0)*0.11*lm;\n transformed.x+=lp;\n transformed.z+=sin(uWind*0.85+position.x*3.0)*0.07*lm;\n transformed.y+=cos(uWind*0.7)*0.035*lm;'); };
           mat.needsUpdate=true; } } });
         const holder=new THREE.Group(); holder.add(model);
         this._mRotX=Math.PI/2-0.22; this._mBaseY=0.12;                 // heroic head-up arch (not a flat plank)
@@ -963,7 +966,7 @@
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(-0.5,15.85,0.2); this._lastSmashZ=undefined; }
+             this.dummy.position.set(-0.55,15.4,2.1); this._lastSmashZ=undefined; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -1018,9 +1021,9 @@
           cp[i*6+0]=base[i*6+0]-this.bank*0.5*t; cp[i*6+3]=base[i*6+3]-this.bank*0.5*t; }
         this.capeGeo.attributes.position.needsUpdate=true; }
 
-      // VICTIM gripped by the head near the villain, BODY leading forward as the ram.
+      // VICTIM gripped by the head, HEAD leading forward toward the buildings as the ram; body trails back to the villain.
       // Held TIGHT: set directly (no damping) so it never lags behind the villain.
-      const tx=this.pos.x-0.5, ty=this.pos.y-0.15, tz=this.pos.z+0.2;
+      const tx=this.pos.x-0.55, ty=this.pos.y-0.6, tz=this.pos.z+2.1;
       this.dummy.position.set(tx,ty,tz);
       this.dummy.rotation.z=this.bank*0.7;
       // track the leading smash point (feet) in world space for the swept hit test
