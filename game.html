@@ -915,7 +915,18 @@
       vlimb(0.3,0.02,-0.28, 0.3,0.3, new THREE.BoxGeometry(0.15,0.14,0.16), dsuit);    // arm R
       vlimb(-0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);    // leg L (yellow boot)
       vlimb(0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);     // leg R
-      this.dummyGrip=3.9;            // world-Z lead of the leading head (the smash point)
+      // FLIP the victim so the BODY leads forward and the HEAD is held back near the villain's hand
+      this.dummy.rotation.y=Math.PI;
+      // the smash point is the leading FEET — its world position is tracked each frame for hit detection
+      this.smashNode=new THREE.Object3D(); this.smashNode.position.set(0,0,-1.95); this.dummy.add(this.smashNode);
+      this._smWorld=new THREE.Vector3();
+      // the VILLAIN'S GLOVED HAND clamped on the victim's head — "held tight, ready to squeeze"
+      { const glove=new THREE.MeshStandardMaterial({color:0x141d34,roughness:.5,metalness:.25,flatShading:true});
+        const hg=new THREE.Group(); hg.position.set(0,0.06,0.12);
+        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.34,12,10),glove); palm.scale.set(1.15,0.72,1.05); palm.castShadow=true; hg.add(palm);
+        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.28,4,6),glove); f.position.set(-0.24+i*0.16,-0.28,0.02); f.rotation.x=0.9; hg.add(f); } // fingers curling down over the face
+        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.24,4,6),glove); thumb.position.set(0.32,-0.06,-0.02); thumb.rotation.set(0.3,0,1.0); hg.add(thumb);
+        this.dummy.add(hg); }
 
       this._smashPulse=0;
       this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=2.8; this.SURGE_CD=9.0; this.SURGE_COMBO=6;
@@ -939,9 +950,10 @@
               '#include <begin_vertex>\n float cm=smoothstep(-0.04,-0.22,position.z);\n float rp=sin(position.y*7.0+uWind)*0.08*cm;\n transformed.x+=rp; transformed.y+=cos(position.y*6.0+uWind*1.1)*0.05*cm; transformed.z-=abs(rp)*0.6;'); };
           mat.needsUpdate=true; } } });
         const holder=new THREE.Group(); holder.add(model);
-        holder.rotation.set(this._mRotX!==undefined?this._mRotX:Math.PI/2, this._mRotY||0, 0);   // stand -> head-first flight pose
+        this._mRotX=Math.PI/2-0.22; this._mBaseY=0.12;                 // heroic head-up arch (not a flat plank)
+        holder.rotation.set(this._mRotX,0,0);
         const targetLen=4.2; holder.scale.setScalar(targetLen/Math.max(0.001,size.y));
-        holder.position.set(0,0.1,0);
+        holder.position.set(0,this._mBaseY,0);
         this.villainModel=holder; this.rig.add(holder);
         this.villainBody.visible=false; if(this.cape) this.cape.visible=false;   // hide procedural body + red cape (model has its own)
       }, undefined, (err)=>{ console.warn('villain GLB failed to load; using fallback',err); });
@@ -951,7 +963,7 @@
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(0.1,15.8,3.9); this._dummyPrevZ=3.9; }
+             this.dummy.position.set(-0.5,15.85,0.2); this._lastSmashZ=undefined; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -993,7 +1005,11 @@
       this.group.rotation.set(0,0,this.bank);
       const now=performance.now();
       if(this._windU) this._windU.value=now*0.006;        // drives the model's flowing cape
-      if(this.villainModel) this.villainModel.rotation.z=(this._mRotZ||0) - this.bank*0.25;   // slight body lean into turns
+      if(this.villainModel){   // ALIVE flight: heroic arch + gentle undulation + roll into turns (not a rigid plank)
+        this.villainModel.rotation.x=this._mRotX + Math.sin(now*0.0022)*0.045;
+        this.villainModel.rotation.z=-this.bank*0.32 + Math.sin(now*0.0027)*0.04;
+        this.villainModel.position.y=this._mBaseY + Math.sin(now*0.003)*0.075;
+      }
 
       // flowing CAPE: ripple the trailing vertices (wind wave + a lean with the turn) [procedural fallback]
       if(this.cape && this.cape.visible){ const cp=this.capeGeo.attributes.position.array, base=this._capeBase, tt=now*0.006;
@@ -1002,13 +1018,16 @@
           cp[i*6+0]=base[i*6+0]-this.bank*0.5*t; cp[i*6+3]=base[i*6+3]-this.bank*0.5*t; }
         this.capeGeo.attributes.position.needsUpdate=true; }
 
-      // VICTIM held out front by the ankles: head LEADS (smash point), body trails toward the villain.
-      // x lines up with the villain's gripping fist; x leads velocity so the limp body whips on turns.
-      const tx=this.pos.x+0.1+this.vel.x*0.04, ty=this.pos.y-0.2, tz=this.pos.z+this.dummyGrip;
-      this.dummy.position.x=damp(this.dummy.position.x,tx,18,dt);
-      this.dummy.position.y=damp(this.dummy.position.y,ty,18,dt);
-      this.dummy.position.z=tz;
-      this.dummy.rotation.z=this.bank*0.8;
+      // VICTIM gripped by the head near the villain, BODY leading forward as the ram.
+      // Held TIGHT: set directly (no damping) so it never lags behind the villain.
+      const tx=this.pos.x-0.5, ty=this.pos.y-0.15, tz=this.pos.z+0.2;
+      this.dummy.position.set(tx,ty,tz);
+      this.dummy.rotation.z=this.bank*0.7;
+      // track the leading smash point (feet) in world space for the swept hit test
+      this.dummy.updateMatrixWorld();
+      const curSmashZ=this.smashNode.getWorldPosition(this._smWorld).z;
+      this._smashPrevZ=(this._lastSmashZ!==undefined)?this._lastSmashZ:curSmashZ;
+      this._lastSmashZ=curSmashZ;
       // LIMP body trailing back from the head: a gentle wind flutter + side sway
       const t=now*0.004;
       this.dTorso.rotation.x=Math.sin(t)*0.09;                 // slight up/down flutter
@@ -1057,8 +1076,8 @@
     // zPrev enables a swept test so fast flight can't tunnel through thin buildings.
     // base radius rewards precision; SURGE makes it HUGE (covers the whole lane) so you auto-blast
     // a combo through the next stretch despite the 2x speed -> surge is a clear reward, not a risk.
-    hitSphere(){ return { c:{x:this.pos.x, y:this.dummy.position.y, z:this.dummy.position.z},
-                          r:this.surgeActive>0?9:(this.game.combo.onEthereal()?6:this.game.combo.onEpic()?4.2:2.6), zPrev:this._dummyPrevZ }; }
+    hitSphere(){ const w=this._smWorld; return { c:{x:w.x, y:w.y, z:w.z},
+                          r:this.surgeActive>0?9:(this.game.combo.onEthereal()?6:this.game.combo.onEpic()?4.2:2.6), zPrev:this._smashPrevZ }; }
   }
 
   // ===================================================================================
