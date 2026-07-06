@@ -21,12 +21,10 @@
     /* flash overlay for impacts */
     #flash { position:fixed; inset:0; z-index:8; pointer-events:none; background:#fff; opacity:0; }
     /* COMIC IMPACT FRAME — manga-style radial speed lines that burst from the hit on a big smash */
-    #impact-burst { position:fixed; inset:-25%; z-index:9; pointer-events:none; opacity:0;
-      background: repeating-conic-gradient(from 0deg at 50% 50%,
-                  rgba(4,4,8,0) 0deg 2.6deg, rgba(4,4,8,.97) 2.6deg 5.2deg);
-      -webkit-mask: radial-gradient(circle at 50% 50%, transparent 9%, #000 24%, #000 84%, transparent 100%);
-              mask: radial-gradient(circle at 50% 50%, transparent 9%, #000 24%, #000 84%, transparent 100%);
-      will-change: opacity, transform; }
+    /* soft, bright energy bloom on a big impact — immersive, brief, not distracting */
+    #impact-burst { position:fixed; inset:-10%; z-index:9; pointer-events:none; opacity:0;
+      background: radial-gradient(circle at 50% 52%, rgba(255,255,255,.6) 0%, rgba(200,236,255,.32) 18%, rgba(160,220,255,.12) 38%, transparent 60%);
+      mix-blend-mode: screen; will-change: opacity, transform; }
     #vignette { position:fixed; inset:0; z-index:7; pointer-events:none;
                 box-shadow: inset 0 0 200px 40px rgba(120,0,0,0); transition:box-shadow .2s; }
 
@@ -705,11 +703,11 @@
     // REAL time so it can't be throttled by the compositor under WebGL load.
     comicBurst(){ this._burstStart=performance.now(); }
     _updateBurst(){ if(!this.burstEl||!this._burstStart) return;
-      const e=(performance.now()-this._burstStart)/700;                 // 0.7s real
+      const e=(performance.now()-this._burstStart)/340;                 // brief 0.34s pulse — goes by fast
       if(e>=1){ this._burstStart=0; this.burstEl.style.opacity='0'; return; }
-      const op=(e<0.10 ? e/0.10 : 1-(e-0.10)/0.90)*0.95;               // snap in, ease out
+      const op=(e<0.16 ? e/0.16 : 1-(e-0.16)/0.84);                     // quick flash in, fade out
       this.burstEl.style.opacity=String(clamp(op,0,1));
-      this.burstEl.style.transform=`scale(${(0.5+e*0.9).toFixed(3)}) rotate(${(e*8).toFixed(2)}deg)`; }
+      this.burstEl.style.transform=`scale(${(0.7+e*0.7).toFixed(3)})`; }
     update(dt){
       this._updateBurst();               // comic impact frame (real-time, render-loop driven)
       const G=18;
@@ -820,12 +818,11 @@
       // Regular smashes stay FAST — no per-hit freeze. Each smash just ADDS speed (player.onSmash)
       // so chaining accelerates the run. The cinematic weight is saved for rare milestones (below).
 
-      // ===== CINEMATIC IMPACT SHOT — every 25th combo =====
-      // Same behind-camera, just slowed with a very slight push-in, and the building EXPLODES in a
-      // comic impact frame. Rare (once per 25) so it stays special; a cooldown blocks any re-trigger.
-      if(combo>0 && combo%25===0){ const nowMs=performance.now();
-        if(nowMs-(this._lastCine||-1e9)>4000){ this._lastCine=nowMs;
-          this._snyderShot(hitPos, building.mesh.material.color, Math.min(2, (combo/25)-1)); } }
+      // ===== CINEMATIC IMPACT SHOT — on the EPIC(26) & ETHEREAL(37) milestones =====
+      // Same behind-camera, a SHORT snappy slow-mo with a slight push-in, and an immersive bright
+      // impact bloom (no distracting overlay). It goes by fast so it never gets in the way.
+      if(combo===g.combo.EPIC || combo===g.combo.ETHEREAL)
+        this._snyderShot(hitPos, building.mesh.material.color, combo===g.combo.ETHEREAL?1:0);
       // hit SOUND depends on the map: NYC=crash, Frutiger Aero=bubble pop, Medieval=brick clack
       const snd=g.maps?g.maps.hitSound:'crash';
       if(snd==='bubble') g.audio.bubble(combo);
@@ -835,24 +832,22 @@
 
       g.city.shatter(building);   // remove + recycle the building
     }
-    // The cinematic beat: freeze-frame on impact -> a DEEP, long slow-mo (the camera just eases in from
-    // BEHIND with a very slight zoom — no angle change) while the ONE building EXPLODES in a comic frame.
+    // The cinematic beat: a brief freeze-frame -> a SHORT, snappy slow-mo (camera eases straight in from
+    // behind with a slight zoom) while the target EXPLODES — a bright bloom + stacked shockwaves + shrapnel.
     _snyderShot(hitPos,color,level){
       const g=this.game;
-      const S=[ {hs:140, slow:0.80, dur:1.30, ring:26, flash:0.72, shake:1.6},
-                {hs:160, slow:0.84, dur:1.55, ring:30, flash:0.80, shake:1.85},
-                {hs:180, slow:0.88, dur:1.80, ring:34, flash:0.88, shake:2.1} ][level];
-      g.time.hitstop(S.hs);                                       // freeze-frame the instant it lands
-      g.time.requestSlowMo(S.slow, S.dur);                        // then a DEEP, long slow-mo pull
-      // BUILDING OBLITERATION: manga speed-line burst + stacked shockwaves + a big shrapnel blast + flash
-      g.effects.comicBurst();
+      const S=[ {hs:80, slow:0.55, dur:0.55, ring:26, flash:0.6, shake:1.5},    // EPIC — quick
+                {hs:95, slow:0.62, dur:0.7,  ring:30, flash:0.7, shake:1.75} ][level]; // ETHEREAL — a touch bigger
+      g.time.hitstop(S.hs);                                       // crisp freeze-frame the instant it lands
+      g.time.requestSlowMo(S.slow, S.dur);                        // then a SHORT slow-mo (goes by fast)
+      // IMMERSIVE impact: a bright energy bloom + stacked shockwaves + a big shrapnel blast + flash
+      g.effects.comicBurst();                                     // soft bright bloom (not black lines)
       g.effects.ring(hitPos, new THREE.Color(0xffffff), S.ring*0.5);
       g.effects.ring(hitPos, color, S.ring);
-      g.effects.ring(hitPos, color, S.ring*1.55);
-      g.effects.burst(hitPos, color, 24, 48);                     // fast, dense shrapnel = explosive
+      g.effects.ring(hitPos, color, S.ring*1.5);
+      g.effects.burst(hitPos, color, 22, 46);                     // fast, dense shrapnel = explosive
       g.effects.flash(S.flash);
       g.camera.shake(S.shake);
-      // (the camera detects the slow-mo and eases straight in from behind — see CameraSystem)
     }
   }
 
@@ -968,22 +963,20 @@
       vlimb(0.3,0.02,-0.28, 0.3,0.3, new THREE.BoxGeometry(0.15,0.14,0.16), dsuit);    // arm R
       vlimb(-0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);    // leg L (yellow boot)
       vlimb(0.15,0,-0.95, 0.36,0.34, new THREE.BoxGeometry(0.17,0.15,0.26), dacc);     // leg R
-      // The victim HANGS by the head (see update): the model is built along +z (head) / -z (feet); a
-      // tilt in update() stands it up so the head is at the top in the villain's grip and the body
-      // dangles below. Smash CONTACT is the villain's own leading fist (computed in update, not here).
+      // The victim is held UPRIGHT, dangling by the NECK (feet on nothing). Built along +z(head)/-z(feet);
+      // update() stands it vertical (head up) so local +z -> world UP toward the villain's hand above.
       this._smWorld=new THREE.Vector3();
-      this._vTilt=-1.12;        // hang angle (rad): stands the victim up so it dangles from the head
-      // the VILLAIN'S GLOVED HAND clamps the CROWN of the victim's head, with a FOREARM bridging up to
-      // the villain's body — so it clearly reads as him holding the whole body up by the head.
-      { const glove=new THREE.MeshStandardMaterial({color:0x141d34,roughness:.5,metalness:.25,flatShading:true});
-        const hg=new THREE.Group(); hg.position.set(0,0.02,0.40);       // sit on the crown (local +z = up once hung)
-        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.36,12,10),glove); palm.scale.set(1.2,1.05,0.82); palm.position.set(0,0,0.08); palm.castShadow=true; hg.add(palm);
-        // fingers splay right DOWN the sides of the skull (curling to grip)
-        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.4,4,6),glove); f.position.set(-0.28+i*0.185, 0.02, -0.02); f.rotation.set(-Math.PI/2+0.15,0,0); hg.add(f); }
-        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.09,0.34,4,6),glove); thumb.position.set(0.30,0.0,-0.02); thumb.rotation.set(-Math.PI/2+0.2,0,0.4); hg.add(thumb);
-        // a chunky WRIST just above the grip (reads as the hand's mass, not a floating stick)
-        const fa=new THREE.Mesh(new THREE.CapsuleGeometry(0.2,0.32,6,10),glove); fa.rotation.x=Math.PI/2; fa.position.set(0,0.03,0.42); fa.castShadow=true; hg.add(fa);
-        this.dummy.add(hg); }
+      this._vUp=-Math.PI/2;    // stand the victim straight up: head up, feet dangling down
+      { const glove=new THREE.MeshStandardMaterial({color:0x141d34,roughness:.5,metalness:.28,flatShading:true});
+        const arm=new THREE.Group(); this.gripArm=arm; this.dummy.add(arm);
+        // FIST clamped around the NECK (just below the head): palm behind, fingers + thumb wrap the throat
+        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.26,12,10),glove); palm.scale.set(1.2,1.0,0.95); palm.position.set(0,0,-0.12); palm.castShadow=true; arm.add(palm);
+        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.055,0.26,4,6),glove); f.position.set(-0.17+i*0.11, 0.16, -0.06); f.rotation.set(0,0,0); arm.add(f); }  // fingers wrap up the front of the throat
+        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.062,0.24,4,6),glove); thumb.position.set(0.2,0.13,-0.06); thumb.rotation.set(0,0,0.5); arm.add(thumb);
+        // short FOREARM going UP (local +z) into the villain's body just above — the holding wrist
+        const fore=new THREE.Mesh(new THREE.CapsuleGeometry(0.15,0.5,6,8),glove); fore.rotation.x=Math.PI/2; fore.position.set(0,0.02,0.28); fore.castShadow=true; arm.add(fore);
+        const cuff=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,9),glove); cuff.position.set(0,0.02,0.6); arm.add(cuff);
+        this.dummy.add(arm); }
 
       this._smashPulse=0;
       this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=2.8; this.SURGE_CD=9.0; this.SURGE_COMBO=6;
@@ -1025,7 +1018,7 @@
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(-0.25,15.05,1.2); this.dummy.rotation.set(this._vTilt,0,0); this._lastSmashZ=undefined; }
+             this.dummy.position.set(-0.1,14.65,1.05); this.dummy.rotation.set(this._vUp,0,0); this._lastSmashZ=undefined; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -1080,28 +1073,28 @@
           cp[i*6+0]=base[i*6+0]-this.bank*0.5*t; cp[i*6+3]=base[i*6+3]-this.bank*0.5*t; }
         this.capeGeo.attributes.position.needsUpdate=true; }
 
-      // VICTIM — held ALOFT by just the head, body hanging limp and dangling (like the reference).
-      // Set directly (no damping) so the grip never lags behind the villain.
-      const tx=this.pos.x-0.25, ty=this.pos.y-0.95, tz=this.pos.z+1.2;
+      // VICTIM — held UPRIGHT, dangling by the NECK, feet on nothing (lifted by the throat as they fly).
+      // Neck locked FIRM at the villain's fist; the body/limbs hang and sway beneath it.
+      const tx=this.pos.x-0.1, ty=this.pos.y-1.35, tz=this.pos.z+1.05;
       this.dummy.position.set(tx,ty,tz);
-      // head is held FIRM at the grip (only a tiny sway); the body/limbs do the dangling below
-      this.dummy.rotation.set(this._vTilt + Math.sin(now*0.0016)*0.02,
-                              Math.sin(now*0.0013)*0.025,
-                              this.bank*0.3 + Math.sin(now*0.0018)*0.025);
-      // SMASH CONTACT = the villain's own leading fist, independent of the victim cosmetics.
-      this._smWorld.set(this.pos.x, this.pos.y-0.3, this.pos.z+2.0);
+      this.dummy.rotation.set(this._vUp + Math.sin(now*0.0015)*0.02,
+                              Math.sin(now*0.0012)*0.04,
+                              this.bank*0.35 + Math.sin(now*0.002)*0.05);
+      // the fist flexes subtly (the squeeze) so it reads as a live, animated hold
+      if(this.gripArm){ this.gripArm.rotation.z=Math.sin(now*0.005)*0.04; this.gripArm.rotation.x=Math.sin(now*0.006)*0.03; }
+      // SMASH CONTACT — driven forward through the trains/buildings.
+      this._smWorld.set(this.pos.x, this.pos.y-0.85, this.pos.z+2.0);
       const curSmashZ=this._smWorld.z;
       this._smashPrevZ=(this._lastSmashZ!==undefined)?this._lastSmashZ:curSmashZ;
       this._lastSmashZ=curSmashZ;
-      // LIMP dangle: the torso lolls, and the limbs (which rest pointing -z = straight DOWN once hung)
-      // swing gently like a rag-doll on a pendulum.
+      // BODY PHYSICS: limbs (built trailing -z = straight DOWN once upright) dangle & sway like a rag-doll.
       const t=now*0.004, sw=Math.sin(now*0.0035), sw2=Math.cos(now*0.003);
-      this.dTorso.rotation.x=Math.sin(t)*0.05;
-      this.dTorso.rotation.z=Math.sin(t*1.1)*0.06;
-      this.dLimbs[0].rotation.set(sw*0.14, 0.12, 0);     // arm L dangles
-      this.dLimbs[1].rotation.set(sw2*0.14, -0.12, 0);   // arm R dangles
-      this.dLimbs[2].rotation.set(sw2*0.09, 0.05, 0);    // leg L dangles
-      this.dLimbs[3].rotation.set(sw*0.09, -0.05, 0);    // leg R dangles
+      this.dTorso.rotation.x=Math.sin(t)*0.06;                        // gentle torso loll from the neck
+      this.dTorso.rotation.z=Math.sin(t*1.1)*0.08;
+      this.dLimbs[0].rotation.set(sw*0.16, 0.16, 0);     // arms hang & sway
+      this.dLimbs[1].rotation.set(sw2*0.16, -0.16, 0);
+      this.dLimbs[2].rotation.set(sw2*0.1, 0.06, 0);     // legs dangle (feet on nothing)
+      this.dLimbs[3].rotation.set(sw*0.1, -0.06, 0);
 
       // ----- ON FIRE: streak reward — the villain (and victim) ignite with a pulsing glow -----
       // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
@@ -1208,6 +1201,20 @@
           for(let cc=-1;cc<4;cc++){ const bx=cc*22+off, l=40+Math.random()*16;   // varied ashlar blocks
             x.fillStyle=`hsl(${33+Math.random()*10},27%,${l}%)`; x.fillRect(bx+1.5, y+1.5, 22-3, ch-3);
             x.fillStyle='rgba(255,240,210,.10)'; x.fillRect(bx+1.5, y+1.5, 22-3, 1.5); } }  // top-edge catchlight
+      } else if(style==='metro'){
+        // TRAIN CAR livery: brushed-steel body, a lit window band with seats/passengers (the inside), doors
+        const grd=x.createLinearGradient(0,0,0,64); grd.addColorStop(0,'#e8eef2'); grd.addColorStop(0.5,'#cdd8de'); grd.addColorStop(1,'#aab8c0');
+        x.fillStyle=grd; x.fillRect(0,0,64,64);
+        x.fillStyle='#0f6b4e'; x.fillRect(0,6,64,4);                        // green roof stripe
+        x.fillStyle='#12a86e'; x.fillRect(0,44,64,5);                       // green waist stripe
+        // window band (the lit interior with seat + passenger silhouettes)
+        for(let cc=0;cc<4;cc++){ const wx=4+cc*15;
+          x.fillStyle='#bfeff0'; x.fillRect(wx,16,12,22);                   // window glass (lit)
+          x.fillStyle='#2b3f47'; x.fillRect(wx,32,12,6);                    // seat backs inside
+          x.fillStyle='#1c2b31'; x.fillRect(wx+2,24,3,8); x.fillRect(wx+7,24,3,8); // two passenger silhouettes
+          x.fillStyle='rgba(255,255,255,.45)'; x.fillRect(wx,16,12,3);      // glass catchlight
+          x.fillStyle='#6a7880'; x.fillRect(wx-2,15,2,24); }               // door/frame pillars between windows
+        x.strokeStyle='rgba(40,55,60,.5)'; x.lineWidth=1; x.strokeRect(0.5,10.5,63,38);
       } else if(style==='glass'){
         x.fillStyle='#c8f2fa'; x.fillRect(0,0,64,64);                       // bright glass
         const cols=3,rows=3,pad=6,gap=6, ww=(64-pad*2-gap*(cols-1))/cols, wh=(64-pad*2-gap*(rows-1))/rows;
@@ -1437,6 +1444,7 @@
       // per-map surface finish: Aero glass is shiny/reflective, stone is matte, NYC concrete in between
       if(B.style==='glass'){ m.roughness=0.14; m.metalness=0.55; }
       else if(B.style==='stone'){ m.roughness=0.94; m.metalness=0.0; }
+      else if(B.style==='metro'){ m.roughness=0.34; m.metalness=0.5; }   // brushed-steel train car
       else { m.roughness=0.62; m.metalness=0.12; }
       if(decor){ // street wall: two palette variants per map, dim outline
         const col = R<0.5 ? B.decorA : B.decorB;
@@ -1497,10 +1505,14 @@
              if(Math.random()<0.05) this.luckyLeft=2+(Math.random()*2|0); }      // ~1-in-20 lucky run, short
       this.lastTowerX=clamp(this.lastTowerX + (Math.random()<0.5?-1:1)*mag, -lane, lane);
       const med=this.game.theme.building.style==='stone';   // medieval -> narrow tall watch towers + wide keeps
+      const station=!!this.game.theme.station;               // metro -> smash BIG TRAINS, no background buildings
       const b=this._take(); if(!b) return;
-      // hittable: NYC/Aero towers vs medieval WATCH TOWERS (narrower & taller, square footprint)
-      if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
+      // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
+      if(station){ this._place(b, px+this.lastTowerX, z, rand(10,13), rand(26,42), rand(9,13), false); b.mesh.castShadow=true; }
+      else if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
       else this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
+      // METRO is a clean underground STATION — no background buildings, just the incoming trains.
+      if(station) return;
       // DENSE CITY BLOCKS crowding both sides — a CLEAR alley past the sidewalk keeps the decor OFF the
       // road so it's never confused with (or blocking) the smashable tower. Positioned by inner edge.
       const edge=this.roadHalf+12;                    // gap: road(22)+sidewalk(8)+alley -> decor starts at 34
@@ -2029,9 +2041,9 @@
       ground:0x223038, groundEmissive:0x0a1418, clouds:false, skyTop:0x0a1418, fog:0x123038, skyBot:0x1d4c54,
       hemiSky:0x9ff0d8, hemiGround:0x14343a, sunColor:0xe0fff4, sunInt:1.2,
       road:{ asphalt:'#0e1a20', edge:'#d4efe6', dash:'#7cffd6', dashed:true, sidewalk:'#243a42', curb:'#38585e', rails:true },
-      building:{ style:'glass', tower:[0.44,0.6,0.6], towerEmissive:0x0a3e36, towerEdge:0x7cffd6,
+      building:{ style:'metro', tower:[0.0,0.0,0.82], towerEmissive:0x0a3e36, towerEdge:0x7cffd6,
                  decorA:[0.44,0.5,0.58], decorB:[0.46,0.55,0.62], decorEdge:0x9fffe6 },
-      roofs:false, bubbles:false, mountains:false, ceiling:true, trains:true,
+      roofs:false, bubbles:false, mountains:false, ceiling:true, trains:true, station:true,
       night:{ skyTop:0x03080a, fog:0x08202a, skyBot:0x0c2e34, hemiSky:0x2f7266, hemiGround:0x0a2428, sunColor:0x6fbfae, sunInt:0.6, lamp:0x7cffd6, glow:0x0a4a3c } },
   };
   class MapSystem {
