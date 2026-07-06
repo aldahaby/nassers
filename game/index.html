@@ -556,12 +556,12 @@
       this.spin+=dt*4;
       while(this.coinNextZ < pz+ahead){
         const c=this.coins.find(o=>!o.active);
-        if(c){ c.active=true; c.mesh.visible=true; c.x=this._path(this.coinNextZ); c.z=this.coinNextZ; c.mesh.position.set(c.x,15,c.z); }
+        if(c){ c.active=true; c.mesh.visible=true; c.x=this._path(this.coinNextZ); c.z=this.coinNextZ; c.mesh.position.set(c.x,(this.game.player.cruiseY||16)-1,c.z); }
         this.coinNextZ+=this.coinGap;
       }
       while(this.drinkNextZ < pz+ahead){
         const d=this.drinks.find(o=>!o.active);
-        if(d){ d.active=true; d.mesh.visible=true; d.x=this._path(this.drinkNextZ); d.z=this.drinkNextZ; d.mesh.position.set(d.x,15.6,d.z); }
+        if(d){ d.active=true; d.mesh.visible=true; d.x=this._path(this.drinkNextZ); d.z=this.drinkNextZ; d.mesh.position.set(d.x,(this.game.player.cruiseY||16)-0.4,d.z); }
         this.drinkNextZ+=rand(90,140);
       }
       const dz=p.dummy.position.z;
@@ -579,10 +579,10 @@
       }
     }
     _coin(c){ const g=this.game; g.score.coins++; g.score.total+=60; g.audio.coin();
-      g.effects.ring(new THREE.Vector3(c.x,15,c.z),new THREE.Color(0xffd23b),5); }
+      g.effects.ring(new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z),new THREE.Color(0xffd23b),5); }
     _drink(d){ const g=this.game; g.momentum.addHit(28); g.adrenaline.value=clamp(g.adrenaline.value+42,0,g.adrenaline.MAX);
       g.score.total+=160; g.audio.drink(); g.effects.flash(0.16);
-      g.effects.burst(new THREE.Vector3(d.x,15,d.z),new THREE.Color(0x2bd66e),16,12); }
+      g.effects.burst(new THREE.Vector3(d.x,(g.player.cruiseY||16)-0.4,d.z),new THREE.Color(0x2bd66e),16,12); }
     reset(){ for(const c of this.coins){c.active=false;c.mesh.visible=false;} for(const d of this.drinks){d.active=false;d.mesh.visible=false;}
              this.coinNextZ=this.game.player.pos.z+30; this.drinkNextZ=this.game.player.pos.z+150; }
   }
@@ -827,6 +827,7 @@
       const snd=g.maps?g.maps.hitSound:'crash';
       if(snd==='bubble') g.audio.bubble(combo);
       else if(snd==='brick') g.audio.brick(combo);
+      else if(snd==='metal') g.audio.trainSmash(combo);
       else g.audio.crash(tier,combo);
       g.player.onSmash(tier);
 
@@ -967,15 +968,17 @@
       // update() stands it vertical (head up) so local +z -> world UP toward the villain's hand above.
       this._smWorld=new THREE.Vector3();
       this._vUp=-Math.PI/2;    // stand the victim straight up: head up, feet dangling down
-      { const glove=new THREE.MeshStandardMaterial({color:0x141d34,roughness:.5,metalness:.28,flatShading:true});
+      { const glove=new THREE.MeshStandardMaterial({color:0x7a1f22,roughness:.45,metalness:.35,emissive:0x1a0405,flatShading:true}); // crimson glove — stands out from the dark villain
         const arm=new THREE.Group(); this.gripArm=arm; this.dummy.add(arm);
-        // FIST clamped around the NECK (just below the head): palm behind, fingers + thumb wrap the throat
-        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.26,12,10),glove); palm.scale.set(1.2,1.0,0.95); palm.position.set(0,0,-0.12); palm.castShadow=true; arm.add(palm);
-        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.055,0.26,4,6),glove); f.position.set(-0.17+i*0.11, 0.16, -0.06); f.rotation.set(0,0,0); arm.add(f); }  // fingers wrap up the front of the throat
-        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.062,0.24,4,6),glove); thumb.position.set(0.2,0.13,-0.06); thumb.rotation.set(0,0,0.5); arm.add(thumb);
-        // short FOREARM going UP (local +z) into the villain's body just above — the holding wrist
-        const fore=new THREE.Mesh(new THREE.CapsuleGeometry(0.15,0.5,6,8),glove); fore.rotation.x=Math.PI/2; fore.position.set(0,0.02,0.28); fore.castShadow=true; arm.add(fore);
-        const cuff=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,9),glove); cuff.position.set(0,0.02,0.6); arm.add(cuff);
+        // BIG FIST clamped around the THROAT: a broad palm cupping the neck, four fingers splayed across
+        // the FRONT of the throat and a thumb on the other side — an unmistakable choke-hold.
+        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.34,12,10),glove); palm.scale.set(1.25,1.05,1.15); palm.position.set(0,0.02,-0.16); palm.castShadow=true; arm.add(palm);
+        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.34,5,7),glove);
+          const a=(i-1.5)*0.42; f.position.set(Math.sin(a)*0.26, 0.06, -0.02+Math.cos(a)*0.03); f.rotation.set(0.55,-a*0.5,0); f.castShadow=true; arm.add(f); }  // fingers curl over the front of the throat
+        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.3,5,7),glove); thumb.position.set(-0.28,0.0,-0.06); thumb.rotation.set(0.4,0,-0.7); arm.add(thumb);
+        // FOREARM going UP (local +z) into the villain's body just above — the holding arm
+        const fore=new THREE.Mesh(new THREE.CapsuleGeometry(0.17,0.55,6,8),glove); fore.rotation.x=Math.PI/2; fore.position.set(0,0.04,0.3); fore.castShadow=true; arm.add(fore);
+        const cuff=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,9),glove); cuff.position.set(0,0.05,0.66); arm.add(cuff);
         this.dummy.add(arm); }
 
       this._smashPulse=0;
@@ -1016,9 +1019,10 @@
     // SURGE must be EARNED: only available once you've built a combo (and off cooldown).
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
-    reset(){ this.pos.set(0,16,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
+    reset(){ const cy=(this.game.theme&&this.game.theme.station)?7.5:16; this.cruiseY=cy;  // METRO flies LOW in the tunnel
+             this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this.dummy.position.set(-0.1,14.65,1.05); this.dummy.rotation.set(this._vUp,0,0); this._lastSmashZ=undefined; }
+             this.dummy.position.set(-0.1,cy-1.75,1.0); this.dummy.rotation.set(this._vUp,0,0); this._lastSmashZ=undefined; }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -1075,7 +1079,7 @@
 
       // VICTIM — held UPRIGHT, dangling by the NECK, feet on nothing (lifted by the throat as they fly).
       // Neck locked FIRM at the villain's fist; the body/limbs hang and sway beneath it.
-      const tx=this.pos.x-0.1, ty=this.pos.y-1.35, tz=this.pos.z+1.05;
+      const tx=this.pos.x-0.1, ty=this.pos.y-1.75, tz=this.pos.z+1.0;
       this.dummy.position.set(tx,ty,tz);
       this.dummy.rotation.set(this._vUp + Math.sin(now*0.0015)*0.02,
                               Math.sin(now*0.0012)*0.04,
@@ -1177,7 +1181,13 @@
         crown.visible=false; crown.castShadow=true; game.scene.add(crown);
         const cap=new THREE.Mesh(capGeo,new THREE.MeshStandardMaterial({color:0x555a61,roughness:.8,flatShading:true}));
         cap.visible=false; game.scene.add(cap);
-        this.pool.push({mesh:m,edge,roof,crown,cap,active:false,w:1,h:1,d:1,hit:false,decor:false});
+        // METRO train FRONT (children of the car -> move with it): two glowing headlights + a dark windshield
+        const hlL=new THREE.Mesh(new THREE.SphereGeometry(1,8,8),new THREE.MeshBasicMaterial({color:0xfff1b8}));
+        const hlR=new THREE.Mesh(new THREE.SphereGeometry(1,8,8),new THREE.MeshBasicMaterial({color:0xfff1b8}));
+        const wsh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x0c1e22,metalness:.7,roughness:.15,emissive:0x0b2f34,emissiveIntensity:.4}));
+        const sign=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x2fe08a}));
+        hlL.visible=hlR.visible=wsh.visible=sign.visible=false; m.add(hlL); m.add(hlR); m.add(wsh); m.add(sign);
+        this.pool.push({mesh:m,edge,roof,crown,cap,hlL,hlR,wsh,sign,active:false,w:1,h:1,d:1,hit:false,decor:false});
       }
       this._buildEnv();
     }
@@ -1460,6 +1470,14 @@
       // a pointed roof above the merlons; decor = castle walls/keeps with an open notched top.
       const bx=b.mesh.position.x, style=B.style;
       b.roof.visible=false; b.crown.visible=false; b.cap.visible=false;
+      // METRO train FRONT: glowing headlights + dark windshield + lit sign, on the face that comes at you (-z)
+      if(b.hlL){ const st=(style==='metro') && !decor;
+        b.hlL.visible=b.hlR.visible=b.wsh.visible=b.sign.visible=st;
+        if(st){ const iw=1/w, ih=1/h, id=1/d, R=0.85;
+          b.hlL.position.set(-0.28,-0.34,-0.54); b.hlL.scale.set(R*iw,R*ih,R*id);
+          b.hlR.position.set(0.28,-0.34,-0.54); b.hlR.scale.set(R*iw,R*ih,R*id);
+          b.wsh.position.set(0,0.18,-0.508); b.wsh.scale.set(0.74,0.34,0.04);
+          b.sign.position.set(0,0.42,-0.508); b.sign.scale.set(0.34,0.08,0.05); } }
       if(style==='stone'){
         // MEDIEVAL: crenellated CROWN on every building; hittable = WATCH TOWER with a pointed spire
         const crownH=clamp(h*0.12+2, 2.5, 5);
@@ -1508,7 +1526,7 @@
       const station=!!this.game.theme.station;               // metro -> smash BIG TRAINS, no background buildings
       const b=this._take(); if(!b) return;
       // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
-      if(station){ this._place(b, px+this.lastTowerX, z, rand(10,13), rand(26,42), rand(9,13), false); b.mesh.castShadow=true; }
+      if(station){ this._place(b, px+this.lastTowerX, z, rand(9,12), rand(9.5,12.5), rand(13,19), false); b.mesh.castShadow=true; b.incoming=true; }
       else if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
       else this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
       // METRO is a clean underground STATION — no background buildings, just the incoming trains.
@@ -1534,15 +1552,24 @@
       b.active=false; b.hit=true; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false;
       const i=this.buildings.indexOf(b); if(i>=0) this.buildings.splice(i,1);
     }
-    update(){
-      const pz=this.game.player.pos.z;
+    update(dt){
+      dt=dt||0.016;
+      const p=this.game.player, pz=p.pos.z, station=!!(this.game.theme&&this.game.theme.station);
       while(this.nextZ < pz + this.aheadDist){
         this._spawnAt(this.nextZ);
-        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35);  // sparse, randomised spacing
+        // metro trains close on you, so space them WIDER to keep the reaction window (and difficulty) fair
+        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35)*(station?1.4:1);
       }
       const playing=this.game.run.state!=='READY'&&this.game.run.state!=='GameOver'&&this.game.run.state!=='Paused';
+      // INCOMING TRAINS: metro targets drive toward you on the track (moderate, capped) — they come at YOU.
+      const inc=(station&&playing)? Math.min(28, (p.fwdNow||45)*0.35) : 0;
+      // TRAIN HORN blares as a car bears down on you (throttled so it doesn't spam)
+      if(station&&playing){ this._hornT=(this._hornT||0)-dt;
+        if(this._hornT<=0){ const near=this.buildings.some(x=>x.incoming&&!x.hit&&x.mesh.position.z>pz+18&&x.mesh.position.z<pz+52);
+          if(near){ this.game.audio.trainHorn(); this._hornT=rand(2.2,4.2); } else this._hornT=0.6; } }
       for(let i=this.buildings.length-1;i>=0;i--){
         const b=this.buildings[i];
+        if(inc && b.incoming && !b.hit){ b.mesh.position.z -= inc*dt; }   // detail meshes are children -> they follow
         // MISS (only while actually playing): a hittable tower slipped behind you unsmashed ->
         // break the streak AND lose momentum. Skipped in the menu so it can't end the run on load.
         if(playing && !b.decor && !b.hit && !b.missed && b.mesh.position.z < pz-1.5){ b.missed=true; this.game.combo.miss(); this.game.momentum.onMiss(); }
@@ -1583,19 +1610,19 @@
           cb.mesh.lookAt(cam.position.x, cb.y, cam.position.z);
         }
       }
-      if(this.ceilRibs && this.ceilRibs[0].mesh.visible){   // FRUTIGER METRO tunnel ceiling scrolling overhead
-        const span=this.CEIL_N*this.CEIL_GAP;
+      if(this.ceilRibs && this.ceilRibs[0].mesh.visible){   // METRO tunnel ceiling arching low overhead
+        const span=this.CEIL_N*this.CEIL_GAP, cy=(p.cruiseY||16);
         for(const r of this.ceilRibs){
           if(r.z < pz-this.CEIL_GAP) r.z+=span;
-          r.mesh.position.set(px, 15.5, r.z);                 // arch base at ~15.5, peaks high overhead
+          r.mesh.position.set(px, cy-1.5, r.z);               // arch springs from near the flight line -> tight tunnel
         }
-        if(this.ceilPanel) this.ceilPanel.position.set(px, 33, pz+80);
+        if(this.ceilPanel) this.ceilPanel.position.set(px, cy+13, pz+80);
       }
-      if(this.trains && this.trains[0].mesh.visible){   // INCOMING trains rushing along the side tracks
+      if(this.trains && this.trains[0].mesh.visible){   // ambient trains rushing along the far side tracks
         for(const tr of this.trains){
           tr.z -= (p.speed()+tr.spd)*0.016;                   // world recedes + train drives at you = fast incoming
           if(tr.z < pz-40){ tr.z=pz+rand(120,300); tr.side=Math.random()<0.5?-1:1; tr.spd=rand(30,55); }
-          tr.mesh.position.set(this._pathX(tr.z)+tr.side*13, 2.4, tr.z);
+          tr.mesh.position.set(this._pathX(tr.z)+tr.side*22, 2.6, tr.z);
         }
       }
       if(this.lamps && this.lamps[0].grp.visible){   // NIGHT street lamps line the sidewalks
@@ -1790,7 +1817,10 @@
         if(d.y<=1.3){ this._explode(d,false); }          // missed you and hit the ground -> harmless puff
       }
     }
-    reset(){ this._timer=1.4; for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false; } }
+    reset(){ this._timer=1.4;
+      const cy=(this.game.player&&this.game.player.cruiseY)||16, st=!!(this.game.theme&&this.game.theme.station);
+      this.BAND=cy; this.START_Y=cy+(st?9:40);          // in the low tunnel, drones dive from just under the ceiling
+      for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false; } }
   }
 
   // ===================================================================================
@@ -1862,6 +1892,28 @@
       a.start(); b.start(); lfo.start(); a.stop(t+0.94); b.stop(t+0.94); lfo.stop(t+0.94); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
     coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
+    // ===== METRO TRAIN AUDIO =====
+    // continuous underground RUMBLE (looping filtered noise) while flying the tunnel
+    startRumble(){ if(!this.ctx || this._rumble) return;
+      const n=this.ctx.sampleRate*2, buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate), d=buf.getChannelData(0);
+      let last=0; for(let i=0;i<n;i++){ const w=Math.random()*2-1; last=(last+0.02*w)/1.02; d[i]=last*3.2; }   // brown noise
+      const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=true;
+      const lp=this.ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=140;
+      const g=this.ctx.createGain(); g.gain.setValueAtTime(0.0,this.ctx.currentTime); g.gain.linearRampToValueAtTime(0.16,this.ctx.currentTime+1.2);
+      src.connect(lp); lp.connect(g); g.connect(this.master); src.start();
+      this._rumble={src,g}; }
+    stopRumble(){ if(!this._rumble) return; const {src,g}=this._rumble; try{ g.gain.linearRampToValueAtTime(0,this.ctx.currentTime+0.4); src.stop(this.ctx.currentTime+0.5);}catch(e){} this._rumble=null; }
+    // a deep two-tone TRAIN HORN as a train bears down on you
+    trainHorn(){ if(!this.ctx) return; const t=this.ctx.currentTime;
+      [150,113].forEach((f)=>{ const o=this.ctx.createOscillator(), g=this.ctx.createGain(), lp=this.ctx.createBiquadFilter();
+        o.type='sawtooth'; o.frequency.value=f; lp.type='lowpass'; lp.frequency.value=760;
+        g.gain.setValueAtTime(0.0,t); g.gain.linearRampToValueAtTime(0.11,t+0.06); g.gain.setValueAtTime(0.11,t+0.45); g.gain.exponentialRampToValueAtTime(0.001,t+0.95);
+        o.connect(lp); lp.connect(g); g.connect(this.master); o.start(t); o.stop(t+0.98); }); }
+    // metallic TRAIN SMASH — screeching steel crunch + a low body boom
+    trainSmash(combo){ if(!this.ctx) return;
+      this._fnoise(0.22,0.55,2200,'bandpass',1.1); this._fnoise(0.35,0.4,520,'lowpass',0.7);
+      this._tone(70,0.3,'sine',0.4); this._tone(150,0.14,'square',0.2);
+      for(let i=0;i<5;i++) setTimeout(()=>this._fnoise(0.05,0.3,900+Math.random()*1800,'bandpass',3),20+i*30); }
     fire(){ this._tone(180,0.5,'sawtooth',0.35); this._tone(90,0.6,'square',0.25); this._noise(0.5,0.3); }
     fireOut(){ this._tone(300,0.25,'sine',0.25); this._tone(150,0.3,'sine',0.2); }
     // EPIC: a rising triumphant blast — you've broken past ON FIRE into the fastest state.
@@ -2037,7 +2089,7 @@
                  decorA:[0.09,0.28,0.44], decorB:[0.1,0.18,0.52], decorEdge:0x4a3a24, castle:true },
       roofs:true, bubbles:false, mountains:true,
       night:{ skyTop:0x080f22, fog:0x27223a, skyBot:0x38324e, hemiSky:0x3a3556, hemiGround:0x2a2418, sunColor:0x9a94b8, sunInt:0.4, lamp:0xff8a2a, glow:0x2a1400 } },
-    metro: { name:'Frutiger Metro', tag:'TEAR THROUGH THE UNDERGROUND', hit:'crash',
+    metro: { name:'Frutiger Metro', tag:'TEAR THROUGH THE UNDERGROUND', hit:'metal',
       ground:0x223038, groundEmissive:0x0a1418, clouds:false, skyTop:0x0a1418, fog:0x123038, skyBot:0x1d4c54,
       hemiSky:0x9ff0d8, hemiGround:0x14343a, sunColor:0xe0fff4, sunInt:1.2,
       road:{ asphalt:'#0e1a20', edge:'#d4efe6', dash:'#7cffd6', dashed:true, sidewalk:'#243a42', curb:'#38585e', rails:true },
@@ -2243,7 +2295,7 @@
         this.momentum.update(dt);
         this.adrenaline.update(dt);
         this.combo.update(dt);
-        this.city.update();
+        this.city.update(dt);
         this.pickups.update(dt);
         this.drones.update(dt);
         this.run.tick();
@@ -2253,6 +2305,8 @@
         this.city.update();
       }
 
+      // METRO tunnel RUMBLE loops while you're actually running the underground map
+      if(running && this.theme && this.theme.station) this.audio.startRumble(); else this.audio.stopRumble();
       this.effects.update(running?dt:realDt);
       this.sun.position.set(this.player.pos.x+60,this.player.pos.y+90,this.player.pos.z-20);
       this.sun.target.position.set(this.player.pos.x,this.player.pos.y,this.player.pos.z+30); this.sun.target.updateMatrixWorld();
