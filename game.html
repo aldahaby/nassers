@@ -934,6 +934,23 @@
       this.fireAura=new THREE.Mesh(new THREE.SphereGeometry(1.9,14,14),
         new THREE.MeshBasicMaterial({color:0xff5a14,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
       this.fireAura.position.z=0.2; this.fireAura.visible=false; this.rig.add(this.fireAura);
+
+      // ===== VILLAIN'S GRIPPING ARM — anchored to HIM (child of the rig), reaching DOWN-forward to
+      // clutch the victim's head. The victim is then hung FROM this hand each frame, so the hold is real.
+      { const sleeve=new THREE.MeshStandardMaterial({color:0x141a2e,roughness:.55,metalness:.28,flatShading:true});
+        const glove=new THREE.MeshStandardMaterial({color:0x8a2226,roughness:.42,metalness:.35,emissive:0x1e0506,flatShading:true});
+        const ga=new THREE.Group(); this.rig.add(ga); this.villainArm=ga;
+        const sh=new THREE.Mesh(new THREE.SphereGeometry(0.42,10,9),sleeve); sh.position.set(0.5,0.02,0.66); ga.add(sh);      // shoulder on his front
+        const up=new THREE.Mesh(new THREE.CapsuleGeometry(0.26,0.8,6,8),sleeve); up.position.set(0.42,-0.42,0.82); up.rotation.set(0.55,0,0.35); up.castShadow=true; ga.add(up);
+        const el=new THREE.Mesh(new THREE.SphereGeometry(0.27,10,9),sleeve); el.position.set(0.32,-0.92,0.95); ga.add(el);
+        const fo=new THREE.Mesh(new THREE.CapsuleGeometry(0.23,0.78,6,8),glove); fo.position.set(0.2,-1.42,1.05); fo.rotation.set(0.4,0,0.22); fo.castShadow=true; ga.add(fo);
+        // HAND clutching downward — palm + curled fingers + thumb around where the victim's head sits
+        const hand=new THREE.Group(); hand.position.set(0.12,-1.95,1.12); ga.add(hand); this.gripHand=hand; this._gripW=new THREE.Vector3();
+        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.4,12,10),glove); palm.scale.set(1.15,0.95,1.15); palm.castShadow=true; hand.add(palm);
+        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.1,0.42,5,7),glove); const a=(i-1.5)*0.5; f.position.set(Math.sin(a)*0.36,-0.24,Math.cos(a)*0.24); f.rotation.set(0.9,0,0); hand.add(f); }  // fingers curl down & around the skull
+        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.11,0.36,5,7),glove); thumb.position.set(-0.34,-0.18,0.02); thumb.rotation.set(0.7,0,-0.6); hand.add(thumb);
+      }
+
       this._loadVillainModel();   // swap in the real GLB model when it finishes loading
 
       // ===== VICTIM — the son: a FULL-SIZE young MASKED hero, held head-first as a battering ram =====
@@ -968,18 +985,8 @@
       // update() stands it vertical (head up) so local +z -> world UP toward the villain's hand above.
       this._smWorld=new THREE.Vector3();
       this._vUp=-Math.PI/2;    // stand the victim straight up: head up, feet dangling down
-      { const glove=new THREE.MeshStandardMaterial({color:0x7a1f22,roughness:.45,metalness:.35,emissive:0x1a0405,flatShading:true}); // crimson glove — stands out from the dark villain
-        const arm=new THREE.Group(); this.gripArm=arm; this.dummy.add(arm);
-        // BIG FIST clamped around the THROAT: a broad palm cupping the neck, four fingers splayed across
-        // the FRONT of the throat and a thumb on the other side — an unmistakable choke-hold.
-        const palm=new THREE.Mesh(new THREE.SphereGeometry(0.34,12,10),glove); palm.scale.set(1.25,1.05,1.15); palm.position.set(0,0.02,-0.16); palm.castShadow=true; arm.add(palm);
-        for(let i=0;i<4;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.34,5,7),glove);
-          const a=(i-1.5)*0.42; f.position.set(Math.sin(a)*0.26, 0.06, -0.02+Math.cos(a)*0.03); f.rotation.set(0.55,-a*0.5,0); f.castShadow=true; arm.add(f); }  // fingers curl over the front of the throat
-        const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.3,5,7),glove); thumb.position.set(-0.28,0.0,-0.06); thumb.rotation.set(0.4,0,-0.7); arm.add(thumb);
-        // FOREARM going UP (local +z) into the villain's body just above — the holding arm
-        const fore=new THREE.Mesh(new THREE.CapsuleGeometry(0.17,0.55,6,8),glove); fore.rotation.x=Math.PI/2; fore.position.set(0,0.04,0.3); fore.castShadow=true; arm.add(fore);
-        const cuff=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,9),glove); cuff.position.set(0,0.05,0.66); arm.add(cuff);
-        this.dummy.add(arm); }
+      // (the gripping HAND belongs to the villain now — see this.villainArm/this.gripHand; the victim is
+      //  positioned so its head sits IN that hand each frame, so the hold is a real connection.)
 
       this._smashPulse=0;
       this.surgeActive=0; this.surgeCd=0; this.SURGE_DUR=2.8; this.SURGE_CD=9.0; this.SURGE_COMBO=6;
@@ -1077,15 +1084,15 @@
           cp[i*6+0]=base[i*6+0]-this.bank*0.5*t; cp[i*6+3]=base[i*6+3]-this.bank*0.5*t; }
         this.capeGeo.attributes.position.needsUpdate=true; }
 
-      // VICTIM — held UPRIGHT, dangling by the NECK, feet on nothing (lifted by the throat as they fly).
-      // Neck locked FIRM at the villain's fist; the body/limbs hang and sway beneath it.
-      const tx=this.pos.x-0.1, ty=this.pos.y-1.75, tz=this.pos.z+1.0;
-      this.dummy.position.set(tx,ty,tz);
+      // VICTIM — hung FROM the villain's hand: its head sits IN the fist, body dangles beneath, feet on
+      // nothing. Read directly off the hand's WORLD position so the hold is a real, rigid connection.
+      this.group.updateWorldMatrix(true,false);
+      const hw=this.gripHand? this.gripHand.getWorldPosition(this._gripW) : this.pos;
+      this.dummy.position.set(hw.x, hw.y-1.02, hw.z);      // head-top tucks into the palm; body drops below
       this.dummy.rotation.set(this._vUp + Math.sin(now*0.0015)*0.02,
                               Math.sin(now*0.0012)*0.04,
                               this.bank*0.35 + Math.sin(now*0.002)*0.05);
-      // the fist flexes subtly (the squeeze) so it reads as a live, animated hold
-      if(this.gripArm){ this.gripArm.rotation.z=Math.sin(now*0.005)*0.04; this.gripArm.rotation.x=Math.sin(now*0.006)*0.03; }
+      if(this.villainArm){ this.villainArm.rotation.z=Math.sin(now*0.005)*0.03; }   // subtle squeeze
       // SMASH CONTACT — driven forward through the trains/buildings.
       this._smWorld.set(this.pos.x, this.pos.y-0.85, this.pos.z+2.0);
       const curSmashZ=this._smWorld.z;
@@ -1308,6 +1315,17 @@
         stripe.position.y=-0.4; m.add(stripe);
         this.trains.push({mesh:m, side:i%2?1:-1, z:i*70+40, spd:rand(30,55)});
       }
+      // STATION SUPPORT PILLARS lining the platform edges (with a lit cap) — real subway architecture
+      this.pillars=[]; const colGeo=new THREE.CylinderGeometry(0.55,0.7,1,10);
+      const colMat=new THREE.MeshStandardMaterial({color:0x33454a,roughness:.65,metalness:.35,flatShading:true});
+      const capMat=new THREE.MeshStandardMaterial({color:0x2fe0b0,emissive:0x0f8a6a,emissiveIntensity:.8,roughness:.4});
+      for(let i=0;i<18;i++){
+        const grp=new THREE.Group();
+        const col=new THREE.Mesh(colGeo,colMat); col.castShadow=true; grp.add(col);
+        const cap=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.5,1.7),capMat); grp.add(cap);
+        grp.visible=false; g.scene.add(grp);
+        this.pillars.push({grp,col,cap, side:i%2?1:-1, z:(i>>1)*20});
+      }
     }
     // window strip texture for the metro trains
     _trainWindows(){
@@ -1346,6 +1364,7 @@
       if(this.ceilRibs) for(const r of this.ceilRibs) r.mesh.visible=metro;
       if(this.ceilPanel) this.ceilPanel.visible=metro;
       if(this.trains) for(const tr of this.trains) tr.mesh.visible=!!t.trains;
+      if(this.pillars) for(const c of this.pillars) c.grp.visible=metro;
       for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);
       // street lamps: on only at night, coloured per map
       const lampCol=night? n.lamp : 0xffb14a;
@@ -1368,6 +1387,15 @@
     _roadTexture(cfg){
       cfg=cfg||{asphalt:'#141518',edge:'#e6e9ec',dash:'#e6c24e',dashed:true};
       const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+      if(cfg.rails){
+        // ===== SUBWAY TRACK BED: dark ballast gravel, wooden sleepers, and two shining steel rails =====
+        x.fillStyle='#161c1e'; x.fillRect(0,0,128,128);
+        for(let i=0;i<1600;i++){ const v=26+(Math.random()*46|0); x.fillStyle=`rgba(${v},${v+3},${v},.55)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); } // ballast
+        for(let y=2;y<128;y+=20){ x.fillStyle='#2c2118'; x.fillRect(16,y,96,11); x.fillStyle='rgba(0,0,0,.35)'; x.fillRect(16,y+9,96,2); } // sleepers (ties) across
+        for(const rx of [38,84]){ x.fillStyle='#3a4048'; x.fillRect(rx-2,0,10,128);            // rail foot/plate
+          x.fillStyle='#9aa4ac'; x.fillRect(rx,0,5,128); x.fillStyle='#eef4f8'; x.fillRect(rx+1,0,2,128); } // steel rail + hot highlight
+        const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+      }
       x.fillStyle=cfg.asphalt; x.fillRect(0,0,128,128);
       for(let i=0;i<700;i++){ const v=(Math.random()*90|0); x.fillStyle=`rgba(${v},${v},${v+6},.12)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
       if(cfg.edge){ x.fillStyle=cfg.edge; x.fillRect(7,0,4,128); x.fillRect(117,0,4,128); }        // edge lines
@@ -1380,6 +1408,15 @@
     _sidewalkTexture(cfg){
       cfg=cfg||{sidewalk:'#8a8f97',curb:'#565b63'};
       const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+      if(cfg.rails){
+        // ===== STATION PLATFORM: pale tiles + a yellow safety line & tactile strip on the track edges =====
+        x.fillStyle='#c8d2d0'; x.fillRect(0,0,128,128);
+        for(let i=0;i<300;i++){ const v=150+(Math.random()*70|0); x.fillStyle=`rgba(${v},${v},${v},.14)`; x.fillRect(Math.random()*128,Math.random()*128,3,3); }
+        x.fillStyle='rgba(60,72,74,.5)'; for(let y=0;y<128;y+=16) x.fillRect(0,y,128,1.5); for(let xx=0;xx<128;xx+=16) x.fillRect(xx,0,1.5,128); // tile grout
+        for(const ex of [0,116]){ x.fillStyle='#e8c020'; x.fillRect(ex,0,12,128);                  // yellow safety line at each platform edge
+          x.fillStyle='rgba(70,55,0,.55)'; for(let y=3;y<128;y+=9) x.fillRect(ex+3,y,6,5); }        // tactile warning bumps
+        const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+      }
       x.fillStyle=cfg.sidewalk; x.fillRect(0,0,128,128);
       for(let i=0;i<400;i++){ const v=(Math.random()*80|0); x.fillStyle=`rgba(${v},${v},${v},.10)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
       x.fillStyle=cfg.curb; x.fillRect(0,0,9,128); x.fillRect(119,0,9,128);   // curbs (both edges)
@@ -1617,6 +1654,11 @@
           r.mesh.position.set(px, cy-1.5, r.z);               // arch springs from near the flight line -> tight tunnel
         }
         if(this.ceilPanel) this.ceilPanel.position.set(px, cy+13, pz+80);
+        // support PILLARS at the platform edges, floor -> ceiling
+        if(this.pillars){ const H=cy+7, pspan=Math.ceil(this.pillars.length/2)*20;
+          for(const c of this.pillars){ if(c.z<pz-20) c.z+=pspan;
+            c.grp.position.set(this._pathX(c.z)+c.side*(this.roadHalf+2.5), 0, c.z);
+            c.col.scale.set(1,H,1); c.col.position.y=H/2; c.cap.position.y=H; } }
       }
       if(this.trains && this.trains[0].mesh.visible){   // ambient trains rushing along the far side tracks
         for(const tr of this.trains){
@@ -1662,7 +1704,8 @@
       if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
       if(this.bubbles) this.bubbles.forEach(bb=>bb.z=0);
       if(this.ceilRibs) this.ceilRibs.forEach((r,i)=>r.z=pz+i*this.CEIL_GAP);
-      if(this.trains) this.trains.forEach((tr,i)=>{ tr.z=pz+i*70+40; }); }
+      if(this.trains) this.trains.forEach((tr,i)=>{ tr.z=pz+i*70+40; });
+      if(this.pillars) this.pillars.forEach((c,i)=>{ c.z=pz+(i>>1)*20; }); }
   }
 
   // ===================================================================================
