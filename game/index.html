@@ -939,7 +939,7 @@
       // GLB flight pose), so HIS hands grip it. Two dark clamp-hands here reinforce the grip on the skull.
       { const glove=new THREE.MeshStandardMaterial({color:0x11162a,roughness:.5,metalness:.32,flatShading:true}); // dark, like his suit
         const ga=new THREE.Group(); this.rig.add(ga); this.villainArm=ga;
-        const hand=new THREE.Object3D(); hand.position.set(0,-0.45,1.25); ga.add(hand); this.gripHand=hand; this._gripW=new THREE.Vector3();  // at his FINGERTIPS
+        const hand=new THREE.Object3D(); hand.position.set(0,-0.45,1.02); ga.add(hand); this.gripHand=hand; this._gripW=new THREE.Vector3();  // at his FINGERTIPS
         for(const sx of [-1,1]){ const h=new THREE.Group(); h.position.set(sx*0.2,0.06,0); hand.add(h);   // a hand each side, clutching the crown from above
           const palm=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,9),glove); palm.scale.set(1.0,0.75,1.1); palm.castShadow=true; h.add(palm);
           for(let i=0;i<3;i++){ const f=new THREE.Mesh(new THREE.CapsuleGeometry(0.055,0.32,4,6),glove); f.position.set((i-1)*0.13, -0.28, 0.06); f.rotation.set(0.22,0,0); h.add(f); }  // fingers hang DOWN over the skull
