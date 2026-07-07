@@ -1079,7 +1079,7 @@
       // nothing. Read directly off the hand's WORLD position so the hold is a real, rigid connection.
       this.group.updateWorldMatrix(true,false);
       const hw=this.gripHand? this.gripHand.getWorldPosition(this._gripW) : this.pos;
-      this.dummy.position.set(hw.x, hw.y-0.9, hw.z);       // head-TOP tucks up into his hands; body hangs BELOW
+      this.dummy.position.set(hw.x, hw.y-0.28, hw.z);      // his hand sits IN the victim's head (no gap) so he's clearly held up
       this.dummy.rotation.set(this._vUp + Math.sin(now*0.0015)*0.02,
                               Math.sin(now*0.0012)*0.04,
                               this.bank*0.35 + Math.sin(now*0.002)*0.05);
