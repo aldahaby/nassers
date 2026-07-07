@@ -939,10 +939,10 @@
       // which hang low and slightly spread in his flight pose. gripHand is just an invisible anchor
       // measured to sit right at those hands; the victim's crown tucks up into them.
       { const ga=new THREE.Group(); this.rig.add(ga); this.villainArm=ga;
-        // rig-local coord of the villain GLB's ACTUAL left-hand fingertip, found by scanning the mesh
-        // vertices (outermost +x, lowest y) — see scratchpad/measure.js. This pins the anchor exactly on
-        // his real fingers so the victim's head can be seated INTO them (no fake/third hand).
-        const hand=new THREE.Object3D(); hand.position.set(0.964,-0.336,-0.992); ga.add(hand); this.gripHand=hand; this._gripW=new THREE.Vector3();
+        // rig-local coord of the villain GLB's ACTUAL left-hand FIST (centroid of the outer +x hand
+        // cluster — the visible dark hand, not a splayed fingertip), found by scanning the mesh vertices
+        // (scratchpad/marks.js). This pins the anchor on his real fist so the victim's head seats INTO it.
+        const hand=new THREE.Object3D(); hand.position.set(0.928,-0.059,-0.452); ga.add(hand); this.gripHand=hand; this._gripW=new THREE.Vector3();
       }
 
       this._loadVillainModel();   // swap in the real GLB model when it finishes loading
@@ -1082,9 +1082,9 @@
       // nothing. Read directly off the hand's WORLD position so the hold is a real, rigid connection.
       this.group.updateWorldMatrix(true,false);
       const hw=this.gripHand? this.gripHand.getWorldPosition(this._gripW) : this.pos;
-      // Upright victim's head CENTER = dummy.position + (0,0.24,0). Drop the head 0.3 below the fingertip
-      // so the fingers (at hw) penetrate the crown from above and are buried INSIDE the head (r≈0.68).
-      this.dummy.position.set(hw.x, hw.y-0.54, hw.z);
+      // Upright victim's head CENTER = dummy.position + (0,0.24,0). Seat the head so its center sits just
+      // 0.2 below the villain's fist (hw) — the fist buries deep INTO the crown (head r≈0.68), no gap.
+      this.dummy.position.set(hw.x, hw.y-0.44, hw.z);
       this.dummy.rotation.set(this._vUp + Math.sin(now*0.0015)*0.02,
                               Math.sin(now*0.0012)*0.04,
                               this.bank*0.35 + Math.sin(now*0.002)*0.05);
