@@ -389,11 +389,11 @@
   </div>
   <div id="skins-modal" class="modal hidden">
     <div class="sheet">
-      <div class="sheet-head"><span>Skins</span><button class="x" data-close>×</button></div>
-      <div class="sheet-note">Unlock new looks with the coins you collect.</div>
+      <div class="sheet-head"><span>Villains</span><button class="x" data-close>×</button></div>
+      <div class="sheet-note">Choose your villain — tap to switch who you fly.</div>
       <div class="grid">
-        <div class="card sel"><span class="big">🦸</span>Dominus<small>Selected</small></div>
-        <div class="card lock"><span class="big">🔒</span>Reaper<small>800 🪙</small></div>
+        <div class="card char sel" data-char="dominus"><span class="big">🦸</span>Dominus<small>Selected</small></div>
+        <div class="card char" data-char="frutiger"><span class="big">🫧</span>Frutiger<small>Tap to play</small></div>
         <div class="card lock"><span class="big">🔒</span>Warden<small>1500 🪙</small></div>
         <div class="card lock"><span class="big">🔒</span>Phantom<small>2500 🪙</small></div>
         <div class="card lock"><span class="big">🔒</span>Onyx<small>4000 🪙</small></div>
@@ -1078,7 +1078,7 @@
       const pupM=new THREE.MeshStandardMaterial({color:0x171720,roughness:.4});
       const capeM=new THREE.MeshStandardMaterial({color:0xb5322a,roughness:.6,side:THREE.DoubleSide,flatShading:FS}); this.capeMat=capeM;
       this.suitMat=suit;
-      this.glowMats=[suit];                     // materials that light up ON FIRE (model mats get added on load)
+      this._baseGlow=[suit]; this.glowMats=[suit];   // materials that light up ON FIRE (model mats get added on load)
       this.villainBody=new THREE.Group(); this.rig.add(this.villainBody);   // procedural fallback (hidden when the GLB loads)
       const A=(mesh,x,y,z,rx,ry,rz,cast)=>{ mesh.position.set(x,y,z); if(rx||ry||rz) mesh.rotation.set(rx||0,ry||0,rz||0); if(cast) mesh.castShadow=true; this.villainBody.add(mesh); return mesh; };
       // articulated LIMB helper: upper + elbow/knee joint + lower + hand/foot end, added to a parent
@@ -1137,13 +1137,16 @@
       // which hang low and slightly spread in his flight pose. gripHand is just an invisible anchor
       // measured to sit right at those hands; the victim's crown tucks up into them.
       { const ga=new THREE.Group(); this.rig.add(ga); this.villainArm=ga;
-        // rig-local coord of the villain GLB's ACTUAL left-hand FIST (centroid of the outer +x hand
-        // cluster — the visible dark hand, not a splayed fingertip), found by scanning the mesh vertices
-        // (scratchpad/marks.js). This pins the anchor on his real fist so the victim's head seats INTO it.
-        const hand=new THREE.Object3D(); hand.position.set(0.928,-0.059,-0.452); ga.add(hand); this.gripHand=hand; this._gripW=new THREE.Vector3();
+        // rig-local coord of the selected villain's ACTUAL hand FIST (centroid of the outer hand cluster —
+        // the visible hand, not a splayed fingertip), calibrated per character (see CHARACTERS). This pins
+        // the anchor on his real fist so the victim's head seats INTO it with no fingers peeking out.
+        this._char=CHARACTERS[currentCharKey()];
+        const gp=this._char.grip;
+        const hand=new THREE.Object3D(); hand.position.set(gp.x,gp.y,gp.z); ga.add(hand); this.gripHand=hand; this._gripW=new THREE.Vector3();
+        this._victimOff=this._char.victim;   // per-character head offset from the hand
       }
 
-      this._loadVillainModel();   // swap in the real GLB model when it finishes loading
+      this._loadVillainModel(this._char);   // swap in the real GLB model when it finishes loading
 
       // ===== VICTIM — the son: a FULL-SIZE young MASKED hero, held head-first as a battering ram =====
       this.dummy=new THREE.Group(); game.scene.add(this.dummy); this.dummy.scale.setScalar(2.0);   // FULL-SIZE to match the villain
@@ -1185,19 +1188,22 @@
     }
     speed(){ return this.vel.length(); }
     position(){ return this.pos; }
-    // load the real GLB villain and swap it in for the procedural fallback
-    _loadVillainModel(){
+    // load the selected villain GLB and swap it in for the procedural fallback (per-character config)
+    _loadVillainModel(cfg){
+      cfg = cfg || this._char || CHARACTERS.dominus;
+      const token=(this._loadToken=(this._loadToken||0)+1);   // guard: a newer selection supersedes an in-flight load
       const loader=new GLTFLoader();
-      loader.load('./assets/villain.glb',(gltf)=>{
+      loader.load(cfg.url,(gltf)=>{
+        if(token!==this._loadToken) return;                   // superseded — drop this stale result
         const model=gltf.scene;
         const box=new THREE.Box3().setFromObject(model), size=new THREE.Vector3(), ctr=new THREE.Vector3();
         box.getSize(size); box.getCenter(ctr);
         model.position.sub(ctr);                                  // centre the model on the origin
-        // WIND on the CAPE: displace the trailing cloth (back of the model, z<0) with a running ripple,
-        // injected into the standard shader so the model keeps its textures.
+        this.glowMats=this._baseGlow.slice();                     // reset fire-glow list (drop any prior model's mats)
+        // WIND (cape/legs) — only for characters whose GLB matches this displacement convention.
         this._windU={value:0};
         model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; if(o.material){ this.glowMats.push(o.material);
-          const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
+          if(cfg.wind){ const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
             sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',
               '#include <begin_vertex>\n'+
               // CAPE ripple (back of the model)
@@ -1205,18 +1211,27 @@
               // LEGS: each leg swings as ONE coherent limb from the hip (a gentle trailing kick),
               // amount grows smoothly toward the feet. NO wave along the limb length -> no spaghetti.
               ' float lm=smoothstep(-0.10,-0.92,position.y);\n float side=sign(position.x);\n transformed.z+=sin(uWind*0.7+side*1.05)*0.05*lm;\n transformed.x+=sin(uWind*0.5)*0.02*lm;'); };
-          mat.needsUpdate=true; } } });
+          mat.needsUpdate=true; } } } });
         const holder=new THREE.Group(); holder.add(model);
-        this._mRotX=Math.PI/2-0.22; this._mBaseY=0.12;                 // heroic head-up arch (not a flat plank)
+        this._mRotX=cfg.rotX; this._mBaseY=cfg.baseY;                  // per-character flight pose + height
         holder.rotation.set(this._mRotX,0,0);
-        const targetLen=4.2; holder.scale.setScalar(targetLen/Math.max(0.001,size.y));
+        holder.scale.setScalar(cfg.targetLen/Math.max(0.001,size.y));
         holder.position.set(0,this._mBaseY,0);
+        if(this.villainModel){ this.rig.remove(this.villainModel); }  // remove any previously-loaded model (live swap)
         this.villainModel=holder; this.rig.add(holder);
         this.villainBody.visible=false; if(this.cape) this.cape.visible=false;   // hide procedural body + red cape (model has its own)
         if(window.__hideLoader) window.__hideLoader();                            // dismiss the loading screen
       },
       (ev)=>{ if(window.__setLoader && ev && ev.total) window.__setLoader(ev.loaded/ev.total); },   // progress -> loading bar
       (err)=>{ console.warn('villain GLB failed to load; using fallback',err); if(window.__hideLoader) window.__hideLoader(); });
+    }
+    // switch the active playable character (from the Skins menu): repin the grip + reload the model
+    setCharacter(key){
+      if(!CHARACTERS[key]) return; this._char=CHARACTERS[key];
+      try{ localStorage.setItem('invrun_char',key); }catch(e){}
+      const gp=this._char.grip; if(this.gripHand) this.gripHand.position.set(gp.x,gp.y,gp.z);
+      this._victimOff=this._char.victim;
+      this._loadVillainModel(this._char);
     }
     // SURGE must be EARNED: only available once you've built a combo (and off cooldown).
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
@@ -1283,10 +1298,11 @@
       // nothing. Read directly off the hand's WORLD position so the hold is a real, rigid connection.
       this.group.updateWorldMatrix(true,false);
       const hw=this.gripHand? this.gripHand.getWorldPosition(this._gripW) : this.pos;
-      // Upright victim's head CENTER = dummy.position + (0,0.24,0). Slide the head IN under the palm
-      // (world -x = screen-right) and up so the villain's whole hand — fingers included — buries into the
-      // crown and NONE of his fingers peek out beside the head. Head center = fist + (-0.60,+0.02,+0.05).
-      this.dummy.position.set(hw.x-0.60, hw.y-0.22, hw.z+0.05);
+      // Upright victim's head CENTER = dummy.position + (0,0.24,0). Slide the head IN under the palm so the
+      // villain's whole hand — fingers included — buries into the crown and NO fingers peek out. The offset
+      // is calibrated per character (CHARACTERS[*].victim).
+      const vo=this._victimOff||{x:-0.60,y:-0.22,z:0.05};
+      this.dummy.position.set(hw.x+vo.x, hw.y+vo.y, hw.z+vo.z);
       this.dummy.rotation.set(this._vUp + Math.sin(now*0.0015)*0.02,
                               Math.sin(now*0.0012)*0.04,
                               this.bank*0.35 + Math.sin(now*0.002)*0.05);
@@ -2331,6 +2347,19 @@
   }
 
   // ===================================================================================
+  // CHARACTERS — the playable villains. Each is a static GLB posed into flight; the grip
+  // anchor (rig-local hand) and victim offset are calibrated per model so the victim's head
+  // seats INTO the villain's hand with no fingers peeking out.
+  // ===================================================================================
+  const CHARACTERS = {
+    dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:true,
+                grip:{x:0.928,y:-0.059,z:-0.452}, victim:{x:-0.60,y:-0.22,z:0.05} },
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
+                grip:{x:0.832,y:-0.096,z:-0.055}, victim:{x:-0.15,y:-0.20,z:-0.25} }
+  };
+  function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
+
+  // ===================================================================================
   // MAPS — swappable themes. Each retunes sky/light/ground/road/buildings + the hit sound.
   // ===================================================================================
   const THEMES = {
@@ -2488,6 +2517,13 @@
       mapCards.forEach(card=>card.addEventListener('click',()=>{ this.maps.select(card.dataset.map);
         syncMaps(); if(tagEl) tagEl.textContent=THEMES[this.maps.key].tag; }));
       syncMaps(); if(tagEl) tagEl.textContent=THEMES[this.maps.key].tag;
+
+      // character selection: tap a villain card -> swap the playable model live (persisted)
+      const charCards=document.querySelectorAll('#skins-modal .card.char');
+      const syncChars=()=>charCards.forEach(c=>{ const on=c.dataset.char===currentCharKey();
+        c.classList.toggle('sel',on); c.querySelector('small').textContent=on?'Selected':'Tap to play'; });
+      charCards.forEach(card=>card.addEventListener('click',()=>{ this.player.setCharacter(card.dataset.char); syncChars(); }));
+      syncChars();
 
       // sound toggle (persisted)
       const soundBtn=document.getElementById('sound-btn');
