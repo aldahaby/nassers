@@ -7,6 +7,12 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>INVINCIBLE RUN — Omni Flight</title>
+  <meta name="theme-color" content="#05070e" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230c1426'/%3E%3Cpath d='M32 6 38 26 58 26 42 38 48 58 32 46 16 58 22 38 6 26 26 26Z' fill='%23ff8a1f'/%3E%3C/svg%3E" />
+  <meta name="description" content="Fly an overpowered supervillain through the city — smash towers, chain combos, outrun the drones. How far can you go?" />
+  <meta property="og:title" content="INVINCIBLE RUN" />
+  <meta property="og:description" content="Fly an overpowered supervillain through the city — smash towers, chain combos, outrun the drones. How far can you go?" />
+  <meta property="og:type" content="website" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
@@ -327,6 +333,34 @@
     #load-status{ margin-top:16px; font-family:var(--f-num); font-size:16px; letter-spacing:2px; white-space:nowrap; text-transform:uppercase; color:var(--muted); animation:softPulse 1.5s ease-in-out infinite; }
     #load-status b{ color:var(--elec); font-weight:600; }
 
+    /* ============================ JUICE LAYER ============================ */
+    /* anime speed-lines: radial streaks masked away from the center; opacity driven by speed */
+    #speedlines{ position:fixed; inset:-6%; z-index:6; pointer-events:none; opacity:0; will-change:opacity;
+      background:repeating-conic-gradient(from 0deg at 50% 46%, rgba(255,255,255,.55) 0deg 0.9deg, transparent 0.9deg 9deg);
+      -webkit-mask-image:radial-gradient(circle at 50% 46%, transparent 0 34%, #000 62%);
+              mask-image:radial-gradient(circle at 50% 46%, transparent 0 34%, #000 62%);
+      mix-blend-mode:screen; }
+    /* floating score popups at the smash point */
+    #popups{ position:fixed; inset:0; z-index:12; pointer-events:none; overflow:hidden; }
+    .pop{ position:absolute; transform:translate(-50%,-50%); font-family:var(--f-num); font-weight:700;
+      font-size:34px; letter-spacing:1px; color:#fff; opacity:0; white-space:nowrap;
+      text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 4px 8px rgba(0,0,0,.6); }
+    .pop.go{ animation:popFloat .9s cubic-bezier(.2,.7,.3,1) forwards; }
+    .pop.gold{ color:var(--gold); } .pop.fire{ color:#ff8a3c; } .pop.eth{ color:#c08bff; } .pop.blue{ color:var(--elec-glow); }
+    .pop.big{ font-size:52px; }
+    @keyframes popFloat{ 0%{ opacity:0; transform:translate(-50%,-50%) scale(.5); }
+      12%{ opacity:1; transform:translate(-50%,-58%) scale(1.18); }
+      30%{ transform:translate(-50%,-66%) scale(1); }
+      100%{ opacity:0; transform:translate(-50%,-135%) scale(.92); } }
+    /* coin pill pulse on pickup */
+    @keyframes coinPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.22); } 100%{ transform:scale(1); } }
+    #coins.bump{ animation:coinPop .28s ease-out; }
+    /* NEW BEST confetti (game-over) */
+    .confetti{ position:absolute; top:-4%; width:9px; height:16px; z-index:0; opacity:.95; pointer-events:none;
+      animation:confFall 2.3s cubic-bezier(.3,.4,.6,1) forwards; }
+    @keyframes confFall{ 0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+      100%{ transform:translateY(112vh) rotate(720deg); opacity:.7; } }
+
   </style>
 </head>
 <body>
@@ -334,6 +368,8 @@
   <div id="flash"></div>
   <div id="impact-burst"></div>
   <div id="vignette"></div>
+  <div id="speedlines"></div>
+  <div id="popups"></div>
 
   <!-- HUD -->
   <div id="hud">
@@ -420,6 +456,7 @@
     <h1>YOU FELL</h1>
     <div id="gameover-stats"></div>
     <button id="retry-btn" class="btn">Fly Again</button>
+    <button id="share-btn" class="btn btn-sec">Share Score</button>
     <button id="menu-btn2" class="btn btn-sec">Main Menu</button>
   </div>
 
@@ -1004,6 +1041,10 @@
       g.momentum.addHit(tier.mom);
       g.adrenaline.addHit(tier);
       g.score.addHit(gained);
+      // floating "+points" popup, coloured by combo heat; a tiny rumble on capable phones
+      if(g.ui){ const cls=g.combo.onEthereal()?'eth':g.combo.onEpic()?'gold':g.combo.onFire()?'fire':'';
+        g.ui.scorePop('+'+gained.toLocaleString(), cls, tier.mom>=23); }
+      try{ if(navigator.vibrate) navigator.vibrate(tier.mom>=19?24:12); }catch(e){}
 
       // crash effects
       const hitPos=building.mesh.position.clone();
@@ -2122,6 +2163,52 @@
     unlock(){ try{ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume();
       const b=this.ctx.createBuffer(1,1,22050); const s=this.ctx.createBufferSource(); s.buffer=b;
       s.connect(this.ctx.destination); s.start(0); }catch(e){} }
+    // ===== MUSIC — a procedural driving loop (kick/hat/snare + bass arp, Am-F-C-G). It runs only
+    // during a run, obeys the master Sound toggle, and INTENSIFIES with the combo (setMusicIntensity).
+    startMusic(){ try{ this._ensure(); }catch(e){ return; } if(this._musTimer) return;
+      if(!this.musGain){ this.musGain=this.ctx.createGain(); this.musGain.gain.value=0.0001; this.musGain.connect(this.master); }
+      this.musGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.musGain.gain.setTargetAtTime(0.34,this.ctx.currentTime,0.6);
+      this._musStep=0; this._musNext=this.ctx.currentTime+0.06; this._musInt=this._musInt||0;
+      this._musTimer=setInterval(()=>this._schedMusic(),25); }
+    stopMusic(fade){ if(this.musGain) try{ this.musGain.gain.setTargetAtTime(0.0001,this.ctx.currentTime,fade||0.25); }catch(e){}
+      if(this._musTimer){ clearInterval(this._musTimer); this._musTimer=null; } }
+    setMusicIntensity(v){ this._musInt=Math.max(0,Math.min(1,v)); }
+    _mKick(t){ const o=this.ctx.createOscillator(),g=this.ctx.createGain(); o.type='sine';
+      o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(42,t+0.11);
+      g.gain.setValueAtTime(0.85,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.13);
+      o.connect(g); g.connect(this.musGain); o.start(t); o.stop(t+0.14); }
+    _mHat(t,g0){ const n=(this.ctx.sampleRate*0.03)|0, buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate), d=buf.getChannelData(0);
+      for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+      const s=this.ctx.createBufferSource(); s.buffer=buf;
+      const f=this.ctx.createBiquadFilter(); f.type='highpass'; f.frequency.value=6800;
+      const g=this.ctx.createGain(); g.gain.value=g0; s.connect(f); f.connect(g); g.connect(this.musGain); s.start(t); }
+    _mSnare(t){ const n=(this.ctx.sampleRate*0.09)|0, buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate), d=buf.getChannelData(0);
+      for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+      const s=this.ctx.createBufferSource(); s.buffer=buf;
+      const f=this.ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1900; f.Q.value=0.8;
+      const g=this.ctx.createGain(); g.gain.value=0.34; s.connect(f); f.connect(g); g.connect(this.musGain); s.start(t); }
+    _mBass(t,f0,cut){ const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();
+      o.type='sawtooth'; o.frequency.value=f0; f.type='lowpass'; f.frequency.value=cut; f.Q.value=5;
+      g.gain.setValueAtTime(0.30,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.20);
+      o.connect(f); f.connect(g); g.connect(this.musGain); o.start(t); o.stop(t+0.21); }
+    _mPluck(t,f0){ const o=this.ctx.createOscillator(),g=this.ctx.createGain(); o.type='triangle'; o.frequency.value=f0;
+      g.gain.setValueAtTime(0.16,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+      o.connect(g); g.connect(this.musGain); o.start(t); o.stop(t+0.17); }
+    _schedMusic(){ if(!this.ctx||this.ctx.state!=='running') return;
+      const BPM=138, s16=(60/BPM)/4, ROOTS=[55.0,43.65,65.41,49.0];           // Am F C G
+      const PENT=[220,261.6,293.7,329.6,392];                                  // A minor pentatonic taps
+      while(this._musNext < this.ctx.currentTime+0.12){
+        const t=this._musNext, i=this._musStep, st=i%16, bar=(i>>4)%4, k=this._musInt;
+        const root=ROOTS[bar];
+        if(st%4===0) this._mKick(t);                                           // four-on-the-floor drive
+        if(st%2===1) this._mHat(t, 0.05+0.11*k);                               // off-beat hats grow with combo
+        if(k>0.5 && st%4===2) this._mHat(t, 0.05);                             // extra 16ths when hot
+        if(k>0.3 && (st===4||st===12)) this._mSnare(t);                        // backbeat kicks in
+        if(st%2===0) this._mBass(t, (st%8===6)?root*2:root, 520+2400*k);       // 8th-note bass, opens up with combo
+        if(k>0.62 && st%8===3) this._mPluck(t, PENT[(i/8|0)%PENT.length]);     // sparkle line at high combo
+        this._musNext+=s16; this._musStep++;
+      } }
     _tone(f,d,type='sine',g=0.4){ if(!this.ctx) return; const o=this.ctx.createOscillator(),gn=this.ctx.createGain();
       o.type=type; o.frequency.value=f; gn.gain.setValueAtTime(g,this.ctx.currentTime);
       gn.gain.exponentialRampToValueAtTime(0.0001,this.ctx.currentTime+d); o.connect(gn); gn.connect(this.master);
@@ -2231,8 +2318,22 @@
         warn:document.getElementById('warning'), state:document.getElementById('state-tag'),
         speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette'),
         surge:document.getElementById('surge-tag'), boostBtn:document.getElementById('btn-boost'),
-        coins:document.getElementById('coins'), best:document.getElementById('score-best') };
+        coins:document.getElementById('coins'), best:document.getElementById('score-best'),
+        pops:document.getElementById('popups'), lines:document.getElementById('speedlines') };
       this._hide=0;
+      this._lastCoins=0; this._milestone=0;
+      // pooled floating score popups (DOM, recycled)
+      this._popPool=[]; for(let i=0;i<10;i++){ const d=document.createElement('div'); d.className='pop';
+        this.el.pops.appendChild(d); this._popPool.push(d); }
+      this._popIdx=0;
+    }
+    // floating "+points" at the smash; class picks the colour (combo heat)
+    scorePop(text,cls,big){
+      const d=this._popPool[this._popIdx++%this._popPool.length];
+      d.textContent=text; d.className='pop '+(cls||'')+(big?' big':'');
+      d.style.left=(50+(Math.random()*18-9))+'%'; d.style.top=(big?34:40+Math.random()*6)+'%';
+      void d.offsetWidth;               // restart the CSS animation on a recycled node
+      d.classList.add('go');
     }
     flashCombo(n){
       if(n>=2){
@@ -2275,6 +2376,25 @@
       else if(p.surgeCd>0){ this.el.surge.textContent='SURGE '+Math.ceil(p.surgeCd)+'s'; this.el.surge.style.color='rgba(255,255,255,.45)'; this.el.boostBtn.style.opacity='0.4'; }
       else { this.el.surge.textContent='SURGE @ x'+p.SURGE_COMBO+' COMBO'; this.el.surge.style.color='rgba(255,255,255,.5)'; this.el.boostBtn.style.opacity='0.4'; }
       if(this._hide && performance.now()>this._hide && g.combo.count<2){ this.el.combo.style.opacity='0'; this._hide=0; }
+
+      // ---- JUICE: coin pulse, distance milestones, speed lines, music intensity ----
+      if(g.score.coins!==this._lastCoins){
+        this._lastCoins=g.score.coins;
+        this.el.coins.classList.remove('bump'); void this.el.coins.offsetWidth; this.el.coins.classList.add('bump');
+      }
+      const running=g.run.state!=='READY'&&g.run.state!=='GameOver'&&g.run.state!=='Paused';
+      if(g.run.state==='READY'){ this._milestone=0; this._lastCoins=0; }
+      if(running){
+        const mk=Math.floor(g.score.distance/500);
+        if(mk>this._milestone){ this._milestone=mk; this.scorePop((mk*500).toLocaleString()+' m','blue',true);
+          try{ g.audio._tone(880,0.12,'triangle',0.25); g.audio._tone(1320,0.18,'triangle',0.2); }catch(e){} }
+      }
+      // speed lines fade in past ~60% speed, stronger on surge
+      const sf=clamp(g.player.speed()/120,0,1);
+      const lineA=running? clamp((sf-0.55)*1.6,0,0.34)+(p.surgeActive>0?0.18:0) : 0;
+      this.el.lines.style.opacity=lineA.toFixed(3);
+      // music follows the run's heat: combo + adrenaline + raw speed
+      g.audio.setMusicIntensity(clamp(g.combo.count/18,0,0.7) + g.adrenaline.factor()*0.2 + sf*0.15);
     }
   }
 
@@ -2285,7 +2405,7 @@
     constructor(game){ this.game=game; this.state='READY'; }
     startRun(){
       const g=this.game; this.resetAll(); g.momentum.start(); this.state='Running';
-      g.audio.resume();
+      g.audio.resume(); g.audio.startMusic();
       setTimeout(()=>g.audio.humanScream(), 90);   // the victim screams once as the villain grabs him
       document.getElementById('start-overlay').classList.add('hidden');
       document.getElementById('gameover-overlay').classList.add('hidden');
@@ -2302,7 +2422,7 @@
     coinBank(){ return +(localStorage.getItem('invrun_coins')||0); }
     toGameOver(){
       if(this.state==='GameOver') return; this.state='GameOver';
-      const g=this.game; g.audio.gameOver();
+      const g=this.game; g.audio.stopMusic(0.6); g.audio.gameOver();
       const score=Math.round(g.score.total);
       const prev=this.best(); const isBest=score>prev;
       if(isBest){ try{ localStorage.setItem('invrun_best',score); }catch(e){} }
@@ -2316,19 +2436,29 @@
         `Best <b>${best.toLocaleString()}</b><br>`+
         `Coins earned <b>🪙 ${g.score.coins}</b> · Total <b>🪙 ${bank.toLocaleString()}</b><br>`+
         `Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b> · <b>${Math.round(g.score.distance)} m</b>`;
-      document.getElementById('gameover-overlay').classList.remove('hidden');
+      // share payload for the Share Score button (viral hook)
+      this._shareText=`I scored ${score.toLocaleString()} smashing ${g.score.hits} buildings in INVINCIBLE RUN 💥 Beat that:`;
+      const ov=document.getElementById('gameover-overlay');
+      ov.classList.remove('hidden');
+      // NEW BEST -> gold confetti rain over the results
+      if(isBest){ const COLS=['#ffc63a','#ff8a1f','#37c6ff','#e8213c','#fff'];
+        for(let i=0;i<40;i++){ const c=document.createElement('div'); c.className='confetti';
+          c.style.left=(2+Math.random()*96)+'%'; c.style.background=COLS[i%COLS.length];
+          c.style.animationDelay=(Math.random()*0.7)+'s'; c.style.animationDuration=(1.8+Math.random()*1.2)+'s';
+          ov.appendChild(c); setTimeout(()=>c.remove(),3400); } }
     }
     refreshBestLine(){
       const el=document.getElementById('best-num'); if(el) el.textContent = this.best().toLocaleString();
       const cb=document.getElementById('coin-bank-num'); if(cb) cb.textContent = this.coinBank().toLocaleString();
     }
     togglePause(){
-      if(this.state==='Paused'){ this.state=this._prePause||'Running'; document.getElementById('pause-overlay').classList.add('hidden'); }
+      if(this.state==='Paused'){ this.state=this._prePause||'Running'; document.getElementById('pause-overlay').classList.add('hidden');
+        this.game.audio.startMusic(); }
       else if(this.state!=='READY'&&this.state!=='GameOver'){ this._prePause=this.state; this.state='Paused';
-        document.getElementById('pause-overlay').classList.remove('hidden'); }
+        document.getElementById('pause-overlay').classList.remove('hidden'); this.game.audio.stopMusic(0.15); }
     }
     toMenu(){
-      this.state='READY';
+      this.state='READY'; this.game.audio.stopMusic(0.3);
       document.getElementById('pause-overlay').classList.add('hidden');
       document.getElementById('gameover-overlay').classList.add('hidden');
       document.getElementById('start-overlay').classList.remove('hidden');
@@ -2500,6 +2630,21 @@
       document.getElementById('menu-btn').onclick=()=>this.run.toMenu();
       document.getElementById('menu-btn2').onclick=()=>this.run.toMenu();
 
+      // SHARE SCORE (viral hook): native share sheet where available, clipboard fallback
+      { const sb=document.getElementById('share-btn');
+        sb.onclick=async()=>{ const text=this.run._shareText||'INVINCIBLE RUN 💥', url=location.href.split('#')[0];
+          try{ if(navigator.share){ await navigator.share({title:'INVINCIBLE RUN',text,url}); return; } }catch(e){ return; }
+          try{ await navigator.clipboard.writeText(text+' '+url); sb.textContent='Copied!';
+            setTimeout(()=>{ sb.textContent='Share Score'; },1400); }catch(e){} }; }
+
+      // AUTO-PAUSE when the app/tab goes to the background mid-run (no more unfair deaths)
+      document.addEventListener('visibilitychange',()=>{ if(document.hidden){
+        const s=this.run.state; if(s!=='READY'&&s!=='GameOver'&&s!=='Paused') this.run.togglePause(); } });
+
+      // ADAPTIVE QUALITY: if the frame rate sags for a while, step the render resolution down
+      // (2 -> 1.6 -> 1.3 -> 1). Downward-only, so it never oscillates.
+      this._perfAcc=0; this._perfN=0; this._prSteps=[Math.min(2,devicePixelRatio),1.6,1.3,1]; this._prIdx=0;
+
       // ----- classic menu: settings / skins / maps sheets -----
       const openM=(id)=>document.getElementById(id).classList.remove('hidden');
       const closeAll=()=>document.querySelectorAll('.modal').forEach(m=>m.classList.add('hidden'));
@@ -2576,6 +2721,13 @@
       requestAnimationFrame(this._loop);
       const realDt=Math.min(0.05,this._clock.getDelta());
       if(this.input.consumeRestart()) this.run.startRun();
+
+      // adaptive quality: average the real frame time over ~2s windows; sagging -> drop resolution a step
+      this._perfAcc+=realDt; this._perfN++;
+      if(this._perfN>=120){ const avg=this._perfAcc/this._perfN; this._perfAcc=0; this._perfN=0;
+        if(avg>0.037 && this._prIdx<this._prSteps.length-1){
+          this._prIdx++; this.renderer.setPixelRatio(this._prSteps[this._prIdx]);
+          this.renderer.setSize(innerWidth,innerHeight); } }
 
       const running=this.run.state!=='READY'&&this.run.state!=='GameOver'&&this.run.state!=='Paused';
       const dt=this.time.update(realDt);
