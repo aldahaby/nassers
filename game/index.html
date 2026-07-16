@@ -6,11 +6,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>INVINCIBLE RUN — Omni Flight</title>
+  <title>CITYBREAKER</title>
   <meta name="theme-color" content="#05070e" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230c1426'/%3E%3Cpath d='M32 6 38 26 58 26 42 38 48 58 32 46 16 58 22 38 6 26 26 26Z' fill='%23ff8a1f'/%3E%3C/svg%3E" />
   <meta name="description" content="Fly an overpowered supervillain through the city — smash towers, chain combos, outrun the drones. How far can you go?" />
-  <meta property="og:title" content="INVINCIBLE RUN" />
+  <meta property="og:title" content="CITYBREAKER" />
   <meta property="og:description" content="Fly an overpowered supervillain through the city — smash towers, chain combos, outrun the drones. How far can you go?" />
   <meta property="og:type" content="website" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     /* =====================================================================
-       INVINCIBLE RUN — UI SYSTEM  "ARMORED PLATE"
+       CITYBREAKER — UI SYSTEM  "ARMORED PLATE"
        A single art-directed identity: dark navy + gunmetal, electric-blue,
        molten-orange, crimson & gold. Chamfered armor panels, beveled keys,
        Anton / Teko display type. Every screen shares these primitives.
@@ -394,7 +394,7 @@
   <div id="start-overlay" class="overlay menu">
     <div id="coin-bank">🪙 <span id="coin-bank-num">0</span></div>
     <div class="brand">
-      <div class="logo">INVINCIBLE<span>RUN</span></div>
+      <div class="logo">CITY<span>BREAKER</span></div>
       <div class="tagline">SMASH THROUGH NEW YORK</div>
     </div>
     <div class="best-card">
@@ -471,7 +471,7 @@
     <div class="load-haz top"></div>
     <div class="load-haz bot"></div>
     <div class="l-emblem">💥</div>
-    <div class="l-logo">INVINCIBLE<span>RUN</span></div>
+    <div class="l-logo">CITY<span>BREAKER</span></div>
     <div id="load-track"><div id="load-bar-fill"></div></div>
     <div id="load-status">FORGING <b>DESTRUCTION</b> · <span id="load-pct">0</span>%</div>
   </div>
@@ -509,7 +509,7 @@
   import { GLTFLoader } from './vendor/GLTFLoader.js';
 
   /* =====================================================================================
-   *  INVINCIBLE RUN — Omni Flight
+   *  CITYBREAKER — Omni Flight
    *
    *  You play a flying, invincible villain (Omni-Man style) who smashes through the city
    *  out in front and smashes him THROUGH buildings. Catch buildings to refuel momentum;
@@ -2419,7 +2419,7 @@
         `Coins earned <b>🪙 ${g.score.coins}</b> · Total <b>🪙 ${bank.toLocaleString()}</b><br>`+
         `Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b> · <b>${Math.round(g.score.distance)} m</b>`;
       // share payload for the Share Score button (viral hook)
-      this._shareText=`I scored ${score.toLocaleString()} smashing ${g.score.hits} buildings in INVINCIBLE RUN 💥 Beat that:`;
+      this._shareText=`I scored ${score.toLocaleString()} smashing ${g.score.hits} buildings in CITYBREAKER 💥 Beat that:`;
       const ov=document.getElementById('gameover-overlay');
       ov.classList.remove('hidden');
       // NEW BEST -> gold confetti rain over the results
@@ -2636,8 +2636,8 @@
 
       // SHARE SCORE (viral hook): native share sheet where available, clipboard fallback
       { const sb=document.getElementById('share-btn');
-        sb.onclick=async()=>{ const text=this.run._shareText||'INVINCIBLE RUN 💥', url=location.href.split('#')[0];
-          try{ if(navigator.share){ await navigator.share({title:'INVINCIBLE RUN',text,url}); return; } }catch(e){ return; }
+        sb.onclick=async()=>{ const text=this.run._shareText||'CITYBREAKER 💥', url=location.href.split('#')[0];
+          try{ if(navigator.share){ await navigator.share({title:'CITYBREAKER',text,url}); return; } }catch(e){ return; }
           try{ await navigator.clipboard.writeText(text+' '+url); sb.textContent='Copied!';
             setTimeout(()=>{ sb.textContent='Share Score'; },1400); }catch(e){} }; }
 
