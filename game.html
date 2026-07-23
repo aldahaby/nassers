@@ -1286,6 +1286,12 @@
         const model=gltf.scene;
         const box=new THREE.Box3().setFromObject(model), size=new THREE.Vector3(), ctr=new THREE.Vector3();
         box.getSize(size); box.getCenter(ctr);
+        // RIGGED models: geometry lives in bind space, so Box3 lies — measure by the skeleton span instead
+        { model.updateWorldMatrix(true,true); let hasBones=false;
+          const bmin=new THREE.Vector3(1e9,1e9,1e9), bmax=new THREE.Vector3(-1e9,-1e9,-1e9), bv=new THREE.Vector3();
+          model.traverse(o=>{ if(o.isBone){ hasBones=true; o.getWorldPosition(bv); bmin.min(bv); bmax.max(bv); } });
+          if(hasBones){ size.subVectors(bmax,bmin).multiplyScalar(1.18);        // pad: bones sit inside the flesh
+            ctr.addVectors(bmin,bmax).multiplyScalar(0.5); } }
         model.position.sub(ctr);                                  // centre the model on the origin
         this.glowMats=this._baseGlow.slice();                     // reset fire-glow list (drop any prior model's mats)
         // WIND (cape/legs) — only for characters whose GLB matches this displacement convention.
@@ -1300,6 +1306,8 @@
               // amount grows smoothly toward the feet. NO wave along the limb length -> no spaghetti.
               ' float lm=smoothstep(-0.10,-0.92,position.y);\n float side=sign(position.x);\n transformed.z+=sin(uWind*0.7+side*1.05)*0.05*lm;\n transformed.x+=sin(uWind*0.5)*0.02*lm;'); };
           mat.needsUpdate=true; } } } });
+        if(cfg.pose){ model.traverse(o=>{ if(o.isBone && cfg.pose[o.name]){ const e=cfg.pose[o.name];
+          o.rotation.x+=e[0]; o.rotation.y+=e[1]; o.rotation.z+=e[2]; } }); }   // pose the rig (fist-first flight)
         const holder=new THREE.Group(); holder.add(model);
         this._mRotX=cfg.rotX; this._mBaseY=cfg.baseY;                  // per-character flight pose + height
         holder.rotation.set(this._mRotX,0,0);
@@ -1379,8 +1387,9 @@
           cp[i*6+0]=base[i*6+0]-this.bank*0.5*t; cp[i*6+3]=base[i*6+3]-this.bank*0.5*t; }
         this.capeGeo.attributes.position.needsUpdate=true; }
 
-      // SMASH CONTACT — the villain's own leading edge, driven forward through the trains/buildings.
-      this._smWorld.set(this.pos.x, this.pos.y-0.85, this.pos.z+2.0);
+      // SMASH CONTACT — the villain's own leading edge (per character: fist-first flyers reach farther).
+      const smc=(this._char&&this._char.smash)||{y:-0.85,z:2.0};
+      this._smWorld.set(this.pos.x, this.pos.y+smc.y, this.pos.z+smc.z);
       const curSmashZ=this._smWorld.z;
       this._smashPrevZ=(this._lastSmashZ!==undefined)?this._lastSmashZ:curSmashZ;
       this._lastSmashZ=curSmashZ;
@@ -2557,7 +2566,13 @@
   // ===================================================================================
   const CHARACTERS = {
     dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:true },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false }
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
+                // RIGGED: additive bone rotations that pose him fist-first like Omni-Man
+                pose:{ RightArm:[-0.05,0,-2.95], RightForeArm:[0,0,-0.08], RightHand:[0,0,-0.1],
+                       LeftArm:[0.12,0,0.38], LeftForeArm:[0.35,0,0.12],
+                       Spine02:[0.12,0,0], Head:[0.3,0,0],
+                       LeftUpLeg:[0,0,0.14], RightUpLeg:[0,0,-0.14] },
+                smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
 
