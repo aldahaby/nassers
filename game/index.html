@@ -346,6 +346,9 @@
     #surge-tag .svgi{ width:0.85em; height:0.85em; margin-right:4px; }
     .opt .si{ width:19px; height:19px; margin-right:9px; color:var(--elec); vertical-align:-0.22em; }
     .card .big{ font-size:0; height:36px; display:flex; align-items:center; }
+    .card .previmg{ width:62px; height:62px; object-fit:contain; margin-bottom:2px;
+      filter:drop-shadow(0 4px 6px rgba(0,0,0,.55)); pointer-events:none; }
+    .card.sel .previmg{ filter:drop-shadow(0 0 10px rgba(255,198,58,.5)) drop-shadow(0 4px 6px rgba(0,0,0,.55)); }
     .card .big .svgi{ width:34px; height:34px; color:var(--elec); filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
     .card.sel .big .svgi{ color:var(--gold); }
     .card.lock .big .svgi{ color:#586079; }
@@ -514,8 +517,8 @@
       <div class="sheet-head"><span>Villains</span><button class="x" data-close>×</button></div>
       <div class="sheet-note">Choose your villain — tap to switch who you fly.</div>
       <div class="grid">
-        <div class="card char sel" data-char="dominus"><span class="big"><svg class="svgi"><use href="#i-helm"/></svg></span>Dominus<small>Selected</small></div>
-        <div class="card char" data-char="frutiger"><span class="big"><svg class="svgi"><use href="#i-bubbles"/></svg></span>Frutiger<small>Tap to play</small></div>
+        <div class="card char sel" data-char="dominus"><img class="previmg" src="./assets/prev_dominus.png" alt="">Dominus<small>Selected</small></div>
+        <div class="card char" data-char="frutiger"><img class="previmg" src="./assets/prev_frutiger.png" alt="">Frutiger<small>Tap to play</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Warden<small>1500 c</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Phantom<small>2500 c</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Onyx<small>4000 c</small></div>
