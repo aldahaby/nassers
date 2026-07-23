@@ -1370,8 +1370,9 @@
       this.vel.z=this.fwdNow;
       this.pos.x+=this.vel.x*dt;
       this.pos.z+=this.vel.z*dt;
-      { const rc=this.game.city? this.game.city._pathX(this.pos.z) : 0;      // road centre at our z
-        const lim=(this.game.city?this.game.city.roadHalf:22)+4;               // corridor: road + a step onto the kerb
+      { const city=this.game.city, st=this.game.theme&&this.game.theme.station;
+        const rc=city? city._pathX(this.pos.z) : 0;                            // road centre at our z
+        const lim= st ? 17 : ((city?city.roadHalf:22)+4);                      // METRO: tight central lane inside the tunnel; else road+kerb
         this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
@@ -1653,15 +1654,20 @@
         grp.visible=false; g.scene.add(grp);
         this.pillars.push({grp,col,cap, side:i%2?1:-1, z:(i>>1)*20});
       }
-      // ENCLOSING TUNNEL WALLS + a solid dark vault ceiling so the station reads as UNDERGROUND (not outdoors)
-      this.walls=[]; const wallTex=this._tunnelWallTex();
-      for(const side of [-1,1]){
-        const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),
-          new THREE.MeshStandardMaterial({map:wallTex,roughness:.9,metalness:.08,side:THREE.DoubleSide}));
-        m.visible=false; m.frustumCulled=false; g.scene.add(m); this.walls.push({mesh:m,side});
+      // ENCLOSING TUNNEL as recycled SEGMENTS (walls + roof) that hug the CURVED road at each z, so the
+      // tunnel is world-static (rushes past you) and the corridor stays wrapped around the track on curves.
+      this.tunSeg=[]; const wallTex=this._tunnelWallTex();
+      const SEG=this.CEIL_GAP;                                   // one wall/roof panel per rib spacing
+      for(let i=0;i<this.CEIL_N;i++){
+        const mkWall=(side)=>{ const wt=wallTex.clone(); wt.wrapS=wt.wrapT=THREE.RepeatWrapping;
+          const m=new THREE.Mesh(new THREE.PlaneGeometry(SEG+0.5,1),
+            new THREE.MeshStandardMaterial({map:wt,roughness:.9,metalness:.08,side:THREE.DoubleSide}));
+          m.rotation.y=side>0?-Math.PI/2:Math.PI/2; m.visible=false; m.frustumCulled=false; g.scene.add(m); return m; };
+        const roof=new THREE.Mesh(new THREE.PlaneGeometry(1,SEG+0.5),
+          new THREE.MeshStandardMaterial({color:0x0a1512,roughness:1,side:THREE.DoubleSide}));
+        roof.rotation.x=Math.PI/2; roof.visible=false; roof.frustumCulled=false; g.scene.add(roof);
+        this.tunSeg.push({L:mkWall(-1), R:mkWall(1), roof, z:i*SEG});
       }
-      this.vault=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshStandardMaterial({color:0x0a1512,roughness:1,side:THREE.DoubleSide}));
-      this.vault.rotation.x=Math.PI/2; this.vault.visible=false; this.vault.frustumCulled=false; g.scene.add(this.vault);
     }
     // dark tiled subway WALL texture with a green service stripe
     _tunnelWallTex(){
@@ -1709,11 +1715,10 @@
       const metro=!!t.ceiling;                                   // underground -> hide the far skyline, show the tunnel
       for(const s of this.skyline){ s.mesh.visible=!metro; s.mesh.material.color.setHSL(t.building.tower[0], t.building.tower[1]*0.6, (t.building.tower[2]*0.7)*(night?0.4:1)); }
       if(this.ceilRibs) for(const r of this.ceilRibs) r.mesh.visible=metro;
-      if(this.ceilPanel) this.ceilPanel.visible=metro;
+      if(this.ceilPanel) this.ceilPanel.visible=false;                    // replaced by the segmented tunnel roof
       if(this.trains) for(const tr of this.trains) tr.mesh.visible=!!t.trains;
       if(this.pillars) for(const c of this.pillars) c.grp.visible=metro;
-      if(this.walls) for(const w of this.walls) w.mesh.visible=metro;
-      if(this.vault) this.vault.visible=metro;
+      if(this.tunSeg) for(const s of this.tunSeg){ s.L.visible=s.R.visible=s.roof.visible=metro; }
       for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);
       // street lamps: on only at night, coloured per map
       const lampCol=night? n.lamp : 0xffb14a;
@@ -1918,7 +1923,9 @@
       // with skill). NORMALLY towers land near the FAR edge of reach (big swings -> combos are hard
       // & earned). But every so often — pure LUCK, different every run — a LUCKY RUN of aligned
       // towers appears (tiny swings -> an easy combo stretch to unlock surge).
-      const lane=lerp(11,18,clamp(D.level/6,0,1));   // hittable towers stay ON THE ROAD, clear of the decor
+      const st=this.game.theme&&this.game.theme.station;
+      const lane= st ? lerp(9,15,clamp(D.level/6,0,1))    // METRO: targets stay in the central lane the player can reach (±17)
+                     : lerp(11,18,clamp(D.level/6,0,1));  // hittable towers stay ON THE ROAD, clear of the decor
       const spd=Math.max(45,this.game.player.fwdNow||45);
       const strafe=28+spd*0.72;
       // "reach" = the demanding distance you must strafe before this tower arrives. Towers land near
@@ -2027,24 +2034,25 @@
           if(r.z < pz-this.CEIL_GAP) r.z+=span;
           r.mesh.position.set(this._pathX(r.z), cy-1.5, r.z); // anchored to the ROAD (world-still), not the player
         }
-        if(this.ceilPanel) this.ceilPanel.position.set(this._pathX(pz+80), cy+13, pz+80);
         // support PILLARS at the platform edges, floor -> ceiling
         if(this.pillars){ const H=cy+7, pspan=Math.ceil(this.pillars.length/2)*20;
           for(const c of this.pillars){ if(c.z<pz-20) c.z+=pspan;
             c.grp.position.set(this._pathX(c.z)+c.side*(this.roadHalf+2.5), 0, c.z);
             c.col.scale.set(1,H,1); c.col.position.y=H/2; c.cap.position.y=H; } }
-        // enclosing WALLS (follow the player) + solid vault ceiling -> reads as underground, not outdoors
-        if(this.walls){ const WH=cy+16, WX=this.roadHalf+8;
-          for(const w of this.walls){ w.mesh.position.set(this._pathX(pz+140)+w.side*WX, WH/2, pz+140);
-            w.mesh.rotation.y=w.side>0?-Math.PI/2:Math.PI/2; w.mesh.scale.set(440,WH,1);
-            w.mesh.material.map.repeat.set(440/7, WH/7); } }
-        if(this.vault){ this.vault.position.set(this._pathX(pz+140), cy+16, pz+140); this.vault.scale.set(2*(this.roadHalf+8),440,1); }
+        // SEGMENTED tunnel: each panel hugs the curved road at its own z -> world-static, wraps the corridor
+        if(this.tunSeg){ const WH=cy+18, roofY=cy+15.5, WX=28, rp=(this.CEIL_GAP+0.5)/7;
+          for(const s of this.tunSeg){ if(s.z < pz-this.CEIL_GAP) s.z+=span;   // recycle behind -> ahead
+            const cx=this._pathX(s.z);
+            s.L.position.set(cx-WX, WH/2, s.z); s.L.scale.set(1,WH,1); s.L.material.map.repeat.set(rp, WH/7);
+            s.R.position.set(cx+WX, WH/2, s.z); s.R.scale.set(1,WH,1); s.R.material.map.repeat.set(rp, WH/7);
+            s.roof.position.set(cx, roofY, s.z); s.roof.scale.set(2*WX,1,1); }
+        }
       }
-      if(this.trains && this.trains[0].mesh.visible){   // ambient trains rushing along the far side tracks
+      if(this.trains && this.trains[0].mesh.visible){   // ambient trains on the SIDE tracks (outside the play lane, inside the walls)
         for(const tr of this.trains){
           tr.z -= (p.speed()+tr.spd)*0.016;                   // world recedes + train drives at you = fast incoming
           if(tr.z < pz-40){ tr.z=pz+rand(120,300); tr.side=Math.random()<0.5?-1:1; tr.spd=rand(30,55); }
-          tr.mesh.position.set(this._pathX(tr.z)+tr.side*22, 2.6, tr.z);
+          tr.mesh.position.set(this._pathX(tr.z)+tr.side*23, 1.8, tr.z);   // ±23: beyond the ±17 play lane, inside the ±28 walls
         }
       }
       if(this.lamps && this.lamps[0].grp.visible){   // NIGHT street lamps line the sidewalks
@@ -2084,6 +2092,7 @@
       if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
       if(this.bubbles) this.bubbles.forEach(bb=>bb.z=0);
       if(this.ceilRibs) this.ceilRibs.forEach((r,i)=>r.z=pz+i*this.CEIL_GAP);
+      if(this.tunSeg) this.tunSeg.forEach((s,i)=>{ s.z=pz-this.CEIL_GAP+i*this.CEIL_GAP; });   // wrap the tunnel around the player from behind
       if(this.trains) this.trains.forEach((tr,i)=>{ tr.z=pz+i*70+40; });
       if(this.pillars) this.pillars.forEach((c,i)=>{ c.z=pz+(i>>1)*20; }); }
   }
@@ -2588,7 +2597,7 @@
                 // RIGGED: additive bone rotations that pose him fist-first like Omni-Man
                 pose:{ RightArm:[-0.85,-0.28,-2.65], RightForeArm:[0,0,-0.08], RightHand:[0,0,-0.1],
                        LeftArm:[-0.85,0.28,2.65], LeftForeArm:[0,0,0.08], LeftHand:[0,0,0.1],
-                       LeftShoulder:[0,0.15,0], RightShoulder:[0,-0.15,0],
+                       LeftShoulder:[1.1,0.2,0], RightShoulder:[1.1,-0.2,0],
                        Spine02:[0.12,0,0], Head:[0.3,0,0],
                        LeftUpLeg:[0,0,0.14], RightUpLeg:[0,0,-0.14] },
                 smash:{y:-0.05,z:3.0} }
