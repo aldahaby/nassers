@@ -1370,7 +1370,9 @@
       this.vel.z=this.fwdNow;
       this.pos.x+=this.vel.x*dt;
       this.pos.z+=this.vel.z*dt;
-      this.pos.x=clamp(this.pos.x,-44,44);
+      { const rc=this.game.city? this.game.city._pathX(this.pos.z) : 0;      // road centre at our z
+        const lim=(this.game.city?this.game.city.roadHalf:22)+4;               // corridor: road + a step onto the kerb
+        this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
       this.bank =damp(this.bank, sx*0.7,8,dt);     // leans into turns (visual weight)
@@ -2584,9 +2586,9 @@
     dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:true },
     frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
                 // RIGGED: additive bone rotations that pose him fist-first like Omni-Man
-                pose:{ RightArm:[-0.8,-0.25,-2.7], RightForeArm:[0,0,-0.08], RightHand:[0,0,-0.1],
-                       LeftArm:[0.12,0,0.38], LeftForeArm:[0.35,0,0.12],
-                       LeftShoulder:[0,0.5,0], RightShoulder:[0,-0.5,0],
+                pose:{ RightArm:[-0.85,-0.28,-2.65], RightForeArm:[0,0,-0.08], RightHand:[0,0,-0.1],
+                       LeftArm:[-0.85,0.28,2.65], LeftForeArm:[0,0,0.08], LeftHand:[0,0,0.1],
+                       LeftShoulder:[0,0.15,0], RightShoulder:[0,-0.15,0],
                        Spine02:[0.12,0,0], Head:[0.3,0,0],
                        LeftUpLeg:[0,0,0.14], RightUpLeg:[0,0,-0.14] },
                 smash:{y:-0.05,z:3.0} }
