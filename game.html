@@ -1941,7 +1941,7 @@
       // & earned). But every so often — pure LUCK, different every run — a LUCKY RUN of aligned
       // towers appears (tiny swings -> an easy combo stretch to unlock surge).
       const st=this.game.theme&&this.game.theme.station;
-      const lane= st ? lerp(9,15,clamp(D.level/6,0,1))    // METRO: targets stay in the central lane the player can reach (±17)
+      const lane= st ? lerp(5,9,clamp(D.level/6,0,1))     // METRO: tight central lane -> incoming trains are always easy to line up
                      : lerp(11,18,clamp(D.level/6,0,1));  // hittable towers stay ON THE ROAD, clear of the decor
       const spd=Math.max(45,this.game.player.fwdNow||45);
       const strafe=28+spd*0.72;
@@ -1961,7 +1961,7 @@
       const station=!!this.game.theme.station;               // metro -> smash BIG TRAINS, no background buildings
       const b=this._take(); if(!b) return;
       // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
-      if(station){ this._place(b, px+this.lastTowerX, z, rand(9,12), rand(9.5,12.5), rand(13,19), false); b.mesh.castShadow=true; b.incoming=true; }
+      if(station){ this._place(b, px+this.lastTowerX, z, rand(8,10), rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
       else if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
       else this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
       // METRO is a clean underground STATION — no background buildings, just the incoming trains.
@@ -2049,7 +2049,7 @@
         const span=this.CEIL_N*this.CEIL_GAP, cy=(p.cruiseY||16);
         for(const r of this.ceilRibs){
           if(r.z < pz-this.CEIL_GAP) r.z+=span;
-          r.mesh.position.set(this._pathX(r.z), cy-1.5, r.z); // anchored to the ROAD (world-still), not the player
+          r.mesh.position.set(this._pathX(r.z), cy+0.5, r.z); // anchored to the ROAD; raised so arches clear the trains
         }
         // support PILLARS at the platform edges, floor -> ceiling
         if(this.pillars){ const H=cy+7, pspan=Math.ceil(this.pillars.length/2)*20;
@@ -2620,9 +2620,11 @@
     frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
                 // RIGGED: additive bone rotations that pose him fist-first like Omni-Man
                 // both fists PUNCH forward toward the target (reference: two-fisted dive), wings swept back
-                pose:{ RightArm:[-0.25,-0.25,-3.0], RightForeArm:[0,0,-0.05], RightHand:[0,0,-0.05],
-                       LeftArm:[-0.25,0.25,3.0], LeftForeArm:[0,0,0.05], LeftHand:[0,0,0.05],
-                       LeftShoulder:[1.1,0.2,0], RightShoulder:[1.1,-0.2,0],
+                // Tuned against the REAL gameplay camera: both arms punch forward past the head (visible
+                // from behind), wings sweep back off the shoulders. See scratchpad/pose_ingame.js.
+                pose:{ RightArm:[1.2,-1.0,-2.4], RightForeArm:[0,0,-0.05], RightHand:[0,0,-0.05],
+                       LeftArm:[1.2,1.0,2.4], LeftForeArm:[0,0,0.05], LeftHand:[0,0,0.05],
+                       LeftShoulder:[-1.0,0.6,0], RightShoulder:[-1.0,-0.6,0],
                        Spine02:[0.12,0,0], Head:[0.35,0,0],
                        LeftUpLeg:[0,0,0.14], RightUpLeg:[0,0,-0.14] },
                 smash:{y:-0.05,z:3.0} }
