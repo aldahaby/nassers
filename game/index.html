@@ -429,6 +429,23 @@
       animation:confFall 2.3s cubic-bezier(.3,.4,.6,1) forwards; }
     @keyframes confFall{ 0%{ transform:translateY(0) rotate(0deg); opacity:1; }
       100%{ transform:translateY(112vh) rotate(720deg); opacity:.7; } }
+    /* clean overlay / sheet entrance transitions */
+    #gameover-overlay:not(.hidden), #pause-overlay:not(.hidden){ animation:ovIn .32s cubic-bezier(.2,.8,.3,1) both; }
+    @keyframes ovIn{ from{ opacity:0; } to{ opacity:1; } }
+    #gameover-overlay:not(.hidden) h1, #pause-overlay:not(.hidden) h1{ animation:hPop .42s cubic-bezier(.2,1.5,.35,1) both; }
+    @keyframes hPop{ 0%{ opacity:0; transform:scale(.7); } 100%{ opacity:1; transform:scale(1); } }
+    #gameover-overlay:not(.hidden) #gameover-stats{ animation:statIn .4s .08s cubic-bezier(.2,1.3,.4,1) both; }
+    @keyframes statIn{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+    #gameover-overlay:not(.hidden) .btn, #pause-overlay:not(.hidden) .btn{ animation:btnIn .34s cubic-bezier(.2,1,.4,1) both; }
+    #gameover-overlay:not(.hidden) .btn:nth-of-type(1){ animation-delay:.14s; }
+    #gameover-overlay:not(.hidden) .btn:nth-of-type(2){ animation-delay:.20s; }
+    #gameover-overlay:not(.hidden) .btn:nth-of-type(3){ animation-delay:.26s; }
+    @keyframes btnIn{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
+    .modal:not(.hidden){ animation:ovIn .2s ease both; }
+    .modal:not(.hidden) .sheet{ animation:sheetIn .3s cubic-bezier(.2,1.25,.4,1) both; }
+    @keyframes sheetIn{ from{ opacity:0; transform:translateY(20px) scale(.97); } to{ opacity:1; transform:none; } }
+    /* card/chip press feel */
+    .card,.chip,.toggle,.x,.btn,.btn-play,.previmg{ transition:transform .06s ease, filter .1s ease; }
 
   </style>
 </head>
@@ -2052,7 +2069,7 @@
         for(const tr of this.trains){
           tr.z -= (p.speed()+tr.spd)*0.016;                   // world recedes + train drives at you = fast incoming
           if(tr.z < pz-40){ tr.z=pz+rand(120,300); tr.side=Math.random()<0.5?-1:1; tr.spd=rand(30,55); }
-          tr.mesh.position.set(this._pathX(tr.z)+tr.side*23, 1.8, tr.z);   // ±23: beyond the ±17 play lane, inside the ±28 walls
+          tr.mesh.position.set(this._pathX(tr.z)+tr.side*25.5, 1.8, tr.z);   // far side-track against the wall — clear of the ±17 ceiling rings
         }
       }
       if(this.lamps && this.lamps[0].grp.visible){   // NIGHT street lamps line the sidewalks
@@ -2540,12 +2557,19 @@
       // BANK the coins collected this run -> the persistent currency for skins later
       const bank=this.coinBank()+g.score.coins;
       try{ localStorage.setItem('invrun_coins',bank); }catch(e){}
+      const combBest=g.combo.best||0, dist=Math.round(g.score.distance||0);
       document.getElementById('gameover-stats').innerHTML=
         (isBest?`<div style="color:var(--gold);font-weight:800;font-size:22px;margin-bottom:4px">★ NEW BEST! ★</div>`:'')+
-        `Score <b>${score.toLocaleString()}</b><br>`+
+        `Score <b id="go-score">0</b><br>`+
         `Best <b>${best.toLocaleString()}</b><br>`+
         `Coins earned <b><svg class="svgi"><use href="#i-coin"/></svg> ${g.score.coins}</b> · Total <b><svg class="svgi"><use href="#i-coin"/></svg> ${bank.toLocaleString()}</b><br>`+
-        `Best combo <b>x${g.combo.best}</b> · Buildings <b>${g.score.hits}</b> · <b>${Math.round(g.score.distance)} m</b>`;
+        `Best combo <b>x${combBest}</b> · Buildings <b>${g.score.hits}</b> · <b>${dist} m</b>`;
+      // count the final score UP so it's unmistakably shown (fixes score-not-appearing + adds polish)
+      { const el=document.getElementById('go-score'); const t0=performance.now(), dur=680;
+        const step=(now)=>{ const k=Math.max(0,Math.min(1,(now-t0)/dur)); const e=k*(2-k);   // ease-out
+          if(el) el.textContent=Math.round(score*e).toLocaleString();
+          if(k<1) requestAnimationFrame(step); else if(el) el.textContent=score.toLocaleString(); };
+        requestAnimationFrame(step); }
       // share payload for the Share Score button (viral hook)
       this._shareText=`I scored ${score.toLocaleString()} smashing ${g.score.hits} buildings in CITYBREAKER 💥 Beat that:`;
       const ov=document.getElementById('gameover-overlay');
@@ -2595,10 +2619,11 @@
     dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:true },
     frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
                 // RIGGED: additive bone rotations that pose him fist-first like Omni-Man
-                pose:{ RightArm:[-0.85,-0.28,-2.65], RightForeArm:[0,0,-0.08], RightHand:[0,0,-0.1],
-                       LeftArm:[-0.85,0.28,2.65], LeftForeArm:[0,0,0.08], LeftHand:[0,0,0.1],
+                // both fists PUNCH forward toward the target (reference: two-fisted dive), wings swept back
+                pose:{ RightArm:[-0.25,-0.25,-3.0], RightForeArm:[0,0,-0.05], RightHand:[0,0,-0.05],
+                       LeftArm:[-0.25,0.25,3.0], LeftForeArm:[0,0,0.05], LeftHand:[0,0,0.05],
                        LeftShoulder:[1.1,0.2,0], RightShoulder:[1.1,-0.2,0],
-                       Spine02:[0.12,0,0], Head:[0.3,0,0],
+                       Spine02:[0.12,0,0], Head:[0.35,0,0],
                        LeftUpLeg:[0,0,0.14], RightUpLeg:[0,0,-0.14] },
                 smash:{y:-0.05,z:3.0} }
   };
