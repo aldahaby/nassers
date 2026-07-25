@@ -1839,7 +1839,7 @@
     }
     _buildRoad(){
       this.roadN=170; this.roadHalf=22; this.roadAhead=760; this.roadBack=60;   // WIDE road; extends past the fog
-      const sw=8;                                                               // sidewalk width
+      const sw=14;                                                              // sidewalk/platform width (wider metro platforms)
       this.ribbons=[
         this._ribbon(-this.roadHalf, this.roadHalf, 0.06, this._roadTexture(), 1/26),        // asphalt
         this._ribbon(-this.roadHalf-sw, -this.roadHalf, 0.16, this._sidewalkTexture(), 1/10), // left pavement (raised)
@@ -1941,7 +1941,7 @@
       // & earned). But every so often — pure LUCK, different every run — a LUCKY RUN of aligned
       // towers appears (tiny swings -> an easy combo stretch to unlock surge).
       const st=this.game.theme&&this.game.theme.station;
-      const lane= st ? lerp(5,9,clamp(D.level/6,0,1))     // METRO: tight central lane -> incoming trains are always easy to line up
+      const lane= st ? lerp(3,6,clamp(D.level/6,0,1))     // METRO: trains sit near the centre of the track -> easy to catch
                      : lerp(11,18,clamp(D.level/6,0,1));  // hittable towers stay ON THE ROAD, clear of the decor
       const spd=Math.max(45,this.game.player.fwdNow||45);
       const strafe=28+spd*0.72;
@@ -2049,7 +2049,7 @@
         const span=this.CEIL_N*this.CEIL_GAP, cy=(p.cruiseY||16);
         for(const r of this.ceilRibs){
           if(r.z < pz-this.CEIL_GAP) r.z+=span;
-          r.mesh.position.set(this._pathX(r.z), cy+0.5, r.z); // anchored to the ROAD; raised so arches clear the trains
+          r.mesh.position.set(this._pathX(r.z), cy+2.5, r.z); // anchored to the ROAD; raised clear of the trains
         }
         // support PILLARS at the platform edges, floor -> ceiling
         if(this.pillars){ const H=cy+7, pspan=Math.ceil(this.pillars.length/2)*20;
@@ -2622,9 +2622,9 @@
                 // both fists PUNCH forward toward the target (reference: two-fisted dive), wings swept back
                 // Tuned against the REAL gameplay camera: both arms punch forward past the head (visible
                 // from behind), wings sweep back off the shoulders. See scratchpad/pose_ingame.js.
-                pose:{ RightArm:[1.2,-1.0,-2.4], RightForeArm:[0,0,-0.05], RightHand:[0,0,-0.05],
-                       LeftArm:[1.2,1.0,2.4], LeftForeArm:[0,0,0.05], LeftHand:[0,0,0.05],
-                       LeftShoulder:[-1.0,0.6,0], RightShoulder:[-1.0,-0.6,0],
+                pose:{ RightArm:[1.15,-0.85,-2.45], RightForeArm:[0,0,-0.05], RightHand:[0,0,-0.05],
+                       LeftArm:[1.15,0.85,2.45], LeftForeArm:[0,0,0.05], LeftHand:[0,0,0.05],
+                       LeftShoulder:[-0.75,-0.35,0], RightShoulder:[-0.75,0.35,0],
                        Spine02:[0.12,0,0], Head:[0.35,0,0],
                        LeftUpLeg:[0,0,0.14], RightUpLeg:[0,0,-0.14] },
                 smash:{y:-0.05,z:3.0} }
