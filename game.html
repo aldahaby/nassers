@@ -1997,7 +1997,8 @@
       }
       const playing=this.game.run.state!=='READY'&&this.game.run.state!=='GameOver'&&this.game.run.state!=='Paused';
       // INCOMING TRAINS: metro targets drive toward you on the track (moderate, capped) — they come at YOU.
-      const inc=(station&&playing)? Math.min(28, (p.fwdNow||45)*0.35) : 0;
+      const inc=0;   // METRO trains are PARKED on the track: only the player and drones move,
+                     // so a train can never slide through a fixed tunnel ring.
       // TRAIN HORN blares as a car bears down on you (throttled so it doesn't spam)
       if(station&&playing){ this._hornT=(this._hornT||0)-dt;
         if(this._hornT<=0){ const near=this.buildings.some(x=>x.incoming&&!x.hit&&x.mesh.position.z>pz+18&&x.mesh.position.z<pz+52);
