@@ -2101,6 +2101,15 @@
         if(!decor){ const rh=Math.max(w,d)*0.85+4;
           b.roof.visible=true; b.roof.position.set(bx, h+crownH+rh/2-0.4, z); b.roof.scale.set(w*1.02, rh, d*1.02);
           b.roof.material.color.setHex(0x7d3a2c); }
+      } else if(style==='window' && decor && h>30 && R<0.34){
+        // NYC SKYLINE: art-deco / futurist SPIRE with a red aviation beacon on the tall towers
+        const capH=h*(0.20+Math.random()*0.26)+6, r=Math.min(w,d)*0.07+0.3;
+        b.cap.visible=true; b.cap.position.set(bx, h+capH/2, z); b.cap.scale.set(r,capH,r);
+        b.cap.material.color.setHex(0xb9c2cc); b.cap.material.emissive.setHex(0x1a2430);
+        b.cap.material.emissiveIntensity=0.5; b.cap.material.metalness=0.75; b.cap.material.roughness=0.3;
+        b.roof.visible=true;                                    // stepped deco crown under the spire
+        b.roof.position.set(bx, h+1.6, z); b.roof.scale.set(w*0.72, 3.4, d*0.72);
+        b.roof.material.color.setHex(0x9aa4b0);
       } else if(style==='window' && decor && R<0.4){
         // NYC: iconic wooden ROOFTOP WATER TANK (cylinder body + little conical lid) on some roofs
         const r=Math.min(w,d)*0.24+0.6, bodyH=r*2.2;
