@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiktok-username-checker"
+version = "1.0.0"
+description = "Check availability of four-character TikTok usernames"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31,<3"]
+
+[project.scripts]
+tiktok-username-checker = "tiktok_username_checker.cli:main"
+
+[tool.setuptools]
+packages = ["tiktok_username_checker"]
