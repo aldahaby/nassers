@@ -1529,6 +1529,7 @@
         frame.visible=false; this.game.scene.add(frame);
         this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(13,20), h:rand(7,11), y:0});
       }
+      this._buildProps();
       this._buildEnv();
     }
     // procedural neon billboard face
@@ -1625,6 +1626,88 @@
       for(const p of this.pool){ if(p.mesh.material.map) p.mesh.material.map.needsUpdate=true; }
     }
     // env extras: Frutiger bubbles + Medieval mountains (shown per map)
+    // ===== THEMED ENVIRONMENT PROPS: one pooled set, rebuilt per map (mobile-friendly) =====
+    _buildProps(){
+      const g=this.game; this.props=[]; this._propGeo={
+        box:new THREE.BoxGeometry(1,1,1), cyl:new THREE.CylinderGeometry(1,1,1,8),
+        cone:new THREE.ConeGeometry(1,1,7), sph:new THREE.SphereGeometry(1,8,6),
+        pl:new THREE.PlaneGeometry(1,1) };
+      for(let i=0;i<34;i++){ const grp=new THREE.Group(); grp.visible=false; g.scene.add(grp);
+        this.props.push({grp, side:i%2?1:-1, z:0, off:0, kind:0}); }
+    }
+    _M(c,o){ return new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.75,flatShading:true},o||{})); }
+    // rebuild every prop group with meshes for the active map
+    _skinProps(t,night){
+      if(!this.props) return;
+      const G=this._propGeo, M=(c,o)=>this._M(c,o), style=t.building.style;
+      const add=(grp,geo,mat,x,y,z,sx,sy,sz,rx,ry)=>{ const m=new THREE.Mesh(geo,mat);
+        m.position.set(x,y,z); m.scale.set(sx,sy,sz); if(rx)m.rotation.x=rx; if(ry)m.rotation.y=ry;
+        m.castShadow=true; grp.add(m); return m; };
+      const glow=night?0.9:0.0;
+      this.props.forEach((p,i)=>{
+        while(p.grp.children.length){ p.grp.remove(p.grp.children[0]); }
+        const k=i%6; p.kind=k; p.off=0;
+        if(style==='window'){                                   // ---- NEW YORK ----
+          if(k===0){ const w=M(0x6b4a2f); add(p.grp,G.cyl,w,0,4.6,0,2.2,3.2,2.2);      // rooftop water tower
+            add(p.grp,G.cone,M(0x4a3220),0,7.2,0,2.4,1.6,2.4);
+            for(let j=0;j<4;j++) add(p.grp,G.box,M(0x3a2a1c),Math.cos(j*1.57)*1.6,1.6,Math.sin(j*1.57)*1.6,0.22,3.2,0.22); }
+          else if(k===1){ const s2=M(0x9aa2ad,{metalness:.5,roughness:.5});             // scaffolding
+            for(let j=0;j<4;j++){ add(p.grp,G.box,s2,-1.6+j*1.1,4,0,0.16,8,0.16); }
+            for(let j=0;j<4;j++) add(p.grp,G.box,s2,0,1.6+j*2,0,3.6,0.16,0.16);
+            add(p.grp,G.box,M(0x2f6fce,{roughness:.9}),0,5,0.3,3.6,3,0.05); }
+          else if(k===2){ add(p.grp,G.cyl,M(0x3a3f46,{metalness:.4}),0,0.5,0,0.5,1,0.5); // steam vent
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xdfe8f0,transparent:true,opacity:0.22,depthWrite:false}),0,2.6,0,1.7,2.2,1.7); }
+          else if(k===3){ add(p.grp,G.cyl,M(0x4a3524),0,1.4,0,0.35,2.8,0.35);            // park tree
+            add(p.grp,G.sph,M(0x2f7a34),0,3.6,0,2.1,1.9,2.1); add(p.grp,G.sph,M(0x3a8f3e),0.8,4.4,0.4,1.3,1.2,1.3); }
+          else if(k===4){ add(p.grp,G.box,M(0x2b6a3a),0,0.7,0,2.2,1.4,1.2);              // dumpster
+            add(p.grp,G.box,M(0x1e4a29),0,1.45,0,2.3,0.2,1.3); }
+          else { add(p.grp,G.box,M(0x8a8f97),0,1.2,0,0.5,2.4,0.5);                        // alley pole + sign
+            add(p.grp,G.box,M(0xffc63a,{emissive:0x3a2a00,emissiveIntensity:glow}),0,2.6,0,1.6,0.7,0.1); }
+        } else if(style==='glass'){                             // ---- FRUTIGER AERO ----
+          const gl=M(0x9fe8ff,{roughness:.06,metalness:.6,transparent:true,opacity:.72,emissive:0x0a3a44,emissiveIntensity:.35});
+          if(k===0){ add(p.grp,G.cyl,gl,0,4,0,2.4,8,2.4); add(p.grp,G.sph,gl,0,8.4,0,2.6,1.8,2.6); }   // glass tower
+          else if(k===1){ add(p.grp,G.box,M(0x7fe6ff,{transparent:true,opacity:.55,roughness:.05,metalness:.4}),0,3,0,0.4,6,3.2); // waterfall sheet
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xdffbff,transparent:true,opacity:.3,depthWrite:false}),0,0.4,0,2.2,0.8,2.2); }
+          else if(k===2){ add(p.grp,G.cyl,M(0x3f8f46),0,0.9,0,0.18,1.8,0.18);            // flowers
+            for(let j=0;j<5;j++) add(p.grp,G.sph,M([0xff6ea8,0xffd54a,0x9b6bff,0x66f0c0,0xff9d5c][j%5]),Math.cos(j*1.3)*0.9,1.7,Math.sin(j*1.3)*0.9,0.4,0.4,0.4); }
+          else if(k===3){ const bm=new THREE.MeshStandardMaterial({color:0xcdf4ff,transparent:true,opacity:.34,roughness:.02,metalness:.1,emissive:0x0a2a33,emissiveIntensity:.4});
+            for(let j=0;j<4;j++) add(p.grp,G.sph,bm,Math.cos(j*1.6)*1.4,2+j*1.1,Math.sin(j*1.6)*1.4,1+j*0.2,1+j*0.2,1+j*0.2); }   // bubble cluster
+          else if(k===4){ add(p.grp,G.cyl,M(0x4a8f4e),0,1.2,0,0.3,2.4,0.3);              // curved topiary
+            add(p.grp,G.sph,M(0x37c46a),0,3.2,0,1.8,1.6,1.8); }
+          else { add(p.grp,G.pl,new THREE.MeshStandardMaterial({color:0x7fd4ea,roughness:.02,metalness:.9,transparent:true,opacity:.55,side:THREE.DoubleSide}),0,0.06,0,7,7,1,-Math.PI/2); } // reflective pool
+        } else if(style==='stone'){                             // ---- MEDIEVAL ----
+          const st=M(0x9a8a68), wd=M(0x6b4a2c);
+          if(k===0){ add(p.grp,G.cyl,st,0,3,0,1.8,6,1.8); add(p.grp,G.cone,M(0x7a3b2e),0,7,0,2.2,2.4,2.2);   // watchtower
+            add(p.grp,G.box,M(0xc0392b),1.6,4.4,0,0.08,1.6,1.1); }
+          else if(k===1){ add(p.grp,G.box,st,0,1.2,0,2.6,2.4,2.6);                        // well
+            add(p.grp,G.box,wd,0,3,0,0.2,1.8,0.2); add(p.grp,G.box,wd,0,3.9,0,3,0.2,0.2);
+            add(p.grp,G.cone,M(0x7a3b2e),0,4.5,0,2.2,1.2,2.2); }
+          else if(k===2){ add(p.grp,G.box,wd,0,1.1,0,3,0.25,2.2);                          // market stall
+            for(let j=0;j<4;j++) add(p.grp,G.box,wd,(j<2?-1.3:1.3),1.6,(j%2?-0.9:0.9),0.16,3.2,0.16);
+            add(p.grp,G.box,M(0xc0392b),0,3.3,0,3.4,0.5,2.6); }
+          else if(k===3){ add(p.grp,G.cyl,st,0,3,0,2,6,2);                                 // windmill
+            add(p.grp,G.cone,M(0x5a3a24),0,6.6,0,2.4,1.6,2.4);
+            for(let j=0;j<4;j++){ const bl=add(p.grp,G.box,wd,0,4.6,1.4,0.5,5.6,0.14); bl.rotation.z=j*1.57; } }
+          else if(k===4){ for(let j=0;j<3;j++) add(p.grp,G.box,st,0,0.9,j*2.4-2.4,4,1.8,2.2); } // stone wall run
+          else { add(p.grp,G.cone,M(0xd8b45a),0,1.3,0,1.9,2.6,1.9);                        // haystack
+            add(p.grp,G.cyl,M(0x2f6a2c),2.4,1,0,0.3,2,0.3); }
+        } else {                                                // ---- FRUTIGER METRO ----
+          const mt=M(0x46555f,{metalness:.55,roughness:.4}), gr=M(0x2fe08a,{emissive:0x0f8a5a,emissiveIntensity:.8});
+          if(k===0){ add(p.grp,G.cyl,mt,0,4,0,0.5,8,0.5);                                  // catenary pylon + cable
+            add(p.grp,G.box,mt,0,7.8,0,4.4,0.3,0.3); add(p.grp,G.box,gr,0,7.4,0,4,0.08,0.08); }
+          else if(k===1){ add(p.grp,G.box,mt,0,1.4,0,3.4,0.3,1.6);                          // platform bench + sign
+            for(let j=0;j<2;j++) add(p.grp,G.box,mt,(j?1.3:-1.3),0.7,0,0.2,1.4,1.2);
+            add(p.grp,G.box,gr,0,3.4,0,2.6,0.8,0.1); }
+          else if(k===2){ add(p.grp,G.cyl,mt,0,2.2,0,0.28,4.4,0.28);                        // signal light
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0x2fe08a}),0,4.6,0,0.5,0.5,0.5); }
+          else if(k===3){ for(let j=0;j<5;j++) add(p.grp,G.box,mt,0,0.5+j*0.55,-j*0.9,3,0.28,0.9); } // maintenance stairs
+          else if(k===4){ add(p.grp,G.box,mt,0,5.4,0,10,0.5,2.2);                            // pedestrian bridge
+            add(p.grp,G.box,mt,-4.6,3,0,0.5,5,0.5); add(p.grp,G.box,mt,4.6,3,0,0.5,5,0.5);
+            add(p.grp,G.box,gr,0,6,1.1,10,0.6,0.08); }
+          else { add(p.grp,G.box,mt,0,1.6,0,2.6,3.2,2.2); add(p.grp,G.box,gr,0,3.4,0,2.2,0.4,0.1); } // service cabinet
+        }
+      });
+    }
     _buildEnv(){
       const g=this.game;
       this.bubbles=[];
@@ -1769,6 +1852,7 @@
       if(this.pillars) for(const c of this.pillars) c.grp.visible=metro;
       if(this.tunSeg) for(const s of this.tunSeg){ s.L.visible=s.R.visible=s.roof.visible=metro; }
       for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);
+      this._skinProps(t,night);
       { const bb=(t.building.style==='window');    // billboards: NYC only
         if(this.boards) for(const b2 of this.boards){ b2.mesh.visible=bb; b2.frame.visible=bb; } }
       // street lamps: on only at night, coloured per map
@@ -2092,6 +2176,16 @@
           bd.frame.rotation.y=bd.mesh.rotation.y;
         }
       }
+      if(this.props){                                   // themed roadside props (recycled)
+        const pspan=Math.ceil(this.props.length/2)*46;
+        for(const pr of this.props){
+          if(pr.z===0){ pr.z=pz+40+((pr.side>0?1:0)*23)+Math.floor(Math.random()*pspan); pr.off=rand(3,11); }
+          if(pr.z < pz-50){ pr.z+=pspan; pr.off=rand(3,11); }
+          pr.grp.visible=true;
+          pr.grp.position.set(this._pathX(pr.z)+pr.side*(this.roadHalf+pr.off), 0, pr.z);
+          pr.grp.rotation.y = pr.side>0? -0.5 : 0.5;
+        }
+      }
       if(this.ceilRibs && this.ceilRibs[0].mesh.visible){   // METRO tunnel ceiling arching low overhead
         const span=this.CEIL_N*this.CEIL_GAP, cy=(p.cruiseY||16);
         for(const r of this.ceilRibs){
@@ -2155,6 +2249,7 @@
       if(this.skyline) this.skyline.forEach((s,i)=>s.z=pz+(i>>1)*70+rand(-20,20));
       if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
       if(this.boards) this.boards.forEach((b2,i)=>{ b2.z=pz+120+i*44; });
+      if(this.props) this.props.forEach((pr,i)=>{ pr.z=pz+40+(i>>1)*46; pr.off=rand(3,11); });
       if(this.bubbles) this.bubbles.forEach(bb=>bb.z=0);
       if(this.ceilRibs) this.ceilRibs.forEach((r,i)=>r.z=pz+i*this.CEIL_GAP);
       if(this.tunSeg) this.tunSeg.forEach((s,i)=>{ s.z=pz-this.CEIL_GAP+i*this.CEIL_GAP; });   // wrap the tunnel around the player from behind
