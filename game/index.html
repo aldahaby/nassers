@@ -449,6 +449,36 @@
     .modal:not(.hidden){ animation:ovIn .2s ease both; }
     .modal:not(.hidden) .sheet{ animation:sheetIn .3s cubic-bezier(.2,1.25,.4,1) both; }
     @keyframes sheetIn{ from{ opacity:0; transform:translateY(20px) scale(.97); } to{ opacity:1; transform:none; } }
+    /* ===== DAILY REWARDS ===== */
+    #daily-modal .sheet{ width:min(470px,95vw); }
+    .dr-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
+    .dr{ position:relative; aspect-ratio:.82; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+      background:linear-gradient(180deg,var(--gun),var(--navy3)); font-family:var(--f-num); font-weight:600; letter-spacing:.5px;
+      clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+      box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.08); filter:drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+    .dr .d{ font-size:12px; color:var(--muted); letter-spacing:1px; }
+    .dr .v{ font-size:17px; color:var(--text); line-height:1; }
+    .dr .svgi{ width:24px; height:24px; color:var(--gold); }
+    .dr.claimed{ opacity:.5; }
+    .dr.claimed::after{ content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      font-size:36px; color:var(--elec); text-shadow:0 0 12px rgba(55,198,255,.7); }
+    .dr.today{ background:linear-gradient(180deg,#3a2c0c,#241803); box-shadow:inset 0 0 0 2px var(--gold), inset 0 2px 0 rgba(255,240,180,.35);
+      filter:drop-shadow(0 0 14px rgba(255,198,58,.5)) drop-shadow(0 4px 6px rgba(0,0,0,.45)); animation:drPulse 1.6s ease-in-out infinite; }
+    @keyframes drPulse{ 0%,100%{ filter:drop-shadow(0 0 10px rgba(255,198,58,.35)) drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+      50%{ filter:drop-shadow(0 0 22px rgba(255,198,58,.75)) drop-shadow(0 4px 6px rgba(0,0,0,.45)); } }
+    .dr.grand{ grid-column:span 4; aspect-ratio:auto; padding:14px 10px; background:linear-gradient(180deg,#3a1630,#1b0a18); }
+    .dr.grand .v{ font-size:22px; color:var(--gold); }
+    .dr.grand .svgi{ width:34px; height:34px; color:#c08bff; }
+    #dr-claim{ width:100%; margin-top:16px; }
+    #dr-note{ font-family:var(--f-ui); font-size:13px; color:var(--muted); text-align:center; margin-top:10px; }
+    #daily-btn{ position:absolute; top:max(14px,env(safe-area-inset-top)); left:16px; z-index:2; pointer-events:auto;
+      display:flex; align-items:center; gap:6px; padding:6px 14px 4px; border:none; cursor:pointer;
+      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1px; color:var(--text);
+      background:linear-gradient(180deg,var(--gun2),var(--navy));
+      clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+      box-shadow:inset 0 0 0 1.5px var(--steel); }
+    #daily-btn .svgi{ width:18px; height:18px; color:var(--gold); }
+    #daily-btn.ready{ box-shadow:inset 0 0 0 2px var(--gold); animation:drPulse 1.6s ease-in-out infinite; }
     /* card/chip press feel */
     .card,.chip,.toggle,.x,.btn,.btn-play,.previmg{ transition:transform .06s ease, filter .1s ease; }
 
@@ -504,6 +534,7 @@
   <!-- Overlays -->
   <div id="start-overlay" class="overlay menu">
     <div id="menu-bg"></div>
+    <button id="daily-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>DAILY</span></button>
     <div id="coin-bank"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
     <div class="brand">
       <div class="logo">CITY<span>BREAKER</span></div>
@@ -561,6 +592,16 @@
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Miami<small>Soon</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Mars<small>Soon</small></div>
       </div>
+    </div>
+  </div>
+
+  <div id="daily-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Daily Rewards</span><button class="x" data-close>×</button></div>
+      <div class="sheet-note">Come back every day — the prize grows. Day 7 is a rare skin. Resets weekly.</div>
+      <div class="dr-grid" id="dr-grid"></div>
+      <button id="dr-claim" class="btn">Claim</button>
+      <div id="dr-note"></div>
     </div>
   </div>
 
@@ -1648,21 +1689,44 @@
         while(p.grp.children.length){ p.grp.remove(p.grp.children[0]); }
         const k=i%6; p.kind=k; p.off=0;
         if(style==='window'){                                   // ---- NEW YORK ----
-          if(k===0){ const w=M(0x6b4a2f); add(p.grp,G.cyl,w,0,4.6,0,2.2,3.2,2.2);      // rooftop water tower
-            add(p.grp,G.cone,M(0x4a3220),0,7.2,0,2.4,1.6,2.4);
-            for(let j=0;j<4;j++) add(p.grp,G.box,M(0x3a2a1c),Math.cos(j*1.57)*1.6,1.6,Math.sin(j*1.57)*1.6,0.22,3.2,0.22); }
-          else if(k===1){ const s2=M(0x9aa2ad,{metalness:.5,roughness:.5});             // scaffolding
-            for(let j=0;j<4;j++){ add(p.grp,G.box,s2,-1.6+j*1.1,4,0,0.16,8,0.16); }
-            for(let j=0;j<4;j++) add(p.grp,G.box,s2,0,1.6+j*2,0,3.6,0.16,0.16);
-            add(p.grp,G.box,M(0x2f6fce,{roughness:.9}),0,5,0.3,3.6,3,0.05); }
-          else if(k===2){ add(p.grp,G.cyl,M(0x3a3f46,{metalness:.4}),0,0.5,0,0.5,1,0.5); // steam vent
-            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xdfe8f0,transparent:true,opacity:0.22,depthWrite:false}),0,2.6,0,1.7,2.2,1.7); }
-          else if(k===3){ add(p.grp,G.cyl,M(0x4a3524),0,1.4,0,0.35,2.8,0.35);            // park tree
-            add(p.grp,G.sph,M(0x2f7a34),0,3.6,0,2.1,1.9,2.1); add(p.grp,G.sph,M(0x3a8f3e),0.8,4.4,0.4,1.3,1.2,1.3); }
-          else if(k===4){ add(p.grp,G.box,M(0x2b6a3a),0,0.7,0,2.2,1.4,1.2);              // dumpster
-            add(p.grp,G.box,M(0x1e4a29),0,1.45,0,2.3,0.2,1.3); }
-          else { add(p.grp,G.box,M(0x8a8f97),0,1.2,0,0.5,2.4,0.5);                        // alley pole + sign
-            add(p.grp,G.box,M(0xffc63a,{emissive:0x3a2a00,emissiveIntensity:glow}),0,2.6,0,1.6,0.7,0.1); }
+          if(k===0){ const st=M(0xb8b2a6), tr=M(0x7a2f28);                          // brownstone stoop + storefront awning
+            add(p.grp,G.box,st,0,2.4,0,5,4.8,4);
+            for(let j=0;j<4;j++) add(p.grp,G.box,M(0x2b3440,{emissive:0x2a1e00,emissiveIntensity:glow}),-1.5+j*1.0,3.4,2.05,0.7,1.3,0.1);
+            add(p.grp,G.box,tr,0,1.9,2.4,4.4,0.25,1.6);                              // awning
+            for(let j=0;j<3;j++) add(p.grp,G.box,M(0xe8e2d4),0,0.35+j*0.28,2.6+j*0.34,3,0.28,0.36); } // stone steps
+          else if(k===1){ const y=M(0xf5c518);                                        // NEWSSTAND / hot-dog cart
+            add(p.grp,G.box,M(0x2f3a46),0,1.1,0,3.2,2.2,2.2);
+            add(p.grp,G.box,y,0,2.35,0,3.6,0.3,2.6);
+            add(p.grp,G.box,M(0xc0392b),0,2.9,0,3.2,0.9,2.2);
+            add(p.grp,G.box,M(0xffffff,{emissive:0x333333,emissiveIntensity:glow}),0,1.4,1.15,2.4,1,0.08);
+            add(p.grp,G.cyl,M(0x9aa2ad,{metalness:.6}),1.9,0.4,0,0.25,0.8,0.25); }
+          else if(k===2){ const mt=M(0x39414b,{metalness:.55,roughness:.4});          // TRAFFIC LIGHT + street sign
+            add(p.grp,G.cyl,mt,0,3.2,0,0.28,6.4,0.28);
+            add(p.grp,G.box,mt,1.6,6.2,0,3.4,0.24,0.24);
+            add(p.grp,G.box,M(0x1a1f26),3.1,5.7,0,0.7,1.9,0.6);
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xff3b30}),3.1,6.3,0.32,0.22,0.22,0.12);
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0x30d158}),3.1,5.2,0.32,0.22,0.22,0.12);
+            add(p.grp,G.box,M(0x1f7a3d),0,5,0,1.8,0.45,0.08); }
+          else if(k===3){ const gy=M(0x8d949c,{metalness:.35});                        // SUBWAY ENTRANCE (green globe + rails)
+            add(p.grp,G.box,M(0x2a2f36),0,0.35,0,4.4,0.7,3.4);
+            for(let j=0;j<5;j++) add(p.grp,G.box,M(0x6f767e),0,0.55-j*0.22,-0.6+j*0.5,3.6,0.22,0.5);
+            for(const sx2 of [-1.9,1.9]){ add(p.grp,G.cyl,gy,sx2,1.4,-1.4,0.13,2.8,0.13);
+              add(p.grp,G.cyl,gy,sx2,1.4,1.2,0.13,2.8,0.13);
+              add(p.grp,G.box,gy,sx2,2.7,-0.1,0.16,0.16,2.8); }
+            add(p.grp,G.sph,new THREE.MeshStandardMaterial({color:0x2ecc71,emissive:0x0f7a3a,emissiveIntensity:.9}),0,3.3,-1.6,0.45,0.45,0.45);
+            add(p.grp,G.cyl,gy,0,2.4,-1.6,0.12,1.8,0.12); }
+          else if(k===4){ const bk=M(0x8a5a3c);                                        // WATER TOWER on a rooftop block
+            add(p.grp,G.box,bk,0,4,0,6,8,5);
+            for(let j=0;j<6;j++) add(p.grp,G.box,M(0x2b3440,{emissive:0x2a1e00,emissiveIntensity:glow}),-2+(j%3)*2,3+((j/3)|0)*2.6,2.55,1.1,1.4,0.08);
+            add(p.grp,G.cyl,M(0x6b4a2f),0.8,10,0,1.5,3.4,1.5);
+            add(p.grp,G.cone,M(0x4a3220),0.8,12.1,0,1.7,1.3,1.7);
+            for(let j=0;j<4;j++) add(p.grp,G.box,M(0x3a2a1c),0.8+Math.cos(j*1.57)*1.1,8.6,Math.sin(j*1.57)*1.1,0.16,1.6,0.16);
+            add(p.grp,G.box,M(0x9aa2ad,{metalness:.5}),-2.2,9.4,0,0.14,3,3.4); }        // roof fire-escape rail
+          else { const mt=M(0x3a424c,{metalness:.5});                                   // FIRE ESCAPE ladder + hydrant
+            for(let j=0;j<5;j++){ add(p.grp,G.box,mt,0,1.2+j*1.9,0,3,0.16,1.2);
+              add(p.grp,G.box,mt,-1.4,2.1+j*1.9,0,0.14,1.9,0.14); add(p.grp,G.box,mt,1.4,2.1+j*1.9,0,0.14,1.9,0.14); }
+            add(p.grp,G.cyl,M(0xc0392b),2.6,0.5,1.6,0.3,1,0.3);
+            add(p.grp,G.sph,M(0xc0392b),2.6,1.05,1.6,0.34,0.3,0.34); }
         } else if(style==='glass'){                             // ---- FRUTIGER AERO ----
           const gl=M(0x9fe8ff,{roughness:.06,metalness:.6,transparent:true,opacity:.72,emissive:0x0a3a44,emissiveIntensity:.35});
           if(k===0){ add(p.grp,G.cyl,gl,0,4,0,2.4,8,2.4); add(p.grp,G.sph,gl,0,8.4,0,2.6,1.8,2.6); }   // glass tower
@@ -2167,13 +2231,14 @@
       if(this.boards && this.boards[0].mesh.visible){   // NYC rooftop billboards along the block edge
         const cam=this.game.camera.cam, bspan=Math.ceil(this.boards.length/2)*88;
         for(const bd of this.boards){
-          if(bd.z===0 || bd.z < pz-70){ bd.z=pz+rand(120,320)+bspan*0; bd.y=rand(26,52); bd.w=rand(13,20); bd.h=rand(7,11); }
+          if(bd.z===0 || bd.z < pz-70){ bd.z=pz+rand(120,340); bd.y=rand(30,64); bd.w=rand(18,30); bd.h=rand(10,17); }
           if(bd.z < pz-70) bd.z+=bspan;
           const bx=this._pathX(bd.z)+bd.side*(this.roadHalf+22);
           bd.mesh.position.set(bx, bd.y, bd.z); bd.mesh.scale.set(bd.w,bd.h,1);
-          bd.mesh.rotation.y = bd.side>0 ? -Math.PI/2.6 : Math.PI/2.6;
+          bd.mesh.lookAt(cam.position.x, bd.y, cam.position.z);         // always faces the player
           bd.frame.position.set(bx, bd.y-bd.h*0.5-0.4, bd.z); bd.frame.scale.set(bd.w*1.04,0.8,1);
           bd.frame.rotation.y=bd.mesh.rotation.y;
+          bd.frame.quaternion.copy(bd.mesh.quaternion);
         }
       }
       if(this.props){                                   // themed roadside props (recycled)
@@ -3008,6 +3073,54 @@
       // restore gyro preference (still needs a tap on iOS for permission, so only auto-on where allowed)
       if(localStorage.getItem('invrun_gyro')==='1'){ const gb=document.getElementById('gyro-btn');
         const DOE=window.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission!=='function') this.input.toggleGyro(gb); }
+
+      // ===== DAILY REWARDS: 7-day ladder, resets weekly =====
+      {
+        const REW=[{c:100},{c:200},{c:350},{c:550},{c:800},{c:1200},{skin:'aureus',label:'RARE SKIN'}];
+        const K={day:'invrun_dr_day', last:'invrun_dr_last'};
+        const today=()=>Math.floor(Date.now()/86400000);
+        const st=()=>({ day:+(localStorage.getItem(K.day)||0), last:+(localStorage.getItem(K.last)||-1) });
+        const canClaim=()=>{ const a=st(); return a.last!==today(); };
+        const grid=document.getElementById('dr-grid'), btn=document.getElementById('dr-claim'),
+              note=document.getElementById('dr-note'), openBtn=document.getElementById('daily-btn');
+        const coinSvg='<svg class="svgi"><use href="#i-coin"/></svg>';
+        const render=()=>{
+          const a=st(), t=today();
+          let cur=a.day;                                   // days already claimed this cycle
+          if(a.last>=0 && t-a.last>1) cur=0;               // missed a day -> restart the week
+          if(cur>=7) cur=0;
+          grid.innerHTML=REW.map((r,i)=>{
+            const claimed=i<cur, isToday=(i===cur && canClaim());
+            const body=r.skin? `${'<svg class="svgi"><use href="#i-helm"/></svg>'}<span class="v">${r.label}</span>`
+                             : `${coinSvg}<span class="v">${r.c}</span>`;
+            return `<div class="dr${r.skin?' grand':''}${claimed?' claimed':''}${isToday?' today':''}">
+              <span class="d">DAY ${i+1}</span>${body}</div>`; }).join('');
+          const ready=canClaim();
+          btn.style.display=ready?'':'none';
+          btn.textContent='Claim Day '+(cur+1);
+          note.textContent=ready?'':'Come back tomorrow for Day '+(Math.min(cur,6)+1)+'.';
+          openBtn.classList.toggle('ready',ready);
+        };
+        btn.onclick=()=>{
+          if(!canClaim()) return;
+          const a=st(), t=today();
+          let cur=a.day; if(a.last>=0 && t-a.last>1) cur=0; if(cur>=7) cur=0;
+          const r=REW[cur];
+          if(r.c){ const bank=this.run.coinBank()+r.c; try{localStorage.setItem('invrun_coins',bank);}catch(e){}
+            this.audio.coin(); }
+          else { try{localStorage.setItem('invrun_skin_'+r.skin,'1');}catch(e){} this.audio.surge(); }
+          try{ localStorage.setItem(K.day,String(cur+1)); localStorage.setItem(K.last,String(t)); }catch(e){}
+          this.run.refreshBestLine(); render();
+          // celebratory confetti burst over the sheet
+          const sheet=document.querySelector('#daily-modal .sheet'); const COLS=['#ffc63a','#ff8a1f','#37c6ff','#c08bff','#fff'];
+          for(let i=0;i<28;i++){ const c=document.createElement('div'); c.className='confetti';
+            c.style.left=(4+Math.random()*92)+'%'; c.style.background=COLS[i%COLS.length];
+            c.style.animationDelay=(Math.random()*0.5)+'s'; document.getElementById('daily-modal').appendChild(c);
+            setTimeout(()=>c.remove(),3000); }
+        };
+        openBtn.onclick=()=>{ render(); document.getElementById('daily-modal').classList.remove('hidden'); };
+        render();
+      }
 
       // UI CLICK SOUND on every button / card / chip / toggle in any menu
       document.addEventListener('pointerdown',(e)=>{
