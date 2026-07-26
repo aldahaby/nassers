@@ -199,6 +199,11 @@
 
     /* ============================ MAIN MENU ============================ */
     .overlay.menu{ justify-content:flex-start; padding-top:max(7vh,52px); }
+    /* blurred snapshot of the selected map behind the main menu */
+    #menu-bg{ position:absolute; inset:0; z-index:0; background-size:cover; background-position:center;
+      filter:blur(18px) saturate(1.25) brightness(.72); transform:scale(1.12); opacity:0; transition:opacity .45s ease; pointer-events:none; }
+    #menu-bg.on{ opacity:1; }
+    #start-overlay::before, #start-overlay::after{ z-index:1; }
     .brand{ text-align:center; margin-bottom:auto; }
     .logo{ font-family:var(--f-display); font-size:clamp(52px,17vw,104px); font-weight:400; letter-spacing:2px; line-height:.82; color:#fff;
            text-shadow:0 3px 0 #04060c,0 7px 18px rgba(0,0,0,.6); }
@@ -498,6 +503,7 @@
 
   <!-- Overlays -->
   <div id="start-overlay" class="overlay menu">
+    <div id="menu-bg"></div>
     <div id="coin-bank"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
     <div class="brand">
       <div class="logo">CITY<span>BREAKER</span></div>
@@ -1514,7 +1520,33 @@
         hlL.visible=hlR.visible=wsh.visible=sign.visible=false; m.add(hlL); m.add(hlR); m.add(wsh); m.add(sign);
         this.pool.push({mesh:m,edge,roof,crown,cap,hlL,hlR,wsh,sign,active:false,w:1,h:1,d:1,hit:false,decor:false});
       }
+      // ===== NYC BILLBOARDS: lit signboards on the skyline rooftops (decor only) =====
+      this.boards=[]; const bgeo=new THREE.PlaneGeometry(1,1);
+      for(let i=0;i<14;i++){
+        const m=new THREE.Mesh(bgeo,new THREE.MeshBasicMaterial({map:this._boardTex(i),transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+        m.visible=false; this.game.scene.add(m);
+        const frame=new THREE.Mesh(new THREE.BoxGeometry(1,1,0.6),new THREE.MeshStandardMaterial({color:0x2b3038,roughness:.8,metalness:.3}));
+        frame.visible=false; this.game.scene.add(frame);
+        this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(13,20), h:rand(7,11), y:0});
+      }
       this._buildEnv();
+    }
+    // procedural neon billboard face
+    _boardTex(i){
+      const c=document.createElement('canvas'); c.width=256; c.height=128; const x=c.getContext('2d');
+      const bg=['#12183a','#2a0f2e','#0d2a2e','#301226','#101a2c'][i%5];
+      x.fillStyle=bg; x.fillRect(0,0,256,128);
+      const neon=['#ff4d6d','#37c6ff','#ffc63a','#7cffd6','#ff8a1f','#c08bff'][i%6];
+      x.strokeStyle=neon; x.lineWidth=6; x.strokeRect(8,8,240,112);
+      x.shadowColor=neon; x.shadowBlur=18; x.fillStyle=neon;
+      const words=['CITYBREAKER','MEGA SALE','NEON','24/7','SKYLINE','DOWNTOWN','TOKYO','EXPRESS'];
+      x.font='bold 40px Impact, sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+      x.fillText(words[i%words.length], 128, 56);
+      x.shadowBlur=0; x.fillStyle='rgba(255,255,255,.85)';
+      x.fillRect(48,86,160,5);
+      for(let k=0;k<5;k++){ x.fillStyle=neon; x.globalAlpha=.5; x.fillRect(30+k*42,100,26,8); }
+      x.globalAlpha=1;
+      const t=new THREE.CanvasTexture(c); return t;
     }
     // battlement texture: a solid parapet band with square merlons + transparent crenel gaps on top
     _merlonTexture(){
@@ -1625,7 +1657,7 @@
         const spr=this._cloudSprite();                 // each cloud its own puffy shape -> looks real
         const m=new THREE.Mesh(cgeo,new THREE.MeshBasicMaterial({map:spr,transparent:true,opacity:0.95,depthWrite:false,fog:true}));
         m.visible=false; m.renderOrder=-1; g.scene.add(m);
-        this.cloudBills.push({mesh:m,x:rand(-340,340),y:rand(80,180),z:0,w:rand(160,320),h:rand(80,150)});
+        this.cloudBills.push({mesh:m,x:rand(-500,500),y:rand(130,240),z:0,w:rand(220,420),h:rand(110,200)});
       }
       // STREET LAMPS: glowing lights along the roadside, shown only at NIGHT (colour set per map).
       this.lamps=[]; const lgeo=new THREE.SphereGeometry(1,10,8); const pgeo=new THREE.CylinderGeometry(0.25,0.35,1,6);
@@ -1737,6 +1769,8 @@
       if(this.pillars) for(const c of this.pillars) c.grp.visible=metro;
       if(this.tunSeg) for(const s of this.tunSeg){ s.L.visible=s.R.visible=s.roof.visible=metro; }
       for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);
+      { const bb=(t.building.style==='window');    // billboards: NYC only
+        if(this.boards) for(const b2 of this.boards){ b2.mesh.visible=bb; b2.frame.visible=bb; } }
       // street lamps: on only at night, coloured per map
       const lampCol=night? n.lamp : 0xffb14a;
       for(const l of this.lamps){ l.grp.visible=night; l.bulb.material.color.setHex(lampCol); }
@@ -2040,10 +2074,22 @@
       if(this.cloudBills && this.cloudBills[0].mesh.visible){   // distant billboard clouds high in the sky
         const cam=this.game.camera.cam;
         for(const cb of this.cloudBills){
-          if(cb.z===0 || cb.z < pz-160){ cb.z=pz+rand(300,680); cb.x=px+rand(-360,360); cb.y=rand(48,130); }
-          cb.z-=(p.speed()*0.1+2)*0.016;                         // slow parallax drift
+          if(cb.z===0 || cb.z < pz+240){ cb.z=pz+rand(620,1150); cb.x=px+rand(-520,520); cb.y=rand(120,240); }
+          cb.z-=(p.speed()*0.05+1)*0.016;                        // very slow far-parallax (background only)
           cb.mesh.position.set(cb.x, cb.y, cb.z); cb.mesh.scale.set(cb.w,cb.h,1);
           cb.mesh.lookAt(cam.position.x, cb.y, cam.position.z);
+        }
+      }
+      if(this.boards && this.boards[0].mesh.visible){   // NYC rooftop billboards along the block edge
+        const cam=this.game.camera.cam, bspan=Math.ceil(this.boards.length/2)*88;
+        for(const bd of this.boards){
+          if(bd.z===0 || bd.z < pz-70){ bd.z=pz+rand(120,320)+bspan*0; bd.y=rand(26,52); bd.w=rand(13,20); bd.h=rand(7,11); }
+          if(bd.z < pz-70) bd.z+=bspan;
+          const bx=this._pathX(bd.z)+bd.side*(this.roadHalf+22);
+          bd.mesh.position.set(bx, bd.y, bd.z); bd.mesh.scale.set(bd.w,bd.h,1);
+          bd.mesh.rotation.y = bd.side>0 ? -Math.PI/2.6 : Math.PI/2.6;
+          bd.frame.position.set(bx, bd.y-bd.h*0.5-0.4, bd.z); bd.frame.scale.set(bd.w*1.04,0.8,1);
+          bd.frame.rotation.y=bd.mesh.rotation.y;
         }
       }
       if(this.ceilRibs && this.ceilRibs[0].mesh.visible){   // METRO tunnel ceiling arching low overhead
@@ -2108,6 +2154,7 @@
       if(this.mountains) this.mountains.forEach((mn,i)=>mn.z=pz+i*150);
       if(this.skyline) this.skyline.forEach((s,i)=>s.z=pz+(i>>1)*70+rand(-20,20));
       if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
+      if(this.boards) this.boards.forEach((b2,i)=>{ b2.z=pz+120+i*44; });
       if(this.bubbles) this.bubbles.forEach(bb=>bb.z=0);
       if(this.ceilRibs) this.ceilRibs.forEach((r,i)=>r.z=pz+i*this.CEIL_GAP);
       if(this.tunSeg) this.tunSeg.forEach((s,i)=>{ s.z=pz-this.CEIL_GAP+i*this.CEIL_GAP; });   // wrap the tunnel around the player from behind
@@ -2392,6 +2439,8 @@
       a.start(); b.start(); lfo.start(); a.stop(t+0.94); b.stop(t+0.94); lfo.stop(t+0.94); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
     coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
+    uiClick(){ try{ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume(); }catch(e){ return; }
+      this._tone(660,0.05,'square',0.16); this._tone(990,0.07,'triangle',0.12); this._fnoise(0.02,0.10,2600,'highpass',0.7); }
     // ===== METRO TRAIN AUDIO =====
     // continuous underground RUMBLE (looping filtered noise) while flying the tunnel
     startRumble(){ if(!this.ctx || this._rumble) return;
@@ -2598,6 +2647,7 @@
       document.getElementById('gameover-overlay').classList.add('hidden');
       document.getElementById('start-overlay').classList.remove('hidden');
       this.resetAll(); this.refreshBestLine();
+      if(this.game.snapMenuBg) this.game.snapMenuBg();
     }
     resetAll(){
       const g=this.game;
@@ -2685,7 +2735,7 @@
       const tg=document.querySelector('#start-overlay .tagline'); if(tg) tg.textContent=t.tag;
       const n=this.night?t.night:null, P=(k)=> (n && n[k]!==undefined)? n[k] : t[k];   // night overrides
       g.skyMat.uniforms.top.value.setHex(P('skyTop')); g.skyMat.uniforms.mid.value.setHex(P('fog')); g.skyMat.uniforms.bot.value.setHex(P('skyBot'));
-      g.skyMat.uniforms.cloudAmt.value = (t.clouds && !this.night)?1.0:0.0;       // clouds by day; stars by night
+      g.skyMat.uniforms.cloudAmt.value = (t.clouds && !this.night)?0.55:0.0;      // soft distant cloud belt only
       g.scene.fog.color.setHex(P('fog'));
       g.hemi.color.setHex(P('hemiSky')); g.hemi.groundColor.setHex(P('hemiGround')); g.sun.color.setHex(P('sunColor')); g.sun.intensity=P('sunInt');
       if(g.stars) g.stars.visible=!!this.night;
@@ -2697,6 +2747,8 @@
         g._ambCfg={fall:a.fall, swirl:a.swirl, yMin:a.yMin, yMax:a.yMax}; }
       g.city.applyTheme(t, n);
       if(g.run && g.run.state==='READY'){ g.city.reset(); g.city.update(); }     // refresh the menu preview
+      // snapshot the freshly-themed scene into the blurred menu backdrop
+      if(g.run && g.run.state==='READY') g.snapMenuBg();
     }
   }
 
@@ -2788,6 +2840,7 @@
       this.maps=new MapSystem(this);
 
       this.input.init(); this.player.reset(); this.maps.apply(); this.city.update();
+      setTimeout(()=>this.snapMenuBg(),700);
       this.run.refreshBestLine();
       this._lastZ=this.player.pos.z;
       this._clock=new THREE.Clock();
@@ -2861,6 +2914,12 @@
       if(localStorage.getItem('invrun_gyro')==='1'){ const gb=document.getElementById('gyro-btn');
         const DOE=window.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission!=='function') this.input.toggleGyro(gb); }
 
+      // UI CLICK SOUND on every button / card / chip / toggle in any menu
+      document.addEventListener('pointerdown',(e)=>{
+        if(e.target.closest('.btn,.btn-play,.chip,.card,.toggle,.x,#pause-btn,#share-btn,.slider'))
+          this.audio.uiClick();
+      },true);
+
       // AUDIO unlock: home-screen/standalone (esp. iOS) start the audio context suspended, so
       // unlock it on the very first user gesture and re-resume whenever the app returns to view.
       const unlock=()=>this.audio.unlock();
@@ -2886,6 +2945,18 @@
           puff(cx+dx, cy+dy-Math.abs(dx)*0.12, base*(0.6+Math.random()*0.5), 0.82, '255,255,255'); }
       }
       const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.ClampToEdgeWrapping; return t;
+    }
+    // grab a low-cost frame of the live map for the blurred menu backdrop
+    snapMenuBg(){
+      const el=document.getElementById('menu-bg'); if(!el) return;
+      clearTimeout(this._snapT);
+      this._snapT=setTimeout(()=>{ try{
+        this.renderer.render(this.scene,this.camera.cam);
+        const src=this.renderer.domElement;
+        const c=document.createElement('canvas'); c.width=220; c.height=Math.round(220*src.height/src.width)||400;
+        c.getContext('2d').drawImage(src,0,0,c.width,c.height);
+        el.style.backgroundImage='url('+c.toDataURL('image/jpeg',0.6)+')'; el.classList.add('on');
+      }catch(e){} }, 90);
     }
     _loop(){
       requestAnimationFrame(this._loop);
