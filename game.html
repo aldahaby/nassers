@@ -573,8 +573,8 @@
       <div class="grid">
         <div class="card char sel" data-char="dominus"><img class="previmg" src="./assets/prev_dominus.png" alt="">Dominus<small>Selected</small></div>
         <div class="card char" data-char="frutiger"><img class="previmg" src="./assets/prev_frutiger.png" alt="">Frutiger<small>Tap to play</small></div>
-        <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Warden<small>1500 c</small></div>
-        <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Phantom<small>2500 c</small></div>
+        <div class="card char" data-char="knight"><img class="previmg" src="./assets/prev_knight.png" alt="">Evil Knight<small>Tap to play</small></div>
+        <div class="card char" data-char="patriot"><img class="previmg" src="./assets/prev_patriot.png" alt="">The Patriot<small>Tap to play</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Onyx<small>4000 c</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Aureus<small>7500 c</small></div>
       </div>
@@ -2842,11 +2842,25 @@
                 // both fists PUNCH forward toward the target (reference: two-fisted dive), wings swept back
                 // Tuned against the REAL gameplay camera: both arms punch forward past the head (visible
                 // from behind), wings sweep back off the shoulders. See scratchpad/pose_ingame.js.
-                pose:{ RightArm:[1.15,-0.85,-2.45], RightForeArm:[0,0,-0.05], RightHand:[0,0,-0.05],
-                       LeftArm:[1.15,0.85,2.45], LeftForeArm:[0,0,0.05], LeftHand:[0,0,0.05],
-                       LeftShoulder:[-0.75,-0.35,0], RightShoulder:[-0.75,0.35,0],
-                       Spine02:[0.12,0,0], Head:[0.35,0,0],
-                       LeftUpLeg:[0,0,0.14], RightUpLeg:[0,0,-0.14] },
+                pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
+                       LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
+                       LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
+                       Spine02:[0.12,0,0], Head:[0.4,0,0],
+                       LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
+                smash:{y:-0.05,z:3.0} },
+    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
+                pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
+                       LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
+                       LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
+                       Spine02:[0.12,0,0], Head:[0.4,0,0],
+                       LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
+                smash:{y:-0.05,z:3.0} },
+    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
+                pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
+                       LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
+                       LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
+                       Spine02:[0.12,0,0], Head:[0.4,0,0],
+                       LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
