@@ -1373,9 +1373,16 @@
               ' float lm=smoothstep(-0.10,-0.92,position.y);\n float side=sign(position.x);\n transformed.z+=sin(uWind*0.7+side*1.05)*0.05*lm;\n transformed.x+=sin(uWind*0.5)*0.02*lm;'); };
           mat.needsUpdate=true; } } } });
         this._rigSway=null;
-        // ===== ANATOMICAL BONE AIMING (no Euler twisting -> no dislocated shoulders) =====
-        // Rotate each limb by the MINIMAL quaternion that points it at a target direction, computed
-        // from the bone's real bind direction. This can never twist/shear the joint.
+        const holder=new THREE.Group(); holder.add(model);
+        this._mRotX=cfg.rotX; this._mBaseY=cfg.baseY;                  // per-character flight pose + height
+        holder.rotation.set(this._mRotX,0,0);
+        holder.scale.setScalar(cfg.targetLen/Math.max(0.001,size.y));
+        holder.position.set(0,this._mBaseY,0);
+        if(this.villainModel){ this.rig.remove(this.villainModel); }  // remove any previously-loaded model (live swap)
+        this.villainModel=holder; this.rig.add(holder);
+        // ===== ANATOMICAL BONE AIMING — run AFTER the model is parented and rotated into the
+        // flight pose, so world-space directions are the REAL flight directions.
+        this.rig.updateWorldMatrix(true,true); holder.updateWorldMatrix(true,true);
         if(cfg.aim!==false){
           const bones={}; model.traverse(o=>{ if(o.isBone) bones[o.name]=o; });
           const A=new THREE.Vector3(), C=new THREE.Vector3(), cur=new THREE.Vector3();
@@ -1391,8 +1398,8 @@
             b2.updateMatrixWorld(true);
           };
           const FWD=new THREE.Vector3(0,0,1);               // flight direction (arms punch this way)
-          const fwdL=new THREE.Vector3(-0.20,0.45,1).normalize();   // forward AND up so the arms clear the torso
-          const fwdR=new THREE.Vector3( 0.20,0.45,1).normalize();
+          const fwdL=new THREE.Vector3(-0.30,0.16,1).normalize();   // forward AND up so the arms clear the torso
+          const fwdR=new THREE.Vector3( 0.30,0.16,1).normalize();
           aim('LeftArm','LeftForeArm',fwdL);   aim('LeftForeArm','LeftHand',fwdL);
           aim('RightArm','RightForeArm',fwdR); aim('RightForeArm','RightHand',fwdR);
           // legs & spine stay at BIND — after the prone rotation they already trail correctly and the
@@ -1401,13 +1408,6 @@
           for(const n of ['Spine02','Head']) if(bones[n])
             this._rigSway.push({b:bones[n], x:bones[n].rotation.x, y:bones[n].rotation.y, z:bones[n].rotation.z});
         }
-        const holder=new THREE.Group(); holder.add(model);
-        this._mRotX=cfg.rotX; this._mBaseY=cfg.baseY;                  // per-character flight pose + height
-        holder.rotation.set(this._mRotX,0,0);
-        holder.scale.setScalar(cfg.targetLen/Math.max(0.001,size.y));
-        holder.position.set(0,this._mBaseY,0);
-        if(this.villainModel){ this.rig.remove(this.villainModel); }  // remove any previously-loaded model (live swap)
-        this.villainModel=holder; this.rig.add(holder);
         this.villainBody.visible=false; if(this.cape) this.cape.visible=false;   // hide procedural body + red cape (model has its own)
         if(window.__hideLoader) window.__hideLoader();                            // dismiss the loading screen
       },
@@ -2860,7 +2860,7 @@
   // ===================================================================================
   const CHARACTERS = {
     dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:true },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2+0.35, baseY:0.12, targetLen:4.2, wind:false,
                 // RIGGED: additive bone rotations that pose him fist-first like Omni-Man
                 // both fists PUNCH forward toward the target (reference: two-fisted dive), wings swept back
                 // Tuned against the REAL gameplay camera: both arms punch forward past the head (visible
@@ -2871,14 +2871,14 @@
                        Spine02:[0.12,0,0], Head:[0.4,0,0],
                        LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
                 smash:{y:-0.05,z:3.0} },
-    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
+    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:Math.PI/2+0.35, baseY:0.12, targetLen:4.2, wind:false,
                 pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
                        LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
                        LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
                        Spine02:[0.12,0,0], Head:[0.4,0,0],
                        LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
                 smash:{y:-0.05,z:3.0} },
-    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:Math.PI/2-0.22, baseY:0.12, targetLen:4.2, wind:false,
+    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:Math.PI/2+0.35, baseY:0.12, targetLen:4.2, wind:false,
                 pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
                        LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
                        LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
