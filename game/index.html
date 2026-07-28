@@ -1362,6 +1362,7 @@
         // WIND (cape/legs) — only for characters whose GLB matches this displacement convention.
         this._windU={value:0};
         model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; if(o.material){ this.glowMats.push(o.material);
+          o.material.emissive=o.material.emissive||new THREE.Color(0,0,0); o.material.emissiveIntensity=1;
           if(cfg.wind){ const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
             sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',
               '#include <begin_vertex>\n'+
@@ -1372,12 +1373,34 @@
               ' float lm=smoothstep(-0.10,-0.92,position.y);\n float side=sign(position.x);\n transformed.z+=sin(uWind*0.7+side*1.05)*0.05*lm;\n transformed.x+=sin(uWind*0.5)*0.02*lm;'); };
           mat.needsUpdate=true; } } } });
         this._rigSway=null;
-        if(cfg.pose){ model.traverse(o=>{ if(o.isBone && cfg.pose[o.name]){ const e=cfg.pose[o.name];
-          o.rotation.x+=e[0]; o.rotation.y+=e[1]; o.rotation.z+=e[2]; } });     // pose the rig (fist-first flight)
-          // capture the posed base of the sway bones -> wings/cape breathe instead of sitting frozen
-          const sw=[]; model.traverse(o=>{ if(o.isBone && (o.name==='LeftShoulder'||o.name==='RightShoulder'||o.name==='Spine02'||o.name==='Head'))
-            sw.push({b:o, x:o.rotation.x, y:o.rotation.y, z:o.rotation.z}); });
-          if(sw.length) this._rigSway=sw; }
+        // ===== ANATOMICAL BONE AIMING (no Euler twisting -> no dislocated shoulders) =====
+        // Rotate each limb by the MINIMAL quaternion that points it at a target direction, computed
+        // from the bone's real bind direction. This can never twist/shear the joint.
+        if(cfg.aim!==false){
+          const bones={}; model.traverse(o=>{ if(o.isBone) bones[o.name]=o; });
+          const A=new THREE.Vector3(), C=new THREE.Vector3(), cur=new THREE.Vector3();
+          const q=new THREE.Quaternion(), wq=new THREE.Quaternion(), pq=new THREE.Quaternion();
+          const aim=(name,childName,dir)=>{
+            const b2=bones[name], c2=bones[childName]; if(!b2||!c2) return;
+            model.updateWorldMatrix(true,true);
+            b2.getWorldPosition(A); c2.getWorldPosition(C);
+            cur.subVectors(C,A); if(cur.lengthSq()<1e-8) return; cur.normalize();
+            q.setFromUnitVectors(cur, dir);                 // minimal rotation, zero twist
+            b2.getWorldQuaternion(wq); b2.parent.getWorldQuaternion(pq);
+            b2.quaternion.copy(pq.invert().multiply(q).multiply(wq));
+            b2.updateMatrixWorld(true);
+          };
+          const FWD=new THREE.Vector3(0,0,1);               // flight direction (arms punch this way)
+          const fwdL=new THREE.Vector3(-0.20,0.45,1).normalize();   // forward AND up so the arms clear the torso
+          const fwdR=new THREE.Vector3( 0.20,0.45,1).normalize();
+          aim('LeftArm','LeftForeArm',fwdL);   aim('LeftForeArm','LeftHand',fwdL);
+          aim('RightArm','RightForeArm',fwdR); aim('RightForeArm','RightHand',fwdR);
+          // legs & spine stay at BIND — after the prone rotation they already trail correctly and the
+          // cape hangs off the back naturally. Rotating them is what made limbs read inverted.
+          this._rigSway=[];                                  // gentle life, spine/head only (cape hangs free)
+          for(const n of ['Spine02','Head']) if(bones[n])
+            this._rigSway.push({b:bones[n], x:bones[n].rotation.x, y:bones[n].rotation.y, z:bones[n].rotation.z});
+        }
         const holder=new THREE.Group(); holder.add(model);
         this._mRotX=cfg.rotX; this._mBaseY=cfg.baseY;                  // per-character flight pose + height
         holder.rotation.set(this._mRotX,0,0);
@@ -1478,7 +1501,7 @@
       // ----- ON FIRE: streak reward — the villain ignites with a pulsing glow -----
       // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
       const fire=g.combo.onFire(), epic=g.combo.onEpic(), eth=g.combo.onEthereal(), fl=g.combo.fireLevel();
-      const glow=(r,gg,bb)=>{ for(const m of this.glowMats) if(m&&m.emissive) m.emissive.setRGB(r,gg,bb); };  // lights up the villain (model + fallback)
+      const glow=(r,gg,bb)=>{ const f=0.16; for(const m of this.glowMats) if(m&&m.emissive) m.emissive.setRGB(Math.max(r,f*0.9),Math.max(gg,f),Math.max(bb,f*1.1)); };  // lights up the villain (model + fallback)
       if(fire){
         const pulse=0.55+0.45*Math.sin(now*0.022);
         this.fireAura.visible=true;
