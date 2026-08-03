@@ -653,8 +653,8 @@
         <div class="card char" data-char="frutiger"><img class="previmg" src="./assets/prev_frutiger.png" alt="">Frutiger<small>Tap to play</small></div>
         <div class="card char" data-char="knight"><img class="previmg" src="./assets/prev_knight.png" alt="">Evil Knight<small>Tap to play</small></div>
         <div class="card char" data-char="patriot"><img class="previmg" src="./assets/prev_patriot.png" alt="">The Patriot<small>Tap to play</small></div>
-        <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Onyx<small>4000 c</small></div>
-        <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Aureus<small>7500 c</small></div>
+        <div class="card char" data-char="entity"><img class="previmg" src="./assets/prev_entity.png" alt="">The Entity<small>Tap to play</small></div>
+        <div class="card char" data-char="countess"><img class="previmg" src="./assets/prev_countess.png" alt="">Glowing Countess<small>Tap to play</small></div>
       </div>
     </div>
   </div>
@@ -764,6 +764,8 @@
   <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from './vendor/GLTFLoader.js';
+  import { KTX2Loader } from './vendor/KTX2Loader.js';
+  import { MeshoptDecoder } from './vendor/meshopt_decoder.module.js';
 
   /* =====================================================================================
    *  CITYBREAKER — Omni Flight
@@ -1449,6 +1451,10 @@
       cfg = cfg || this._char || CHARACTERS.dominus;
       const token=(this._loadToken=(this._loadToken||0)+1);   // guard: a newer selection supersedes an in-flight load
       const loader=new GLTFLoader();
+      try{ loader.setMeshoptDecoder(MeshoptDecoder);
+        if(!FlightPlayer._ktx2) FlightPlayer._ktx2=new KTX2Loader().setTranscoderPath('./vendor/basis/')
+          .detectSupport(this.game.renderer);
+        loader.setKTX2Loader(FlightPlayer._ktx2); }catch(e){ console.warn('decoder setup',e); }
       loader.load(cfg.url,(gltf)=>{
         if(token!==this._loadToken) return;                   // superseded — drop this stale result
         const model=gltf.scene;
@@ -1537,7 +1543,7 @@
     // SURGE must be EARNED: only available once you've built a combo (and off cooldown).
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
-    reset(){ const T=this.game.theme; const cy=T&&T.backrooms?6.5:(T&&T.station?7.5:16); this.cruiseY=cy;  // METRO flies LOW in the tunnel
+    reset(){ const T=this.game.theme; const cy=T&&T.backrooms?4.2:(T&&T.station?7.5:16); this.cruiseY=cy;  // METRO flies LOW in the tunnel
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined; }
@@ -1707,6 +1713,15 @@
         frame.visible=false; this.game.scene.add(frame);
         this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(13,20), h:rand(7,11), y:0});
       }
+      this.BR_CEIL=13;                                   // backrooms room height (floor -> tiles)
+      // recessed FLUORESCENT LIGHT PANELS set into the ceiling grid
+      this.brLights=[]; { const lg=new THREE.PlaneGeometry(1,1);
+        for(let i=0;i<26;i++){
+          const m=new THREE.Mesh(lg,new THREE.MeshBasicMaterial({color:0xfffdf0,transparent:true,opacity:0.95}));
+          m.rotation.x=Math.PI/2; m.visible=false; m.frustumCulled=false; this.game.scene.add(m);
+          const gl=new THREE.PointLight(0xfff6d0,0,26,2); gl.visible=false; this.game.scene.add(gl);
+          this.brLights.push({mesh:m, light:gl, side:i%2?1:-1, z:0, flick:0, ph:rand(0,6.28)});
+        } }
       this._buildProps();
       this._buildEnv();
     }
@@ -2122,8 +2137,8 @@
           const wt=(back?this._wallTexBack:this._wallTexMetro);
           for(const w of [sg.L,sg.R]){ if(w.material.map!==wt){ w.material.map=wt; w.material.needsUpdate=true; } }
           if(back){ if(sg.roof.material.map!==this._ceilTexBack){ sg.roof.material.map=this._ceilTexBack;
-                      sg.roof.material.color.setHex(0xffffff); sg.roof.material.emissive.setHex(0x4a4436);
-                      sg.roof.material.emissiveIntensity=0.55; sg.roof.material.needsUpdate=true; } }
+                      sg.roof.material.color.setHex(0xffffff); sg.roof.material.emissive.setHex(0xa8a08a);
+                      sg.roof.material.emissiveIntensity=0.85; sg.roof.material.needsUpdate=true; } }
           else if(sg.roof.material.map){ sg.roof.material.map=null; sg.roof.material.color.setHex(0x0a1512);
                       sg.roof.material.emissive.setHex(0x000000); sg.roof.material.needsUpdate=true; }
         }
@@ -2384,11 +2399,16 @@
       // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
       const back=!!(this.game.theme&&this.game.theme.backrooms);
       if(back){
-        // a thin drywall partition across the corridor with a gap you can also fly through
-        const H=13, wallW=rand(12,17);
-        this._place(b, px+this.lastTowerX, z, wallW, H, rand(0.9,1.6), false);
-        b.mesh.castShadow=true;
-        return;                                   // corridors only: no skyline / decor rows
+        // BACKROOMS: square wallpapered PILLARS running floor -> ceiling (the hittable things)
+        const H=this.BR_CEIL, w=rand(3.2,4.6);
+        this._place(b, px+this.lastTowerX, z, w, H, w, false);
+        b.mesh.position.y=H/2; b.mesh.castShadow=true;
+        // a second pillar on the opposite side of the room so the space reads as a grid of columns
+        const nb=this._take();
+        if(nb){ const w2=rand(3.2,4.6), off=(this.lastTowerX>0?-1:1)*rand(9,15);
+          this._place(nb, px+this.lastTowerX+off, z+rand(-6,6), w2, H, w2, false);
+          nb.mesh.position.y=H/2; nb.mesh.castShadow=true; }
+        return;                                   // rooms only: no skyline / decor rows
       }
       if(station){ this._place(b, px+this.lastTowerX, z, rand(8,10), rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
       else if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
@@ -2488,6 +2508,21 @@
           bd.frame.quaternion.copy(bd.mesh.quaternion);
         }
       }
+      if(this.brLights){                                // BACKROOMS ceiling light panels
+        const on=!!(this.game.theme&&this.game.theme.backrooms), H=this.BR_CEIL, span=this.brLights.length*9;
+        for(const L of this.brLights){
+          L.mesh.visible=on; L.light.visible=on;
+          if(!on){ L.light.intensity=0; continue; }
+          if(L.z===0 || L.z < pz-30){ L.z=pz+rand(20,span); L.flick=Math.random()<0.22?rand(1,4):0; }
+          const lx=this._pathX(L.z)+L.side*rand(0,0)+L.side*9;
+          L.mesh.position.set(lx, H-0.12, L.z); L.mesh.scale.set(6.2,2.6,1);
+          // steady hum, with a few panels stuttering like failing tubes
+          let k=1; if(L.flick>0){ const t2=performance.now()*0.006+L.ph;
+            k=(Math.sin(t2*L.flick)>0.72||Math.sin(t2*7.3+L.ph)>0.93)?rand(0.15,0.45):1; }
+          L.mesh.material.opacity=0.55*k+0.42;
+          L.light.position.set(lx, H-1.2, L.z); L.light.intensity=(2.1*k)*(this.game.maps&&this.game.maps.night?1.35:1);
+        }
+      }
       if(this.props){                                   // themed roadside props (recycled)
         const pspan=Math.ceil(this.props.length/2)*46;
         for(const pr of this.props){
@@ -2512,8 +2547,8 @@
             c.col.scale.set(1,H,1); c.col.position.y=H/2; c.cap.position.y=H; } }
         // SEGMENTED tunnel: each panel hugs the curved road at its own z -> world-static, wraps the corridor
         const bkr=!!(this.game.theme&&this.game.theme.backrooms);
-        if(this.tunSeg){ const WH=bkr?(cy+8):(cy+18), roofY=bkr?(cy+6.5):(cy+15.5),
-                         WX=bkr?15:28, rp=(this.CEIL_GAP+0.5)/7;
+        if(this.tunSeg){ const WH=bkr?this.BR_CEIL:(cy+18), roofY=bkr?this.BR_CEIL:(cy+15.5),
+                         WX=bkr?34:28, rp=(this.CEIL_GAP+0.5)/7;
           for(const s of this.tunSeg){ if(s.z < pz-this.CEIL_GAP) s.z+=span;   // recycle behind -> ahead
             const cx=this._pathX(s.z);
             s.L.position.set(cx-WX, WH/2, s.z); s.L.scale.set(1,WH,1); s.L.material.map.repeat.set(rp, WH/7);
@@ -2565,6 +2600,7 @@
       if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
       if(this.boards) this.boards.forEach((b2,i)=>{ b2.z=pz+120+i*44; });
       if(this.props) this.props.forEach((pr,i)=>{ pr.z=pz+40+(i>>1)*46; pr.off=rand(3,11); });
+      if(this.brLights) this.brLights.forEach((L,i)=>{ L.z=pz+14+i*9; L.flick=Math.random()<0.22?rand(1,4):0; });
       if(this.bubbles) this.bubbles.forEach(bb=>bb.z=0);
       if(this.ceilRibs) this.ceilRibs.forEach((r,i)=>r.z=pz+i*this.CEIL_GAP);
       if(this.tunSeg) this.tunSeg.forEach((s,i)=>{ s.z=pz-this.CEIL_GAP+i*this.CEIL_GAP; });   // wrap the tunnel around the player from behind
@@ -2598,8 +2634,9 @@
       const cRaw=clamp((1-g.time.scale)/0.7,0,1);
       const cine=cRaw*cRaw*(3-2*cRaw);                    // eased in/out
 
-      const dist=11+speedF*4 - cine*1.8;                  // very slight dolly in (no angle change)
-      const height=6.5+speedF*1.5 - cine*0.8;             // drop a touch -> cooler low-behind
+      const inRoom=!!(g.theme&&g.theme.backrooms);        // BACKROOMS: tuck the camera under the ceiling
+      const dist=(inRoom?8.5:11)+speedF*(inRoom?2:4) - cine*1.8;
+      const height=(inRoom?2.8:6.5)+speedF*(inRoom?0.6:1.5) - cine*0.8;
       this.cam.position.z=p.pos.z-dist;
       this.cam.position.x=damp(this.cam.position.x, p.pos.x, 10, realDt);
       this.cam.position.y=p.pos.y+height;
@@ -2609,7 +2646,7 @@
       this.cam.fov=damp(this.cam.fov,fov, cine>0.02?9:(p.surgeActive>0?10:6), realDt); this.cam.updateProjectionMatrix();
 
       // look down-ahead as always; during the shot, ease the aim slightly lower/nearer (same direction)
-      this._look.set(p.pos.x, p.pos.y-1.4 - cine*0.6, p.pos.z+8 - cine*1.2);
+      this._look.set(p.pos.x, p.pos.y-(inRoom?0.5:1.4) - cine*0.6, p.pos.z+8 - cine*1.2);
       this.cam.lookAt(this._look);
 
       if(this.shakeAmt>0.001){
@@ -3099,6 +3136,10 @@
     knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
     patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
+                smash:{y:-0.05,z:3.0} },
+    entity:   { name:'The Entity', url:'./assets/entity.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
+                smash:{y:-0.05,z:3.0} },
+    countess: { name:'Glowing Countess', url:'./assets/countess.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
@@ -3136,7 +3177,7 @@
       night:{ skyTop:0x080f22, fog:0x27223a, skyBot:0x38324e, hemiSky:0x3a3556, hemiGround:0x2a2418, sunColor:0x9a94b8, sunInt:0.4, lamp:0xff8a2a, glow:0x2a1400 } },
     backrooms: { name:'The Backrooms', tag:'CARVE THROUGH THE LEVEL', hit:'drywall',
       ground:0xb9a05a, groundEmissive:0x000000, clouds:false, skyTop:0x2a2410, fog:0xb5a05a, skyBot:0xc9b46a,
-      hemiSky:0xfff0b0, hemiGround:0x8a7a3a, sunColor:0xfff2c0, sunInt:1.0,
+      hemiSky:0xfff4c8, hemiGround:0xa8935a, sunColor:0xfff6d8, sunInt:1.35,
       road:{ asphalt:'#c9b26a', edge:null, dash:null, dashed:false, sidewalk:'#c2aa62', curb:'#a8904e', carpet:true },
       building:{ style:'drywall', tower:[0.12,0.42,0.62], towerEmissive:0x2a2205, towerEdge:0xffe08a,
                  decorA:[0.12,0.34,0.55], decorB:[0.11,0.30,0.50], decorEdge:0x8a7a45 },
