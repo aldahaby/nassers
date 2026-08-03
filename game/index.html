@@ -392,6 +392,19 @@
       filter:drop-shadow(0 6px 0 #5c2e08) drop-shadow(0 9px 10px rgba(0,0,0,.45)); }
     body.theme-medieval .btn:not(.btn-sec):active{ filter:drop-shadow(0 1px 0 #5c2e08) drop-shadow(0 3px 5px rgba(0,0,0,.4)); }
 
+    body.theme-backrooms{ --elec:#ffd977; --elec-glow:#fff0b8; --orange:#e8b23c; --steel:#7a6a34; --steel-hi:#a89150;
+      --gun:#2e2812; --gun2:#40371a; --navy:#241f0d; --navy2:#322b12; --navy3:#1a1608; }
+    body.theme-backrooms .overlay, body.theme-backrooms #loading-overlay{ background:
+      radial-gradient(120% 80% at 50% -10%, rgba(255,217,119,.18), transparent 55%),
+      linear-gradient(180deg,#3a3216 0%,#221d0c 55%,#100e05 100%); }
+    body.theme-backrooms .btn-play{ background:linear-gradient(180deg,#ffe08a 0%,#d9a833 55%,#a87c18 100%);
+      box-shadow:inset 0 0 0 2px #fff3c4, inset 0 3px 0 rgba(255,255,255,.5), inset 0 -10px 18px rgba(90,64,0,.5);
+      filter:drop-shadow(0 8px 0 #5c4408) drop-shadow(0 12px 14px rgba(0,0,0,.5)); color:#2a2005; }
+    body.theme-backrooms .btn-play:active{ filter:drop-shadow(0 2px 0 #5c4408) drop-shadow(0 4px 7px rgba(0,0,0,.45)); }
+    body.theme-backrooms .btn:not(.btn-sec){ background:linear-gradient(180deg,#e8c455,#b8901f);
+      box-shadow:inset 0 0 0 1.5px rgba(255,240,180,.5), inset 0 2px 0 rgba(255,255,255,.35), inset 0 -8px 14px rgba(90,64,0,.45);
+      filter:drop-shadow(0 6px 0 #5c4408) drop-shadow(0 9px 10px rgba(0,0,0,.45)); color:#2a2005; }
+    body.theme-backrooms .btn:not(.btn-sec):active{ filter:drop-shadow(0 1px 0 #5c4408) drop-shadow(0 3px 5px rgba(0,0,0,.4)); }
     body.theme-metro{ --elec:#2fe08a; --elec-glow:#7cffd6; --orange:#2fe08a; --steel:#2f6a5c; --steel-hi:#4f9a86;
       --gun:#0d2a26; --gun2:#124038; --navy:#0a201d; --navy2:#0e2e29; --navy3:#071815; }
     body.theme-metro .overlay, body.theme-metro #loading-overlay{ background:
@@ -654,7 +667,7 @@
         <div class="card map" data-map="aero"><span class="big"><svg class="svgi"><use href="#i-bubbles"/></svg></span>Frutiger Aero<small>Tap to play</small></div>
         <div class="card map" data-map="medieval"><span class="big"><svg class="svgi"><use href="#i-castle"/></svg></span>Medieval<small>Tap to play</small></div>
         <div class="card map" data-map="metro"><span class="big"><svg class="svgi"><use href="#i-train"/></svg></span>Frutiger Metro<small>Tap to play</small></div>
-        <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Miami<small>Soon</small></div>
+        <div class="card map" data-map="backrooms"><span class="big"><svg class="svgi"><use href="#i-map"/></svg></span>Backrooms<small>Tap to play</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Mars<small>Soon</small></div>
       </div>
     </div>
@@ -720,7 +733,7 @@
       var showTip=function(){ tipEl.innerHTML='<span>'+TIPS[ti%TIPS.length]+'</span>'; ti++; };
       showTip(); setInterval(showTip,3600); }
     try{ var mk=localStorage.getItem('invrun_map');
-      document.body.classList.add('theme-'+(['nyc','aero','medieval','metro'].indexOf(mk)>=0?mk:'nyc')); }catch(e){}
+      document.body.classList.add('theme-'+(['nyc','aero','medieval','metro','backrooms'].indexOf(mk)>=0?mk:'nyc')); }catch(e){}
     var ov=document.getElementById('loading-overlay'),
         bar=document.getElementById('load-bar-fill'),
         pct=document.getElementById('load-pct');
@@ -1310,6 +1323,7 @@
       g.audio.duckMusic();                                  // dip the music so the impact reads loud
       const snd=g.maps?g.maps.hitSound:'crash';
       if(snd==='bubble') g.audio.bubble(combo);
+      else if(snd==='drywall') g.audio.drywall(combo);
       else if(snd==='brick') g.audio.brick(combo);
       else if(snd==='metal') g.audio.trainSmash(combo);
       else g.audio.crash(tier,combo);
@@ -1523,7 +1537,7 @@
     // SURGE must be EARNED: only available once you've built a combo (and off cooldown).
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
-    reset(){ const cy=(this.game.theme&&this.game.theme.station)?7.5:16; this.cruiseY=cy;  // METRO flies LOW in the tunnel
+    reset(){ const T=this.game.theme; const cy=T&&T.backrooms?6.5:(T&&T.station?7.5:16); this.cruiseY=cy;  // METRO flies LOW in the tunnel
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined; }
@@ -1738,6 +1752,24 @@
         x.strokeStyle='rgba(30,22,12,.5)'; x.lineWidth=1;                   // hairline cracks
         for(let i=0;i<4;i++){ let cx0=Math.random()*128, cy0=Math.random()*100; x.beginPath(); x.moveTo(cx0,cy0);
           for(let s2=0;s2<3;s2++){ cx0+=(Math.random()*10-5); cy0+=8+Math.random()*10; x.lineTo(cx0,cy0); } x.stroke(); }
+      } else if(style==='drywall'){
+        // BACKROOMS WALLPAPER: faded mustard, vertical seams, water stains, peeling edges
+        const g0=x.createLinearGradient(0,0,0,128);
+        g0.addColorStop(0,'#d8c078'); g0.addColorStop(0.55,'#c9ae62'); g0.addColorStop(1,'#b2954c');
+        x.fillStyle=g0; x.fillRect(0,0,128,128);
+        for(let i=0;i<900;i++){ const v=(Math.random()*40|0);
+          x.fillStyle=`rgba(${170+v},${146+v},${76+v},.16)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+        x.fillStyle='rgba(255,240,190,.16)';                       // vertical wallpaper strips
+        for(let vx=0;vx<128;vx+=32) x.fillRect(vx,0,1.5,128);
+        x.fillStyle='rgba(120,96,36,.13)'; for(let vx=0;vx<128;vx+=32) x.fillRect(vx+30,0,2,128);
+        for(let i=0;i<5;i++){ const sx=Math.random()*128, sy=Math.random()*100, r=10+Math.random()*24;
+          const g2=x.createRadialGradient(sx,sy,0,sx,sy,r);        // water damage blooms
+          g2.addColorStop(0,'rgba(96,72,26,.36)'); g2.addColorStop(0.6,'rgba(120,94,38,.18)'); g2.addColorStop(1,'rgba(120,94,38,0)');
+          x.fillStyle=g2; x.beginPath(); x.arc(sx,sy,r,0,6.2832); x.fill(); }
+        x.fillStyle='rgba(60,46,16,.30)'; x.fillRect(0,120,128,8);  // grimy skirting line
+        for(let i=0;i<3;i++){ const px2=Math.random()*110;          // peeling corner flaps
+          x.fillStyle='rgba(226,208,158,.5)'; x.beginPath();
+          x.moveTo(px2,0); x.lineTo(px2+14,0); x.lineTo(px2+7,13); x.closePath(); x.fill(); }
       } else if(style==='metro'){
         // TRAIN CAR livery: brushed-steel body, a lit window band with seats/passengers (the inside), doors
         const grd=x.createLinearGradient(0,0,0,128); grd.addColorStop(0,'#e8eef2'); grd.addColorStop(0.5,'#cdd8de'); grd.addColorStop(1,'#aab8c0');
@@ -1878,6 +1910,22 @@
           else if(k===4){ for(let j=0;j<3;j++) add(p.grp,G.box,st,0,0.9,j*2.4-2.4,4,1.8,2.2); } // stone wall run
           else { add(p.grp,G.cone,M(0xd8b45a),0,1.3,0,1.9,2.6,1.9);                        // haystack
             add(p.grp,G.cyl,M(0x2f6a2c),2.4,1,0,0.3,2,0.3); }
+        } else if(style==='drywall'){                           // ---- THE BACKROOMS ----
+          const wall=M(0xc4a960), trim=M(0x8a7440), mtl=M(0x8f9298,{metalness:.5,roughness:.5});
+          if(k===0){ add(p.grp,G.box,M(0x6f5a30),0,1.6,0,0.3,3.2,1.5);          // maintenance door + frame
+            add(p.grp,G.box,trim,0,1.7,0,0.42,3.5,1.75);
+            add(p.grp,G.sph,M(0xd8cda0),0.22,1.5,0.55,0.12,0.12,0.12); }
+          else if(k===1){ for(let j=0;j<3;j++) add(p.grp,G.cyl,mtl,0,4.2+j*0.55,0,0.16,26,0.16,Math.PI/2); // exposed pipes
+            add(p.grp,G.box,mtl,0,3.4,0,0.5,0.5,0.5); }
+          else if(k===2){ add(p.grp,G.box,mtl,0,4.6,0,1.7,1.1,22,0,0);           // ventilation duct run
+            for(let j=0;j<4;j++) add(p.grp,G.box,M(0x71757c),0,4.6,-8+j*5.5,1.85,1.25,0.3); }
+          else if(k===3){ add(p.grp,G.box,M(0x1f7a3d,{emissive:0x0d5a28,emissiveIntensity:glow>0?1:0.7}),0,5.2,0,1.7,0.7,0.08); // EXIT sign
+            add(p.grp,G.box,mtl,0,5.6,0,0.1,0.6,0.1); }
+          else if(k===4){ add(p.grp,G.box,wall,0,3,0,1.3,6,1.3);                 // support pillar + skirting
+            add(p.grp,G.box,trim,0,0.2,0,1.45,0.4,1.45); }
+          else { add(p.grp,G.box,M(0x9aa0a6,{metalness:.4}),0,1.1,0,1.5,2.2,0.9); // utility cabinet + clock
+            add(p.grp,G.cyl,M(0xe8e2cc),0,3.4,0.5,0.55,0.12,0.55,Math.PI/2);
+            add(p.grp,G.box,M(0x2a2a2a),0,3.4,0.58,0.06,0.4,0.02); }
         } else {                                                // ---- FRUTIGER METRO ----
           const mt=M(0x46555f,{metalness:.55,roughness:.4}), gr=M(0x2fe08a,{emissive:0x0f8a5a,emissiveIntensity:.8});
           if(k===0){ add(p.grp,G.cyl,mt,0,4,0,0.5,8,0.5);                                  // catenary pylon + cable
@@ -1989,6 +2037,37 @@
       }
     }
     // dark tiled subway WALL texture with a green service stripe
+    // acoustic ceiling tile texture (backrooms) - white pocked panels with a grid
+    // corridor side-wall wallpaper (backrooms)
+    _drywallWallTex(){
+      const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+      const g0=x.createLinearGradient(0,0,0,128);
+      g0.addColorStop(0,'#cfb46c'); g0.addColorStop(0.6,'#bd a05a'.replace(' ','')); g0.addColorStop(1,'#a08744');
+      x.fillStyle=g0; x.fillRect(0,0,128,128);
+      for(let i=0;i<1100;i++){ const v=(Math.random()*40|0);
+        x.fillStyle=`rgba(${168+v},${144+v},${74+v},.15)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+      x.fillStyle='rgba(255,242,196,.14)'; for(let vx=0;vx<128;vx+=26) x.fillRect(vx,0,1.5,128);
+      for(let i=0;i<4;i++){ const sx=Math.random()*128, sy=40+Math.random()*80, r=12+Math.random()*26;
+        const g2=x.createRadialGradient(sx,sy,0,sx,sy,r);
+        g2.addColorStop(0,'rgba(88,66,22,.34)'); g2.addColorStop(1,'rgba(88,66,22,0)');
+        x.fillStyle=g2; x.beginPath(); x.arc(sx,sy,r,0,6.2832); x.fill(); }
+      x.fillStyle='rgba(56,42,14,.34)'; x.fillRect(0,118,128,10);
+      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+    }
+    _ceilTileTex(){
+      const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+      x.fillStyle='#ddd8c6'; x.fillRect(0,0,128,128);
+      for(let i=0;i<1500;i++){ const v=(Math.random()*30|0);
+        x.fillStyle=`rgba(${200+v},${196+v},${180+v},.5)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+      x.strokeStyle='rgba(120,116,100,.65)'; x.lineWidth=2;          // T-bar grid
+      for(let g2=0;g2<=128;g2+=32){ x.beginPath(); x.moveTo(g2,0); x.lineTo(g2,128); x.stroke();
+        x.beginPath(); x.moveTo(0,g2); x.lineTo(128,g2); x.stroke(); }
+      for(let i=0;i<3;i++){ const sx=Math.random()*128, sy=Math.random()*128, r=8+Math.random()*16;
+        const gg=x.createRadialGradient(sx,sy,0,sx,sy,r);            // stained panels
+        gg.addColorStop(0,'rgba(140,116,52,.34)'); gg.addColorStop(1,'rgba(140,116,52,0)');
+        x.fillStyle=gg; x.beginPath(); x.arc(sx,sy,r,0,6.2832); x.fill(); }
+      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+    }
     _tunnelWallTex(){
       const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
       x.fillStyle='#16211f'; x.fillRect(0,0,128,128);
@@ -2033,7 +2112,22 @@
       for(const mn of this.mountains){ mn.mesh.visible=!!t.mountains; mn.mesh.material.color.setHex(night?0x2a2c30:0x707663); }
       const metro=!!t.ceiling;                                   // underground -> hide the far skyline, show the tunnel
       for(const s of this.skyline){ s.mesh.visible=!metro; s.mesh.material.color.setHSL(t.building.tower[0], t.building.tower[1]*0.6, (t.building.tower[2]*0.7)*(night?0.4:1)); }
-      if(this.ceilRibs) for(const r of this.ceilRibs) r.mesh.visible=metro;
+      const back=!!t.backrooms;
+      if(this.ceilRibs) for(const r of this.ceilRibs) r.mesh.visible=(metro && !back);
+      if(this.tunSeg){                                  // re-skin the corridor shell for the active map
+        if(!this._wallTexMetro) this._wallTexMetro=this._tunnelWallTex();
+        if(!this._wallTexBack)  this._wallTexBack=this._drywallWallTex();
+        if(!this._ceilTexBack)  this._ceilTexBack=this._ceilTileTex();
+        for(const sg of this.tunSeg){
+          const wt=(back?this._wallTexBack:this._wallTexMetro);
+          for(const w of [sg.L,sg.R]){ if(w.material.map!==wt){ w.material.map=wt; w.material.needsUpdate=true; } }
+          if(back){ if(sg.roof.material.map!==this._ceilTexBack){ sg.roof.material.map=this._ceilTexBack;
+                      sg.roof.material.color.setHex(0xffffff); sg.roof.material.emissive.setHex(0x4a4436);
+                      sg.roof.material.emissiveIntensity=0.55; sg.roof.material.needsUpdate=true; } }
+          else if(sg.roof.material.map){ sg.roof.material.map=null; sg.roof.material.color.setHex(0x0a1512);
+                      sg.roof.material.emissive.setHex(0x000000); sg.roof.material.needsUpdate=true; }
+        }
+      }
       if(this.ceilPanel) this.ceilPanel.visible=false;                    // replaced by the segmented tunnel roof
       if(this.trains) for(const tr of this.trains) tr.mesh.visible=!!t.trains;
       if(this.pillars) for(const c of this.pillars) c.grp.visible=metro;
@@ -2071,6 +2165,19 @@
         for(const rx of [38,84]){ x.fillStyle='#3a4048'; x.fillRect(rx-2,0,10,128);            // rail foot/plate
           x.fillStyle='#9aa4ac'; x.fillRect(rx,0,5,128); x.fillStyle='#eef4f8'; x.fillRect(rx+1,0,2,128); } // steel rail + hot highlight
         const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+      }
+      if(cfg.carpet){
+        // ===== BACKROOMS CARPET: damp, worn, faintly patterned yellow-brown =====
+        x.fillStyle='#b09548'; x.fillRect(0,0,128,128);
+        for(let i=0;i<4200;i++){ const v=(Math.random()*46|0);           // dense fibre speckle
+          x.fillStyle=`rgba(${150+v},${128+v},${60+v},.30)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+        x.strokeStyle='rgba(90,74,30,.16)'; x.lineWidth=1;               // faint repeating weave
+        for(let y=0;y<128;y+=8){ x.beginPath(); x.moveTo(0,y); x.lineTo(128,y); x.stroke(); }
+        for(let i=0;i<7;i++){ const sx=Math.random()*128, sy=Math.random()*128, r=8+Math.random()*20;
+          const g2=x.createRadialGradient(sx,sy,0,sx,sy,r);              // damp stains
+          g2.addColorStop(0,'rgba(72,58,22,.34)'); g2.addColorStop(1,'rgba(72,58,22,0)');
+          x.fillStyle=g2; x.beginPath(); x.arc(sx,sy,r,0,6.2832); x.fill(); }
+        const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
       }
       if(cfg.cobble){
         // ===== COBBLESTONE (medieval): staggered rounded setts with dark seams + wear =====
@@ -2275,6 +2382,14 @@
       const station=!!this.game.theme.station;               // metro -> smash BIG TRAINS, no background buildings
       const b=this._take(); if(!b) return;
       // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
+      const back=!!(this.game.theme&&this.game.theme.backrooms);
+      if(back){
+        // a thin drywall partition across the corridor with a gap you can also fly through
+        const H=13, wallW=rand(12,17);
+        this._place(b, px+this.lastTowerX, z, wallW, H, rand(0.9,1.6), false);
+        b.mesh.castShadow=true;
+        return;                                   // corridors only: no skyline / decor rows
+      }
       if(station){ this._place(b, px+this.lastTowerX, z, rand(8,10), rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
       else if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
       else this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
@@ -2376,8 +2491,9 @@
       if(this.props){                                   // themed roadside props (recycled)
         const pspan=Math.ceil(this.props.length/2)*46;
         for(const pr of this.props){
-          if(pr.z===0){ pr.z=pz+40+((pr.side>0?1:0)*23)+Math.floor(Math.random()*pspan); pr.off=rand(3,11); }
-          if(pr.z < pz-50){ pr.z+=pspan; pr.off=rand(3,11); }
+          const bkp=!!(this.game.theme&&this.game.theme.backrooms);
+          if(pr.z===0){ pr.z=pz+40+((pr.side>0?1:0)*23)+Math.floor(Math.random()*pspan); pr.off=bkp?rand(-6,-2):rand(3,11); }
+          if(pr.z < pz-50){ pr.z+=pspan; pr.off=bkp?rand(-6,-2):rand(3,11); }
           pr.grp.visible=true;
           pr.grp.position.set(this._pathX(pr.z)+pr.side*(this.roadHalf+pr.off), 0, pr.z);
           pr.grp.rotation.y = pr.side>0? -0.5 : 0.5;
@@ -2395,7 +2511,9 @@
             c.grp.position.set(this._pathX(c.z)+c.side*(this.roadHalf+2.5), 0, c.z);
             c.col.scale.set(1,H,1); c.col.position.y=H/2; c.cap.position.y=H; } }
         // SEGMENTED tunnel: each panel hugs the curved road at its own z -> world-static, wraps the corridor
-        if(this.tunSeg){ const WH=cy+18, roofY=cy+15.5, WX=28, rp=(this.CEIL_GAP+0.5)/7;
+        const bkr=!!(this.game.theme&&this.game.theme.backrooms);
+        if(this.tunSeg){ const WH=bkr?(cy+8):(cy+18), roofY=bkr?(cy+6.5):(cy+15.5),
+                         WX=bkr?15:28, rp=(this.CEIL_GAP+0.5)/7;
           for(const s of this.tunSeg){ if(s.z < pz-this.CEIL_GAP) s.z+=span;   // recycle behind -> ahead
             const cx=this._pathX(s.z);
             s.L.position.set(cx-WX, WH/2, s.z); s.L.scale.set(1,WH,1); s.L.material.map.repeat.set(rp, WH/7);
@@ -2716,6 +2834,15 @@
       this._fnoise(0.05,1.0,1700,'bandpass',0.6);                                 // the broadband CRACK
       this._fnoise(0.16,0.7,650,'lowpass',0.8);                                   // crunchy stone body
       for(let i=0;i<8;i++) setTimeout(()=>this._fnoise(0.06,0.34,450+Math.random()*1300,'bandpass',2.4), 24+i*34); } // long brick rubble
+    // BACKROOMS — drywall bursting: dry crack, plaster/dust hiss, a wooden stud snap
+    drywall(combo){ if(!this.ctx) return; const t=this.ctx.currentTime;
+      this._fnoise(0.06,0.85,1100,'bandpass',0.7);                 // the sheet cracking
+      this._fnoise(0.26,0.42,4200,'highpass',0.5);                 // plaster dust hiss
+      const o=this.ctx.createOscillator(), gn=this.ctx.createGain();
+      o.type='square'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(48,t+0.13);
+      gn.gain.setValueAtTime(0.5,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+      o.connect(gn); gn.connect(this.master); o.start(); o.stop(t+0.16);
+      for(let i=0;i<4;i++) setTimeout(()=>this._fnoise(0.05,0.28,700+Math.random()*1500,'bandpass',2.2), 30+i*45); }
     // a single, more human SCREAM (vowel formants + vibrato) — played once when the run starts
     humanScream(){ if(!this.ctx) return; const t=this.ctx.currentTime;
       const a=this.ctx.createOscillator(), b=this.ctx.createOscillator(), base=340;
@@ -3007,6 +3134,15 @@
                  decorA:[0.09,0.28,0.44], decorB:[0.1,0.18,0.52], decorEdge:0x4a3a24, castle:true },
       roofs:true, bubbles:false, mountains:true,
       night:{ skyTop:0x080f22, fog:0x27223a, skyBot:0x38324e, hemiSky:0x3a3556, hemiGround:0x2a2418, sunColor:0x9a94b8, sunInt:0.4, lamp:0xff8a2a, glow:0x2a1400 } },
+    backrooms: { name:'The Backrooms', tag:'CARVE THROUGH THE LEVEL', hit:'drywall',
+      ground:0xb9a05a, groundEmissive:0x000000, clouds:false, skyTop:0x2a2410, fog:0xb5a05a, skyBot:0xc9b46a,
+      hemiSky:0xfff0b0, hemiGround:0x8a7a3a, sunColor:0xfff2c0, sunInt:1.0,
+      road:{ asphalt:'#c9b26a', edge:null, dash:null, dashed:false, sidewalk:'#c2aa62', curb:'#a8904e', carpet:true },
+      building:{ style:'drywall', tower:[0.12,0.42,0.62], towerEmissive:0x2a2205, towerEdge:0xffe08a,
+                 decorA:[0.12,0.34,0.55], decorB:[0.11,0.30,0.50], decorEdge:0x8a7a45 },
+      roofs:false, bubbles:false, mountains:false, ceiling:true, backrooms:true,
+      amb:{ color:0xfff0b8, size:0.34, op:0.30, fall:0.9, swirl:0.5, yMin:0.8, yMax:11 },
+      night:{ skyTop:0x0e0c04, fog:0x2a2410, skyBot:0x3a3216, hemiSky:0x6a5c28, hemiGround:0x2a2410, sunColor:0xbfae70, sunInt:0.45, lamp:0xfff0b0, glow:0x3a3010 } },
     metro: { name:'Frutiger Metro', tag:'TEAR THROUGH THE UNDERGROUND', hit:'metal',
       ground:0x223038, groundEmissive:0x0a1418, clouds:false, skyTop:0x0a1418, fog:0x123038, skyBot:0x1d4c54,
       hemiSky:0x9ff0d8, hemiGround:0x14343a, sunColor:0xe0fff4, sunInt:1.2,
@@ -3025,7 +3161,7 @@
     setNight(on){ this.night=on; try{localStorage.setItem('invrun_night',on?'1':'0');}catch(e){} this.apply(); }
     apply(){ const t=THEMES[this.key], g=this.game; g.theme=t;
       // re-skin the whole UI (menu/loading/overlays) to match the selected map
-      const bc=document.body.classList; ['nyc','aero','medieval','metro'].forEach(k=>bc.remove('theme-'+k)); bc.add('theme-'+this.key);
+      const bc=document.body.classList; ['nyc','aero','medieval','metro','backrooms'].forEach(k=>bc.remove('theme-'+k)); bc.add('theme-'+this.key);
       const tg=document.querySelector('#start-overlay .tagline'); if(tg) tg.textContent=t.tag;
       const n=this.night?t.night:null, P=(k)=> (n && n[k]!==undefined)? n[k] : t[k];   // night overrides
       g.skyMat.uniforms.top.value.setHex(P('skyTop')); g.skyMat.uniforms.mid.value.setHex(P('fog')); g.skyMat.uniforms.bot.value.setHex(P('skyBot'));
@@ -3210,12 +3346,13 @@
 
       // ===== MISSIONS: 3 goals per day, claim coins when done =====
       this.missions=(()=>{
+        const G=this;                      // the Game (object-literal methods rebind `this`)
         const POOL=[
-          {id:'hits',  icon:'i-city',   name:'Smash %N buildings in one run', tiers:[15,25,40],   rew:[150,250,400]},
-          {id:'dist',  icon:'i-map',    name:'Fly %N m in one run',           tiers:[800,1500,2500], rew:[150,250,400]},
-          {id:'combo', icon:'i-bolt',   name:'Reach a x%N combo',             tiers:[8,14,22],    rew:[200,300,500]},
-          {id:'coins', icon:'i-coin',   name:'Collect %N coins in one run',   tiers:[15,30,50],   rew:[150,250,400]},
-          {id:'score', icon:'i-trophy', name:'Score %N in one run',           tiers:[5000,12000,25000], rew:[200,350,550]},
+          {id:'hits',  icon:'i-city',   name:'Smash %N buildings in one run', tiers:[45,70,100],  rew:[300,500,850]},
+          {id:'dist',  icon:'i-map',    name:'Fly %N m in one run',           tiers:[3000,5000,8000], rew:[300,500,850]},
+          {id:'combo', icon:'i-bolt',   name:'Reach a x%N combo',             tiers:[20,32,45],   rew:[400,650,1000]},
+          {id:'coins', icon:'i-coin',   name:'Collect %N coins in one run',   tiers:[45,80,130],  rew:[300,500,850]},
+          {id:'score', icon:'i-trophy', name:'Score %N in one run',           tiers:[30000,65000,120000], rew:[450,750,1200]},
         ];
         const K='invrun_ms';
         const today=()=>Math.floor(Date.now()/86400000);
@@ -3255,8 +3392,8 @@
             list.querySelectorAll('.ms-claim').forEach(btn=>btn.onclick=()=>{
               const m=self.state.m[+btn.dataset.ms]; if(!m||m.claimed) return;
               const {rew}=info(m); m.claimed=true; save(self.state);
-              try{ localStorage.setItem('invrun_coins', this.run.coinBank()+rew); }catch(e){}
-              this.audio.coin(); this.run.refreshBestLine(); self.render();
+              try{ localStorage.setItem('invrun_coins', G.run.coinBank()+rew); }catch(e){}
+              G.audio.coin(); G.run.refreshBestLine(); self.render();
             });
             const mb=document.getElementById('missions-btn'); if(mb) mb.classList.toggle('ready',self.anyReady());
           }
