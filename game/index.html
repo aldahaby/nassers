@@ -449,6 +449,70 @@
     .modal:not(.hidden){ animation:ovIn .2s ease both; }
     .modal:not(.hidden) .sheet{ animation:sheetIn .3s cubic-bezier(.2,1.25,.4,1) both; }
     @keyframes sheetIn{ from{ opacity:0; transform:translateY(20px) scale(.97); } to{ opacity:1; transform:none; } }
+    /* ===== RESULTS SCREEN ===== */
+    #gameover-overlay h1{ display:none; }
+    .res{ width:min(430px,92vw); display:flex; flex-direction:column; align-items:center; gap:0; }
+    .res-rank{ font-family:var(--f-num); font-size:13px; letter-spacing:4px; color:var(--muted); text-transform:uppercase; margin-bottom:2px; }
+    .res-title{ font-family:var(--f-disp); font-size:clamp(38px,12vw,60px); line-height:.92; letter-spacing:1px;
+      background:linear-gradient(180deg,#fff 30%,var(--orange) 95%); -webkit-background-clip:text; background-clip:text; color:transparent;
+      filter:drop-shadow(0 3px 0 rgba(0,0,0,.5)); animation:rankIn .5s cubic-bezier(.2,1.5,.35,1) both; }
+    @keyframes rankIn{ 0%{opacity:0;transform:scale(.6) rotate(-4deg);} 100%{opacity:1;transform:none;} }
+    .res-medal{ font-size:0; margin-bottom:4px; animation:rankIn .55s .05s cubic-bezier(.2,1.5,.35,1) both; }
+    .res-medal .svgi{ width:62px; height:62px; filter:drop-shadow(0 0 16px currentColor); }
+    .res-best{ margin-top:6px; font-family:var(--f-num); font-weight:700; font-size:15px; letter-spacing:2px; color:#1a1206;
+      background:linear-gradient(180deg,#ffd86b,var(--gold)); padding:4px 18px 3px;
+      clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%); animation:drPulse 1.3s ease-in-out infinite; }
+    .res-score{ font-family:var(--f-num); font-weight:700; font-size:clamp(52px,17vw,78px); line-height:1; color:#fff;
+      text-shadow:0 4px 0 rgba(0,0,0,.45), 0 0 26px rgba(255,160,40,.35); margin:10px 0 2px; }
+    .res-score-lbl{ font-family:var(--f-num); font-size:12px; letter-spacing:5px; color:var(--muted); text-transform:uppercase; }
+    .res-grid{ width:100%; display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:16px 0 4px; }
+    .res-cell{ display:flex; align-items:center; gap:9px; padding:10px 12px;
+      background:linear-gradient(180deg,var(--gun),var(--navy3));
+      clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+      box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.07);
+      animation:statIn .4s cubic-bezier(.2,1.3,.4,1) both; }
+    .res-cell:nth-child(1){animation-delay:.10s} .res-cell:nth-child(2){animation-delay:.16s}
+    .res-cell:nth-child(3){animation-delay:.22s} .res-cell:nth-child(4){animation-delay:.28s}
+    .res-cell .svgi{ width:22px; height:22px; color:var(--elec); flex:none; }
+    .res-cell b{ font-family:var(--f-num); font-weight:600; font-size:19px; color:var(--text); line-height:1; }
+    .res-cell span{ font-family:var(--f-ui); font-size:10px; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase; display:block; }
+    .res-coins{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px;
+      font-family:var(--f-num); font-weight:600; font-size:21px; color:var(--gold); }
+    .res-coins .svgi{ width:24px; height:24px; color:var(--gold); }
+
+    /* ===== MISSIONS ===== */
+    #missions-btn{ position:absolute; top:max(14px,env(safe-area-inset-top)); left:16px; z-index:2; pointer-events:auto;
+      display:flex; align-items:center; gap:6px; padding:6px 14px 4px; border:none; cursor:pointer; margin-top:44px;
+      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1px; color:var(--text);
+      background:linear-gradient(180deg,var(--gun2),var(--navy));
+      clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+      box-shadow:inset 0 0 0 1.5px var(--steel); }
+    #missions-btn .svgi{ width:18px; height:18px; color:var(--elec); }
+    #missions-btn.ready{ box-shadow:inset 0 0 0 2px var(--gold); animation:drPulse 1.6s ease-in-out infinite; }
+    .ms{ display:flex; align-items:center; gap:11px; padding:11px 13px; margin-bottom:9px;
+      background:linear-gradient(180deg,var(--gun),var(--navy3));
+      clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+      box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.07); }
+    .ms .svgi.mi{ width:26px; height:26px; color:var(--elec); flex:none; }
+    .ms-body{ flex:1; min-width:0; }
+    .ms-name{ font-family:var(--f-ui); font-weight:600; font-size:13.5px; color:var(--text); letter-spacing:.3px; }
+    .ms-bar{ height:8px; margin-top:6px; background:rgba(0,0,0,.5); box-shadow:inset 0 0 0 1px rgba(255,255,255,.10); overflow:hidden; }
+    .ms-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--elec),var(--elec-glow)); box-shadow:0 0 10px var(--elec); transition:width .5s ease; }
+    .ms-num{ font-family:var(--f-num); font-size:11px; color:var(--muted); margin-top:3px; letter-spacing:1px; }
+    .ms-rew{ font-family:var(--f-num); font-weight:600; font-size:15px; color:var(--gold); display:flex; align-items:center; gap:4px; flex:none; }
+    .ms-rew .svgi{ width:17px; height:17px; }
+    .ms.done{ box-shadow:inset 0 0 0 2px var(--gold); }
+    .ms-claim{ font-family:var(--f-num); font-weight:600; font-size:13px; letter-spacing:1px; color:#1a1206; cursor:pointer;
+      background:linear-gradient(180deg,#ffd86b,var(--gold)); border:none; padding:7px 13px 5px; flex:none;
+      clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px); animation:drPulse 1.4s ease-in-out infinite; }
+    .ms.claimed{ opacity:.45; }
+
+    /* ===== LOADING TIPS ===== */
+    #load-tip{ margin-top:22px; max-width:min(400px,86vw); text-align:center; font-family:var(--f-ui); font-size:13.5px;
+      line-height:1.5; color:var(--muted); min-height:40px; }
+    #load-tip b{ color:var(--elec); font-weight:700; letter-spacing:1px; display:block; font-size:11px; margin-bottom:3px; text-transform:uppercase; }
+    #load-tip span{ animation:statIn .5s ease both; display:block; }
+
     /* ===== DAILY REWARDS ===== */
     #daily-modal .sheet{ width:min(470px,95vw); }
     .dr-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
@@ -535,6 +599,7 @@
   <div id="start-overlay" class="overlay menu">
     <div id="menu-bg"></div>
     <button id="daily-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>DAILY</span></button>
+    <button id="missions-btn"><svg class="svgi"><use href="#i-burst"/></svg><span>MISSIONS</span></button>
     <div id="coin-bank"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
     <div class="brand">
       <div class="logo">CITY<span>BREAKER</span></div>
@@ -595,6 +660,14 @@
     </div>
   </div>
 
+  <div id="missions-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Missions</span><button class="x" data-close>×</button></div>
+      <div class="sheet-note">Finish a mission, claim the coins. New set every day.</div>
+      <div id="ms-list"></div>
+    </div>
+  </div>
+
   <div id="daily-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Daily Rewards</span><button class="x" data-close>×</button></div>
@@ -607,7 +680,7 @@
 
   <div id="gameover-overlay" class="overlay hidden">
     <h1>YOU FELL</h1>
-    <div id="gameover-stats"></div>
+    <div class="res" id="res-card"></div>
     <button id="retry-btn" class="btn">Fly Again</button>
     <button id="share-btn" class="btn btn-sec">Share Score</button>
     <button id="menu-btn2" class="btn btn-sec">Main Menu</button>
@@ -627,9 +700,25 @@
     <div class="l-logo">CITY<span>BREAKER</span></div>
     <div id="load-track"><div id="load-bar-fill"></div></div>
     <div id="load-status">FORGING <b>DESTRUCTION</b> · <span id="load-pct">0</span>%</div>
+    <div id="load-tip"><b>Tip</b><span id="load-tip-txt"></span></div>
   </div>
   <script>
   (function(){
+    // rotating gameplay TIPS on the loading screen
+    var TIPS=['Chain smashes without missing — your combo multiplier is where the big scores live.',
+      'Momentum is your health. Keep smashing or the run ends.',
+      'Energy drinks refill momentum AND adrenaline. Never skip one.',
+      'Drones telegraph with a ground marker. Strafe off that line early.',
+      'SURGE unlocks at a x6 combo — save it for a dense row of towers.',
+      'At EPIC combo you fly faster and hit wider. Push the streak.',
+      'Coins line the road centre. Thread the curve to bank them.',
+      'Every map has its own hit sound, lighting and hazards. Try all four.',
+      'Miss a tower and your streak breaks — line up the next one early.',
+      'Finish daily missions for coins, and log in each day for the ladder.'];
+    var tipEl=document.getElementById('load-tip-txt');
+    if(tipEl){ var ti=Math.floor(Math.random()*TIPS.length);
+      var showTip=function(){ tipEl.innerHTML='<span>'+TIPS[ti%TIPS.length]+'</span>'; ti++; };
+      showTip(); setInterval(showTip,3600); }
     try{ var mk=localStorage.getItem('invrun_map');
       document.body.classList.add('theme-'+(['nyc','aero','medieval','metro'].indexOf(mk)>=0?mk:'nyc')); }catch(e){}
     var ov=document.getElementById('loading-overlay'),
@@ -2811,28 +2900,35 @@
       const bank=this.coinBank()+g.score.coins;
       try{ localStorage.setItem('invrun_coins',bank); }catch(e){}
       const combBest=g.combo.best||0, dist=Math.round(g.score.distance||0);
-      document.getElementById('gameover-stats').innerHTML=
-        (isBest?`<div style="color:var(--gold);font-weight:800;font-size:22px;margin-bottom:4px">★ NEW BEST! ★</div>`:'')+
-        `Score <b id="go-score">0</b><br>`+
-        `Best <b>${best.toLocaleString()}</b><br>`+
-        `Coins earned <b><svg class="svgi"><use href="#i-coin"/></svg> ${g.score.coins}</b> · Total <b><svg class="svgi"><use href="#i-coin"/></svg> ${bank.toLocaleString()}</b><br>`+
-        `Best combo <b>x${combBest}</b> · Buildings <b>${g.score.hits}</b> · <b>${dist} m</b>`;
-      // count the final score UP so it's unmistakably shown (fixes score-not-appearing + adds polish)
-      { const el=document.getElementById('go-score'); const t0=performance.now(), dur=680;
-        const step=(now)=>{ const k=Math.max(0,Math.min(1,(now-t0)/dur)); const e=k*(2-k);   // ease-out
+      // RANK: the run's title, earned by score — gives every run a verdict instead of "you fell"
+      const RANKS=[[0,'Street Thug','#9aa4b0'],[2500,'Wrecker','#7ce0a0'],[8000,'Demolisher','#5ce8ff'],
+                   [20000,'Skyline Terror','#c08bff'],[45000,'CITYBREAKER','#ffc63a']];
+      let rk=RANKS[0]; for(const r of RANKS) if(score>=r[0]) rk=r;
+      const svg=(i)=>`<svg class="svgi"><use href="#${i}"/></svg>`;
+      document.getElementById('res-card').innerHTML=
+        `<div class="res-medal" style="color:${rk[2]}">${svg('i-trophy')}</div>`+
+        `<div class="res-rank">Rank Earned</div>`+
+        `<div class="res-title" style="--orange:${rk[2]}">${rk[1]}</div>`+
+        (isBest?`<div class="res-best">★ NEW PERSONAL BEST ★</div>`:'')+
+        `<div class="res-score" id="go-score">0</div><div class="res-score-lbl">Score</div>`+
+        `<div class="res-grid">`+
+          `<div class="res-cell">${svg('i-city')}<div><b>${g.score.hits}</b><span>Buildings</span></div></div>`+
+          `<div class="res-cell">${svg('i-bolt')}<div><b>x${combBest}</b><span>Best Combo</span></div></div>`+
+          `<div class="res-cell">${svg('i-map')}<div><b>${dist}m</b><span>Distance</span></div></div>`+
+          `<div class="res-cell">${svg('i-trophy')}<div><b>${best.toLocaleString()}</b><span>All-Time Best</span></div></div>`+
+        `</div>`+
+        `<div class="res-coins">${svg('i-coin')} +${g.score.coins} earned · ${bank.toLocaleString()} total</div>`;
+      // count the final score UP so it's unmistakably shown
+      { const el=document.getElementById('go-score'); const t0=performance.now(), dur=900;
+        const step=(now)=>{ const k=Math.max(0,Math.min(1,(now-t0)/dur)); const e=1-Math.pow(1-k,3);
           if(el) el.textContent=Math.round(score*e).toLocaleString();
           if(k<1) requestAnimationFrame(step); else if(el) el.textContent=score.toLocaleString(); };
         requestAnimationFrame(step); }
+      if(g.missions) g.missions.onRunEnd({score, hits:g.score.hits, dist, combo:combBest, coins:g.score.coins});
       // share payload for the Share Score button (viral hook)
       this._shareText=`I scored ${score.toLocaleString()} smashing ${g.score.hits} buildings in CITYBREAKER 💥 Beat that:`;
       const ov=document.getElementById('gameover-overlay');
       ov.classList.remove('hidden');
-      // NEW BEST -> gold confetti rain over the results
-      if(isBest){ const COLS=['#ffc63a','#ff8a1f','#37c6ff','#e8213c','#fff'];
-        for(let i=0;i<40;i++){ const c=document.createElement('div'); c.className='confetti';
-          c.style.left=(2+Math.random()*96)+'%'; c.style.background=COLS[i%COLS.length];
-          c.style.animationDelay=(Math.random()*0.7)+'s'; c.style.animationDuration=(1.8+Math.random()*1.2)+'s';
-          ov.appendChild(c); setTimeout(()=>c.remove(),3400); } }
     }
     refreshBestLine(){
       const el=document.getElementById('best-num'); if(el) el.textContent = this.best().toLocaleString();
@@ -3111,6 +3207,65 @@
       // restore gyro preference (still needs a tap on iOS for permission, so only auto-on where allowed)
       if(localStorage.getItem('invrun_gyro')==='1'){ const gb=document.getElementById('gyro-btn');
         const DOE=window.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission!=='function') this.input.toggleGyro(gb); }
+
+      // ===== MISSIONS: 3 goals per day, claim coins when done =====
+      this.missions=(()=>{
+        const POOL=[
+          {id:'hits',  icon:'i-city',   name:'Smash %N buildings in one run', tiers:[15,25,40],   rew:[150,250,400]},
+          {id:'dist',  icon:'i-map',    name:'Fly %N m in one run',           tiers:[800,1500,2500], rew:[150,250,400]},
+          {id:'combo', icon:'i-bolt',   name:'Reach a x%N combo',             tiers:[8,14,22],    rew:[200,300,500]},
+          {id:'coins', icon:'i-coin',   name:'Collect %N coins in one run',   tiers:[15,30,50],   rew:[150,250,400]},
+          {id:'score', icon:'i-trophy', name:'Score %N in one run',           tiers:[5000,12000,25000], rew:[200,350,550]},
+        ];
+        const K='invrun_ms';
+        const today=()=>Math.floor(Date.now()/86400000);
+        const load=()=>{ try{ const j=JSON.parse(localStorage.getItem(K)||'null');
+          if(j&&j.day===today()) return j; }catch(e){}
+          // pick 3 distinct missions for today, tier scales with the day for variety
+          const idx=[...POOL.keys()], pick=[]; let seed=today();
+          while(pick.length<3&&idx.length){ seed=(seed*1103515245+12345)&0x7fffffff;
+            pick.push(idx.splice(seed%idx.length,1)[0]); }
+          const st={day:today(), m:pick.map(i=>{ const t=(today()+i)%3;
+            return {i, t, prog:0, claimed:false}; })};
+          try{ localStorage.setItem(K,JSON.stringify(st)); }catch(e){} return st; };
+        const save=(st)=>{ try{ localStorage.setItem(K,JSON.stringify(st)); }catch(e){} };
+        const info=(m)=>{ const P=POOL[m.i], goal=P.tiers[m.t];
+          return {P, goal, rew:P.rew[m.t], name:P.name.replace('%N',goal.toLocaleString())}; };
+        const self={
+          state:load(),
+          onRunEnd(r){ const st=self.state; let changed=false;
+            for(const m of st.m){ const {P,goal}=info(m); if(m.claimed) continue;
+              const v=r[P.id]||0; if(v>m.prog){ m.prog=Math.min(v,goal); changed=true; } }
+            if(changed) save(st); self.render(); },
+          anyReady(){ return self.state.m.some(m=>!m.claimed && m.prog>=info(m).goal); },
+          render(){
+            const list=document.getElementById('ms-list'); if(!list) return;
+            self.state=self.state.day===today()?self.state:load();
+            list.innerHTML=self.state.m.map((m,k)=>{ const {P,goal,rew,name}=info(m);
+              const done=m.prog>=goal, pct=Math.round(Math.min(1,m.prog/goal)*100);
+              return `<div class="ms${done&&!m.claimed?' done':''}${m.claimed?' claimed':''}">
+                <svg class="svgi mi"><use href="#${P.icon}"/></svg>
+                <div class="ms-body"><div class="ms-name">${name}</div>
+                  <div class="ms-bar"><i style="width:${pct}%"></i></div>
+                  <div class="ms-num">${Math.min(m.prog,goal).toLocaleString()} / ${goal.toLocaleString()}</div></div>
+                ${ m.claimed ? '<div class="ms-rew">DONE</div>'
+                   : done ? `<button class="ms-claim" data-ms="${k}">CLAIM</button>`
+                   : `<div class="ms-rew"><svg class="svgi"><use href="#i-coin"/></svg>${rew}</div>` }
+              </div>`; }).join('');
+            list.querySelectorAll('.ms-claim').forEach(btn=>btn.onclick=()=>{
+              const m=self.state.m[+btn.dataset.ms]; if(!m||m.claimed) return;
+              const {rew}=info(m); m.claimed=true; save(self.state);
+              try{ localStorage.setItem('invrun_coins', this.run.coinBank()+rew); }catch(e){}
+              this.audio.coin(); this.run.refreshBestLine(); self.render();
+            });
+            const mb=document.getElementById('missions-btn'); if(mb) mb.classList.toggle('ready',self.anyReady());
+          }
+        };
+        document.getElementById('missions-btn').onclick=()=>{ self.render();
+          document.getElementById('missions-modal').classList.remove('hidden'); };
+        self.render();
+        return self;
+      })();
 
       // ===== DAILY REWARDS: 7-day ladder, resets weekly =====
       {
