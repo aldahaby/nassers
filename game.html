@@ -2871,30 +2871,11 @@
   // ===================================================================================
   const CHARACTERS = {
     dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:Math.PI/2+0.35, baseY:0.12, targetLen:4.2, wind:false,
-                // RIGGED: additive bone rotations that pose him fist-first like Omni-Man
-                // both fists PUNCH forward toward the target (reference: two-fisted dive), wings swept back
-                // Tuned against the REAL gameplay camera: both arms punch forward past the head (visible
-                // from behind), wings sweep back off the shoulders. See scratchpad/pose_ingame.js.
-                pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
-                       LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
-                       LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
-                       Spine02:[0.12,0,0], Head:[0.4,0,0],
-                       LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:Math.PI/2+0.35, baseY:0.12, targetLen:4.2, wind:false,
-                pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
-                       LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
-                       LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
-                       Spine02:[0.12,0,0], Head:[0.4,0,0],
-                       LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
+    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:Math.PI/2+0.35, baseY:0.12, targetLen:4.2, wind:false,
-                pose:{ RightArm:[2.5,-0.35,-1.0], RightForeArm:[0,0,-0.06], RightHand:[0,0,-0.06],
-                       LeftArm:[2.5,0.35,1.0], LeftForeArm:[0,0,0.06], LeftHand:[0,0,0.06],
-                       LeftShoulder:[0,0,0], RightShoulder:[0,0,0],
-                       Spine02:[0.12,0,0], Head:[0.4,0,0],
-                       LeftUpLeg:[0,0,0.12], RightUpLeg:[0,0,-0.12] },
+    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
