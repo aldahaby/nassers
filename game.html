@@ -280,7 +280,12 @@
                 box-shadow:inset 0 0 0 1.5px #bfeeff, inset 0 2px 0 rgba(255,255,255,.5); filter:drop-shadow(0 0 10px rgba(55,198,255,.4)); }
     .sheet-note{ font-family:var(--f-ui); font-size:14px; color:var(--muted); margin:2px 0 16px; letter-spacing:.5px; }
 
-    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    .modal .sheet{ max-height:86vh; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
+    .card{ min-width:0; }
+    .card small{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    #skins-modal .card{ font-size:13px; }
+    @media (min-width:520px){ .grid{ grid-template-columns:repeat(3,1fr); } }
     .card{ position:relative; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
            font-family:var(--f-num); font-weight:600; font-size:16px; letter-spacing:1px; color:var(--text); text-transform:uppercase;
            background:linear-gradient(180deg,var(--gun),var(--navy3));
@@ -1496,7 +1501,8 @@
         const holder=new THREE.Group(); holder.add(posed);
         this._mRotX=cfg.rotX; this._mBaseY=cfg.baseY;                  // per-character flight pose + height
         holder.rotation.set(this._mRotX,0,0);
-        holder.scale.setScalar(cfg.targetLen/Math.max(0.001,size.y));
+        const fitDim = cfg.fit==='max' ? Math.max(size.x,size.y,size.z) : size.y;
+        holder.scale.setScalar(cfg.targetLen/Math.max(0.001,fitDim));
         holder.position.set(0,this._mBaseY,0);
         if(this.villainModel){ this.rig.remove(this.villainModel); }  // remove any previously-loaded model (live swap)
         this.villainModel=holder; this.rig.add(holder);
@@ -1713,7 +1719,7 @@
         frame.visible=false; this.game.scene.add(frame);
         this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(13,20), h:rand(7,11), y:0});
       }
-      this.BR_CEIL=13;                                   // backrooms room height (floor -> tiles)
+      this.BR_CEIL=11;                                   // backrooms room height (floor -> tiles)
       // recessed FLUORESCENT LIGHT PANELS set into the ceiling grid
       this.brLights=[]; { const lg=new THREE.PlaneGeometry(1,1);
         for(let i=0;i<26;i++){
@@ -1768,6 +1774,19 @@
         for(let i=0;i<4;i++){ let cx0=Math.random()*128, cy0=Math.random()*100; x.beginPath(); x.moveTo(cx0,cy0);
           for(let s2=0;s2<3;s2++){ cx0+=(Math.random()*10-5); cy0+=8+Math.random()*10; x.lineTo(cx0,cy0); } x.stroke(); }
       } else if(style==='drywall'){
+        // BACKROOMS PILLAR WALLPAPER: the same chevron pattern as the walls
+        x.fillStyle='#e3d98f'; x.fillRect(0,0,128,128);
+        x.fillStyle='rgba(255,250,205,.45)'; for(let vx=0;vx<128;vx+=32) x.fillRect(vx,0,16,128);
+        for(let cx=0;cx<128;cx+=32){ for(let r=0;r<5;r++){ const y=r*25.6;
+          for(const [w2,al,lw] of [[22,0.55,3],[22,0.26,5]]){
+            x.strokeStyle=`rgba(150,163,140,${al})`; x.lineWidth=lw;
+            x.beginPath(); x.moveTo(cx+5,y+19); x.lineTo(cx+5+w2/2,y+8); x.lineTo(cx+5+w2,y+19); x.stroke(); } } }
+        for(let i=0;i<3;i++){ const sx=Math.random()*128, sy=Math.random()*128, r=10+Math.random()*20;
+          const g3=x.createRadialGradient(sx,sy,0,sx,sy,r);
+          g3.addColorStop(0,'rgba(150,124,50,.22)'); g3.addColorStop(1,'rgba(150,124,50,0)');
+          x.fillStyle=g3; x.beginPath(); x.arc(sx,sy,r,0,6.2832); x.fill(); }
+        x.fillStyle='rgba(90,74,30,.30)'; x.fillRect(0,122,128,6);
+      } else if(style==='__old_drywall'){
         // BACKROOMS WALLPAPER: faded mustard, vertical seams, water stains, peeling edges
         const g0=x.createLinearGradient(0,0,0,128);
         g0.addColorStop(0,'#d8c078'); g0.addColorStop(0.55,'#c9ae62'); g0.addColorStop(1,'#b2954c');
@@ -2054,6 +2073,35 @@
     // dark tiled subway WALL texture with a green service stripe
     // acoustic ceiling tile texture (backrooms) - white pocked panels with a grid
     // corridor side-wall wallpaper (backrooms)
+    // the signature Backrooms wallpaper: pale yellow with vertical columns of chevron arrows
+    _chevronTex(scaleX,scaleY){
+      const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d');
+      x.fillStyle='#e3d98f'; x.fillRect(0,0,256,256);                       // pale yellow ground
+      // subtle vertical banding between wallpaper strips
+      x.fillStyle='rgba(255,250,205,.45)'; for(let vx=0;vx<256;vx+=64) x.fillRect(vx,0,32,256);
+      // stacked chevrons, two per strip, in a soft grey-green like the reference
+      const col=64, rows=8, ch=256/rows;
+      for(let cx=0;cx<256;cx+=col){
+        for(let r=0;r<rows;r++){
+          const y=r*ch;
+          for(const [ox,w2,al] of [[10,44,0.55],[10,44,0.28]]){
+            x.strokeStyle=`rgba(150,163,140,${al})`; x.lineWidth=al>0.4?5:9;
+            x.beginPath();
+            x.moveTo(cx+ox,        y+ch*0.74);
+            x.lineTo(cx+ox+w2/2,   y+ch*0.30);
+            x.lineTo(cx+ox+w2,     y+ch*0.74);
+            x.stroke();
+          }
+        }
+      }
+      // age: faint blotches + a darker skirting band at the bottom of the sheet
+      for(let i=0;i<5;i++){ const sx=Math.random()*256, sy=Math.random()*256, r=14+Math.random()*34;
+        const g2=x.createRadialGradient(sx,sy,0,sx,sy,r);
+        g2.addColorStop(0,'rgba(150,124,50,.20)'); g2.addColorStop(1,'rgba(150,124,50,0)');
+        x.fillStyle=g2; x.beginPath(); x.arc(sx,sy,r,0,6.2832); x.fill(); }
+      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+      t.repeat.set(scaleX||1, scaleY||1); t.anisotropy=4; return t;
+    }
     _drywallWallTex(){
       const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
       const g0=x.createLinearGradient(0,0,0,128);
@@ -2131,14 +2179,16 @@
       if(this.ceilRibs) for(const r of this.ceilRibs) r.mesh.visible=(metro && !back);
       if(this.tunSeg){                                  // re-skin the corridor shell for the active map
         if(!this._wallTexMetro) this._wallTexMetro=this._tunnelWallTex();
-        if(!this._wallTexBack)  this._wallTexBack=this._drywallWallTex();
+        if(!this._wallTexBack)  this._wallTexBack=this._chevronTex(2,1.4);
         if(!this._ceilTexBack)  this._ceilTexBack=this._ceilTileTex();
         for(const sg of this.tunSeg){
           const wt=(back?this._wallTexBack:this._wallTexMetro);
           for(const w of [sg.L,sg.R]){ if(w.material.map!==wt){ w.material.map=wt; w.material.needsUpdate=true; } }
           if(back){ if(sg.roof.material.map!==this._ceilTexBack){ sg.roof.material.map=this._ceilTexBack;
-                      sg.roof.material.color.setHex(0xffffff); sg.roof.material.emissive.setHex(0xa8a08a);
-                      sg.roof.material.emissiveIntensity=0.85; sg.roof.material.needsUpdate=true; } }
+                      sg.roof.material.color.setHex(0xf2eee0); sg.roof.material.emissive.setHex(0xd8d2c0);
+                      sg.roof.material.emissiveIntensity=0.55; sg.roof.material.side=THREE.DoubleSide;
+                      sg.roof.material.needsUpdate=true; }
+                    sg.roof.material.map.repeat.set(5,2.2); }
           else if(sg.roof.material.map){ sg.roof.material.map=null; sg.roof.material.color.setHex(0x0a1512);
                       sg.roof.material.emissive.setHex(0x000000); sg.roof.material.needsUpdate=true; }
         }
@@ -2534,9 +2584,9 @@
           pr.grp.rotation.y = pr.side>0? -0.5 : 0.5;
         }
       }
-      if(this.ceilRibs && this.ceilRibs[0].mesh.visible){   // METRO tunnel ceiling arching low overhead
+      if(this.tunSeg && this.tunSeg[0].L.visible){          // enclosed shell (metro tunnel / backrooms room)
         const span=this.CEIL_N*this.CEIL_GAP, cy=(p.cruiseY||16);
-        for(const r of this.ceilRibs){
+        if(this.ceilRibs && this.ceilRibs[0].mesh.visible) for(const r of this.ceilRibs){
           if(r.z < pz-this.CEIL_GAP) r.z+=span;
           r.mesh.position.set(this._pathX(r.z), 0.4, r.z);      // full floor-to-ceiling ring, legs at the walls (±25)
         }
@@ -2548,11 +2598,12 @@
         // SEGMENTED tunnel: each panel hugs the curved road at its own z -> world-static, wraps the corridor
         const bkr=!!(this.game.theme&&this.game.theme.backrooms);
         if(this.tunSeg){ const WH=bkr?this.BR_CEIL:(cy+18), roofY=bkr?this.BR_CEIL:(cy+15.5),
-                         WX=bkr?34:28, rp=(this.CEIL_GAP+0.5)/7;
+                         WX=bkr?22:28, rp=(this.CEIL_GAP+0.5)/7;
           for(const s of this.tunSeg){ if(s.z < pz-this.CEIL_GAP) s.z+=span;   // recycle behind -> ahead
             const cx=this._pathX(s.z);
-            s.L.position.set(cx-WX, WH/2, s.z); s.L.scale.set(1,WH,1); s.L.material.map.repeat.set(rp, WH/7);
-            s.R.position.set(cx+WX, WH/2, s.z); s.R.scale.set(1,WH,1); s.R.material.map.repeat.set(rp, WH/7);
+            const rpx=bkr?(this.CEIL_GAP+0.5)/6:rp, rpy=bkr?(WH/6):(WH/7);
+            s.L.position.set(cx-WX, WH/2, s.z); s.L.scale.set(1,WH,1); s.L.material.map.repeat.set(rpx, rpy);
+            s.R.position.set(cx+WX, WH/2, s.z); s.R.scale.set(1,WH,1); s.R.material.map.repeat.set(rpx, rpy);
             s.roof.position.set(cx, roofY, s.z); s.roof.scale.set(2*WX,1,1); }
         }
       }
@@ -3137,7 +3188,7 @@
                 smash:{y:-0.05,z:3.0} },
     patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    entity:   { name:'The Entity', url:'./assets/entity.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
+    entity:   { name:'The Entity', url:'./assets/entity.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:2.9, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
     countess: { name:'Glowing Countess', url:'./assets/countess.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} }
