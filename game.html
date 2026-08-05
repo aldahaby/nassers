@@ -499,20 +499,18 @@
     .res-coins .svgi{ width:24px; height:24px; color:var(--gold); }
 
     /* ===== MISSIONS ===== */
-    #missions-btn{ position:absolute; top:max(14px,env(safe-area-inset-top)); left:16px; z-index:2; pointer-events:auto;
-      display:flex; align-items:center; gap:6px; padding:6px 14px 4px; border:none; cursor:pointer; margin-top:44px;
-      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1px; color:var(--text);
+    #menu-row2{ position:relative; z-index:2; display:flex; gap:12px; justify-content:center; align-items:stretch;
+      width:min(430px,90vw); margin:0 auto 14px; }
+    #menu-row2 button{ flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:7px;
+      padding:11px 10px 9px; border:none; cursor:pointer; pointer-events:auto;
+      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1.5px; color:var(--text);
       background:linear-gradient(180deg,var(--gun2),var(--navy));
       clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
-      box-shadow:inset 0 0 0 1.5px var(--steel); }
+      box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.07);
+      filter:drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+    #menu-row2 button.ready{ box-shadow:inset 0 0 0 2px var(--gold); animation:drPulse 1.6s ease-in-out infinite; }
     #missions-btn .svgi{ width:18px; height:18px; color:var(--elec); }
     #missions-btn.ready{ box-shadow:inset 0 0 0 2px var(--gold); animation:drPulse 1.6s ease-in-out infinite; }
-    #ranks-btn{ position:absolute; top:max(14px,env(safe-area-inset-top)); left:16px; z-index:2; pointer-events:auto;
-      display:flex; align-items:center; gap:6px; padding:6px 14px 4px; border:none; cursor:pointer; margin-top:88px;
-      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1px; color:var(--text);
-      background:linear-gradient(180deg,var(--gun2),var(--navy));
-      clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
-      box-shadow:inset 0 0 0 1.5px var(--steel); }
     #ranks-btn .svgi{ width:18px; height:18px; color:var(--gold); }
     .rk{ display:flex; align-items:center; gap:11px; padding:9px 12px; margin-bottom:7px;
       background:linear-gradient(180deg,var(--gun),var(--navy3));
@@ -579,6 +577,12 @@
       box-shadow:inset 0 0 0 1.5px var(--steel); }
     #daily-btn .svgi{ width:18px; height:18px; color:var(--gold); }
     #daily-btn.ready{ box-shadow:inset 0 0 0 2px var(--gold); animation:drPulse 1.6s ease-in-out infinite; }
+    /* coins that fly to the counter */
+    .coinfly{ position:fixed; z-index:60; width:22px; height:22px; pointer-events:none; color:var(--gold);
+      filter:drop-shadow(0 0 8px rgba(255,198,58,.85)); will-change:transform,opacity; }
+    .coinfly svg{ width:100%; height:100%; fill:currentColor; }
+    @keyframes coinPopHit{ 0%{transform:scale(1)} 45%{transform:scale(1.35)} 100%{transform:scale(1)} }
+    #coins.hit,#coin-bank.hit{ animation:coinPopHit .3s ease-out; }
     /* card/chip press feel */
     .card,.chip,.toggle,.x,.btn,.btn-play,.previmg{ transition:transform .06s ease, filter .1s ease; }
 
@@ -635,12 +639,15 @@
   <div id="start-overlay" class="overlay menu">
     <div id="menu-bg"></div>
     <button id="daily-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>DAILY</span></button>
-    <button id="missions-btn"><svg class="svgi"><use href="#i-burst"/></svg><span>MISSIONS</span></button>
-    <button id="ranks-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>RANKS</span></button>
+
     <div id="coin-bank"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
     <div class="brand">
       <div class="logo">CITY<span>BREAKER</span></div>
       <div class="tagline">SMASH THROUGH NEW YORK</div>
+    </div>
+    <div id="menu-row2">
+      <button id="missions-btn"><svg class="svgi"><use href="#i-burst"/></svg><span>MISSIONS</span></button>
+      <button id="ranks-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>RANKS</span></button>
     </div>
     <div class="best-card">
       <div class="tro"><svg class="svgi"><use href="#i-trophy"/></svg></div>
@@ -1107,6 +1114,8 @@
       }
     }
     _coin(c){ const g=this.game; g.score.coins++; g.score.total+=60; g.audio.coin();
+      { const cam=g.camera.cam, v=new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z).project(cam);
+        if(v.z<1) flyCoin((v.x*0.5+0.5)*innerWidth, (-v.y*0.5+0.5)*innerHeight, 0); }
       g.effects.ring(new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z),new THREE.Color(0xffd23b),5); }
     _drink(d){ const g=this.game; g.momentum.addHit(28); g.adrenaline.value=clamp(g.adrenaline.value+42,0,g.adrenaline.MAX);
       g.score.total+=160; g.audio.drink(); g.effects.flash(0.16);
@@ -1614,7 +1623,8 @@
       this.pos.z+=this.vel.z*dt;
       { const city=this.game.city, st=this.game.theme&&this.game.theme.station;
         const rc=city? city._pathX(this.pos.z) : 0;                            // road centre at our z
-        const lim= st ? 17 : ((city?city.roadHalf:22)+4);                      // METRO: tight central lane inside the tunnel; else road+kerb
+        const bk=this.game.theme&&this.game.theme.backrooms;
+        const lim= bk ? 17 : st ? 17 : ((city?city.roadHalf:22)+4);            // BACKROOMS: stay inside the room walls
         this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
@@ -1748,7 +1758,7 @@
         frame.visible=false; this.game.scene.add(frame);
         this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(13,20), h:rand(7,11), y:0});
       }
-      this.BR_CEIL=11;                                   // backrooms room height (floor -> tiles)
+      this.BR_CEIL=17;                                   // backrooms room height (floor -> tiles)
       // recessed FLUORESCENT LIGHT PANELS set into the ceiling grid
       this.brLights=[]; { const lg=new THREE.PlaneGeometry(1,1);
         for(let i=0;i<16;i++){
@@ -2090,10 +2100,10 @@
       const SEG=this.CEIL_GAP;                                   // one wall/roof panel per rib spacing
       for(let i=0;i<this.CEIL_N;i++){
         const mkWall=(side)=>{ const wt=wallTex.clone(); wt.wrapS=wt.wrapT=THREE.RepeatWrapping;
-          const m=new THREE.Mesh(new THREE.PlaneGeometry(SEG+0.5,1),
+          const m=new THREE.Mesh(new THREE.PlaneGeometry(SEG+2.5,1),
             new THREE.MeshStandardMaterial({map:wt,roughness:.9,metalness:.08,side:THREE.DoubleSide}));
           m.rotation.y=side>0?-Math.PI/2:Math.PI/2; m.visible=false; m.frustumCulled=false; g.scene.add(m); return m; };
-        const roof=new THREE.Mesh(new THREE.PlaneGeometry(1,SEG+0.5),
+        const roof=new THREE.Mesh(new THREE.PlaneGeometry(1,SEG+2.5),
           new THREE.MeshStandardMaterial({color:0x0a1512,roughness:1,side:THREE.DoubleSide}));
         roof.rotation.x=Math.PI/2; roof.visible=false; roof.frustumCulled=false; g.scene.add(roof);
         this.tunSeg.push({L:mkWall(-1), R:mkWall(1), roof, z:i*SEG});
@@ -2223,8 +2233,8 @@
         }
       }
       if(this.ceilPanel) this.ceilPanel.visible=false;                    // replaced by the segmented tunnel roof
-      if(this.trains) for(const tr of this.trains) tr.mesh.visible=!!t.trains;
-      if(this.pillars) for(const c of this.pillars) c.grp.visible=metro;
+      if(this.trains) for(const tr of this.trains) tr.mesh.visible=(!!t.trains && !back);
+      if(this.pillars) for(const c of this.pillars) c.grp.visible=(metro && !back);
       if(this.tunSeg) for(const s of this.tunSeg){ s.L.visible=s.R.visible=s.roof.visible=metro; }
       for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);
       this._skinProps(t,night);
@@ -2484,7 +2494,7 @@
         b.mesh.position.y=H/2; b.mesh.castShadow=false;
         // a second pillar only sometimes -> the room still reads as a grid, at half the draw cost
         if(Math.random()<0.5){ const nb=this._take();
-          if(nb){ const w2=rand(3.2,4.6), off=(this.lastTowerX>0?-1:1)*rand(9,15);
+          if(nb){ const w2=rand(3.2,4.6), off=(this.lastTowerX>0?-1:1)*rand(7,11);
             this._place(nb, px+this.lastTowerX+off, z+rand(-6,6), w2, H, w2, false);
             nb.mesh.position.y=H/2; nb.mesh.castShadow=false; } }
         return;                                   // rooms only: no skyline / decor rows
@@ -2635,7 +2645,7 @@
             const rpx=bkr?(this.CEIL_GAP+0.5)/6:rp, rpy=bkr?(WH/6):(WH/7);
             s.L.position.set(cx-WX, WH/2, s.z); s.L.scale.set(1,WH,1); s.L.material.map.repeat.set(rpx, rpy);
             s.R.position.set(cx+WX, WH/2, s.z); s.R.scale.set(1,WH,1); s.R.material.map.repeat.set(rpx, rpy);
-            s.roof.position.set(cx, roofY, s.z); s.roof.scale.set(2*WX,1,1); }
+            s.roof.position.set(cx, roofY, s.z); s.roof.scale.set(2*WX+4,1,1); }
         }
       }
       if(this.trains && this.trains[0].mesh.visible){   // ambient side-track trains: PARKED (world-static)
@@ -2716,9 +2726,8 @@
       const cRaw=clamp((1-g.time.scale)/0.7,0,1);
       const cine=cRaw*cRaw*(3-2*cRaw);                    // eased in/out
 
-      const inRoom=!!(g.theme&&g.theme.backrooms);        // BACKROOMS: tuck the camera under the ceiling
-      const dist=(inRoom?8.5:11)+speedF*(inRoom?2:4) - cine*1.8;
-      const height=(inRoom?2.8:6.5)+speedF*(inRoom?0.6:1.5) - cine*0.8;
+      const dist=11+speedF*4 - cine*1.8;                  // identical framing on every map
+      const height=6.5+speedF*1.5 - cine*0.8;
       this.cam.position.z=p.pos.z-dist;
       this.cam.position.x=damp(this.cam.position.x, p.pos.x, 10, realDt);
       this.cam.position.y=p.pos.y+height;
@@ -2728,7 +2737,7 @@
       this.cam.fov=damp(this.cam.fov,fov, cine>0.02?9:(p.surgeActive>0?10:6), realDt); this.cam.updateProjectionMatrix();
 
       // look down-ahead as always; during the shot, ease the aim slightly lower/nearer (same direction)
-      this._look.set(p.pos.x, p.pos.y-(inRoom?0.5:1.4) - cine*0.6, p.pos.z+8 - cine*1.2);
+      this._look.set(p.pos.x, p.pos.y-1.4 - cine*0.6, p.pos.z+8 - cine*1.2);
       this.cam.lookAt(this._look);
 
       if(this.shakeAmt>0.001){
@@ -3021,6 +3030,20 @@
       if(onPlayer) setTimeout(()=>this._tone(45,0.5,'sawtooth',0.35),60); }
   }
 
+  // fly a coin from a screen point to the coin counter, then pulse it
+  function flyCoin(fromX,fromY,delay){
+    const tgt=document.getElementById('coins')||document.getElementById('coin-bank'); if(!tgt) return;
+    const r=tgt.getBoundingClientRect(), tx=r.left+r.width*0.35, ty=r.top+r.height/2;
+    const el=document.createElement('div'); el.className='coinfly';
+    el.innerHTML='<svg viewBox="0 0 24 24"><use href="#i-coin"/></svg>';
+    el.style.left=fromX+'px'; el.style.top=fromY+'px'; document.body.appendChild(el);
+    const dur=520+Math.random()*160;
+    el.animate([{transform:'translate(-50%,-50%) scale(.7)',opacity:0},
+                {transform:'translate(-50%,-50%) scale(1.15)',opacity:1,offset:0.18},
+                {transform:`translate(${tx-fromX}px,${ty-fromY}px) translate(-50%,-50%) scale(.55)`,opacity:.9}],
+      {duration:dur,delay:delay||0,easing:'cubic-bezier(.4,-0.2,.6,1)',fill:'forwards'})
+      .onfinish=()=>{ el.remove(); tgt.classList.remove('hit'); void tgt.offsetWidth; tgt.classList.add('hit'); };
+  }
   // ===================================================================================
   // UI — binds state to HUD. No game logic.
   // ===================================================================================
@@ -3549,6 +3572,8 @@
               const m=self.state.m[+btn.dataset.ms]; if(!m||m.claimed) return;
               const {rew}=info(m); m.claimed=true; save(self.state);
               try{ localStorage.setItem('invrun_coins', G.run.coinBank()+rew); }catch(e){}
+              { const r=btn.getBoundingClientRect();
+                for(let i=0;i<7;i++) flyCoin(r.left+r.width/2+(Math.random()*30-15), r.top+r.height/2+(Math.random()*20-10), i*55); }
               G.audio.coin(); G.run.refreshBestLine(); self.render();
             });
             const mb=document.getElementById('missions-btn'); if(mb) mb.classList.toggle('ready',self.anyReady());
@@ -3593,6 +3618,8 @@
           let cur=a.day; if(a.last>=0 && t-a.last>1) cur=0; if(cur>=7) cur=0;
           const r=REW[cur];
           if(r.c){ const bank=this.run.coinBank()+r.c; try{localStorage.setItem('invrun_coins',bank);}catch(e){}
+            const rb=btn.getBoundingClientRect();
+            for(let i=0;i<9;i++) flyCoin(rb.left+rb.width/2+(Math.random()*40-20), rb.top+rb.height/2, i*50);
             this.audio.coin(); }
           else { try{localStorage.setItem('invrun_skin_'+r.skin,'1');}catch(e){} this.audio.surge(); }
           try{ localStorage.setItem(K.day,String(cur+1)); localStorage.setItem(K.last,String(t)); }catch(e){}
