@@ -507,6 +507,24 @@
       box-shadow:inset 0 0 0 1.5px var(--steel); }
     #missions-btn .svgi{ width:18px; height:18px; color:var(--elec); }
     #missions-btn.ready{ box-shadow:inset 0 0 0 2px var(--gold); animation:drPulse 1.6s ease-in-out infinite; }
+    #ranks-btn{ position:absolute; top:max(14px,env(safe-area-inset-top)); left:16px; z-index:2; pointer-events:auto;
+      display:flex; align-items:center; gap:6px; padding:6px 14px 4px; border:none; cursor:pointer; margin-top:88px;
+      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1px; color:var(--text);
+      background:linear-gradient(180deg,var(--gun2),var(--navy));
+      clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+      box-shadow:inset 0 0 0 1.5px var(--steel); }
+    #ranks-btn .svgi{ width:18px; height:18px; color:var(--gold); }
+    .rk{ display:flex; align-items:center; gap:11px; padding:9px 12px; margin-bottom:7px;
+      background:linear-gradient(180deg,var(--gun),var(--navy3));
+      clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+      box-shadow:inset 0 0 0 1.5px var(--steel); }
+    .rk .svgi{ width:24px; height:24px; flex:none; }
+    .rk-n{ flex:1; font-family:var(--f-num); font-weight:600; font-size:16px; letter-spacing:1px; }
+    .rk-s{ font-family:var(--f-num); font-size:14px; color:var(--muted); }
+    .rk.cur{ box-shadow:inset 0 0 0 2px var(--gold); }
+    .rk.cur .rk-s{ color:var(--gold); }
+    #rk-you{ text-align:center; font-family:var(--f-ui); font-size:13px; color:var(--muted); margin:2px 0 12px; }
+    #rk-you b{ color:var(--text); }
     .ms{ display:flex; align-items:center; gap:11px; padding:11px 13px; margin-bottom:9px;
       background:linear-gradient(180deg,var(--gun),var(--navy3));
       clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
@@ -618,6 +636,7 @@
     <div id="menu-bg"></div>
     <button id="daily-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>DAILY</span></button>
     <button id="missions-btn"><svg class="svgi"><use href="#i-burst"/></svg><span>MISSIONS</span></button>
+    <button id="ranks-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>RANKS</span></button>
     <div id="coin-bank"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
     <div class="brand">
       <div class="logo">CITY<span>BREAKER</span></div>
@@ -678,6 +697,14 @@
     </div>
   </div>
 
+  <div id="ranks-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Ranks</span><button class="x" data-close>×</button></div>
+      <div class="sheet-note">Your rank is set by your best score in a single run.</div>
+      <div id="rk-list"></div>
+    </div>
+  </div>
+
   <div id="missions-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Missions</span><button class="x" data-close>×</button></div>
@@ -733,10 +760,12 @@
       'Every map has its own hit sound, lighting and hazards. Try all four.',
       'Miss a tower and your streak breaks — line up the next one early.',
       'Finish daily missions for coins, and log in each day for the ladder.'];
+    var startTips=function(){
     var tipEl=document.getElementById('load-tip-txt');
     if(tipEl){ var ti=Math.floor(Math.random()*TIPS.length);
       var showTip=function(){ tipEl.innerHTML='<span>'+TIPS[ti%TIPS.length]+'</span>'; ti++; };
-      showTip(); setInterval(showTip,3600); }
+      showTip(); setInterval(showTip,3600); } };
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',startTips); else startTips();
     try{ var mk=localStorage.getItem('invrun_map');
       document.body.classList.add('theme-'+(['nyc','aero','medieval','metro','backrooms'].indexOf(mk)>=0?mk:'nyc')); }catch(e){}
     var ov=document.getElementById('loading-overlay'),
@@ -1722,7 +1751,7 @@
       this.BR_CEIL=11;                                   // backrooms room height (floor -> tiles)
       // recessed FLUORESCENT LIGHT PANELS set into the ceiling grid
       this.brLights=[]; { const lg=new THREE.PlaneGeometry(1,1);
-        for(let i=0;i<26;i++){
+        for(let i=0;i<16;i++){
           const m=new THREE.Mesh(lg,new THREE.MeshBasicMaterial({color:0xfffdf0,transparent:true,opacity:0.95}));
           m.rotation.x=Math.PI/2; m.visible=false; m.frustumCulled=false; this.game.scene.add(m);
           const gl=new THREE.PointLight(0xfff6d0,0,26,2); gl.visible=false; this.game.scene.add(gl);
@@ -2452,12 +2481,12 @@
         // BACKROOMS: square wallpapered PILLARS running floor -> ceiling (the hittable things)
         const H=this.BR_CEIL, w=rand(3.2,4.6);
         this._place(b, px+this.lastTowerX, z, w, H, w, false);
-        b.mesh.position.y=H/2; b.mesh.castShadow=true;
-        // a second pillar on the opposite side of the room so the space reads as a grid of columns
-        const nb=this._take();
-        if(nb){ const w2=rand(3.2,4.6), off=(this.lastTowerX>0?-1:1)*rand(9,15);
-          this._place(nb, px+this.lastTowerX+off, z+rand(-6,6), w2, H, w2, false);
-          nb.mesh.position.y=H/2; nb.mesh.castShadow=true; }
+        b.mesh.position.y=H/2; b.mesh.castShadow=false;
+        // a second pillar only sometimes -> the room still reads as a grid, at half the draw cost
+        if(Math.random()<0.5){ const nb=this._take();
+          if(nb){ const w2=rand(3.2,4.6), off=(this.lastTowerX>0?-1:1)*rand(9,15);
+            this._place(nb, px+this.lastTowerX+off, z+rand(-6,6), w2, H, w2, false);
+            nb.mesh.position.y=H/2; nb.mesh.castShadow=false; } }
         return;                                   // rooms only: no skyline / decor rows
       }
       if(station){ this._place(b, px+this.lastTowerX, z, rand(8,10), rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
@@ -2560,8 +2589,10 @@
       }
       if(this.brLights){                                // BACKROOMS ceiling light panels
         const on=!!(this.game.theme&&this.game.theme.backrooms), H=this.BR_CEIL, span=this.brLights.length*9;
+        let li=0;
         for(const L of this.brLights){
-          L.mesh.visible=on; L.light.visible=on;
+          const lit=(li++%3===0);                       // only every 3rd panel casts a real light
+          L.mesh.visible=on; L.light.visible=on&&lit;
           if(!on){ L.light.intensity=0; continue; }
           if(L.z===0 || L.z < pz-30){ L.z=pz+rand(20,span); L.flick=Math.random()<0.22?rand(1,4):0; }
           const lx=this._pathX(L.z)+L.side*rand(0,0)+L.side*9;
@@ -2570,7 +2601,7 @@
           let k=1; if(L.flick>0){ const t2=performance.now()*0.006+L.ph;
             k=(Math.sin(t2*L.flick)>0.72||Math.sin(t2*7.3+L.ph)>0.93)?rand(0.15,0.45):1; }
           L.mesh.material.opacity=0.55*k+0.42;
-          L.light.position.set(lx, H-1.2, L.z); L.light.intensity=(2.1*k)*(this.game.maps&&this.game.maps.night?1.35:1);
+          if(lit){ L.light.position.set(lx, H-1.2, L.z); L.light.intensity=(3.4*k)*(this.game.maps&&this.game.maps.night?1.35:1); }
         }
       }
       if(this.props){                                   // themed roadside props (recycled)
@@ -3116,14 +3147,12 @@
       try{ localStorage.setItem('invrun_coins',bank); }catch(e){}
       const combBest=g.combo.best||0, dist=Math.round(g.score.distance||0);
       // RANK: the run's title, earned by score — gives every run a verdict instead of "you fell"
-      const RANKS=[[0,'Street Thug','#9aa4b0'],[2500,'Wrecker','#7ce0a0'],[8000,'Demolisher','#5ce8ff'],
-                   [20000,'Skyline Terror','#c08bff'],[45000,'CITYBREAKER','#ffc63a']];
-      let rk=RANKS[0]; for(const r of RANKS) if(score>=r[0]) rk=r;
+      const rk=rankFor(score);
       const svg=(i)=>`<svg class="svgi"><use href="#${i}"/></svg>`;
       document.getElementById('res-card').innerHTML=
-        `<div class="res-medal" style="color:${rk[2]}">${svg('i-trophy')}</div>`+
+        `<div class="res-medal" style="color:${rk.c}">${svg('i-trophy')}</div>`+
         `<div class="res-rank">Rank Earned</div>`+
-        `<div class="res-title" style="--orange:${rk[2]}">${rk[1]}</div>`+
+        `<div class="res-title" style="--orange:${rk.c}">${rk.n}</div>`+
         (isBest?`<div class="res-best">★ NEW PERSONAL BEST ★</div>`:'')+
         `<div class="res-score" id="go-score">0</div><div class="res-score-lbl">Score</div>`+
         `<div class="res-grid">`+
@@ -3165,11 +3194,12 @@
     }
     resetAll(){
       const g=this.game;
-      g.city.reset(); g.effects.reset();
+      g.effects.reset();
       g.difficulty.reset();
       g.momentum.reset(); g.adrenaline.reset(); g.combo.reset(); g.score.reset();
       g.time.reset(); g.camera.reset(); g.player.reset();
-      g.city.update(); g.pickups.reset();      // after player.reset so spawn anchors at the start
+      g.city.reset();                          // AFTER player.reset -> tunnel/room seeds at the spawn
+      g.city.update(); g.pickups.reset();
       g.drones.reset();
       this._lastZ=g.player.pos.z;
     }
@@ -3180,17 +3210,37 @@
   // anchor (rig-local hand) and victim offset are calibrated per model so the victim's head
   // seats INTO the villain's hand with no fingers peeking out.
   // ===================================================================================
+  // ===================================================================================
+  // RANKS — one competitive ladder, score-gated. Deliberately steep: the top tiers are
+  // meant to take real skill (long survival + sustained high combos), not a lucky run.
+  // ===================================================================================
+  const RANKS=[
+    {min:0,       n:'Unranked',       c:'#8b93a1'},
+    {min:5000,    n:'Bronze',         c:'#c9803e'},
+    {min:15000,   n:'Silver',         c:'#c3ccd8'},
+    {min:35000,   n:'Gold',           c:'#ffc63a'},
+    {min:70000,   n:'Platinum',       c:'#6fe6d0'},
+    {min:130000,  n:'Diamond',        c:'#5ce8ff'},
+    {min:230000,  n:'Master',         c:'#c08bff'},
+    {min:400000,  n:'Grandmaster',    c:'#ff6a8e'},
+    {min:700000,  n:'Elite',          c:'#ff8a1f'},
+    {min:1200000, n:'CITYBREAKER',    c:'#fff0a0'},
+  ];
+  function rankFor(score){ let r=RANKS[0]; for(const x of RANKS) if(score>=x.min) r=x; return r; }
+  function nextRank(score){ for(const x of RANKS) if(score<x.min) return x; return null; }
+
   const CHARACTERS = {
-    dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
+    dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
+    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    entity:   { name:'The Entity', url:'./assets/entity.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:2.9, fit:'max', wind:'capeX', aim:false,
+    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    countess: { name:'Glowing Countess', url:'./assets/countess.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, wind:'capeX', aim:false,
+    entity:   { name:'The Entity', url:'./assets/entity.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+                smash:{y:-0.05,z:3.0} },
+    countess: { name:'Glowing Countess', url:'./assets/countess.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
@@ -3233,7 +3283,7 @@
       building:{ style:'drywall', tower:[0.12,0.42,0.62], towerEmissive:0x2a2205, towerEdge:0xffe08a,
                  decorA:[0.12,0.34,0.55], decorB:[0.11,0.30,0.50], decorEdge:0x8a7a45 },
       roofs:false, bubbles:false, mountains:false, ceiling:true, backrooms:true,
-      amb:{ color:0xfff0b8, size:0.34, op:0.30, fall:0.9, swirl:0.5, yMin:0.8, yMax:11 },
+      amb:{ color:0xfff0b8, size:0.30, op:0.22, fall:0.9, swirl:0.4, yMin:0.8, yMax:10 },
       night:{ skyTop:0x0e0c04, fog:0x2a2410, skyBot:0x3a3216, hemiSky:0x6a5c28, hemiGround:0x2a2410, sunColor:0xbfae70, sunInt:0.45, lamp:0xfff0b0, glow:0x3a3010 } },
     metro: { name:'Frutiger Metro', tag:'TEAR THROUGH THE UNDERGROUND', hit:'metal',
       ground:0x223038, groundEmissive:0x0a1418, clouds:false, skyTop:0x0a1418, fog:0x123038, skyBot:0x1d4c54,
@@ -3435,6 +3485,20 @@
       // restore gyro preference (still needs a tap on iOS for permission, so only auto-on where allowed)
       if(localStorage.getItem('invrun_gyro')==='1'){ const gb=document.getElementById('gyro-btn');
         const DOE=window.DeviceOrientationEvent; if(DOE && typeof DOE.requestPermission!=='function') this.input.toggleGyro(gb); }
+
+      // ===== RANKS viewer =====
+      { const rb=document.getElementById('ranks-btn');
+        const draw=()=>{
+          const best=this.run.best(), cur=rankFor(best), nx=nextRank(best);
+          document.getElementById('rk-list').innerHTML=
+            `<div id="rk-you">Best run <b>${best.toLocaleString()}</b> — rank <b style="color:${cur.c}">${cur.n}</b>`+
+            (nx?` · <b>${(nx.min-best).toLocaleString()}</b> to ${nx.n}`:' · max rank')+`</div>`+
+            RANKS.slice().reverse().map(r=>`<div class="rk${r.n===cur.n?' cur':''}">
+              <svg class="svgi" style="color:${r.c}"><use href="#i-trophy"/></svg>
+              <span class="rk-n" style="color:${r.c}">${r.n}</span>
+              <span class="rk-s">${r.min===0?'0':r.min.toLocaleString()}+</span></div>`).join('');
+        };
+        rb.onclick=()=>{ draw(); document.getElementById('ranks-modal').classList.remove('hidden'); }; }
 
       // ===== MISSIONS: 3 goals per day, claim coins when done =====
       this.missions=(()=>{
