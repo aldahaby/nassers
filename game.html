@@ -13,9 +13,6 @@
   <meta property="og:title" content="CITYBREAKER" />
   <meta property="og:description" content="Fly an overpowered supervillain through the city — smash towers, chain combos, outrun the drones. How far can you go?" />
   <meta property="og:type" content="website" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Teko:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     /* =====================================================================
        CITYBREAKER — UI SYSTEM  "ARMORED PLATE"
@@ -36,9 +33,9 @@
       /* aliases still referenced by JS inline styles */
       --warn:#ffc63a; --gold:#ffc63a; --good:#37c6ff; --accent:#e8213c; --ink:#04060c;
       /* type */
-      --f-display:'Anton','Arial Narrow',Impact,sans-serif;
-      --f-num:'Teko','Oswald','Arial Narrow',sans-serif;
-      --f-ui:'Barlow Condensed','Oswald','Segoe UI',sans-serif;
+      --f-display:'Arial Black','Arial Bold',Impact,'Helvetica Neue',sans-serif;
+      --f-num:'Arial Black','Helvetica Neue',Arial,sans-serif;
+      --f-ui:'Helvetica Neue',Arial,'Segoe UI',sans-serif;
       --cut:11px;
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -1624,7 +1621,7 @@
       { const city=this.game.city, st=this.game.theme&&this.game.theme.station;
         const rc=city? city._pathX(this.pos.z) : 0;                            // road centre at our z
         const bk=this.game.theme&&this.game.theme.backrooms;
-        const lim= bk ? 16 : st ? 17 : ((city?city.roadHalf:22)+4);            // BACKROOMS: stay inside the room walls (half=20)
+        const lim= bk ? 26 : st ? 17 : ((city?city.roadHalf:22)+4);            // BACKROOMS: room for error inside the walls (half=30)
         this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
@@ -1760,7 +1757,7 @@
       }
       this.BR_CEIL=17;
       // BACKROOMS ROOM SHELL — built as continuous ribbons (no panels => no seams, no gaps)
-      this.BR_HALF=20;
+      this.BR_HALF=30;
       { const mk=(vertical)=>{ const N=this.roadN;
           const pos=new Float32Array((N+1)*2*3), uv=new Float32Array((N+1)*2*2), nrm=new Float32Array((N+1)*2*3);
           for(let i=0;i<nrm.length;i+=3) nrm[i+1]=1;
@@ -2514,7 +2511,7 @@
       if(back){
         // BACKROOMS: ONE wallpapered partition WALL per row, floor -> ceiling. Single target per
         // row keeps the rhythm identical to every other map (no stacked pairs, no free double combos).
-        const H=this.BR_CEIL, w=rand(9,13);
+        const H=this.BR_CEIL, w=rand(7,10.5);
         this._place(b, px+this.lastTowerX, z, w, H, 1.1, false);
         b.mesh.position.y=H/2; b.mesh.castShadow=false;
         return;                                   // rooms only: no skyline / decor rows
@@ -2626,7 +2623,7 @@
           L.mesh.visible=on; L.light.visible=on&&lit;
           if(!on){ L.light.intensity=0; continue; }
           if(L.z===0 || L.z < pz-30){ L.z=pz+rand(20,span); L.flick=Math.random()<0.22?rand(1,4):0; }
-          const lx=this._pathX(L.z)+L.side*8;
+          const lx=this._pathX(L.z)+L.side*13;
           L.mesh.position.set(lx, H-0.12, L.z); L.mesh.scale.set(6.2,2.6,1);
           // steady hum, with a few panels stuttering like failing tubes
           let k=1; if(L.flick>0){ const t2=performance.now()*0.006+L.ph;
@@ -3275,16 +3272,16 @@
   // meant to take real skill (long survival + sustained high combos), not a lucky run.
   // ===================================================================================
   const RANKS=[
-    {min:0,       n:'Unranked',       c:'#8b93a1'},
-    {min:5000,    n:'Bronze',         c:'#c9803e'},
-    {min:15000,   n:'Silver',         c:'#c3ccd8'},
-    {min:35000,   n:'Gold',           c:'#ffc63a'},
-    {min:70000,   n:'Platinum',       c:'#6fe6d0'},
-    {min:130000,  n:'Diamond',        c:'#5ce8ff'},
-    {min:230000,  n:'Master',         c:'#c08bff'},
-    {min:400000,  n:'Grandmaster',    c:'#ff6a8e'},
-    {min:700000,  n:'Elite',          c:'#ff8a1f'},
-    {min:1200000, n:'CITYBREAKER',    c:'#fff0a0'},
+    {min:0,        n:'Unranked',    c:'#8b93a1'},
+    {min:25000,    n:'Bronze',      c:'#c9803e'},
+    {min:100000,   n:'Silver',      c:'#c3ccd8'},
+    {min:300000,   n:'Gold',        c:'#ffc63a'},
+    {min:700000,   n:'Platinum',    c:'#6fe6d0'},
+    {min:1500000,  n:'Diamond',     c:'#5ce8ff'},
+    {min:3000000,  n:'Master',      c:'#c08bff'},
+    {min:6000000,  n:'Grandmaster', c:'#ff6a8e'},
+    {min:12000000, n:'Elite',       c:'#ff8a1f'},
+    {min:25000000, n:'CITYBREAKER', c:'#fff0a0'},
   ];
   function rankFor(score){ let r=RANKS[0]; for(const x of RANKS) if(score>=x.min) r=x; return r; }
   function nextRank(score){ for(const x of RANKS) if(score<x.min) return x; return null; }
@@ -3564,11 +3561,11 @@
       this.missions=(()=>{
         const G=this;                      // the Game (object-literal methods rebind `this`)
         const POOL=[
-          {id:'hits',  icon:'i-city',   name:'Smash %N buildings in one run', tiers:[45,70,100],  rew:[300,500,850]},
-          {id:'dist',  icon:'i-map',    name:'Fly %N m in one run',           tiers:[3000,5000,8000], rew:[300,500,850]},
-          {id:'combo', icon:'i-bolt',   name:'Reach a x%N combo',             tiers:[20,32,45],   rew:[400,650,1000]},
-          {id:'coins', icon:'i-coin',   name:'Collect %N coins in one run',   tiers:[45,80,130],  rew:[300,500,850]},
-          {id:'score', icon:'i-trophy', name:'Score %N in one run',           tiers:[30000,65000,120000], rew:[450,750,1200]},
+          {id:'hits',  icon:'i-city',   name:'Smash %N buildings in one run', tiers:[120,200,320],  rew:[400,700,1200]},
+          {id:'dist',  icon:'i-map',    name:'Fly %N m in one run',           tiers:[9000,16000,26000], rew:[400,700,1200]},
+          {id:'combo', icon:'i-bolt',   name:'Reach a x%N combo',             tiers:[45,70,100],   rew:[600,950,1500]},
+          {id:'coins', icon:'i-coin',   name:'Collect %N coins in one run',   tiers:[140,240,380],  rew:[400,700,1200]},
+          {id:'score', icon:'i-trophy', name:'Score %N in one run',           tiers:[250000,600000,1200000], rew:[700,1100,1800]},
         ];
         const K='invrun_ms';
         const today=()=>Math.floor(Date.now()/86400000);
