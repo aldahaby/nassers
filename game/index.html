@@ -1624,7 +1624,7 @@
       { const city=this.game.city, st=this.game.theme&&this.game.theme.station;
         const rc=city? city._pathX(this.pos.z) : 0;                            // road centre at our z
         const bk=this.game.theme&&this.game.theme.backrooms;
-        const lim= bk ? 17 : st ? 17 : ((city?city.roadHalf:22)+4);            // BACKROOMS: stay inside the room walls
+        const lim= bk ? 16 : st ? 17 : ((city?city.roadHalf:22)+4);            // BACKROOMS: stay inside the room walls (half=20)
         this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
@@ -1758,7 +1758,21 @@
         frame.visible=false; this.game.scene.add(frame);
         this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(13,20), h:rand(7,11), y:0});
       }
-      this.BR_CEIL=17;                                   // backrooms room height (floor -> tiles)
+      this.BR_CEIL=17;
+      // BACKROOMS ROOM SHELL — built as continuous ribbons (no panels => no seams, no gaps)
+      this.BR_HALF=20;
+      { const mk=(vertical)=>{ const N=this.roadN;
+          const pos=new Float32Array((N+1)*2*3), uv=new Float32Array((N+1)*2*2), nrm=new Float32Array((N+1)*2*3);
+          for(let i=0;i<nrm.length;i+=3) nrm[i+1]=1;
+          const geo=new THREE.BufferGeometry();
+          geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+          geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+          geo.setAttribute('normal',new THREE.BufferAttribute(nrm,3));
+          const idx=[]; for(let i=0;i<N;i++){ const a=i*2,b=a+1,c=a+2,d=a+3; idx.push(a,b,c, b,d,c); }
+          geo.setIndex(idx);
+          const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.95,side:THREE.DoubleSide}));
+          m.frustumCulled=false; m.visible=false; this.game.scene.add(m); return m; };
+        this.brWallL=mk(true); this.brWallR=mk(true); this.brRoof=mk(false); }                                   // backrooms room height (floor -> tiles)
       // recessed FLUORESCENT LIGHT PANELS set into the ceiling grid
       this.brLights=[]; { const lg=new THREE.PlaneGeometry(1,1);
         for(let i=0;i<16;i++){
@@ -2235,9 +2249,19 @@
       if(this.ceilPanel) this.ceilPanel.visible=false;                    // replaced by the segmented tunnel roof
       if(this.trains) for(const tr of this.trains) tr.mesh.visible=(!!t.trains && !back);
       if(this.pillars) for(const c of this.pillars) c.grp.visible=(metro && !back);
-      if(this.tunSeg) for(const s of this.tunSeg){ s.L.visible=s.R.visible=s.roof.visible=metro; }
+      if(this.tunSeg) for(const s of this.tunSeg){ s.L.visible=s.R.visible=s.roof.visible=(metro && !back); }
+      if(this.brWallL){                                   // seamless room shell — BACKROOMS only
+        this.brWallL.visible=this.brWallR.visible=this.brRoof.visible=back;
+        if(back){ if(!this._brWallTex){ this._brWallTex=this._chevronTex(1,1); }
+          if(!this._brRoofTex) this._brRoofTex=this._ceilTileTex();
+          for(const w of [this.brWallL,this.brWallR]){ w.material.map=this._brWallTex;
+            w.material.color.setHex(0xffffff); w.material.needsUpdate=true; }
+          this.brRoof.material.map=this._brRoofTex; this.brRoof.material.color.setHex(0xf4f0e2);
+          this.brRoof.material.emissive.setHex(0xcfc8b4); this.brRoof.material.emissiveIntensity=0.5;
+          this.brRoof.material.needsUpdate=true; } }
       for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);
       this._skinProps(t,night);
+      if(this.props) for(const pr of this.props) pr.grp.visible=!back;   // BACKROOMS: no roadside props at all
       { const bb=(t.building.style==='window');    // billboards: NYC only
         if(this.boards) for(const b2 of this.boards){ b2.mesh.visible=bb; b2.frame.visible=bb; } }
       // street lamps: on only at night, coloured per map
@@ -2488,15 +2512,11 @@
       // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
       const back=!!(this.game.theme&&this.game.theme.backrooms);
       if(back){
-        // BACKROOMS: square wallpapered PILLARS running floor -> ceiling (the hittable things)
-        const H=this.BR_CEIL, w=rand(3.2,4.6);
-        this._place(b, px+this.lastTowerX, z, w, H, w, false);
+        // BACKROOMS: ONE wallpapered partition WALL per row, floor -> ceiling. Single target per
+        // row keeps the rhythm identical to every other map (no stacked pairs, no free double combos).
+        const H=this.BR_CEIL, w=rand(9,13);
+        this._place(b, px+this.lastTowerX, z, w, H, 1.1, false);
         b.mesh.position.y=H/2; b.mesh.castShadow=false;
-        // a second pillar only sometimes -> the room still reads as a grid, at half the draw cost
-        if(Math.random()<0.5){ const nb=this._take();
-          if(nb){ const w2=rand(3.2,4.6), off=(this.lastTowerX>0?-1:1)*rand(7,11);
-            this._place(nb, px+this.lastTowerX+off, z+rand(-6,6), w2, H, w2, false);
-            nb.mesh.position.y=H/2; nb.mesh.castShadow=false; } }
         return;                                   // rooms only: no skyline / decor rows
       }
       if(station){ this._place(b, px+this.lastTowerX, z, rand(8,10), rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
@@ -2528,10 +2548,11 @@
     update(dt){
       dt=dt||0.016;
       const p=this.game.player, pz=p.pos.z, station=!!(this.game.theme&&this.game.theme.station);
+      const backrooms=!!(this.game.theme&&this.game.theme.backrooms);
       while(this.nextZ < pz + this.aheadDist){
         this._spawnAt(this.nextZ);
         // metro trains close on you, so space them WIDER to keep the reaction window (and difficulty) fair
-        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35)*(station?1.4:1);
+        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35)*(station?1.4:(backrooms?0.72:1));
       }
       const playing=this.game.run.state!=='READY'&&this.game.run.state!=='GameOver'&&this.game.run.state!=='Paused';
       // INCOMING TRAINS: metro targets drive toward you on the track (moderate, capped) — they come at YOU.
@@ -2605,7 +2626,7 @@
           L.mesh.visible=on; L.light.visible=on&&lit;
           if(!on){ L.light.intensity=0; continue; }
           if(L.z===0 || L.z < pz-30){ L.z=pz+rand(20,span); L.flick=Math.random()<0.22?rand(1,4):0; }
-          const lx=this._pathX(L.z)+L.side*rand(0,0)+L.side*9;
+          const lx=this._pathX(L.z)+L.side*8;
           L.mesh.position.set(lx, H-0.12, L.z); L.mesh.scale.set(6.2,2.6,1);
           // steady hum, with a few panels stuttering like failing tubes
           let k=1; if(L.flick>0){ const t2=performance.now()*0.006+L.ph;
@@ -2614,7 +2635,7 @@
           if(lit){ L.light.position.set(lx, H-1.2, L.z); L.light.intensity=(3.4*k)*(this.game.maps&&this.game.maps.night?1.35:1); }
         }
       }
-      if(this.props){                                   // themed roadside props (recycled)
+      if(this.props && !(this.game.theme&&this.game.theme.backrooms)){   // themed roadside props (recycled)
         const pspan=Math.ceil(this.props.length/2)*46;
         for(const pr of this.props){
           const bkp=!!(this.game.theme&&this.game.theme.backrooms);
@@ -2624,6 +2645,22 @@
           pr.grp.position.set(this._pathX(pr.z)+pr.side*(this.roadHalf+pr.off), 0, pr.z);
           pr.grp.rotation.y = pr.side>0? -0.5 : 0.5;
         }
+      }
+      if(this.brWallL && this.brWallL.visible){            // BACKROOMS: continuous seamless room shell
+        const H=this.BR_CEIL, HW=this.BR_HALF, N=this.roadN;
+        const z0=pz-this.roadBack, seg=(this.roadAhead+this.roadBack)/N;
+        const lay=(mesh,fn)=>{ const P=mesh.geometry.attributes.position.array, U=mesh.geometry.attributes.uv.array;
+          for(let i=0;i<=N;i++){ const z=z0+i*seg, x=this._pathX(z); fn(P,U,i,x,z); }
+          mesh.geometry.attributes.position.needsUpdate=true; mesh.geometry.attributes.uv.needsUpdate=true; };
+        lay(this.brWallL,(P,U,i,x,z)=>{ P[i*6]=x-HW; P[i*6+1]=0;   P[i*6+2]=z;
+                                        P[i*6+3]=x-HW; P[i*6+4]=H;  P[i*6+5]=z;
+                                        U[i*4]=z*0.055; U[i*4+1]=0; U[i*4+2]=z*0.055; U[i*4+3]=1; });
+        lay(this.brWallR,(P,U,i,x,z)=>{ P[i*6]=x+HW; P[i*6+1]=0;   P[i*6+2]=z;
+                                        P[i*6+3]=x+HW; P[i*6+4]=H;  P[i*6+5]=z;
+                                        U[i*4]=z*0.055; U[i*4+1]=0; U[i*4+2]=z*0.055; U[i*4+3]=1; });
+        lay(this.brRoof,(P,U,i,x,z)=>{  P[i*6]=x-HW; P[i*6+1]=H;   P[i*6+2]=z;
+                                        P[i*6+3]=x+HW; P[i*6+4]=H;  P[i*6+5]=z;
+                                        U[i*4]=0; U[i*4+1]=z*0.10; U[i*4+2]=1.6; U[i*4+3]=z*0.10; });
       }
       if(this.tunSeg && this.tunSeg[0].L.visible){          // enclosed shell (metro tunnel / backrooms room)
         const span=this.CEIL_N*this.CEIL_GAP, cy=(p.cruiseY||16);
@@ -2655,7 +2692,7 @@
           tr.mesh.position.set(this._pathX(tr.z)+tr.side*19, 1.8, tr.z);   // side track INSIDE the arch, well under the ring curve
         }
       }
-      if(this.lamps && this.lamps[0].grp.visible){   // NIGHT street lamps line the sidewalks
+      if(this.lamps && this.lamps[0].grp.visible && !(this.game.theme&&this.game.theme.backrooms)){   // NIGHT street lamps
         const half=this.roadHalf+3;
         for(const l of this.lamps){
           if(l.z < pz-40) l.z+=Math.ceil(this.lamps.length/2)*34;
