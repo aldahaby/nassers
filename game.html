@@ -643,7 +643,7 @@
     <div id="coin-bank"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
     <div class="brand">
       <div class="logo">CITY<span>BREAKER</span></div>
-      <div class="tagline">SMASH THROUGH NEW YORK</div>
+      <div class="tagline">SMASH THROUGH TOKYO</div>
     </div>
     <div id="menu-row2">
       <button id="missions-btn"><svg class="svgi"><use href="#i-burst"/></svg><span>MISSIONS</span></button>
@@ -694,7 +694,7 @@
       <div class="sheet-head"><span>Maps</span><button class="x" data-close>×</button></div>
       <div class="sheet-note">Choose your world — each plays &amp; sounds different.</div>
       <div class="grid">
-        <div class="card map sel" data-map="nyc"><span class="big"><svg class="svgi"><use href="#i-city"/></svg></span>New York<small>Selected</small></div>
+        <div class="card map sel" data-map="nyc"><span class="big"><svg class="svgi"><use href="#i-city"/></svg></span>Tokyo<small>Selected</small></div>
         <div class="card map" data-map="aero"><span class="big"><svg class="svgi"><use href="#i-bubbles"/></svg></span>Frutiger Aero<small>Tap to play</small></div>
         <div class="card map" data-map="medieval"><span class="big"><svg class="svgi"><use href="#i-castle"/></svg></span>Medieval<small>Tap to play</small></div>
         <div class="card map" data-map="metro"><span class="big"><svg class="svgi"><use href="#i-train"/></svg></span>Frutiger Metro<small>Tap to play</small></div>
@@ -1092,12 +1092,53 @@
         m.visible=false; game.scene.add(m);
         this.coins.push({mesh:m,active:false,x:0,z:0});
       }
-      const dgeo=new THREE.CylinderGeometry(0.85,0.85,2.6,12);
+      // ENERGY DRINK — a proper branded can so it reads instantly at speed: chrome ribs top and
+      // bottom, a wrapped label with a lightning bolt, a pull tab, and a pulsing glow shell.
+      const canTex=this._canTexture();
+      const bodyGeo=new THREE.CylinderGeometry(0.92,0.92,2.5,20,1,true);          // open tube -> label wrap
+      const ribGeo =new THREE.CylinderGeometry(0.80,0.92,0.34,20);                // tapered chrome shoulder
+      const lidGeo =new THREE.CylinderGeometry(0.80,0.80,0.10,20);
+      const tabGeo =new THREE.TorusGeometry(0.20,0.055,6,12);
+      const haloGeo=new THREE.CylinderGeometry(1.14,1.14,3.2,16,1,true);
+      // brushed aluminium, NOT mirror metal: there is no env map in this scene, so a high
+      // metalness would render the lid pure black.
+      const chrome =new THREE.MeshStandardMaterial({color:0xe4edf3,metalness:0.30,roughness:0.30,
+                        emissive:0x2c3a42, emissiveIntensity:0.7});
       for(let i=0;i<12;i++){
-        const m=new THREE.Mesh(dgeo,new THREE.MeshStandardMaterial({color:0x2bd66e,emissive:0x0c6a34,metalness:.4,roughness:.3}));
-        m.visible=false; game.scene.add(m);
-        this.drinks.push({mesh:m,active:false,x:0,z:0});
+        const grp=new THREE.Group();
+        const body=new THREE.Mesh(bodyGeo,new THREE.MeshStandardMaterial({map:canTex,
+                     emissive:0x0f8a45, emissiveMap:canTex, emissiveIntensity:0.55,
+                     metalness:0.55, roughness:0.28, side:THREE.DoubleSide}));
+        grp.add(body);
+        const top=new THREE.Mesh(ribGeo,chrome);    top.position.y= 1.42; top.rotation.x=Math.PI; grp.add(top);
+        const bot=new THREE.Mesh(ribGeo,chrome);    bot.position.y=-1.42;                          grp.add(bot);
+        const lid=new THREE.Mesh(lidGeo,chrome);    lid.position.y= 1.62;                          grp.add(lid);
+        const tab=new THREE.Mesh(tabGeo,chrome);    tab.position.set(0.16,1.70,0); tab.rotation.x=Math.PI/2; grp.add(tab);
+        const halo=new THREE.Mesh(haloGeo,new THREE.MeshBasicMaterial({color:0x5cff9e,transparent:true,
+                     opacity:0.16, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+        grp.add(halo);
+        grp.visible=false; game.scene.add(grp);
+        this.drinks.push({mesh:grp,active:false,x:0,z:0,halo:halo});
       }
+    }
+    // wrapped can label: green-to-black gradient, bold bolt, ring highlights — drawn once, shared
+    _canTexture(){
+      const c=document.createElement('canvas'); c.width=256; c.height=128; const x=c.getContext('2d');
+      const g=x.createLinearGradient(0,0,0,128);
+      g.addColorStop(0,'#0b3d24'); g.addColorStop(0.30,'#1fd873'); g.addColorStop(0.62,'#0d8f47'); g.addColorStop(1,'#06251a');
+      x.fillStyle=g; x.fillRect(0,0,256,128);
+      x.strokeStyle='rgba(255,255,255,.55)'; x.lineWidth=3;                       // chrome ring highlights
+      x.beginPath(); x.moveTo(0,16); x.lineTo(256,16); x.moveTo(0,112); x.lineTo(256,112); x.stroke();
+      for(let k=0;k<4;k++){                                                        // the bolt, repeated round the can
+        const ox=k*64+32;
+        x.fillStyle='#eaffe9';
+        x.beginPath();
+        x.moveTo(ox+6,30); x.lineTo(ox-8,68); x.lineTo(ox+1,68); x.lineTo(ox-6,100);
+        x.lineTo(ox+12,60); x.lineTo(ox+2,60); x.closePath(); x.fill();
+        x.fillStyle='rgba(255,255,255,.85)'; x.fillRect(ox-14,106,28,4);           // brand bar under the bolt
+      }
+      const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace;
+      return t;
     }
     _path(z){ return this.game.city._pathX(z); }
     update(dt){
@@ -1129,7 +1170,8 @@
       }
       for(const d of this.drinks){
         if(!d.active) continue;
-        d.mesh.rotation.y=this.spin*1.6;
+        d.mesh.rotation.set(0.22*Math.sin(this.spin*0.9), this.spin*1.9, 0.30);   // slow tumble, tilted
+        if(d.halo) d.halo.material.opacity=0.11+0.09*Math.sin(this.spin*2.6);
         if(d.z<=sweptHi && d.z>=sweptLo && Math.abs((d.x-this._path(d.z))-pOff)<5.2){ d.active=false; d.mesh.visible=false; this._drink(d); continue; }
         if(d.z < Math.min(pz,sweptLo)-30){ d.active=false; d.mesh.visible=false; }
       }
@@ -1363,6 +1405,15 @@
   // ===================================================================================
   // mom = momentum refilled per smash. Kept modest so you must hit CONSISTENTLY to survive
   // (one lucky hit no longer floods the bar) — this is what makes the late game finite.
+  // ===================================================================================
+  // MAP PARITY — a theme changes how a target LOOKS, never how it PLAYS.
+  // Every map spawns one target per row at the same off-centre range, the same row spacing and
+  // the same hit width, and reports the same impact volume, so the score, momentum and adrenaline
+  // you earn per smash are identical no matter which map you picked.
+  // laneHi is capped by the tightest map (the metro arch): target edge = laneHi + wHi/2 must clear it.
+  // ===================================================================================
+  const PLAY={ laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200 };
+
   const TIERS=[
     {name:'glance',  min:0,   score:40,  mom:11, adr:8,  shake:0.25, debris:6,  flash:0.08},
     {name:'smash',   min:140, score:120, mom:15, adr:14, shake:0.5,  debris:10, flash:0.14},
@@ -1374,8 +1425,9 @@
     tierFor(volume){ let t=TIERS[0]; for(const x of TIERS) if(volume>=x.min) t=x; return t; }
     smash(building){
       const g=this.game;
-      const vol=building.w*building.h*building.d;
-      const tier=this.tierFor(vol);
+      // Reward is NOT read off the mesh: a backrooms partition is 1.1 deep and a metro car is 14,
+      // which used to pay 120 vs 650 for the same skill. Every hittable target reports PLAY.tierVol.
+      const tier=this.tierFor(PLAY.tierVol);
       const combo=g.combo.hit();
       const gained=Math.round(tier.score*g.combo.multiplier()*g.adrenaline.scoreMul());
 
@@ -1671,7 +1723,8 @@
       { const city=this.game.city, st=this.game.theme&&this.game.theme.station;
         const rc=city? city._pathX(this.pos.z) : 0;                            // road centre at our z
         const bk=this.game.theme&&this.game.theme.backrooms;
-        const lim= bk ? 26 : st ? 17 : ((city?city.roadHalf:22)+4);            // BACKROOMS: room for error inside the walls (half=30)
+        // must always exceed PLAY.laneHi so every target is reachable on every map
+        const lim= bk ? 26 : st ? 21 : ((city?city.roadHalf:22)+4);
         this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
@@ -2544,9 +2597,8 @@
       // with skill). NORMALLY towers land near the FAR edge of reach (big swings -> combos are hard
       // & earned). But every so often — pure LUCK, different every run — a LUCKY RUN of aligned
       // towers appears (tiny swings -> an easy combo stretch to unlock surge).
-      const st=this.game.theme&&this.game.theme.station;
-      const lane= st ? lerp(3,6,clamp(D.level/6,0,1))     // METRO: trains sit near the centre of the track -> easy to catch
-                     : lerp(11,18,clamp(D.level/6,0,1));  // hittable towers stay ON THE ROAD, clear of the decor
+      // ONE lane range for every map (see PLAY): the strafe a target demands must not depend on theme.
+      const lane=lerp(PLAY.laneLo,PLAY.laneHi,clamp(D.level/6,0,1));
       const spd=Math.max(45,this.game.player.fwdNow||45);
       const strafe=28+spd*0.72;
       // "reach" = the demanding distance you must strafe before this tower arrives. Towers land near
@@ -2569,14 +2621,15 @@
       if(back){
         // BACKROOMS: ONE wallpapered partition WALL per row, floor -> ceiling. Single target per
         // row keeps the rhythm identical to every other map (no stacked pairs, no free double combos).
-        const H=this.BR_CEIL, w=rand(7,10.5);
+        const H=this.BR_CEIL, w=rand(PLAY.wLo,PLAY.wHi);
         this._place(b, px+this.lastTowerX, z, w, H, 1.1, false);
         b.mesh.position.y=H/2; b.mesh.castShadow=false;
         return;                                   // rooms only: no skyline / decor rows
       }
-      if(station){ this._place(b, px+this.lastTowerX, z, rand(8,10), rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
-      else if(med){ const s=rand(7,9.5); this._place(b, px+this.lastTowerX, z, s, rand(28,52), s, false); }
-      else this._place(b, px+this.lastTowerX, z, rand(8,11), rand(22,40), rand(6,9), false);
+      const TW=rand(PLAY.wLo,PLAY.wHi);                      // shared hit width; only depth/height are cosmetic
+      if(station){ this._place(b, px+this.lastTowerX, z, TW, rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
+      else if(med){ this._place(b, px+this.lastTowerX, z, TW, rand(28,52), TW, false); }
+      else this._place(b, px+this.lastTowerX, z, TW, rand(22,40), rand(6,9), false);
       // METRO is a clean underground STATION — no background buildings, just the incoming trains.
       if(station) return;
       // DENSE CITY BLOCKS crowding both sides — a CLEAR alley past the sidewalk keeps the decor OFF the
@@ -2606,8 +2659,7 @@
       const backrooms=!!(this.game.theme&&this.game.theme.backrooms);
       while(this.nextZ < pz + this.aheadDist){
         this._spawnAt(this.nextZ);
-        // metro trains close on you, so space them WIDER to keep the reaction window (and difficulty) fair
-        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35)*(station?1.4:(backrooms?1.55:1));
+        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35);   // identical rhythm on every map (PLAY)
       }
       const playing=this.game.run.state!=='READY'&&this.game.run.state!=='GameOver'&&this.game.run.state!=='Paused';
       // INCOMING TRAINS: metro targets drive toward you on the track (moderate, capped) — they come at YOU.
@@ -2945,8 +2997,11 @@
       }
     }
     reset(){ this._timer=1.4;
-      const cy=(this.game.player&&this.game.player.cruiseY)||16, st=!!(this.game.theme&&this.game.theme.station);
-      this.BAND=cy; this.START_Y=cy+(st?9:40);          // in the low tunnel, drones dive from just under the ceiling
+      const T=this.game.theme, cy=(this.game.player&&this.game.player.cruiseY)||16;
+      const roofed=!!(T&&(T.station||T.backrooms));     // metro tunnel AND backrooms both have a ceiling
+      this.BAND=cy; this.START_Y=cy+(roofed?9:40);      // under a roof, drones dive from just below the ceiling
+                                                        // (descent TIME is d.react on every map, so the
+                                                        //  warning window is identical -- only the drop differs)
       for(const d of this.drones){ d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false; } }
   }
 
@@ -3357,7 +3412,7 @@
                 smash:{y:-0.05,z:3.0} },
     // Voidstrike's GLB is already posed prone along +Z (head forward, back up) — no yaw, only a
     // slight nose-up so she reads as climbing into the smash like the others.
-    countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeZ', aim:false,
+    countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:null, aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
@@ -3366,7 +3421,7 @@
   // MAPS — swappable themes. Each retunes sky/light/ground/road/buildings + the hit sound.
   // ===================================================================================
   const THEMES = {
-    nyc: { name:'New York', tag:'SMASH THROUGH NEW YORK', hit:'crash',
+    nyc: { name:'Tokyo', tag:'SMASH THROUGH TOKYO', hit:'crash',
       ground:0x5f9448, groundEmissive:0x000000, clouds:false, skyTop:0x1f6fe0, fog:0x9fd0ff, skyBot:0xeaf7ff,
       hemiSky:0xcfe6ff, hemiGround:0x6b7a55, sunColor:0xfff2d6, sunInt:1.55,
       road:{ asphalt:'#141518', edge:'#e6e9ec', dash:'#e6c24e', dashed:true, sidewalk:'#8a8f97', curb:'#565b63' },
