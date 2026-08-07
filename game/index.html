@@ -280,7 +280,10 @@
     .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
     .modal .sheet{ max-height:86vh; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
     .card{ min-width:0; }
+    .card{ text-align:center; align-items:center; justify-content:flex-start; }
     .card small{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    #skins-modal .card{ line-height:1.15; }
+    #skins-modal .card .previmg{ margin-left:auto; margin-right:auto; }
     #skins-modal .card{ font-size:13px; }
     @media (min-width:520px){ .grid{ grid-template-columns:repeat(3,1fr); } }
     .card{ position:relative; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
@@ -682,7 +685,7 @@
         <div class="card char" data-char="knight"><img class="previmg" src="./assets/prev_knight.png" alt="">Evil Knight<small>Tap to play</small></div>
         <div class="card char" data-char="patriot"><img class="previmg" src="./assets/prev_patriot.png" alt="">The Patriot<small>Tap to play</small></div>
         <div class="card char" data-char="entity"><img class="previmg" src="./assets/prev_entity.png" alt="">The Entity<small>Tap to play</small></div>
-        <div class="card char" data-char="countess"><img class="previmg" src="./assets/prev_countess.png" alt="">Glowing Countess<small>Tap to play</small></div>
+        <div class="card char" data-char="countess"><img class="previmg" src="./assets/prev_countess.png" alt="">Violet Voidstrike<small>Tap to play</small></div>
       </div>
     </div>
   </div>
@@ -994,6 +997,14 @@
   // COMBO — consecutive smashes with NO miss. Missing a tower BREAKS the streak. A high
   // streak sets the villain ON FIRE (escalating reward, like Paint Hit's color blast).
   // ===================================================================================
+  // Auras are drawn with ADDITIVE blending, where a near-black colour adds nothing at all.
+  // Knight (black) and Dominus (gunmetal) would render as no aura / no trail, so every aura colour
+  // is lifted to a minimum lightness for the emissive passes. Hue and saturation are untouched.
+  const _auraTmp=new THREE.Color(), _auraHSL={h:0,s:0,l:0};
+  function auraCol(hex,minL){ _auraTmp.set(hex); _auraTmp.getHSL(_auraHSL);
+    if(_auraHSL.l<minL) _auraTmp.setHSL(_auraHSL.h, Math.max(_auraHSL.s,0.35), minL);
+    return _auraTmp; }
+
   class ComboSystem {
     constructor(game){ this.game=game; this.count=0; this.best=0; this.FIRE=10; this.EPIC=26; this.ETHEREAL=37;
       this.EPIC_TIME=5.0; this.ETH_TIME=5.0; this.epicTime=0; this.etherealTime=0; }  // fixed 5s bursts, then they END
@@ -1103,27 +1114,38 @@
         this.drinkNextZ+=rand(90,140);
       }
       const dz=p.pos.z+2.0;                       // catch window at the villain's leading edge
+      const prevZ=(this._pickPrevZ===undefined)?p.pos.z:this._pickPrevZ; this._pickPrevZ=p.pos.z;
+      const sweptLo=Math.min(prevZ,p.pos.z)-3, sweptHi=dz+1;   // everything crossed since last frame
+      // Compare ROAD-RELATIVE offsets, not raw x: on a curve the centreline shifts between the
+      // player's z and the shard's z, and that shift used to eat into the catch radius.
+      const pOff=p.pos.x-this._path(p.pos.z);
       for(const c of this.coins){
         if(!c.active) continue;
         c.mesh.rotation.y=this.spin*1.4; c.mesh.rotation.z=Math.sin(this.spin*0.7)*0.25;
-        if(c.z < pz-30){ c.active=false; c.mesh.visible=false; continue; }
-        if(c.z<=dz+1 && c.z>=pz-3 && Math.abs(c.x-p.pos.x)<2.6){ c.active=false; c.mesh.visible=false; this._coin(c); }
+        // COLLECT FIRST, recycle after — on a frame hitch the step can exceed the recycle margin,
+        // and a shard we flew through must never be thrown away before it's been credited.
+        if(c.z<=sweptHi && c.z>=sweptLo && Math.abs((c.x-this._path(c.z))-pOff)<3.1){ c.active=false; c.mesh.visible=false; this._coin(c); continue; }
+        if(c.z < Math.min(pz,sweptLo)-30){ c.active=false; c.mesh.visible=false; }
       }
       for(const d of this.drinks){
         if(!d.active) continue;
         d.mesh.rotation.y=this.spin*1.6;
-        if(d.z < pz-30){ d.active=false; d.mesh.visible=false; continue; }
-        if(d.z<=dz+1 && d.z>=pz-3 && Math.abs(d.x-p.pos.x)<5.0){ d.active=false; d.mesh.visible=false; this._drink(d); }
+        if(d.z<=sweptHi && d.z>=sweptLo && Math.abs((d.x-this._path(d.z))-pOff)<5.2){ d.active=false; d.mesh.visible=false; this._drink(d); continue; }
+        if(d.z < Math.min(pz,sweptLo)-30){ d.active=false; d.mesh.visible=false; }
       }
     }
-    _coin(c){ const g=this.game; g.score.coins++; g.score.total+=60; g.audio.coin();
-      { const cam=g.camera.cam, v=new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z).project(cam);
-        if(v.z<1) flyCoin((v.x*0.5+0.5)*innerWidth, (-v.y*0.5+0.5)*innerHeight, 0); }
-      g.effects.ring(new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z),new THREE.Color(0x3dffa8),5); }
+    // credit FIRST, then the cosmetics — a hiccup in audio/DOM can never cost you a shard
+    _coin(c){ const g=this.game; g.score.coins++; g.score.total+=60;
+      try{ g.audio.coin();
+        const cam=g.camera.cam, v=new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z).project(cam);
+        if(v.z<1) flyCoin((v.x*0.5+0.5)*innerWidth, (-v.y*0.5+0.5)*innerHeight, 0);
+        g.effects.ring(new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z),new THREE.Color(0x3dffa8),5);
+      }catch(e){} }
     _drink(d){ const g=this.game; g.momentum.addHit(28); g.adrenaline.value=clamp(g.adrenaline.value+42,0,g.adrenaline.MAX);
       g.score.total+=160; g.audio.drink(); g.effects.flash(0.16);
       g.effects.burst(new THREE.Vector3(d.x,(g.player.cruiseY||16)-0.4,d.z),new THREE.Color(0x2bd66e),16,12); }
     reset(){ for(const c of this.coins){c.active=false;c.mesh.visible=false;} for(const d of this.drinks){d.active=false;d.mesh.visible=false;}
+             this._pickPrevZ=undefined;
              this.coinNextZ=this.game.player.pos.z+30; this.drinkNextZ=this.game.player.pos.z+150; }
   }
 
@@ -1159,12 +1181,12 @@
       // FIRE TRAIL — glowing additive embers that stream backward off the villain at EPIC combo.
       // Additive blending + emissive orange => a comet-like ribbon of fire, not a solid sphere.
       this.embers=[];
-      const egeo=new THREE.SphereGeometry(1,6,5);
-      for(let i=0;i<90;i++){
+      const egeo=new THREE.SphereGeometry(1,8,6);
+      for(let i=0;i<190;i++){
         const m=new THREE.Mesh(egeo,new THREE.MeshBasicMaterial({color:0xff6a12,transparent:true,opacity:0,
                  blending:THREE.AdditiveBlending,depthWrite:false}));
         m.visible=false; game.scene.add(m);
-        this.embers.push({mesh:m,vel:new THREE.Vector3(),life:0,max:1,hue:0});
+        this.embers.push({mesh:m,vel:new THREE.Vector3(),life:0,max:1,hue:0,stretch:1});
       }
       this._ePtr=0; this._emberAcc=0;
       // WIND / AIR-RESISTANCE — long arcing translucent ribbons that bow around the villain and
@@ -1190,26 +1212,30 @@
     // intensity (0..1) grows the deeper into EPIC you are -> denser, longer, hotter trail.
     fireTrail(playerPos,dummyPos,intensity,dt,tint){
       // spawn rate scales with intensity; accumulate so it's frame-rate independent
-      this._emberAcc += (40+intensity*46)*dt;
+      this._emberAcc += (14+intensity*150)*dt;
       let n=this._emberAcc|0; this._emberAcc-=n;
       const spd=this.game.player.speed();
       while(n-->0){
         const e=this.embers[this._ePtr=(this._ePtr+1)%this.embers.length];
         e.mesh.visible=true;
         // seed somewhere along the body->tail line so the trail reads as coming off the body
-        const t=Math.random();
+        const t=rand(-0.15,1.55);                      // past the tail anchor => a longer, thinner plume
         e.mesh.position.set(
-          lerp(playerPos.x,dummyPos.x,t)+rand(-0.6,0.6),
+          lerp(playerPos.x,dummyPos.x,t)+rand(-0.7,0.7),
           lerp(playerPos.y,dummyPos.y,t)+rand(-0.6,0.6),
-          lerp(playerPos.z,dummyPos.z,t)+rand(-0.4,0.4));
+          lerp(playerPos.z,dummyPos.z,t)+rand(-1.6,0.6));
         // drift outward + fall slightly, then the villain outruns them => they stream PAST as a tail
         e.vel.set(rand(-3,3),rand(-1.5,3.5),-spd*rand(0.15,0.4)-6);
         e.life=e.max=rand(0.35,0.7)+intensity*0.4;
-        // embers inherit the character's aura colour, with a little natural spread
-        { const col=new THREE.Color(typeof tint==='number'?tint:0xff5a14), hsl={};
-          col.getHSL(hsl);
-          e.baseHue=(hsl.h+rand(-0.035,0.035)+1)%1; e.sat=Math.max(0.25,Math.min(1,hsl.s*rand(0.85,1.1))); }
-        const s=0.6+rand(0,0.7)+intensity*0.7; e.mesh.scale.setScalar(s); e.baseS=s;
+        // embers carry the character's EXACT aura colour (slight per-ember variation only)
+        { if(!e.col) e.col=new THREE.Color();
+          e.col.copy(auraCol(typeof tint==='number'?tint:0xff5a14, 0.34));
+          e.col.offsetHSL(rand(-0.02,0.02), rand(-0.05,0.05), rand(-0.05,0.07)); }
+        this._trailTint=(typeof tint==='number')?tint:0xff5a14;
+        // small + stretched along travel => reads as a streaming ribbon of light, not a bag of balls
+        const s=0.13+rand(0,0.16)+intensity*0.20; e.baseS=s;
+        e.stretch=1.7+rand(0,0.9)+spd*0.006;
+        e.mesh.scale.set(s,s,s*e.stretch);
       }
     }
     // recycle a streak ahead of / around the player so it whooshes past
@@ -1279,9 +1305,10 @@
         e.mesh.position.addScaledVector(e.vel,dt);
         e.vel.y+=6*dt;                 // buoyant embers curl upward
         const t=clamp(e.life/e.max,0,1);
-        e.mesh.material.color.setHSL(e.baseHue, e.sat, 0.4+t*0.4); // fresh = brighter/shinier
-        e.mesh.material.opacity=t*0.9;
-        e.mesh.scale.setScalar(e.baseS*(0.25+t*0.9));
+        if(e.col) e.mesh.material.color.copy(e.col).multiplyScalar(0.5+t*0.5);     // exact aura colour, fading
+        else e.mesh.material.color.setHSL(e.baseHue||0.06, e.sat||1, 0.4+t*0.4);
+        e.mesh.material.opacity=t*0.6;
+        { const k=e.baseS*(0.25+t*0.9); e.mesh.scale.set(k,k,k*(e.stretch||1)); }
         if(e.life<=0) e.mesh.visible=false;
       }
       // speed lines: intensity from speed; they stream toward/past the camera and stretch with speed
@@ -1303,6 +1330,10 @@
         w.mesh.lookAt(p.pos.x,w.mesh.position.y,w.z-40); // face travel direction so it streaks
         w.mesh.scale.set(1,1.1+spd*0.006,1);
         w.mesh.material.opacity=this._windAmt*(0.16+0.12*Math.sin(now2*6+w.phase));
+        { const P2=this.game.player, AU=P2._char&&P2._char.aura;
+          if(AU && this.game.combo.onFire())
+            w.mesh.material.color.copy(auraCol(this.game.combo.onEthereal()?AU.eth:AU.epic, 0.42));
+          else w.mesh.material.color.setHex(0xdff1ff); }
       }
       const surge=p.surgeActive>0, fire=this.game.combo.onFire();
       const intensity=clamp((spd-45)/90,0,1);          // appear once you're moving quick
@@ -1315,7 +1346,10 @@
         s.mesh.position.z -= (spd+60)*dt;               // rush backwards past the camera
         if(s.mesh.position.z < p.pos.z-25){ this._seedStreak(s,p); }
         s.mesh.scale.set(1,1,len);
-        s.mesh.material.color.setHex(fire?0xff6a1a:surge?0xffe08a:0xcfe6ff);
+        // speed lines pick up the character's aura once they're on fire (epic tone / ethereal tone)
+        { const AU=p._char&&p._char.aura;
+          if(fire && AU) s.mesh.material.color.copy(auraCol(this.game.combo.onEthereal()?AU.eth:AU.epic, 0.40));
+          else s.mesh.material.color.setHex(fire?0xff6a1a:surge?0xffe08a:0xcfe6ff); }
         s.mesh.material.opacity=op*(fire?1.5:1);
       }
     }
@@ -1520,7 +1554,15 @@
         this._windU={value:0};
         model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; if(o.material){ this.glowMats.push(o.material);
           o.material.emissive=o.material.emissive||new THREE.Color(0,0,0); o.material.emissiveIntensity=1;
-          if(cfg.wind==='capeX'){ const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
+          if(cfg.wind==='capeZ'){ const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
+            sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+              '#include <begin_vertex>\n'+
+              // model already lies along Z (head +Z, cape/hair/legs trailing -Z): flutter ONLY the trailing tail
+              ' float cm=smoothstep(-0.34,-0.92,position.z);\n'+
+              ' transformed.y+=(sin(position.z*5.0+uWind*1.05)*0.055 - 0.030*cm)*cm;\n'+
+              ' transformed.x+=cos(position.z*4.0+uWind*0.85+position.x*2.0)*0.045*cm;'); };
+            mat.needsUpdate=true; }
+          else if(cfg.wind==='capeX'){ const mat=o.material; mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
             sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',
               '#include <begin_vertex>\n'+
               // CAPE ONLY: mask starts well past the torso so arms/body are never displaced.
@@ -1676,23 +1718,29 @@
         const pulse=0.55+0.45*Math.sin(now*0.022);
         this.fireAura.visible=true;
         const AU=(this._char&&this._char.aura)||{epic:0xff5a14, eth:0x9b3bff};
-        const rgb=(hex)=>[((hex>>16)&255)/255, ((hex>>8)&255)/255, (hex&255)/255];
+        const rgb=(hex)=>{ const c=auraCol(hex,0.30); return [c.r,c.g,c.b]; };
         if(eth){
           // ETHEREAL aura — the character's own signature colour, bigger and pulsing
-          this.fireAura.material.color.setHex(AU.eth);
-          this.fireAura.material.opacity=0.34+0.34*pulse+g.combo.etherealLevel()*0.25;
-          this.fireAura.scale.setScalar(1.25+0.5*g.combo.etherealLevel()+0.28*pulse);
+          this.fireAura.material.color.copy(auraCol(AU.eth,0.30));
+          this.fireAura.material.opacity=0.24+0.17*pulse+g.combo.etherealLevel()*0.15;
+          this.fireAura.scale.setScalar(0.95+0.27*g.combo.etherealLevel()+0.12*pulse);
           const v=0.85+0.6*pulse, c=rgb(AU.eth);
           glow(c[0]*v, c[1]*v, c[2]*v);
-          g.effects.fireTrail(this.group.position, this._trailEnd, g.combo.etherealLevel(), dt, AU.eth);
+          g.effects.fireTrail(this.group.position, this._trailEnd, 0.55+g.combo.etherealLevel()*0.45, dt, AU.eth);
         } else {
           // EPIC aura — the character's core tone
-          this.fireAura.material.color.setHex(AU.epic);
-          this.fireAura.material.opacity=(epic?0.22:0.4)+0.3*pulse+fl*0.2;
-          this.fireAura.scale.setScalar((epic?0.8:1)+0.5*fl+0.18*pulse);
+          // FIRE is a faint halo; EPIC swells it. (It used to peak on plain FIRE and shrink at
+          // EPIC, which read as a solid disc swallowing the character.)
+          this.fireAura.material.color.copy(auraCol(AU.epic,0.26));
+          const el=epic?g.combo.epicLevel():0;
+          this.fireAura.material.opacity=epic ? 0.24+0.17*pulse+el*0.14
+                                              : 0.15+0.13*pulse+fl*0.10;
+          this.fireAura.scale.setScalar(epic ? 0.84+0.26*el+0.12*pulse
+                                             : 0.60+0.20*fl+0.07*pulse);
           const e=(epic?0.95:0.5)+0.5*pulse+fl*0.4, c=rgb(AU.epic);
           glow(c[0]*e, c[1]*e, c[2]*e);
-          if(epic) g.effects.fireTrail(this.group.position, this._trailEnd, g.combo.epicLevel(), dt, AU.epic);
+          // trail streams from the moment you're ON FIRE (thin at first, thick through EPIC)
+          g.effects.fireTrail(this.group.position, this._trailEnd, epic?(0.35+g.combo.epicLevel()*0.65):fl*0.25, dt, AU.epic);
         }
       } else if(this.fireAura.visible){
         this.fireAura.visible=false;
@@ -3307,7 +3355,9 @@
                 smash:{y:-0.05,z:3.0} },
     entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    countess: { name:'Glowing Countess', url:'./assets/countess.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    // Voidstrike's GLB is already posed prone along +Z (head forward, back up) — no yaw, only a
+    // slight nose-up so she reads as climbing into the smash like the others.
+    countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeZ', aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
