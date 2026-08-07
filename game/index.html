@@ -591,7 +591,7 @@
     <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 1.8 14.4 3l2.6-.6 1.5 2.2 2.6.7.1 2.7 1.9 1.9-1.2 2.4 .8 2.6-2.2 1.5-.7 2.6-2.7.1-1.9 1.9-2.4-1.2-2.6.8-1.5-2.2-2.6-.7-.1-2.7-1.9-1.9 1.2-2.4L2.5 8l2.2-1.5.7-2.6 2.7-.1L10 1.9l2 .9Zm0 6.4a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/></symbol>
     <symbol id="i-helm" viewBox="0 0 24 24"><path d="M12 2C7 2 4 5.6 4 10.4V17l3.4 2 .8-3.4h7.6l.8 3.4L20 17v-6.6C20 5.6 17 2 12 2Zm-5 9.6 3.8 1.2-1 2.2-2.8-1.2v-2.2Zm10 0v2.2l-2.8 1.2-1-2.2 3.8-1.2Z"/></symbol>
     <symbol id="i-map" viewBox="0 0 24 24"><path d="M12 1.6 22.4 12 12 22.4 1.6 12 12 1.6Zm0 4L5.6 12l6.4 6.4 6.4-6.4L12 5.6Zm0 3.4a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/></symbol>
-    <symbol id="i-coin" viewBox="0 0 24 24"><path d="M12 1.8 20.8 7v10L12 22.2 3.2 17V7L12 1.8Zm0 3L5.8 8.5v7L12 19.2l6.2-3.7v-7L12 4.8Zm-1.4 4h2.8v6.4h-2.8V8.8Z"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><path d="M12 1 21 8.6 17.4 22H6.6L3 8.6 12 1Zm0 3.1L6.1 9.1h11.8L12 4.1ZM5.6 10.6l2.6 9.4h1.3L7.2 10.6H5.6Zm3.2 0 2.3 9.4h.9l-2.3-9.4H8.8Zm4.1 0-2.3 9.4h.9l2.3-9.4h-.9Zm2.3 0-2.3 9.4h1.3l2.6-9.4h-1.6Z"/></symbol>
     <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 2h12v2h4v3c0 3-2 5-4.6 5.4A6 6 0 0 1 13 16v2h3.4l.6 4H7l.6-4H11v-2a6 6 0 0 1-4.4-3.6C4 12 2 10 2 7V4h4V2Zm-2 4v1c0 1.6.9 2.8 2 3.3V6H4Zm16 0h-2v4.3c1.1-.5 2-1.7 2-3.3V6Z"/></symbol>
     <symbol id="i-sound" viewBox="0 0 24 24"><path d="M3 9h4l6-5v16l-6-5H3V9Zm13.5-2.2 1.6-1.6C20.5 7 21.6 9.4 21.6 12s-1.1 5-3.5 6.8l-1.6-1.6c1.9-1.3 2.9-3.1 2.9-5.2s-1-3.9-2.9-5.2Zm-1.8 3.4c.8.5 1.3 1.2 1.3 1.8s-.5 1.3-1.3 1.8l-1.2-1.8 1.2-1.8Z"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M13.4 2a9.8 9.8 0 0 0 0 20c3.6 0 6.8-2 8.6-5-6.6 1.4-12-4-10.6-10.6A9.9 9.9 0 0 0 13.4 2Z"/></symbol>
@@ -712,7 +712,7 @@
   <div id="missions-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Missions</span><button class="x" data-close>×</button></div>
-      <div class="sheet-note">Finish a mission, claim the coins. New set every day.</div>
+      <div class="sheet-note">Finish a mission, claim the shards. New set every day.</div>
       <div id="ms-list"></div>
     </div>
   </div>
@@ -720,7 +720,7 @@
   <div id="daily-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Daily Rewards</span><button class="x" data-close>×</button></div>
-      <div class="sheet-note">Come back every day — the prize grows. Day 7 is a rare skin. Resets weekly.</div>
+      <div class="sheet-note">Come back every day — the haul grows. Day 7 is a rare skin. Resets weekly.</div>
       <div class="dr-grid" id="dr-grid"></div>
       <button id="dr-claim" class="btn">Claim</button>
       <div id="dr-note"></div>
@@ -760,7 +760,7 @@
       'Drones telegraph with a ground marker. Strafe off that line early.',
       'SURGE unlocks at a x6 combo — save it for a dense row of towers.',
       'At EPIC combo you fly faster and hit wider. Push the streak.',
-      'Coins line the road centre. Thread the curve to bank them.',
+      'Shards line your flight path. Thread the curve to bank them.',
       'Every map has its own hit sound, lighting and hazards. Try all four.',
       'Miss a tower and your streak breaks — line up the next one early.',
       'Finish daily missions for coins, and log in each day for the ladder.'];
@@ -1068,11 +1068,17 @@
   class PickupSystem {
     constructor(game){
       this.game=game; this.coins=[]; this.drinks=[]; this.spin=0;
-      this.coinNextZ=40; this.drinkNextZ=160; this.coinGap=6.5;
-      const cgeo=new THREE.CylinderGeometry(1.15,1.15,0.25,16);
+      this.coinNextZ=40; this.drinkNextZ=160; this.coinGap=13;
+      const cgeo=new THREE.OctahedronGeometry(1.25,0);          // faceted crystal shard
       for(let i=0;i<130;i++){
-        const m=new THREE.Mesh(cgeo,new THREE.MeshStandardMaterial({color:0xffd23b,emissive:0x7a5200,metalness:.7,roughness:.3}));
-        m.rotation.x=Math.PI/2; m.visible=false; game.scene.add(m);
+        const m=new THREE.Mesh(cgeo,new THREE.MeshStandardMaterial({color:0x22e08a,emissive:0x0c7a48,
+                 emissiveIntensity:1.15, metalness:.35, roughness:.12, flatShading:true}));
+        m.scale.set(0.85,1.5,0.85);                              // elongated gem
+        const halo=new THREE.Mesh(new THREE.OctahedronGeometry(1.25,0),
+                 new THREE.MeshBasicMaterial({color:0x9dffd0,transparent:true,opacity:0.28,
+                   blending:THREE.AdditiveBlending,depthWrite:false}));
+        halo.scale.setScalar(1.5); m.add(halo);
+        m.visible=false; game.scene.add(m);
         this.coins.push({mesh:m,active:false,x:0,z:0});
       }
       const dgeo=new THREE.CylinderGeometry(0.85,0.85,2.6,12);
@@ -1099,7 +1105,7 @@
       const dz=p.pos.z+2.0;                       // catch window at the villain's leading edge
       for(const c of this.coins){
         if(!c.active) continue;
-        c.mesh.rotation.z=this.spin;
+        c.mesh.rotation.y=this.spin*1.4; c.mesh.rotation.z=Math.sin(this.spin*0.7)*0.25;
         if(c.z < pz-30){ c.active=false; c.mesh.visible=false; continue; }
         if(c.z<=dz+1 && c.z>=pz-3 && Math.abs(c.x-p.pos.x)<2.6){ c.active=false; c.mesh.visible=false; this._coin(c); }
       }
@@ -1113,7 +1119,7 @@
     _coin(c){ const g=this.game; g.score.coins++; g.score.total+=60; g.audio.coin();
       { const cam=g.camera.cam, v=new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z).project(cam);
         if(v.z<1) flyCoin((v.x*0.5+0.5)*innerWidth, (-v.y*0.5+0.5)*innerHeight, 0); }
-      g.effects.ring(new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z),new THREE.Color(0xffd23b),5); }
+      g.effects.ring(new THREE.Vector3(c.x,(g.player.cruiseY||16)-1,c.z),new THREE.Color(0x3dffa8),5); }
     _drink(d){ const g=this.game; g.momentum.addHit(28); g.adrenaline.value=clamp(g.adrenaline.value+42,0,g.adrenaline.MAX);
       g.score.total+=160; g.audio.drink(); g.effects.flash(0.16);
       g.effects.burst(new THREE.Vector3(d.x,(g.player.cruiseY||16)-0.4,d.z),new THREE.Color(0x2bd66e),16,12); }
@@ -1182,9 +1188,9 @@
     }
     // FIRE TRAIL: spawn embers along the villain's body line that peel off and stream backward.
     // intensity (0..1) grows the deeper into EPIC you are -> denser, longer, hotter trail.
-    fireTrail(playerPos,dummyPos,intensity,dt,purple){
+    fireTrail(playerPos,dummyPos,intensity,dt,tint){
       // spawn rate scales with intensity; accumulate so it's frame-rate independent
-      this._emberAcc += ((purple?46:34)+intensity*46)*dt;
+      this._emberAcc += (40+intensity*46)*dt;
       let n=this._emberAcc|0; this._emberAcc-=n;
       const spd=this.game.player.speed();
       while(n-->0){
@@ -1199,9 +1205,11 @@
         // drift outward + fall slightly, then the villain outruns them => they stream PAST as a tail
         e.vel.set(rand(-3,3),rand(-1.5,3.5),-spd*rand(0.15,0.4)-6);
         e.life=e.max=rand(0.35,0.7)+intensity*0.4;
-        e.baseHue=purple? rand(0.74,0.82) : rand(0.02,0.11);   // violet vs orange embers
-        e.sat=purple?0.85:1;
-        const s=(purple?0.7:0.5)+rand(0,0.7)+intensity*0.7; e.mesh.scale.setScalar(s); e.baseS=s;
+        // embers inherit the character's aura colour, with a little natural spread
+        { const col=new THREE.Color(typeof tint==='number'?tint:0xff5a14), hsl={};
+          col.getHSL(hsl);
+          e.baseHue=(hsl.h+rand(-0.035,0.035)+1)%1; e.sat=Math.max(0.25,Math.min(1,hsl.s*rand(0.85,1.1))); }
+        const s=0.6+rand(0,0.7)+intensity*0.7; e.mesh.scale.setScalar(s); e.baseS=s;
       }
     }
     // recycle a streak ahead of / around the player so it whooshes past
@@ -1667,22 +1675,24 @@
       if(fire){
         const pulse=0.55+0.45*Math.sin(now*0.022);
         this.fireAura.visible=true;
+        const AU=(this._char&&this._char.aura)||{epic:0xff5a14, eth:0x9b3bff};
+        const rgb=(hex)=>[((hex>>16)&255)/255, ((hex>>8)&255)/255, (hex&255)/255];
         if(eth){
-          // PURPLE ETHEREAL aura: bigger, shinier, pulsing violet
-          this.fireAura.material.color.setHex(0x9b3bff);
+          // ETHEREAL aura — the character's own signature colour, bigger and pulsing
+          this.fireAura.material.color.setHex(AU.eth);
           this.fireAura.material.opacity=0.34+0.34*pulse+g.combo.etherealLevel()*0.25;
           this.fireAura.scale.setScalar(1.25+0.5*g.combo.etherealLevel()+0.28*pulse);
-          const v=0.85+0.6*pulse;
-          glow(v*0.6, v*0.15, v);      // violet glow (villain model + fallback)
-          g.effects.fireTrail(this.group.position, this._trailEnd, g.combo.etherealLevel(), dt, true);
+          const v=0.85+0.6*pulse, c=rgb(AU.eth);
+          glow(c[0]*v, c[1]*v, c[2]*v);
+          g.effects.fireTrail(this.group.position, this._trailEnd, g.combo.etherealLevel(), dt, AU.eth);
         } else {
-          this.fireAura.material.color.setHex(0xff5a14);
-          // at EPIC the aura tightens and a streaking FIRE TRAIL takes over
+          // EPIC aura — the character's core tone
+          this.fireAura.material.color.setHex(AU.epic);
           this.fireAura.material.opacity=(epic?0.22:0.4)+0.3*pulse+fl*0.2;
           this.fireAura.scale.setScalar((epic?0.8:1)+0.5*fl+0.18*pulse);
-          const e=(epic?0.95:0.5)+0.5*pulse+fl*0.4;
-          glow(e, e*(epic?0.26:0.35), 0);
-          if(epic) g.effects.fireTrail(this.group.position, this._trailEnd, g.combo.epicLevel(), dt, false);
+          const e=(epic?0.95:0.5)+0.5*pulse+fl*0.4, c=rgb(AU.epic);
+          glow(c[0]*e, c[1]*e, c[2]*e);
+          if(epic) g.effects.fireTrail(this.group.position, this._trailEnd, g.combo.epicLevel(), dt, AU.epic);
         }
       } else if(this.fireAura.visible){
         this.fireAura.visible=false;
@@ -2549,7 +2559,7 @@
       while(this.nextZ < pz + this.aheadDist){
         this._spawnAt(this.nextZ);
         // metro trains close on you, so space them WIDER to keep the reaction window (and difficulty) fair
-        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35)*(station?1.4:(backrooms?0.72:1));
+        this.nextZ += this.game.difficulty.stepGap()*rand(0.75,1.35)*(station?1.4:(backrooms?1.55:1));
       }
       const playing=this.game.run.state!=='READY'&&this.game.run.state!=='GameOver'&&this.game.run.state!=='Paused';
       // INCOMING TRAINS: metro targets drive toward you on the track (moderate, capped) — they come at YOU.
@@ -3218,7 +3228,7 @@
           `<div class="res-cell">${svg('i-map')}<div><b>${dist}m</b><span>Distance</span></div></div>`+
           `<div class="res-cell">${svg('i-trophy')}<div><b>${best.toLocaleString()}</b><span>All-Time Best</span></div></div>`+
         `</div>`+
-        `<div class="res-coins">${svg('i-coin')} +${g.score.coins} earned · ${bank.toLocaleString()} total</div>`;
+        `<div class="res-coins">${svg('i-coin')} +${g.score.coins} shards · ${bank.toLocaleString()} total</div>`;
       // count the final score UP so it's unmistakably shown
       { const el=document.getElementById('go-score'); const t0=performance.now(), dur=900;
         const step=(now)=>{ const k=Math.max(0,Math.min(1,(now-t0)/dur)); const e=1-Math.pow(1-k,3);
@@ -3287,17 +3297,17 @@
   function nextRank(score){ for(const x of RANKS) if(score<x.min) return x; return null; }
 
   const CHARACTERS = {
-    dominus:  { name:'Dominus', url:'./assets/villain.glb',  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    dominus:  { name:'Dominus', url:'./assets/villain.glb', aura:{epic:0x6a7480, eth:0xe8eef5},  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', aura:{epic:0x1170d8, eth:0x86ee2e}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    knight:   { name:'Evil Knight', url:'./assets/knight.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    knight:   { name:'Evil Knight', url:'./assets/knight.glb', aura:{epic:0x2b2228, eth:0xc4121a}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', aura:{epic:0x1a3fd8, eth:0xf4f8ff}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    entity:   { name:'The Entity', url:'./assets/entity.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    countess: { name:'Glowing Countess', url:'./assets/countess.glb', rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    countess: { name:'Glowing Countess', url:'./assets/countess.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
@@ -3564,7 +3574,7 @@
           {id:'hits',  icon:'i-city',   name:'Smash %N buildings in one run', tiers:[120,200,320],  rew:[400,700,1200]},
           {id:'dist',  icon:'i-map',    name:'Fly %N m in one run',           tiers:[9000,16000,26000], rew:[400,700,1200]},
           {id:'combo', icon:'i-bolt',   name:'Reach a x%N combo',             tiers:[45,70,100],   rew:[600,950,1500]},
-          {id:'coins', icon:'i-coin',   name:'Collect %N coins in one run',   tiers:[140,240,380],  rew:[400,700,1200]},
+          {id:'coins', icon:'i-coin',   name:'Collect %N shards in one run',   tiers:[140,240,380],  rew:[400,700,1200]},
           {id:'score', icon:'i-trophy', name:'Score %N in one run',           tiers:[250000,600000,1200000], rew:[700,1100,1800]},
         ];
         const K='invrun_ms';
