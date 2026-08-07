@@ -3410,9 +3410,11 @@
                 smash:{y:-0.05,z:3.0} },
     entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    // Voidstrike's GLB is already posed prone along +Z (head forward, back up) — no yaw, only a
-    // slight nose-up so she reads as climbing into the smash like the others.
-    countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:null, aim:false,
+    // Voidstrike's GLB is already posed prone along +Z (head forward, back up), so she needs no
+    // 90-degree flip — but she still needs the SAME framing as everyone else. Flat and un-yawed, the
+    // camera looks straight down her body axis into the soles of her feet and the legs read as two
+    // splayed blobs. Same yaw as the rest, pitched nose-up so the shot is her back, not her boots.
+    countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.55, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:null, aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
