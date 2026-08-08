@@ -365,8 +365,44 @@
     #gameover-stats .svgi{ color:var(--gold); }
     #loading-overlay .l-emblem{ font-size:0; } #loading-overlay .l-emblem .svgi{ width:58px; height:58px; color:var(--orange); }
 
+    /* ============================ LEGAL SHEETS ============================ */
+    .legal{ max-height:min(62vh,560px); overflow-y:auto; -webkit-overflow-scrolling:touch;
+      padding:2px 2px 6px; font-family:var(--f-ui); }
+    .legal h4{ font-family:var(--f-display); letter-spacing:.06em; text-transform:uppercase;
+      font-size:12.5px; color:var(--elec); margin:16px 0 6px; }
+    .legal h4:first-child{ margin-top:4px; }
+    .legal h4.lg-sec{ margin-top:26px; padding-top:16px; border-top:1px solid rgba(255,255,255,.14); font-size:14px; }
+    .legal p{ margin:0 0 9px; font-size:12.5px; font-weight:400; line-height:1.6; color:rgba(255,255,255,.72); }
+    .legal strong{ color:rgba(255,255,255,.93); }
+    .legal code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11.5px;
+      background:rgba(255,255,255,.08); padding:1px 4px; border-radius:3px; }
+    .legal .lg-upd{ font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:rgba(255,255,255,.42); }
+    .legal .lg-foot{ margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,.10);
+      font-size:11.5px; color:rgba(255,255,255,.5); }
+    .menu-legal{ position:relative; z-index:2; margin-top:6px; font-family:var(--f-ui);
+      font-size:11px; color:rgba(255,255,255,.38); text-align:center; pointer-events:auto; }
+    .menu-legal .lnk{ background:none; border:0; padding:0 1px; font:inherit; cursor:pointer;
+      color:rgba(255,255,255,.62); text-decoration:underline; text-underline-offset:2px; }
+    .menu-legal .lnk:active{ color:var(--elec); }
+
     /* ============================ PER-MAP MENU THEMES ============================ */
     /* the armored-plate structure stays; the palette + backdrop follow the selected map */
+    /* TOKYO — the menu wears the street: hot magenta tubes over wet blue-black */
+    body.theme-nyc{ --elec:#ff4d8d; --elec-glow:#ff9ec4; --orange:#ff6a12; --steel:#7a2b4c; --steel-hi:#b5537f;
+      --gun:#1b1020; --gun2:#2a1730; --navy:#120b18; --navy2:#1d1226; --navy3:#0a060e; }
+    body.theme-nyc .overlay, body.theme-nyc #loading-overlay{ background:
+      radial-gradient(120% 80% at 50% -10%, rgba(255,77,141,.20), transparent 55%),
+      radial-gradient(120% 90% at 50% 115%, rgba(56,208,255,.16), transparent 55%),
+      linear-gradient(180deg,#1c1024 0%,#120b18 55%,#07050a 100%); }
+    body.theme-nyc .btn-play{ background:linear-gradient(180deg,#ff5f9e 0%,#e01f68 55%,#a5104a 100%);
+      box-shadow:inset 0 0 0 2px #ffd0e2, inset 0 3px 0 rgba(255,255,255,.5), inset 0 -10px 18px rgba(90,6,40,.5);
+      filter:drop-shadow(0 8px 0 #58062c) drop-shadow(0 12px 14px rgba(0,0,0,.55)); text-shadow:0 2px 3px rgba(80,6,36,.6); }
+    body.theme-nyc .btn-play:active{ filter:drop-shadow(0 2px 0 #58062c) drop-shadow(0 4px 7px rgba(0,0,0,.45)); }
+    body.theme-nyc .btn:not(.btn-sec){ background:linear-gradient(180deg,#ff5f9e,#d81e63);
+      box-shadow:inset 0 0 0 1.5px rgba(255,214,230,.5), inset 0 2px 0 rgba(255,255,255,.45), inset 0 -8px 14px rgba(90,6,40,.45);
+      filter:drop-shadow(0 6px 0 #58062c) drop-shadow(0 9px 10px rgba(0,0,0,.45)); text-shadow:0 2px 2px rgba(80,6,36,.5); }
+    body.theme-nyc .btn:not(.btn-sec):active{ filter:drop-shadow(0 1px 0 #58062c) drop-shadow(0 3px 5px rgba(0,0,0,.4)); }
+
     body.theme-aero{ --elec:#5ce8ff; --elec-glow:#9df3ff; --orange:#3fe6a0; --steel:#3f7f92; --steel-hi:#6fb3c4;
       --gun:#0f3340; --gun2:#155062; --navy:#0b2a36; --navy2:#0f3a4a; --navy3:#082430; }
     body.theme-aero .overlay, body.theme-aero #loading-overlay{ background:
@@ -603,6 +639,8 @@
     <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 1.6h10a2 2 0 0 1 2 2v16.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3.6a2 2 0 0 1 2-2Zm0 2.4v14h10V4H7Zm3 15.4h4v1.4h-4v-1.4Z"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.6 1 4 13.6h5.4L9 23l9.8-13.4h-5.6L13.6 1Z"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><path d="M12 1.8A5.2 5.2 0 0 1 17.2 7v3H19a1.6 1.6 0 0 1 1.6 1.6v9A1.6 1.6 0 0 1 19 22.2H5A1.6 1.6 0 0 1 3.4 20.6v-9A1.6 1.6 0 0 1 5 10h1.8V7A5.2 5.2 0 0 1 12 1.8Zm0 2.6A2.6 2.6 0 0 0 9.4 7v3h5.2V7A2.6 2.6 0 0 0 12 4.4Zm0 9.2a2 2 0 0 1 1 3.7V19h-2v-1.7a2 2 0 0 1 1-3.7Z"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2h7.2L20 8.8V22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.8V9h5.2L13 3.8ZM8 12h8v2H8v-2Zm0 4h8v2H8v-2Zm0-8h3v2H8V8Z"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 2.2 22.4 20.6a1.4 1.4 0 0 1-1.2 2.1H2.8a1.4 1.4 0 0 1-1.2-2.1L12 2.2Zm-1.2 6.2v6.2h2.4V8.4h-2.4Zm0 8v2.4h2.4v-2.4h-2.4Z"/></symbol>
     <symbol id="i-city" viewBox="0 0 24 24"><path d="M3 22V9h5v13H3Zm7 0V2h6v20h-6Zm2-17v2h2V5h-2Zm0 4v2h2V9h-2Zm0 4v2h2v-2h-2ZM18 22V12h4v10h-4Z"/></symbol>
     <symbol id="i-bubbles" viewBox="0 0 24 24"><path d="M9 2a6 6 0 1 1 0 12A6 6 0 0 1 9 2Zm0 2.4A3.6 3.6 0 1 0 9 11.6 3.6 3.6 0 0 0 9 4.4ZM18.6 12a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Zm0 2.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2ZM8.4 17.2a2.8 2.8 0 1 1 0 5.6 2.8 2.8 0 0 1 0-5.6Z"/></symbol>
     <symbol id="i-castle" viewBox="0 0 24 24"><path d="M3 22V7h2.6V4H8v3h2.6V4H13v3h2.6V4H18v3h3v15h-6v-5a3 3 0 0 0-6 0v5H3Z"/></symbol>
@@ -660,6 +698,8 @@
       <button id="maps-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-map"/></svg></span><span>Maps</span></button>
     </div>
     <div class="menu-foot">Weave the streets · smash towers · dodge the drones</div>
+    <div class="menu-legal">By playing you agree to the <button class="lnk" id="foot-legal">Terms &amp; Privacy</button>
+      · <button class="lnk" id="foot-health">Health &amp; Safety</button></div>
   </div>
 
   <!-- Settings / Skins / Maps sheets -->
@@ -673,6 +713,160 @@
         <input type="range" class="slider" id="movesens" min="50" max="180" value="100"></div>
       <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-phone"/></svg>Gyro Sensitivity</span><span class="val" id="gyrosens-val">1.0×</span></div>
         <input type="range" class="slider" id="gyrosens" min="50" max="200" value="100"></div>
+      <div class="opt"><span><svg class="svgi si"><use href="#i-doc"/></svg>Legal &amp; Privacy</span><button id="legal-btn" class="toggle">OPEN</button></div>
+      <div class="opt"><span><svg class="svgi si"><use href="#i-warn"/></svg>Health &amp; Safety</span><button id="health-btn" class="toggle">OPEN</button></div>
+      <div class="sheet-note" style="margin:6px 2px 0">CITYBREAKER v1.0 · plays entirely on your device · no account, no ads, no tracking.</div>
+    </div>
+  </div>
+
+  <!-- ===== LEGAL: terms of use, privacy, licences. Reachable from Settings and the menu footer. ===== -->
+  <div id="legal-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Legal &amp; Privacy</span><button class="x" data-close>×</button></div>
+      <div class="legal">
+        <p class="lg-upd">Last updated 8 August 2026 · Effective on first use</p>
+
+        <h4>1. Agreement to these Terms</h4>
+        <p>CITYBREAKER (the "Game") is provided to you by its developer ("we", "us"). By opening, installing or
+        playing the Game you accept these Terms of Use and the Privacy Notice below. If you do not accept them,
+        do not use the Game.</p>
+
+        <h4>2. Who may play</h4>
+        <p>You must be at least 13 years old, or the minimum age of digital consent where you live, whichever is
+        higher. If you are under 18 you confirm a parent or guardian has reviewed and accepted these Terms on your
+        behalf. We do not knowingly permit accounts for, or collect information from, children under 13.</p>
+
+        <h4>3. Licence</h4>
+        <p>We grant you a personal, revocable, non-exclusive, non-transferable, non-sublicensable licence to play
+        the Game for your own non-commercial entertainment. You may not: copy, sell, rent, sublicense or
+        redistribute the Game; modify, decompile or reverse engineer it except where that right cannot lawfully be
+        restricted; use cheats, bots, memory editors or automation; interfere with the Game's operation; or remove
+        any proprietary notice.</p>
+
+        <h4>4. Virtual items and progress</h4>
+        <p>Shards, characters, ranks, missions, daily rewards and any other in-game item are a licensed feature of
+        the Game, not your property. They have <strong>no monetary value</strong>, cannot be exchanged for money or
+        anything of value, and may be changed, rebalanced, reset or removed at any time. The Game does not sell
+        anything and contains no purchases. Progress is stored only in your own browser and can be lost if you
+        clear site data, use private browsing, switch device or browser, or if your browser evicts storage. We are
+        not liable for lost progress.</p>
+
+        <h4>5. Our content</h4>
+        <p>The Game, its code, artwork, characters, models, sounds, names and design are owned by us or our
+        licensors and protected by copyright and other laws. All rights not expressly granted are reserved.
+        Character and world designs are fictional. Any resemblance to a real person, living or dead, or to a real
+        business, place or event, is coincidental. Place names are used to evoke a setting and imply no
+        affiliation with, sponsorship by or endorsement from any city, company or brand.</p>
+
+        <h4>6. Third-party software</h4>
+        <p>The Game includes three.js and its loaders (© three.js authors, MIT Licence) and Basis Universal /
+        Meshopt decoders under their respective open-source licences. Those components remain the property of
+        their authors and are used under the terms of their licences, copies of which accompany the source.</p>
+
+        <h4>7. Health and safety</h4>
+        <p>The Game contains flashing lights, high-contrast neon, rapid motion and screen shake. Read the
+        <strong>Health &amp; Safety</strong> notice in Settings before playing. By playing you confirm you have read
+        it and accept the risks it describes.</p>
+
+        <h4>8. Availability</h4>
+        <p>The Game is provided on an "as available" basis. We may change, suspend, update or discontinue it, in
+        whole or in part, at any time and without notice or liability.</p>
+
+        <h4>9. Disclaimer of warranties</h4>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE GAME IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT
+        WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR STATUTORY, INCLUDING ANY IMPLIED WARRANTY OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE, TITLE, ACCURACY OR NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE GAME WILL
+        BE UNINTERRUPTED, ERROR-FREE, SECURE, OR COMPATIBLE WITH YOUR DEVICE.</p>
+
+        <h4>10. Limitation of liability</h4>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+        CONSEQUENTIAL, EXEMPLARY OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, DATA, GOODWILL, PROGRESS OR
+        DEVICE USE, ARISING OUT OF OR RELATING TO THE GAME, ON ANY THEORY OF LIABILITY, EVEN IF ADVISED OF THE
+        POSSIBILITY. OUR TOTAL AGGREGATE LIABILITY FOR ALL CLAIMS RELATING TO THE GAME WILL NOT EXCEED THE GREATER
+        OF THE AMOUNT YOU PAID US FOR IT (WHICH IS ZERO) OR USD 10.</p>
+        <p>Some jurisdictions do not allow the exclusion of certain warranties or the limitation of certain
+        damages. Where that is the case, the above exclusions and limits apply only to the fullest extent that law
+        allows, and nothing here limits liability for death or personal injury caused by negligence, for fraud, or
+        for anything else that cannot lawfully be limited.</p>
+
+        <h4>11. Indemnity</h4>
+        <p>You agree to indemnify and hold us harmless from any claim, damage, loss or expense (including
+        reasonable legal fees) arising from your misuse of the Game or your breach of these Terms, to the extent
+        permitted by law.</p>
+
+        <h4>12. Disputes</h4>
+        <p>Before starting any formal proceeding, you agree to contact us and attempt to resolve the matter
+        informally for at least 30 days. If that fails, any dispute will be resolved on an individual basis. To the
+        extent permitted by law, <strong>you and we waive any right to a jury trial and to bring or participate in a
+        class, collective or representative action</strong>. This paragraph does not apply where it is unenforceable,
+        and it does not deprive a consumer of the right to bring a claim in their local courts or before their
+        national consumer body where the law gives them that right.</p>
+
+        <h4>13. Governing law</h4>
+        <p>These Terms are governed by the laws of the developer's place of residence, without regard to
+        conflict-of-law rules. If you are a consumer, you keep the benefit of any mandatory protections of the law
+        of your own country of residence.</p>
+
+        <h4>14. Changes and severability</h4>
+        <p>We may update these Terms; the "last updated" date above will change and continued play means you
+        accept the update. If any provision is held unenforceable, the rest remains in force.</p>
+
+        <h4 class="lg-sec">Privacy Notice</h4>
+        <p><strong>We do not collect your personal data.</strong> The Game has no accounts, no sign-in, no ads, no
+        analytics, no advertising identifiers and no third-party trackers. It does not transmit gameplay,
+        behavioural or personal information anywhere.</p>
+        <p><strong>What is stored, and where.</strong> Your best score, shard balance, chosen character and map,
+        mission progress, daily-reward day, and your sound / night-mode / sensitivity settings are written to your
+        browser's <code>localStorage</code>. That data stays on your device, is readable only by this site, and is
+        never sent to us or to anyone else.</p>
+        <p><strong>Device sensors.</strong> If you turn on Gyro Aim, the Game reads your device's motion sensors to
+        steer. Those readings are used in the current frame and immediately discarded — they are never stored,
+        logged or transmitted. On iOS your browser will ask for permission first, and you can decline and keep
+        playing with touch controls.</p>
+        <p><strong>Your rights.</strong> Because nothing is collected or transmitted, there is nothing for us to
+        access, correct, export, delete or sell — and we do not sell or share personal information under any
+        definition. You can erase everything the Game has stored at any time by clearing site data for this
+        page in your browser settings.</p>
+        <p><strong>Children.</strong> The Game is not directed to children under 13 and collects no information
+        from anyone, including children.</p>
+        <p><strong>Hosting.</strong> The page itself is served by a static web host, which — like every web server —
+        may keep standard access logs (such as IP address and request time) under its own privacy policy. We do not
+        control, receive or use those logs.</p>
+
+        <p class="lg-foot">Questions about these Terms or this notice can be raised through the channel you obtained
+        the Game from. This document is provided for transparency and is not legal advice.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="health-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Health &amp; Safety</span><button class="x" data-close>×</button></div>
+      <div class="legal">
+        <h4>Photosensitive seizure warning</h4>
+        <p>A very small number of people may have a seizure when exposed to flashing lights or patterns, including
+        while playing video games — even with no history of seizures or epilepsy. Symptoms can include dizziness,
+        altered vision, eye or face twitching, jerking of limbs, disorientation, confusion, or loss of awareness.
+        <strong>Stop playing immediately and consult a doctor if you experience any of these.</strong> Parents should
+        watch for these signs in children.</p>
+        <p>This Game contains flashing lights, strobing neon, rapid camera motion and screen shake.</p>
+
+        <h4>Reduce the risk</h4>
+        <p>Play in a well-lit room, sit further from the screen, use the smallest comfortable screen, lower your
+        device brightness, and stop as soon as you feel unwell.</p>
+
+        <h4>Motion sensitivity</h4>
+        <p>Fast forward motion can cause nausea, dizziness or disorientation in some players. If that happens, stop
+        playing and rest until the symptoms pass.</p>
+
+        <h4>Repetitive strain and fatigue</h4>
+        <p>Take a 10–15 minute break every hour. Stop if your hands, wrists, arms or eyes become tired or sore, and
+        see a doctor if discomfort persists.</p>
+
+        <h4>Play with awareness</h4>
+        <p>Do not play while walking, cycling, driving or anywhere you need your attention for your own safety.
+        Sound is on by default — keep the volume low enough to hear what is around you.</p>
+      </div>
     </div>
   </div>
   <div id="skins-modal" class="modal hidden">
@@ -1825,7 +2019,7 @@
       this._ground();
       this._buildRoad();
       // ONE shared facade canvas, redrawn when the map changes (windows / glass / stone).
-      this._bldgCanvas=document.createElement('canvas'); this._bldgCanvas.width=this._bldgCanvas.height=128;
+      this._bldgCanvas=document.createElement('canvas'); this._bldgCanvas.width=this._bldgCanvas.height=256;
       this._drawFacade('window');
       const geo=new THREE.BoxGeometry(1,1,1);
       this._geo=geo;
@@ -1833,7 +2027,7 @@
       const capGeo=new THREE.CylinderGeometry(0.5,0.5,1,10);   // rooftop: NYC water tank / Aero antenna
       this._merlonTex=this._merlonTexture();            // crenellation (battlement) crown texture
       for(let i=0;i<420;i++){                            // bigger pool -> a DENSE, never-empty skyline
-        const map=new THREE.CanvasTexture(this._bldgCanvas); map.wrapS=map.wrapT=THREE.RepeatWrapping; map.anisotropy=4;
+        const map=new THREE.CanvasTexture(this._bldgCanvas); map.wrapS=map.wrapT=THREE.RepeatWrapping; map.anisotropy=8;
         const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({roughness:.72,metalness:.08,map}));
         m.castShadow=m.receiveShadow=true; m.visible=false; game.scene.add(m);
         // outline used to MARK hittable targets (bright) vs decor houses (dim)
@@ -1864,7 +2058,7 @@
         m.visible=false; this.game.scene.add(m);
         const frame=new THREE.Mesh(new THREE.BoxGeometry(1,1,0.6),new THREE.MeshStandardMaterial({color:0x2b3038,roughness:.8,metalness:.3}));
         frame.visible=false; this.game.scene.add(frame);
-        this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(13,20), h:rand(7,11), y:0});
+        this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(3.4,5.2), h:rand(11,19), y:0});
       }
       this.BR_CEIL=17;
       // BACKROOMS ROOM SHELL — built as continuous ribbons (no panels => no seams, no gaps)
@@ -1894,19 +2088,24 @@
     }
     // procedural neon billboard face
     _boardTex(i){
-      const c=document.createElement('canvas'); c.width=256; c.height=128; const x=c.getContext('2d');
-      const bg=['#12183a','#2a0f2e','#0d2a2e','#301226','#101a2c'][i%5];
-      x.fillStyle=bg; x.fillRect(0,0,256,128);
-      const neon=['#ff4d6d','#37c6ff','#ffc63a','#7cffd6','#ff8a1f','#c08bff'][i%6];
-      x.strokeStyle=neon; x.lineWidth=6; x.strokeRect(8,8,240,112);
-      x.shadowColor=neon; x.shadowBlur=18; x.fillStyle=neon;
-      const words=['CITYBREAKER','MEGA SALE','NEON','24/7','SKYLINE','DOWNTOWN','TOKYO','EXPRESS'];
-      x.font='bold 40px Impact, sans-serif'; x.textAlign='center'; x.textBaseline='middle';
-      x.fillText(words[i%words.length], 128, 56);
-      x.shadowBlur=0; x.fillStyle='rgba(255,255,255,.85)';
-      x.fillRect(48,86,160,5);
-      for(let k=0;k<5;k++){ x.fillStyle=neon; x.globalAlpha=.5; x.fillRect(30+k*42,100,26,8); }
-      x.globalAlpha=1;
+      // TOKYO: a tall vertical signboard — kanji stacked down a glowing tube-lit box.
+      const c=document.createElement('canvas'); c.width=128; c.height=384; const x=c.getContext('2d');
+      const NEON=['#ff3b30','#ff6a12','#ffc233','#fff2d0','#ff2d6f','#38d0ff','#3ee08a'];
+      const K=['\u65e5','\u672c','\u9152','\u5c4b','\u98df','\u5802','\u30e9','\u30e1','\u30f3','\u5e02',
+               '\u4eac','\u6771','\u30d0','\u30fc','\u713c','\u9ce5','\u5348','\u62db','\u5e97','\u91d1'];
+      const col=NEON[i%NEON.length];
+      const bg=x.createLinearGradient(0,0,0,384);
+      bg.addColorStop(0,'#181a21'); bg.addColorStop(0.5,'#0d0f14'); bg.addColorStop(1,'#181a21');
+      x.fillStyle=bg; x.fillRect(0,0,128,384);
+      x.strokeStyle=col; x.lineWidth=9; x.strokeRect(6,6,116,372);                  // neon tube border
+      x.shadowColor=col; x.shadowBlur=26; x.strokeRect(6,6,116,372);
+      x.fillStyle=col; x.textAlign='center'; x.textBaseline='middle';
+      x.font='bold 74px "Hiragino Sans","Yu Gothic",sans-serif';
+      const n=4;
+      for(let k=0;k<n;k++) x.fillText(K[(i*5+k*3)%K.length], 64, 62+k*88);
+      x.shadowBlur=0;
+      x.fillStyle='rgba(255,255,255,.9)';                                            // little latin strapline
+      x.font='bold 15px Arial, sans-serif'; x.fillText(['BAR','RAMEN','KARAOKE','SUSHI','24H','CLUB','IZAKAYA'][i%7],64,364);
       const t=new THREE.CanvasTexture(c); return t;
     }
     // battlement texture: a solid parapet band with square merlons + transparent crenel gaps on top
@@ -1921,7 +2120,10 @@
     }
     // redraw the shared facade canvas for the active map's building style
     _drawFacade(style){
-      const c=this._bldgCanvas, x=c.getContext('2d'); x.clearRect(0,0,128,128);
+      // every style below draws in a 128-unit space; the canvas is 256 and the context is scaled
+      // 2x, so the same code yields 4x the texels (sharper facades at grazing angles, no rewrites)
+      const c=this._bldgCanvas, x=c.getContext('2d');
+      x.setTransform(2,0,0,2,0,0); x.clearRect(0,0,128,128);
       if(style==='stone'){
         x.fillStyle='#4f4230'; x.fillRect(0,0,128,128);                     // dark mortar base
         const rows=8, ch=128/rows;
@@ -1995,26 +2197,71 @@
         rg.addColorStop(0.30,'rgba(255,255,255,0)'); rg.addColorStop(0.46,'rgba(255,255,255,.34)');
         rg.addColorStop(0.52,'rgba(255,255,255,.10)'); rg.addColorStop(0.62,'rgba(255,255,255,.30)'); rg.addColorStop(0.78,'rgba(255,255,255,0)');
         x.fillStyle=rg; x.fillRect(0,0,128,128);
-      } else {                                                              // window (NYC)
-        x.fillStyle='#cdd3da'; x.fillRect(0,0,128,128);
-        for(let i=0;i<260;i++){ const v=(Math.random()*60|0);               // concrete/brick grain
-          x.fillStyle=`rgba(${120+v},${118+v},${116+v},.14)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
-        x.fillStyle='rgba(140,120,105,.16)';                                // faint brick banding
-        for(let y=0;y<128;y+=8) x.fillRect(0,y,128,1);
-        const cols=4,rows=4,pad=10,gap=9, ww=(128-pad*2-gap*(cols-1))/cols, wh=(128-pad*2-gap*(rows-1))/rows;
-        for(let r=0;r<rows;r++) for(let cc=0;cc<cols;cc++){ const wx=pad+cc*(ww+gap), wy=pad+r*(wh+gap), lit=Math.random()<0.16;
-          if(lit){ const wg=x.createLinearGradient(wx,wy,wx,wy+wh);         // warm interior falloff
-            wg.addColorStop(0,'#ffedb8'); wg.addColorStop(1,'#e8b96a'); x.fillStyle=wg; }
-          else x.fillStyle=(Math.random()<0.5?'#39485a':'#4a5a6d');
-          x.fillRect(wx,wy,ww,wh);
-          x.fillStyle='rgba(255,255,255,.20)'; x.fillRect(wx,wy,ww,2);      // glass top light
-          x.fillStyle='rgba(225,230,236,.85)'; x.fillRect(wx-1,wy+wh,ww+2,2); // window sill
-          x.fillStyle='rgba(0,0,0,.10)'; x.fillRect(wx-1,wy+wh+2,ww+2,3);   // grime streak under the sill
-          if(!lit && Math.random()<0.18){ x.fillStyle='#8f9aa4';            // AC unit hanging in the frame
-            x.fillRect(wx+ww*0.28,wy+wh*0.55,ww*0.44,wh*0.4);
-            x.fillStyle='rgba(0,0,0,.25)'; x.fillRect(wx+ww*0.28,wy+wh*0.55,ww*0.44,2); } }
+      } else {                                                              // window -> TOKYO
+        // A Tokyo street facade is not a grid of offices: it is a wall of SIGNAGE. Tiles are
+        // a dark tiled/panel skin almost entirely covered by stacked lightboxes, vertical kanji
+        // banners and a lit ground-floor shopfront. Drawn once per map, tiled over every building.
+        const K=this._glyphs||(this._glyphs=['\u65e5','\u672c','\u9152','\u5c4b','\u98df','\u5802','\u30e9','\u30e1','\u30f3','\u5e02','\u4eac','\u6771','\u30d0','\u30fc','\u713c','\u9ce5','\u5348','\u62db','\u5e97','\u91d1']);
+        x.fillStyle='#15171d'; x.fillRect(0,0,128,128);                     // dark tiled carcass
+        for(let y=0;y<128;y+=9){ x.fillStyle='rgba(255,255,255,.035)'; x.fillRect(0,y,128,1); }
+        for(let vx=0;vx<128;vx+=16){ x.fillStyle='rgba(0,0,0,.30)'; x.fillRect(vx,0,1,128); }
+        for(let i=0;i<180;i++){ const v=(Math.random()*26|0);
+          x.fillStyle=`rgba(${40+v},${44+v},${54+v},.35)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+        // real signage is mostly warm — red, orange, amber, white — with cool used as an accent.
+        // An even rainbow is what makes a fake street look fake.
+        const NEON=['#ff3b30','#ff3b30','#ff6a12','#ff6a12','#ffc233','#ffc233','#fff2d0','#fff2d0',
+                    '#ff2d6f','#38d0ff','#3ee08a','#b46bff'];
+        const pick=()=>NEON[(Math.random()*NEON.length)|0];
+        // horizontal LIGHTBOX bands stacked up the storey line
+        let y=4;
+        while(y<104){
+          const bh=8+Math.random()*11, col=pick(), inset=Math.random()<0.3?10:2;
+          x.fillStyle='#0a0b0f'; x.fillRect(inset-1,y-1,128-inset*2+2,bh+2);      // sign box shadow
+          const bg=x.createLinearGradient(0,y,0,y+bh);
+          bg.addColorStop(0,'#22242c'); bg.addColorStop(1,'#0e1015');
+          x.fillStyle=bg; x.fillRect(inset,y,128-inset*2,bh);
+          x.strokeStyle=col; x.lineWidth=1.6; x.strokeRect(inset+0.8,y+0.8,128-inset*2-1.6,bh-1.6);
+          x.shadowColor=col; x.shadowBlur=7; x.fillStyle=col;                     // glowing glyph run
+          x.font=`bold ${Math.round(bh*0.72)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+          x.textBaseline='middle';
+          const n=2+((Math.random()*3)|0); let gx=inset+5;
+          for(let k=0;k<n;k++){ x.fillText(K[(Math.random()*K.length)|0], gx, y+bh/2); gx+=bh*0.8; }
+          x.shadowBlur=0;
+          if(Math.random()<0.45){ x.fillStyle=col; x.globalAlpha=.75;             // tube underline
+            x.fillRect(inset+4,y+bh-2.4,128-inset*2-8,1.4); x.globalAlpha=1; }
+          y += bh + 2 + Math.random()*5;
+        }
+        // a couple of VERTICAL banner signs riding over the bands
+        for(let b=0;b<2;b++){
+          const bw=11+Math.random()*5, bx=8+Math.random()*100, by=6+Math.random()*20, bhh=44+Math.random()*44, col=pick();
+          x.fillStyle='#07080b'; x.fillRect(bx-1,by-1,bw+2,bhh+2);
+          x.fillStyle='#131519'; x.fillRect(bx,by,bw,bhh);
+          x.strokeStyle=col; x.lineWidth=1.4; x.strokeRect(bx+0.7,by+0.7,bw-1.4,bhh-1.4);
+          x.shadowColor=col; x.shadowBlur=8; x.fillStyle=col;
+          x.font=`bold ${Math.round(bw*0.74)}px "Hiragino Sans","Yu Gothic",sans-serif`;
+          x.textAlign='center';
+          const rows=Math.max(2,Math.floor(bhh/(bw*0.95)));
+          for(let r2=0;r2<rows;r2++) x.fillText(K[(Math.random()*K.length)|0], bx+bw/2, by+bw*0.62+r2*bw*0.95);
+          x.shadowBlur=0; x.textAlign='left';
+        }
+        // GROUND FLOOR: a lit shopfront with a warm interior and a noren curtain
+        const fg=x.createLinearGradient(0,104,0,128);
+        fg.addColorStop(0,'#ffe6b0'); fg.addColorStop(0.55,'#f0b45c'); fg.addColorStop(1,'#5a3a18');
+        x.fillStyle=fg; x.fillRect(0,104,128,24);
+        x.fillStyle='rgba(20,14,8,.55)';                                          // mullions + silhouettes inside
+        for(let mx=0;mx<128;mx+=21) x.fillRect(mx,104,2.5,24);
+        for(let i=0;i<4;i++){ const px2=10+Math.random()*105;
+          x.fillStyle='rgba(30,20,12,.5)'; x.fillRect(px2,112,5,16); x.beginPath(); x.arc(px2+2.5,110,3,0,6.2832); x.fill(); }
+        x.fillStyle='#c8202e'; x.fillRect(0,104,128,6);                           // red noren band
+        x.fillStyle='rgba(255,255,255,.9)'; x.font='bold 5px "Hiragino Sans",sans-serif';
+        for(let mx=6;mx<128;mx+=24) x.fillText(K[(mx*7)%K.length]+K[(mx*3)%K.length], mx, 108.5);
+        x.fillStyle='rgba(0,0,0,.45)'; x.fillRect(0,126,128,2);                    // pavement shadow line
       }
       for(const p of this.pool){ if(p.mesh.material.map) p.mesh.material.map.needsUpdate=true; }
+      // Tokyo signage is self-lit: use the facade as its own emissive map so the neon reads at any hour
+      { const tk=(style==='window');
+        for(const p of this.pool){ const m=p.mesh.material;
+          m.emissiveMap = tk ? m.map : null; m.emissiveIntensity = tk ? 0.85 : 1; m.needsUpdate=true; } }
     }
     // env extras: Frutiger bubbles + Medieval mountains (shown per map)
     // ===== THEMED ENVIRONMENT PROPS: one pooled set, rebuilt per map (mobile-friendly) =====
@@ -2038,45 +2285,57 @@
       this.props.forEach((p,i)=>{
         while(p.grp.children.length){ p.grp.remove(p.grp.children[0]); }
         const k=i%6; p.kind=k; p.off=0;
-        if(style==='window'){                                   // ---- NEW YORK ----
-          if(k===0){ const st=M(0xb8b2a6), tr=M(0x7a2f28);                          // brownstone stoop + storefront awning
-            add(p.grp,G.box,st,0,2.4,0,5,4.8,4);
-            for(let j=0;j<4;j++) add(p.grp,G.box,M(0x2b3440,{emissive:0x2a1e00,emissiveIntensity:glow}),-1.5+j*1.0,3.4,2.05,0.7,1.3,0.1);
-            add(p.grp,G.box,tr,0,1.9,2.4,4.4,0.25,1.6);                              // awning
-            for(let j=0;j<3;j++) add(p.grp,G.box,M(0xe8e2d4),0,0.35+j*0.28,2.6+j*0.34,3,0.28,0.36); } // stone steps
-          else if(k===1){ const y=M(0xf5c518);                                        // NEWSSTAND / hot-dog cart
-            add(p.grp,G.box,M(0x2f3a46),0,1.1,0,3.2,2.2,2.2);
-            add(p.grp,G.box,y,0,2.35,0,3.6,0.3,2.6);
-            add(p.grp,G.box,M(0xc0392b),0,2.9,0,3.2,0.9,2.2);
-            add(p.grp,G.box,M(0xffffff,{emissive:0x333333,emissiveIntensity:glow}),0,1.4,1.15,2.4,1,0.08);
-            add(p.grp,G.cyl,M(0x9aa2ad,{metalness:.6}),1.9,0.4,0,0.25,0.8,0.25); }
-          else if(k===2){ const mt=M(0x39414b,{metalness:.55,roughness:.4});          // TRAFFIC LIGHT + street sign
-            add(p.grp,G.cyl,mt,0,3.2,0,0.28,6.4,0.28);
-            add(p.grp,G.box,mt,1.6,6.2,0,3.4,0.24,0.24);
-            add(p.grp,G.box,M(0x1a1f26),3.1,5.7,0,0.7,1.9,0.6);
-            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xff3b30}),3.1,6.3,0.32,0.22,0.22,0.12);
-            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0x30d158}),3.1,5.2,0.32,0.22,0.22,0.12);
-            add(p.grp,G.box,M(0x1f7a3d),0,5,0,1.8,0.45,0.08); }
-          else if(k===3){ const gy=M(0x8d949c,{metalness:.35});                        // SUBWAY ENTRANCE (green globe + rails)
-            add(p.grp,G.box,M(0x2a2f36),0,0.35,0,4.4,0.7,3.4);
-            for(let j=0;j<5;j++) add(p.grp,G.box,M(0x6f767e),0,0.55-j*0.22,-0.6+j*0.5,3.6,0.22,0.5);
-            for(const sx2 of [-1.9,1.9]){ add(p.grp,G.cyl,gy,sx2,1.4,-1.4,0.13,2.8,0.13);
-              add(p.grp,G.cyl,gy,sx2,1.4,1.2,0.13,2.8,0.13);
-              add(p.grp,G.box,gy,sx2,2.7,-0.1,0.16,0.16,2.8); }
-            add(p.grp,G.sph,new THREE.MeshStandardMaterial({color:0x2ecc71,emissive:0x0f7a3a,emissiveIntensity:.9}),0,3.3,-1.6,0.45,0.45,0.45);
-            add(p.grp,G.cyl,gy,0,2.4,-1.6,0.12,1.8,0.12); }
-          else if(k===4){ const bk=M(0x8a5a3c);                                        // WATER TOWER on a rooftop block
-            add(p.grp,G.box,bk,0,4,0,6,8,5);
-            for(let j=0;j<6;j++) add(p.grp,G.box,M(0x2b3440,{emissive:0x2a1e00,emissiveIntensity:glow}),-2+(j%3)*2,3+((j/3)|0)*2.6,2.55,1.1,1.4,0.08);
-            add(p.grp,G.cyl,M(0x6b4a2f),0.8,10,0,1.5,3.4,1.5);
-            add(p.grp,G.cone,M(0x4a3220),0.8,12.1,0,1.7,1.3,1.7);
-            for(let j=0;j<4;j++) add(p.grp,G.box,M(0x3a2a1c),0.8+Math.cos(j*1.57)*1.1,8.6,Math.sin(j*1.57)*1.1,0.16,1.6,0.16);
-            add(p.grp,G.box,M(0x9aa2ad,{metalness:.5}),-2.2,9.4,0,0.14,3,3.4); }        // roof fire-escape rail
-          else { const mt=M(0x3a424c,{metalness:.5});                                   // FIRE ESCAPE ladder + hydrant
-            for(let j=0;j<5;j++){ add(p.grp,G.box,mt,0,1.2+j*1.9,0,3,0.16,1.2);
-              add(p.grp,G.box,mt,-1.4,2.1+j*1.9,0,0.14,1.9,0.14); add(p.grp,G.box,mt,1.4,2.1+j*1.9,0,0.14,1.9,0.14); }
-            add(p.grp,G.cyl,M(0xc0392b),2.6,0.5,1.6,0.3,1,0.3);
-            add(p.grp,G.sph,M(0xc0392b),2.6,1.05,1.6,0.34,0.3,0.34); }
+        if(style==='window'){                                   // ---- TOKYO ----
+          // Everything on a Tokyo back street is either lit, stacked, or both. Emissives stay on
+          // day and night — the signage is the light source, not the sun.
+          const NE=[0xff3b30,0xff6a12,0xffc233,0xfff2d0,0xff2d6f,0x38d0ff];
+          const nc=NE[i%NE.length];
+          const lit=(c,e)=>new THREE.MeshStandardMaterial({color:c,emissive:e===undefined?c:e,
+                        emissiveIntensity:1.15,roughness:.4,metalness:.1,flatShading:true});
+          const dark=(c)=>M(c,{roughness:.72,metalness:.25});
+          if(k===0){                                                                  // SIGN PYLON: stacked lightboxes up a pole
+            add(p.grp,G.box,dark(0x23262d),0,5.5,0,0.5,11,0.5);
+            for(let j=0;j<5;j++){ const cj=NE[(i+j)%NE.length];
+              add(p.grp,G.box,dark(0x14161b),0.1,2.4+j*1.9,0,2.9,1.55,0.55);
+              add(p.grp,G.box,lit(cj),0.1,2.4+j*1.9,0.31,2.55,1.2,0.06); }
+            add(p.grp,G.box,dark(0x2c313a),0,11.4,0,3.4,0.35,0.8); }
+          else if(k===1){                                                             // VENDING MACHINE ROW
+            for(let j=0;j<2;j++){ const vx=-1.1+j*2.2, cj=NE[(i+j)%NE.length];
+              add(p.grp,G.box,dark(0x1c2028),vx,1.7,0,2.0,3.4,1.1);
+              add(p.grp,G.box,lit(0xf2f6ff,0xbfd6ff),vx,2.25,0.58,1.7,1.9,0.06);      // lit product window
+              add(p.grp,G.box,lit(cj),vx,3.28,0.58,1.75,0.42,0.07);                   // brand band
+              for(let r2=0;r2<3;r2++) add(p.grp,G.box,M(0x2a3040),vx,1.75+r2*0.55,0.63,1.5,0.09,0.03); }
+            add(p.grp,G.box,M(0x30363f),0,0.12,0,4.8,0.24,1.4); }
+          else if(k===2){                                                             // LANTERN RACK outside an izakaya
+            add(p.grp,G.box,dark(0x1a1d23),0,2.9,0,4.6,0.28,0.3);
+            add(p.grp,G.cyl,dark(0x23272f),-2.2,1.45,0,0.14,2.9,0.14);
+            add(p.grp,G.cyl,dark(0x23272f), 2.2,1.45,0,0.14,2.9,0.14);
+            for(let j=0;j<4;j++){ const lx=-1.65+j*1.1;
+              add(p.grp,G.cyl,lit(0xff5a3c,0xd83a1e),lx,2.1,0,0.36,0.82,0.36);
+              add(p.grp,G.box,M(0x1a1a1a),lx,2.55,0,0.24,0.1,0.24); }
+            add(p.grp,G.box,lit(0xc8202e,0x7a0f18),0,3.55,0,4.2,1.0,0.12); }          // red noren banner
+          else if(k===3){                                                             // UTILITY POLE + transformer + wire tangle
+            add(p.grp,G.cyl,dark(0x39332c),0,6,0,0.3,12,0.3);
+            add(p.grp,G.cyl,dark(0x4a4f57),0.55,9.2,0,0.55,1.5,0.55);                 // transformer can
+            for(let j=0;j<3;j++) add(p.grp,G.box,dark(0x2f333a),0,10.4-j*1.1,0,3.6,0.14,0.14);
+            for(let j=0;j<6;j++) add(p.grp,G.box,M(0x101216),0,10.3-j*0.42,0,0.06,0.06,46);   // strung cables bridge to the next pole
+            add(p.grp,G.box,lit(nc),0.1,4.2,0.24,0.9,2.6,0.07);                       // little wall sign on the pole
+            add(p.grp,G.box,M(0x9aa4b0,{emissive:0xfff0c0,emissiveIntensity:.9}),0,11.6,0.7,0.5,0.16,1.6); } // street lamp head
+          else if(k===4){                                                             // SHOPFRONT: awning, crates, bike
+            add(p.grp,G.box,dark(0x191c22),0,2.2,0,5.4,4.4,1.6);
+            add(p.grp,G.box,lit(0xffd9a0,0xffb45a),0,1.75,0.85,4.4,2.5,0.08);         // warm interior glass
+            add(p.grp,G.box,lit(nc),0,3.85,0.9,4.8,0.75,0.1);                         // neon shop sign
+            add(p.grp,G.box,M(0x2b2f36),0,4.5,1.5,5.6,0.18,2.0,-0.22);                // awning
+            for(let j=0;j<3;j++) add(p.grp,G.box,M(0x5a4a34),-1.6+j*1.5,0.45,2.2,1.1,0.9,0.9);
+            add(p.grp,G.cyl,M(0x2a2e35,{metalness:.5}),2.3,0.72,2.4,0.62,0.12,0.62,1.57);     // bike wheels
+            add(p.grp,G.cyl,M(0x2a2e35,{metalness:.5}),3.4,0.72,2.4,0.62,0.12,0.62,1.57);
+            add(p.grp,G.box,M(0x6b7079),2.85,1.1,2.4,1.5,0.12,0.12); }
+          else {                                                                      // VERTICAL KANJI TOWER SIGN + AC units
+            add(p.grp,G.box,dark(0x101318),0,6.5,0,1.9,13,0.7);
+            for(let j=0;j<6;j++){ const cj=NE[(i+j)%NE.length];
+              add(p.grp,G.box,lit(cj),0,1.6+j*2.1,0.4,1.35,1.35,0.07); }
+            add(p.grp,G.box,dark(0x2a2f38),0,13.3,0,2.3,0.4,1.0);
+            for(let j=0;j<2;j++) add(p.grp,G.box,M(0x7d848d,{metalness:.4}),-1.5,3.4+j*3.2,0.5,1.2,1.0,0.9); }
         } else if(style==='glass'){                             // ---- FRUTIGER AERO ----
           const gl=M(0x9fe8ff,{roughness:.06,metalness:.6,transparent:true,opacity:.72,emissive:0x0a3a44,emissiveIntensity:.35});
           if(k===0){ add(p.grp,G.cyl,gl,0,4,0,2.4,8,2.4); add(p.grp,G.sph,gl,0,8.4,0,2.6,1.8,2.6); }   // glass tower
@@ -2330,6 +2589,11 @@
       this._drawFacade(t.building.style);
       // repaint the road/sidewalks for this map
       this.ribbons[0].mesh.material.map=this._roadTexture(t.road);
+      { const rm=this.ribbons[0].mesh.material;                 // WET road: glossy black that catches the neon
+        if(t.road.wet){ rm.roughness=0.24; rm.metalness=0.12;
+          rm.emissive.setHex(0xffffff); rm.emissiveMap=rm.map; rm.emissiveIntensity=0.38; }
+        else { rm.roughness=0.9; rm.metalness=0.0; rm.emissive.setHex(0x000000); rm.emissiveMap=null; rm.emissiveIntensity=1; }
+        rm.needsUpdate=true; }
       this.ribbons[1].mesh.material.map=this.ribbons[2].mesh.material.map=this._sidewalkTexture(t.road);
       // env visibility + theming
       for(const b of this.bubbles) b.mesh.visible=!!t.bubbles;
@@ -2401,6 +2665,33 @@
         for(const rx of [38,84]){ x.fillStyle='#3a4048'; x.fillRect(rx-2,0,10,128);            // rail foot/plate
           x.fillStyle='#9aa4ac'; x.fillRect(rx,0,5,128); x.fillStyle='#eef4f8'; x.fillRect(rx+1,0,2,128); } // steel rail + hot highlight
         const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+      }
+      if(cfg.wet){
+        // ===== TOKYO, AFTER RAIN: black asphalt with standing water throwing the signage back =====
+        x.fillStyle='#08090c'; x.fillRect(0,0,128,128);
+        for(let i=0;i<2600;i++){ const v=(Math.random()*22|0);                     // fine aggregate
+          x.fillStyle=`rgba(${26+v},${28+v},${34+v},.5)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+        // wet SHEEN: long vertical smears of colour, as if the neon above were dissolving into the road
+        const NEON=['255,45,111','255,90,31','255,210,58','46,230,166','40,200,255','180,107,255'];
+        for(let i=0;i<26;i++){
+          const cx=Math.random()*128, w=3+Math.random()*13, h=26+Math.random()*80, y0=Math.random()*128;
+          const col=NEON[(Math.random()*NEON.length)|0], a=0.05+Math.random()*0.14;
+          const g2=x.createLinearGradient(0,y0,0,y0+h);
+          g2.addColorStop(0,`rgba(${col},0)`); g2.addColorStop(0.5,`rgba(${col},${a})`); g2.addColorStop(1,`rgba(${col},0)`);
+          x.fillStyle=g2; x.fillRect(cx-w/2,y0,w,h);
+        }
+        for(let i=0;i<9;i++){                                                       // shallow puddles
+          const px2=Math.random()*128, py=Math.random()*128, r=8+Math.random()*22;
+          const g3=x.createRadialGradient(px2,py,0,px2,py,r);
+          g3.addColorStop(0,'rgba(150,175,215,.16)'); g3.addColorStop(0.7,'rgba(110,135,175,.07)'); g3.addColorStop(1,'rgba(110,135,175,0)');
+          x.fillStyle=g3; x.beginPath(); x.arc(px2,py,r,0,6.2832); x.fill();
+        }
+        x.fillStyle='rgba(0,0,0,.34)';                                              // worn tyre tracks
+        for(const rx of [30,92]) x.fillRect(rx-9,0,18,128);
+        x.fillStyle='rgba(4,5,8,.42)'; x.fillRect(0,0,128,128);                     // keep it night-black overall
+        if(cfg.dash){ x.fillStyle=cfg.dash; x.globalAlpha=.5;                        // faded centre line
+          for(let y=0;y<128;y+=26) x.fillRect(62,y,4,14); x.globalAlpha=1; }
+        const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; return t;
       }
       if(cfg.carpet){
         // ===== BACKROOMS CARPET: damp, worn, faintly patterned yellow-brown =====
@@ -2529,8 +2820,12 @@
       b.mesh.position.set(clamp(x, decor?-150:-44, decor?150:44), h/2, z);
       const m=b.mesh.material;
       // tile the facade texture to the building's real size so panes/blocks look consistent (detail!)
-      if(m.map){ m.map.repeat.set(Math.max(1,Math.round(w/3.2)), Math.max(2,Math.round(h/5)));
-                 m.map.offset.set(Math.random(),Math.random()); }
+      if(m.map){
+        // a Tokyo tile is already a full stack of signboards, so it tiles far coarser than a
+        // window grid — repeat it per storey-block, not per window, or the signs read as noise
+        if(this.game.theme.tokyo) m.map.repeat.set(Math.max(1,Math.round(w/11)), Math.max(1,Math.round(h/34)));
+        else m.map.repeat.set(Math.max(1,Math.round(w/3.2)), Math.max(2,Math.round(h/5)));
+        m.map.offset.set(Math.random(),Math.random()); }
       const B=this.game.theme.building, R=Math.random();
       // per-map surface finish: Aero glass is shiny/reflective, stone is matte, NYC concrete in between
       if(B.style==='glass'){ m.roughness=0.14; m.metalness=0.55; }
@@ -2634,7 +2929,9 @@
       if(station) return;
       // DENSE CITY BLOCKS crowding both sides — a CLEAR alley past the sidewalk keeps the decor OFF the
       // road so it's never confused with (or blocking) the smashable tower. Positioned by inner edge.
-      const edge=this.roadHalf+12;                    // gap: road(22)+sidewalk(8)+alley -> decor starts at 34
+      // TOKYO is a narrow back street: the block wall crowds right up to the pavement (still clear of
+      // the widest target, which reaches PLAY.laneHi + wHi/2 = 22).
+      const edge=this.game.theme.tokyo ? (this.roadHalf+4) : (this.roadHalf+12);
       for(const side of [-1,1]){
         const rows = med ? (3+(Math.random()*2|0)) : (4+(Math.random()*3|0));   // 3-4 (med) / 4-6 (city) deep
         let inner=edge;                               // inner face of the next building
@@ -2712,16 +3009,17 @@
           cb.mesh.lookAt(cam.position.x, cb.y, cam.position.z);
         }
       }
-      if(this.boards && this.boards[0].mesh.visible){   // NYC rooftop billboards along the block edge
-        const cam=this.game.camera.cam, bspan=Math.ceil(this.boards.length/2)*88;
+      if(this.boards && this.boards[0].mesh.visible){   // TOKYO: vertical signboards bolted to the block face
+        const cam=this.game.camera.cam, bspan=Math.ceil(this.boards.length/2)*52;
         for(const bd of this.boards){
-          if(bd.z===0 || bd.z < pz-70){ bd.z=pz+rand(120,340); bd.y=rand(30,64); bd.w=rand(18,30); bd.h=rand(10,17); }
-          if(bd.z < pz-70) bd.z+=bspan;
-          const bx=this._pathX(bd.z)+bd.side*(this.roadHalf+22);
+          // hung low and close so they crowd the street the way a real alley does, not on far rooftops
+          if(bd.z===0 || bd.z < pz-50){ bd.z=pz+rand(70,300); bd.y=rand(9,30); bd.w=rand(3.4,5.4); bd.h=bd.w*rand(2.9,4.0); bd.off=rand(0,10); }
+          if(bd.z < pz-50) bd.z+=bspan;
+          const bx=this._pathX(bd.z)+bd.side*(this.roadHalf+9+bd.off);
           bd.mesh.position.set(bx, bd.y, bd.z); bd.mesh.scale.set(bd.w,bd.h,1);
           bd.mesh.lookAt(cam.position.x, bd.y, cam.position.z);         // always faces the player
-          bd.frame.position.set(bx, bd.y-bd.h*0.5-0.4, bd.z); bd.frame.scale.set(bd.w*1.04,0.8,1);
-          bd.frame.rotation.y=bd.mesh.rotation.y;
+          bd.frame.position.set(bx - bd.side*bd.w*0.52, bd.y, bd.z);    // stub bracket back to the wall
+          bd.frame.scale.set(bd.w*0.22,0.32,0.9);
           bd.frame.quaternion.copy(bd.mesh.quaternion);
         }
       }
@@ -3421,15 +3719,17 @@
   // MAPS — swappable themes. Each retunes sky/light/ground/road/buildings + the hit sound.
   // ===================================================================================
   const THEMES = {
+    // TOKYO — a narrow back street after rain: overcast dusk sky, wet black asphalt throwing the
+    // signage back at you, and buildings buried under stacked neon from pavement to roofline.
     nyc: { name:'Tokyo', tag:'SMASH THROUGH TOKYO', hit:'crash',
-      ground:0x5f9448, groundEmissive:0x000000, clouds:false, skyTop:0x1f6fe0, fog:0x9fd0ff, skyBot:0xeaf7ff,
-      hemiSky:0xcfe6ff, hemiGround:0x6b7a55, sunColor:0xfff2d6, sunInt:1.55,
-      road:{ asphalt:'#141518', edge:'#e6e9ec', dash:'#e6c24e', dashed:true, sidewalk:'#8a8f97', curb:'#565b63' },
-      amb:{ color:0xe8eef4, size:0.5, op:0.4, fall:1.8, swirl:2.2, yMin:1, yMax:26 },   // street dust + drifting papers
-      building:{ style:'window', tower:[0.6,0.08,0.72], towerEmissive:0x3a1c00, towerEdge:0xffb13b,
-                 decorA:[0.075,0.28,0.38], decorB:[0.6,0.05,0.44], decorEdge:0x2c333c },
-      roofs:false, bubbles:false, mountains:false,
-      night:{ skyTop:0x070d24, fog:0x141d38, skyBot:0x22304f, hemiSky:0x39466a, hemiGround:0x1a2030, sunColor:0x8894c4, sunInt:0.42, lamp:0xffb14a, glow:0x281c07 } },
+      ground:0x23262e, groundEmissive:0x090a0e, clouds:false, skyTop:0x1a2740, fog:0x2b3550, skyBot:0x55627e,
+      hemiSky:0xa8bcdc, hemiGround:0x3a4152, sunColor:0xdfe8f8, sunInt:1.15,
+      road:{ asphalt:'#0b0c10', edge:'#8794a4', dash:'#cfc79a', dashed:true, sidewalk:'#3f444d', curb:'#5c636e', wet:true },
+      amb:{ color:0xcfe0ff, size:0.34, op:0.5, fall:16, swirl:0.5, yMin:0.5, yMax:26 },   // fine falling drizzle
+      building:{ style:'window', tower:[0.94,0.10,0.86], towerEmissive:0x3a0a20, towerEdge:0xff4d8d,
+                 decorA:[0.60,0.07,0.60], decorB:[0.95,0.09,0.55], decorEdge:0x2a3242 },
+      roofs:false, bubbles:false, mountains:false, tokyo:true,
+      night:{ skyTop:0x05080f, fog:0x0d121e, skyBot:0x18202f, hemiSky:0x2b3550, hemiGround:0x14171e, sunColor:0x6b7a9c, sunInt:0.3, lamp:0xffd9a0, glow:0x2a0a1c } },
     aero: { name:'Frutiger Aero', tag:'GLIDE THROUGH THE AERO', hit:'bubble',
       ground:0x11ea34, groundEmissive:0x14751f, clouds:true, skyTop:0x009bff, fog:0xbaf4ff, skyBot:0xf4ffff,
       hemiSky:0xe6fdff, hemiGround:0x2bf24a, sunColor:0xffffff, sunInt:1.7,
@@ -3616,6 +3916,9 @@
       const openM=(id)=>document.getElementById(id).classList.remove('hidden');
       const closeAll=()=>document.querySelectorAll('.modal').forEach(m=>m.classList.add('hidden'));
       document.getElementById('settings-btn').onclick=()=>openM('settings-modal');
+      { const legal=()=>{ closeAll(); openM('legal-modal'); }, health=()=>{ closeAll(); openM('health-modal'); };
+        for(const id of ['legal-btn','foot-legal']){ const e=document.getElementById(id); if(e) e.onclick=legal; }
+        for(const id of ['health-btn','foot-health']){ const e=document.getElementById(id); if(e) e.onclick=health; } }
       document.getElementById('skins-btn').onclick=()=>openM('skins-modal');
       document.getElementById('maps-btn').onclick=()=>openM('maps-modal');
       document.querySelectorAll('.modal').forEach(m=>{
