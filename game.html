@@ -2745,6 +2745,26 @@
       g.scene.add(this.floor);
     }
     // ROAD surface texture; colours + markings come from the map's road config.
+    // Japanese road paint. Only markings you actually see on a city street: TOMARE (stop) at a
+    // junction, JOKOU (slow), and a posted speed. Stretched vertically the way real road lettering
+    // is, so it reads correctly when you are looking down the carriageway.
+    _roadKanji(x){
+      // the road ribbon's V axis runs back toward the camera, so paint is laid down rotated 180
+      // degrees — otherwise every marking reads mirrored and upside down from the cockpit.
+      const put=(txt,cx,cy,w,h,alpha)=>{
+        x.save(); x.translate(cx,cy); x.scale(-1, h);
+        x.globalAlpha=alpha; x.fillStyle='#f2f4f6';
+        x.font=`bold ${w}px "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif`;
+        x.textAlign='center'; x.textBaseline='middle';
+        x.fillText(txt,0,0); x.restore(); x.globalAlpha=1;
+      };
+      put('\u6b62\u307e\u308c', 64, 26, 15, 2.1, 0.80);   // TOMARE — stop
+      put('\u5f90\u884c',       64, 82, 14, 2.1, 0.66);   // JOKOU — slow
+      x.globalAlpha=0.62; x.fillStyle='#f2f4f6';            // posted speed inside a painted ring
+      x.font='bold 13px Arial, sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+      x.save(); x.translate(30,110); x.scale(-1,1.7); x.fillText('40',0,0); x.restore();
+      x.globalAlpha=1;
+    }
     _roadTexture(cfg){
       cfg=cfg||{asphalt:'#141518',edge:'#e6e9ec',dash:'#e6c24e',dashed:true};
       const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
@@ -2782,6 +2802,7 @@
         x.fillStyle='rgba(4,5,8,.42)'; x.fillRect(0,0,128,128);                     // keep it night-black overall
         if(cfg.dash){ x.fillStyle=cfg.dash; x.globalAlpha=.5;                        // faded centre line
           for(let y=0;y<128;y+=26) x.fillRect(62,y,4,14); x.globalAlpha=1; }
+        if(cfg.jp) this._roadKanji(x);
         const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; return t;
       }
       if(cfg.carpet){
@@ -2828,7 +2849,8 @@
       if(cfg.dash){ x.fillStyle=cfg.dash;
         if(cfg.dashed!==false){ for(let y=0;y<128;y+=32){ x.fillRect(59,y,3,20); x.fillRect(66,y,3,20); } }
         else { x.fillRect(61,0,6,128); } }                                                          // centre line
-      const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; return t;
+      if(cfg.jp) this._roadKanji(x);                                                                // Japanese road paint
+      const t=new THREE.CanvasTexture(c); t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; return t;
     }
     // SIDEWALK / pavement texture; colours from the map's road config.
     _sidewalkTexture(cfg){
@@ -3854,15 +3876,15 @@
   function nextRank(score){ for(const x of RANKS) if(score<x.min) return x; return null; }
 
   const CHARACTERS = {
-    dominus:  { name:'Dominus', url:'./assets/villain.glb', aura:{epic:0x6a7480, eth:0xe8eef5},  rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    dominus:  { name:'Dominus', url:'./assets/villain.glb', aura:{epic:0x6a7480, eth:0xe8eef5},  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', aura:{epic:0x1170d8, eth:0x86ee2e}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', aura:{epic:0x1170d8, eth:0x86ee2e}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    knight:   { name:'Evil Knight', url:'./assets/knight.glb', aura:{epic:0x2b2228, eth:0xc4121a}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    knight:   { name:'Evil Knight', url:'./assets/knight.glb', aura:{epic:0x2b2228, eth:0xc4121a}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', aura:{epic:0x1a3fd8, eth:0xf4f8ff}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', aura:{epic:0x1a3fd8, eth:0xf4f8ff}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:0, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
     // Voidstrike's GLB is already posed prone along +Z (head forward, back up) — no yaw, only a
     // slight nose-up so she reads as climbing into the smash like the others.
@@ -3880,8 +3902,8 @@
     nyc: { name:'Tokyo', tag:'SMASH THROUGH TOKYO', hit:'crash',
       ground:0x8e9691, groundEmissive:0x000000, clouds:true, skyTop:0x1878e8, fog:0xbcdcf8, skyBot:0xf2f9ff,
       hemiSky:0xeaf5ff, hemiGround:0x8a918c, sunColor:0xfff8e8, sunInt:2.0,
-      road:{ asphalt:'#43474d', edge:'#f4f6f8', dash:'#f4f6f8', dashed:true, sidewalk:'#b9beC4', curb:'#8d9298' },
-      amb:{ color:0xffd7e6, size:0.5, op:0.5, fall:2.6, swirl:2.6, yMin:0.5, yMax:24 },   // drifting sakura petals
+      road:{ asphalt:'#43474d', edge:'#f4f6f8', dash:'#f4f6f8', dashed:true, sidewalk:'#b9bec4', curb:'#8d9298', jp:true },
+      amb:{ color:0xffd7e6, size:0.5, op:0.0, fall:2.6, swirl:2.6, yMin:0.5, yMax:24 },   // off: floating motes read as stray pixels against a clear blue sky
       building:{ style:'window', tower:[0.09,0.06,0.88], towerEmissive:0x2a1c00, towerEdge:0xffb13b,
                  decorA:[0.10,0.05,0.84], decorB:[0.58,0.04,0.80], decorEdge:0x8b939c },
       roofs:false, bubbles:false, mountains:false, tokyo:true,
