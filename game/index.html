@@ -33,9 +33,12 @@
       /* aliases still referenced by JS inline styles */
       --warn:#ffc63a; --gold:#ffc63a; --good:#37c6ff; --accent:#e8213c; --ink:#04060c;
       /* type */
-      --f-display:'Arial Black','Arial Bold',Impact,'Helvetica Neue',sans-serif;
-      --f-num:'Arial Black','Helvetica Neue',Arial,sans-serif;
-      --f-ui:'Helvetica Neue',Arial,'Segoe UI',sans-serif;
+      /* ONE typeface family across the whole game. 'Arial Black' does not exist on iOS, so the
+         stack keeps falling back to a heavy face, and every rule that uses it forces weight 900 —
+         a fallback face at weight 400 is what made the UI read thin and generic on device. */
+      --f-display:'Arial Black','Arial Bold',Impact,'Franklin Gothic Heavy','Arial Rounded MT Bold',Arial,sans-serif;
+      --f-num:'Arial Black','Arial Bold',Impact,'Franklin Gothic Heavy',Arial,sans-serif;
+      --f-ui:Arial,'Helvetica Neue','Segoe UI',sans-serif;
       --cut:11px;
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -70,7 +73,7 @@
           padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
 
     .bar-wrap{ position:absolute; left:14px; width:min(240px,46vw); }
-    .bar-label{ font-family:var(--f-num); font-size:15px; font-weight:600; letter-spacing:3px; line-height:1;
+    .bar-label{ font-family:var(--f-num); font-size:15px; font-weight:900; letter-spacing:3px; line-height:1;
                 margin:0 0 4px 3px; text-transform:uppercase; color:var(--text); text-shadow:0 2px 3px #000; }
     .bar-label b{ font-weight:600; color:var(--elec); }
     .bar{ position:relative; height:15px; padding:2px;
@@ -91,15 +94,15 @@
 
     /* score cluster */
     #score-box{ position:absolute; top:10px; right:62px; text-align:right; }
-    #coins{ display:inline-block; font-family:var(--f-num); font-size:20px; font-weight:600; letter-spacing:1px; color:#fff6da;
+    #coins{ display:inline-block; font-family:var(--f-num); font-size:20px; font-weight:900; letter-spacing:1px; color:#fff6da;
             background:linear-gradient(180deg,#3a2c0c,#241803); padding:1px 12px 0; margin-bottom:4px;
             clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
             box-shadow:inset 0 0 0 1.5px var(--gold-d), inset 0 1px 0 rgba(255,220,140,.4); text-shadow:0 1px 2px #000; }
-    #score{ font-family:var(--f-num); font-size:58px; font-weight:600; line-height:.82; color:#fff; letter-spacing:1px;
+    #score{ font-family:var(--f-num); font-size:58px; font-weight:900; line-height:.82; color:#fff; letter-spacing:1px;
             text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 3px 0 var(--ink),0 5px 8px rgba(0,0,0,.6); }
     #score.lead{ color:var(--gold); text-shadow:-2px 0 #3a1c00,2px 0 #3a1c00,0 2px #3a1c00,0 4px 10px rgba(255,140,0,.5); }
-    #score-sub{ font-family:var(--f-num); font-size:16px; font-weight:500; letter-spacing:2px; color:var(--muted); margin-top:1px; text-shadow:0 1px 2px #000; }
-    #score-best{ font-family:var(--f-num); font-size:16px; font-weight:600; letter-spacing:2px; color:var(--gold); margin-top:2px; text-shadow:0 1px 2px #000; }
+    #score-sub{ font-family:var(--f-num); font-size:16px; font-weight:900; letter-spacing:2px; color:var(--muted); margin-top:1px; text-shadow:0 1px 2px #000; }
+    #score-best{ font-family:var(--f-num); font-size:16px; font-weight:900; letter-spacing:2px; color:var(--gold); margin-top:2px; text-shadow:0 1px 2px #000; }
 
     /* pause key */
     #pause-btn{ position:fixed; top:12px; right:12px; z-index:16; width:46px; height:46px; border:none; cursor:pointer; pointer-events:auto;
@@ -112,21 +115,22 @@
 
     /* combo shout */
     #combo{ position:absolute; top:27%; left:50%; transform:translate(-50%,-50%) scale(1);
-            font-family:var(--f-display); font-size:clamp(48px,15vw,88px); font-weight:400; opacity:0; color:var(--gold);
+            font-family:var(--f-display); font-size:clamp(48px,15vw,88px); font-weight:900; opacity:0; color:var(--gold);
             text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 5px 10px rgba(0,0,0,.6);
             transition:opacity .15s,transform .15s cubic-bezier(.2,1.5,.4,1); white-space:nowrap; letter-spacing:1px; }
-    #combo small{ display:block; font-family:var(--f-num); font-size:20px; font-weight:600; letter-spacing:8px; text-align:center; margin-top:-2px; }
+    #combo small{ display:block; font-family:var(--f-num); font-size:20px; font-weight:900; letter-spacing:8px; text-align:center; margin-top:-2px; }
 
     /* warning banner */
     #warning{ position:absolute; bottom:30%; left:50%; transform:translate(-50%,0);
-              font-family:var(--f-display); font-size:clamp(16px,4.6vw,22px); font-weight:400; color:#fff; letter-spacing:1px;
+              font-family:var(--f-display); font-size:clamp(15px,4.2vw,21px); font-weight:900; color:#fff; letter-spacing:.5px;
+              max-width:82vw; text-align:center; line-height:1.15;
               background:linear-gradient(180deg,var(--crimson),var(--crimson2)); padding:9px 20px 6px; opacity:0; text-shadow:0 2px 2px rgba(0,0,0,.5);
               clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
               box-shadow:inset 0 0 0 1.5px #ff8a8a, inset 0 2px 0 rgba(255,255,255,.3); filter:drop-shadow(0 4px 0 var(--crimson-d)); transition:opacity .15s; }
 
-    #state-tag{ position:absolute; bottom:12px; left:15px; font-family:var(--f-num); font-size:14px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); opacity:.85; text-shadow:0 1px 2px #000; }
-    #speed-tag{ position:absolute; bottom:11px; right:15px; font-family:var(--f-num); font-size:20px; font-weight:600; letter-spacing:1px; color:var(--elec); text-shadow:0 1px 3px #000,0 0 10px rgba(55,198,255,.4); }
-    #surge-tag{ position:absolute; bottom:10px; left:50%; transform:translateX(-50%); font-family:var(--f-num); font-size:15px; font-weight:600; letter-spacing:2px;
+    #state-tag{ position:absolute; bottom:12px; left:15px; font-family:var(--f-num); font-weight:900; font-size:14px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); opacity:.85; text-shadow:0 1px 2px #000; }
+    #speed-tag{ position:absolute; bottom:11px; right:15px; font-family:var(--f-num); font-size:20px; font-weight:900; letter-spacing:1px; color:var(--elec); text-shadow:0 1px 3px #000,0 0 10px rgba(55,198,255,.4); }
+    #surge-tag{ position:absolute; bottom:10px; left:50%; transform:translateX(-50%); font-family:var(--f-num); font-size:15px; font-weight:900; letter-spacing:2px;
                 color:var(--elec); background:linear-gradient(180deg,var(--gun2),var(--navy)); padding:3px 16px 1px;
                 clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
                 box-shadow:inset 0 0 0 1.5px var(--steel); text-shadow:0 1px 2px #000; }
@@ -143,7 +147,7 @@
                box-shadow:0 3px 8px rgba(0,0,0,.5), inset 0 2px 3px rgba(255,255,255,.5), inset 0 -4px 8px rgba(0,40,70,.6), 0 0 14px rgba(55,198,255,.35);
                will-change:transform; }
     .pad{ position:absolute; bottom:max(28px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
-          display:flex; align-items:center; justify-content:center; font-family:var(--f-display); font-size:16px; letter-spacing:1px; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.5); }
+          display:flex; align-items:center; justify-content:center; font-family:var(--f-display); font-weight:900; font-size:16px; letter-spacing:1px; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.5); }
     #btn-boost{ right:24px; width:100px; height:100px;
                 background:radial-gradient(circle at 50% 36%, #ffb14a, #e0431f);
                 box-shadow:inset 0 2px 3px rgba(255,240,200,.6), inset 0 -6px 12px rgba(90,10,0,.55), 0 5px 0 #8f2a10, 0 9px 12px rgba(0,0,0,.45), 0 0 22px rgba(255,120,30,.4);
@@ -166,16 +170,16 @@
       box-shadow:inset 0 0 180px 40px rgba(0,0,0,.7); }
     .overlay > *{ position:relative; z-index:1; }
 
-    .overlay h1{ font-family:var(--f-display); font-size:clamp(44px,13vw,86px); margin:0; letter-spacing:2px; line-height:.92; color:#fff; font-weight:400;
+    .overlay h1{ font-family:var(--f-display); font-size:clamp(44px,13vw,86px); margin:0; letter-spacing:2px; line-height:.92; color:#fff; font-weight:900;
                  text-shadow:0 3px 0 #04060c,0 6px 14px rgba(0,0,0,.6); }
     #gameover-overlay h1{ color:var(--crimson); text-shadow:0 0 24px rgba(232,33,60,.5),0 3px 0 #3a020a,0 6px 16px rgba(0,0,0,.6); }
     #pause-overlay h1{ color:var(--elec); text-shadow:0 0 24px rgba(55,198,255,.45),0 3px 0 #04122a,0 6px 16px rgba(0,0,0,.6); }
-    .overlay h2{ font-family:var(--f-num); font-size:clamp(14px,3.6vw,19px); margin:8px 0 0; font-weight:500; letter-spacing:3px; color:var(--muted); text-shadow:0 2px 3px #000; }
+    .overlay h2{ font-family:var(--f-num); font-size:clamp(14px,3.6vw,19px); margin:8px 0 0; font-weight:900; letter-spacing:3px; color:var(--muted); text-shadow:0 2px 3px #000; }
     .overlay p{ max-width:520px; font-size:15px; line-height:1.6; color:var(--muted); }
 
     /* ---------- pressable KEY (shared button primitive) ---------- */
     .btn,.btn-play{ position:relative; border:none; cursor:pointer; pointer-events:auto; color:#fff;
-      font-family:var(--f-display); text-transform:uppercase; letter-spacing:2px;
+      font-family:var(--f-display); font-weight:900; text-transform:uppercase; letter-spacing:2px;
       transition:transform .05s,filter .05s; }
     .btn{ margin-top:16px; padding:16px 44px 13px; font-size:22px;
       background:linear-gradient(180deg,#ff9a2c,#e0431f);
@@ -188,11 +192,11 @@
       filter:drop-shadow(0 6px 0 #05070e) drop-shadow(0 9px 10px rgba(0,0,0,.45)); color:var(--text); text-shadow:0 2px 2px rgba(0,0,0,.5); }
     .btn.btn-sec:active{ transform:translateY(5px); filter:drop-shadow(0 1px 0 #05070e) drop-shadow(0 3px 5px rgba(0,0,0,.4)); }
 
-    #gameover-stats{ font-family:var(--f-num); font-size:18px; font-weight:500; margin-top:12px; line-height:1.7; color:var(--text);
+    #gameover-stats{ font-family:var(--f-num); font-size:18px; font-weight:900; margin-top:12px; line-height:1.7; color:var(--text);
                      background:linear-gradient(180deg,var(--navy2),var(--navy)); padding:14px 26px 12px; letter-spacing:1px;
                      clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
                      box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.08); filter:drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
-    #gameover-stats b{ font-family:var(--f-num); font-weight:600; color:var(--gold); }
+    #gameover-stats b{ font-family:var(--f-num); font-weight:900; color:var(--gold); }
 
     /* ============================ MAIN MENU ============================ */
     .overlay.menu{ justify-content:flex-start; padding-top:max(7vh,52px); }
@@ -202,11 +206,11 @@
     #menu-bg.on{ opacity:1; }
     #start-overlay::before, #start-overlay::after{ z-index:1; }
     .brand{ text-align:center; margin-bottom:auto; }
-    .logo{ font-family:var(--f-display); font-size:clamp(52px,17vw,104px); font-weight:400; letter-spacing:2px; line-height:.82; color:#fff;
+    .logo{ font-family:var(--f-display); font-size:clamp(52px,17vw,104px); font-weight:900; letter-spacing:2px; line-height:.82; color:#fff;
            text-shadow:0 3px 0 #04060c,0 7px 18px rgba(0,0,0,.6); }
     .logo span{ display:block; color:var(--orange); letter-spacing:6px;
                 text-shadow:0 0 26px rgba(255,110,20,.5),0 3px 0 #3a1400,0 7px 16px rgba(0,0,0,.55); }
-    .tagline{ margin-top:14px; font-family:var(--f-num); font-size:clamp(13px,3.6vw,17px); letter-spacing:5px; color:var(--elec); font-weight:600;
+    .tagline{ margin-top:14px; font-family:var(--f-num); font-size:clamp(13px,3.6vw,17px); letter-spacing:5px; color:var(--elec); font-weight:900;
               text-shadow:0 2px 3px #000,0 0 12px rgba(55,198,255,.35); }
     .tagline::before,.tagline::after{ content:'✦'; color:var(--gold); margin:0 10px; font-size:.8em; opacity:.9; }
 
@@ -215,8 +219,8 @@
                 clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
                 box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.1); filter:drop-shadow(0 7px 10px rgba(0,0,0,.5)); }
     .best-card .tro{ font-size:40px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
-    .best-card .best-cap{ font-family:var(--f-num); font-size:14px; letter-spacing:3px; color:var(--muted); text-align:left; }
-    .best-card #best-num{ font-family:var(--f-num); font-size:42px; font-weight:600; color:var(--gold); line-height:.9; text-shadow:0 2px 3px #000; }
+    .best-card .best-cap{ font-family:var(--f-num); font-weight:900; font-size:14px; letter-spacing:3px; color:var(--muted); text-align:left; }
+    .best-card #best-num{ font-family:var(--f-num); font-size:42px; font-weight:900; color:var(--gold); line-height:.9; text-shadow:0 2px 3px #000; }
 
     .btn-play{ width:min(340px,82vw); padding:22px 0 18px; font-size:32px; letter-spacing:4px;
       background:linear-gradient(180deg,#ff9a2c 0%,#f0431f 55%,#c81f2e 100%);
@@ -230,17 +234,17 @@
 
     .menu-row{ display:flex; gap:14px; margin-top:22px; margin-bottom:auto; }
     .chip{ position:relative; pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:7px; width:100px; padding:14px 8px 12px;
-           border:none; cursor:pointer; color:var(--text); font-family:var(--f-num); font-size:15px; font-weight:600; letter-spacing:2px; text-transform:uppercase;
+           border:none; cursor:pointer; color:var(--text); font-family:var(--f-num); font-size:15px; font-weight:900; letter-spacing:2px; text-transform:uppercase;
            background:linear-gradient(180deg,var(--gun2),var(--navy));
            clip-path:polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px);
            box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.12);
            filter:drop-shadow(0 5px 0 #05070e) drop-shadow(0 7px 8px rgba(0,0,0,.4)); transition:transform .05s,filter .05s; text-shadow:0 1px 2px #000; }
     .chip .ic{ font-size:30px; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
     .chip:active{ transform:translateY(4px); filter:drop-shadow(0 1px 0 #05070e) drop-shadow(0 3px 4px rgba(0,0,0,.4)); }
-    .menu-foot{ margin-top:18px; font-family:var(--f-num); font-size:14px; letter-spacing:2px; color:var(--dim); text-shadow:0 1px 2px #000; }
+    .menu-foot{ margin-top:18px; font-family:var(--f-num); font-weight:900; font-size:14px; letter-spacing:2px; color:var(--dim); text-shadow:0 1px 2px #000; }
 
     #coin-bank{ position:absolute; top:max(14px,env(safe-area-inset-top)); right:16px; display:flex; align-items:center; gap:7px; z-index:2;
-                font-family:var(--f-num); font-size:22px; font-weight:600; color:var(--gold);
+                font-family:var(--f-num); font-size:22px; font-weight:900; color:var(--gold);
                 background:linear-gradient(180deg,#3a2c0c,#241803); padding:6px 16px 4px;
                 clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
                 box-shadow:inset 0 0 0 1.5px var(--gold-d), inset 0 1px 0 rgba(255,220,140,.4); text-shadow:0 1px 2px #000; }
@@ -256,7 +260,7 @@
     .sheet::before{ content:''; position:absolute; left:20px; right:20px; top:0; height:5px; opacity:.85;
       background-image:repeating-linear-gradient(-45deg,#0a0f1c 0 8px,var(--orange) 8px 16px); }
     .sheet-head{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 14px; }
-    .sheet-head span{ font-family:var(--f-display); font-size:26px; font-weight:400; letter-spacing:2px; color:#fff; text-transform:uppercase;
+    .sheet-head span{ font-family:var(--f-display); font-size:26px; font-weight:900; letter-spacing:2px; color:#fff; text-transform:uppercase;
                       text-shadow:0 2px 0 #04060c,0 4px 10px rgba(0,0,0,.5); }
     .sheet-head span::before{ content:'▸ '; color:var(--orange); }
     .x{ pointer-events:auto; width:40px; height:40px; border:none; cursor:pointer; color:#fff; font-size:22px; font-family:var(--f-ui); font-weight:700;
@@ -265,11 +269,11 @@
         box-shadow:inset 0 0 0 1.5px #ff8a8a, inset 0 2px 0 rgba(255,255,255,.3); filter:drop-shadow(0 4px 0 var(--crimson-d)); transition:transform .05s,filter .05s; }
     .x:active{ transform:translateY(4px); filter:drop-shadow(0 1px 0 var(--crimson-d)); }
 
-    .opt{ display:flex; align-items:center; justify-content:space-between; padding:14px 4px; font-family:var(--f-num); font-size:19px; font-weight:500; letter-spacing:.5px;
+    .opt{ display:flex; align-items:center; justify-content:space-between; padding:14px 4px; font-family:var(--f-num); font-size:19px; font-weight:900; letter-spacing:.5px;
           border-top:1.5px solid rgba(109,128,173,.18); }
     .opt:first-of-type{ border-top:none; }
     .opt small{ color:var(--dim); font-size:13px; font-family:var(--f-ui); }
-    .toggle{ pointer-events:auto; min-width:70px; padding:8px 20px 6px; border:none; cursor:pointer; font-family:var(--f-num); font-weight:600; letter-spacing:2px; font-size:15px;
+    .toggle{ pointer-events:auto; min-width:70px; padding:8px 20px 6px; border:none; cursor:pointer; font-family:var(--f-num); font-weight:900; letter-spacing:2px; font-size:15px;
              color:var(--muted); background:linear-gradient(180deg,#0c1426,#070c18);
              clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
              box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 4px rgba(0,0,0,.5); transition:transform .05s,filter .05s; }
@@ -287,7 +291,7 @@
     #skins-modal .card{ font-size:13px; }
     @media (min-width:520px){ .grid{ grid-template-columns:repeat(3,1fr); } }
     .card{ position:relative; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
-           font-family:var(--f-num); font-weight:600; font-size:16px; letter-spacing:1px; color:var(--text); text-transform:uppercase;
+           font-family:var(--f-num); font-weight:900; font-size:16px; letter-spacing:1px; color:var(--text); text-transform:uppercase;
            background:linear-gradient(180deg,var(--gun),var(--navy3));
            clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
            box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.08); filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));
@@ -304,7 +308,7 @@
     /* settings sliders */
     .opt.col{ flex-direction:column; align-items:stretch; gap:10px; }
     .opt .row{ display:flex; align-items:center; justify-content:space-between; }
-    .opt .val{ font-family:var(--f-num); color:var(--elec); font-weight:600; font-size:18px; }
+    .opt .val{ font-family:var(--f-num); color:var(--elec); font-weight:900; font-size:18px; }
     input[type=range].slider{ -webkit-appearance:none; appearance:none; width:100%; height:12px; outline:none; pointer-events:auto;
                  background:linear-gradient(180deg,#070c18,#0c1426);
                  clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px);
@@ -328,7 +332,7 @@
     .load-haz{ position:absolute; left:0; right:0; height:12px; opacity:.9;
       background-image:repeating-linear-gradient(-45deg,#0a0f1c 0 11px,var(--gold) 11px 22px); animation:hazScroll 9s linear infinite; }
     .load-haz.top{ top:0; } .load-haz.bot{ bottom:0; }
-    #loading-overlay .l-logo{ position:relative; font-family:var(--f-display); font-size:clamp(46px,15vw,92px); line-height:.82; letter-spacing:2px; color:#fff;
+    #loading-overlay .l-logo{ position:relative; font-family:var(--f-display); font-weight:900; font-size:clamp(46px,15vw,92px); line-height:.82; letter-spacing:2px; color:#fff;
       text-shadow:0 3px 0 #04060c,0 7px 18px rgba(0,0,0,.6); text-align:center; }
     #loading-overlay .l-logo span{ display:block; color:var(--orange); letter-spacing:6px; text-shadow:0 0 26px rgba(255,110,20,.5),0 3px 0 #3a1400; }
     #loading-overlay .l-emblem{ font-size:54px; margin-bottom:14px; animation:floaty 2.6s ease-in-out infinite; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
@@ -340,7 +344,7 @@
       clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px);
       background-image:linear-gradient(90deg,rgba(255,255,255,.2) 25%,transparent 25% 50%,rgba(255,255,255,.2) 50% 75%,transparent 75%),linear-gradient(180deg,#ffb14a,#f0431f);
       background-size:30px 100%; animation:barFlow 1s linear infinite; box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 0 14px rgba(255,120,30,.5); transition:width .2s; }
-    #load-status{ margin-top:16px; font-family:var(--f-num); font-size:16px; letter-spacing:2px; white-space:nowrap; text-transform:uppercase; color:var(--muted); animation:softPulse 1.5s ease-in-out infinite; }
+    #load-status{ margin-top:16px; font-family:var(--f-num); font-weight:900; font-size:16px; letter-spacing:2px; white-space:nowrap; text-transform:uppercase; color:var(--muted); animation:softPulse 1.5s ease-in-out infinite; }
     #load-status b{ color:var(--elec); font-weight:600; }
 
 
@@ -368,7 +372,7 @@
     /* ============================ LEGAL SHEETS ============================ */
     .legal{ max-height:min(62vh,560px); overflow-y:auto; -webkit-overflow-scrolling:touch;
       padding:2px 2px 6px; font-family:var(--f-ui); }
-    .legal h4{ font-family:var(--f-display); letter-spacing:.06em; text-transform:uppercase;
+    .legal h4{ font-family:var(--f-display); font-weight:900; letter-spacing:.06em; text-transform:uppercase;
       font-size:12.5px; color:var(--elec); margin:16px 0 6px; }
     .legal h4:first-child{ margin-top:4px; }
     .legal h4.lg-sec{ margin-top:26px; padding-top:16px; border-top:1px solid rgba(255,255,255,.14); font-size:14px; }
@@ -470,7 +474,7 @@
       mix-blend-mode:screen; }
     /* floating score popups at the smash point */
     #popups{ position:fixed; inset:0; z-index:12; pointer-events:none; overflow:hidden; }
-    .pop{ position:absolute; transform:translate(-50%,-50%); font-family:var(--f-num); font-weight:700;
+    .pop{ position:absolute; transform:translate(-50%,-50%); font-family:var(--f-num); font-weight:900;
       font-size:34px; letter-spacing:1px; color:#fff; opacity:0; white-space:nowrap;
       text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 4px 8px rgba(0,0,0,.6); }
     .pop.go{ animation:popFloat .9s cubic-bezier(.2,.7,.3,1) forwards; }
@@ -506,19 +510,19 @@
     /* ===== RESULTS SCREEN ===== */
     #gameover-overlay h1{ display:none; }
     .res{ width:min(430px,92vw); display:flex; flex-direction:column; align-items:center; gap:0; }
-    .res-rank{ font-family:var(--f-num); font-size:13px; letter-spacing:4px; color:var(--muted); text-transform:uppercase; margin-bottom:2px; }
+    .res-rank{ font-family:var(--f-num); font-weight:900; font-size:13px; letter-spacing:4px; color:var(--muted); text-transform:uppercase; margin-bottom:2px; }
     .res-title{ font-family:var(--f-disp); font-size:clamp(38px,12vw,60px); line-height:.92; letter-spacing:1px;
       background:linear-gradient(180deg,#fff 30%,var(--orange) 95%); -webkit-background-clip:text; background-clip:text; color:transparent;
       filter:drop-shadow(0 3px 0 rgba(0,0,0,.5)); animation:rankIn .5s cubic-bezier(.2,1.5,.35,1) both; }
     @keyframes rankIn{ 0%{opacity:0;transform:scale(.6) rotate(-4deg);} 100%{opacity:1;transform:none;} }
     .res-medal{ font-size:0; margin-bottom:4px; animation:rankIn .55s .05s cubic-bezier(.2,1.5,.35,1) both; }
     .res-medal .svgi{ width:62px; height:62px; filter:drop-shadow(0 0 16px currentColor); }
-    .res-best{ margin-top:6px; font-family:var(--f-num); font-weight:700; font-size:15px; letter-spacing:2px; color:#1a1206;
+    .res-best{ margin-top:6px; font-family:var(--f-num); font-weight:900; font-size:15px; letter-spacing:2px; color:#1a1206;
       background:linear-gradient(180deg,#ffd86b,var(--gold)); padding:4px 18px 3px;
       clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%); animation:drPulse 1.3s ease-in-out infinite; }
-    .res-score{ font-family:var(--f-num); font-weight:700; font-size:clamp(52px,17vw,78px); line-height:1; color:#fff;
+    .res-score{ font-family:var(--f-num); font-weight:900; font-size:clamp(52px,17vw,78px); line-height:1; color:#fff;
       text-shadow:0 4px 0 rgba(0,0,0,.45), 0 0 26px rgba(255,160,40,.35); margin:10px 0 2px; }
-    .res-score-lbl{ font-family:var(--f-num); font-size:12px; letter-spacing:5px; color:var(--muted); text-transform:uppercase; }
+    .res-score-lbl{ font-family:var(--f-num); font-weight:900; font-size:12px; letter-spacing:5px; color:var(--muted); text-transform:uppercase; }
     .res-grid{ width:100%; display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:16px 0 4px; }
     .res-cell{ display:flex; align-items:center; gap:9px; padding:10px 12px;
       background:linear-gradient(180deg,var(--gun),var(--navy3));
@@ -528,10 +532,10 @@
     .res-cell:nth-child(1){animation-delay:.10s} .res-cell:nth-child(2){animation-delay:.16s}
     .res-cell:nth-child(3){animation-delay:.22s} .res-cell:nth-child(4){animation-delay:.28s}
     .res-cell .svgi{ width:22px; height:22px; color:var(--elec); flex:none; }
-    .res-cell b{ font-family:var(--f-num); font-weight:600; font-size:19px; color:var(--text); line-height:1; }
+    .res-cell b{ font-family:var(--f-num); font-weight:900; font-size:19px; color:var(--text); line-height:1; }
     .res-cell span{ font-family:var(--f-ui); font-size:10px; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase; display:block; }
     .res-coins{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px;
-      font-family:var(--f-num); font-weight:600; font-size:21px; color:var(--gold); }
+      font-family:var(--f-num); font-weight:900; font-size:21px; color:var(--gold); }
     .res-coins .svgi{ width:24px; height:24px; color:var(--gold); }
 
     /* ===== MISSIONS ===== */
@@ -539,7 +543,7 @@
       width:min(430px,90vw); margin:0 auto 14px; }
     #menu-row2 button{ flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:7px;
       padding:11px 10px 9px; border:none; cursor:pointer; pointer-events:auto;
-      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1.5px; color:var(--text);
+      font-family:var(--f-num); font-size:17px; font-weight:900; letter-spacing:1.5px; color:var(--text);
       background:linear-gradient(180deg,var(--gun2),var(--navy));
       clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
       box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.07);
@@ -553,8 +557,8 @@
       clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
       box-shadow:inset 0 0 0 1.5px var(--steel); }
     .rk .svgi{ width:24px; height:24px; flex:none; }
-    .rk-n{ flex:1; font-family:var(--f-num); font-weight:600; font-size:16px; letter-spacing:1px; }
-    .rk-s{ font-family:var(--f-num); font-size:14px; color:var(--muted); }
+    .rk-n{ flex:1; font-family:var(--f-num); font-weight:900; font-size:16px; letter-spacing:1px; }
+    .rk-s{ font-family:var(--f-num); font-weight:900; font-size:14px; color:var(--muted); }
     .rk.cur{ box-shadow:inset 0 0 0 2px var(--gold); }
     .rk.cur .rk-s{ color:var(--gold); }
     #rk-you{ text-align:center; font-family:var(--f-ui); font-size:13px; color:var(--muted); margin:2px 0 12px; }
@@ -568,11 +572,11 @@
     .ms-name{ font-family:var(--f-ui); font-weight:600; font-size:13.5px; color:var(--text); letter-spacing:.3px; }
     .ms-bar{ height:8px; margin-top:6px; background:rgba(0,0,0,.5); box-shadow:inset 0 0 0 1px rgba(255,255,255,.10); overflow:hidden; }
     .ms-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--elec),var(--elec-glow)); box-shadow:0 0 10px var(--elec); transition:width .5s ease; }
-    .ms-num{ font-family:var(--f-num); font-size:11px; color:var(--muted); margin-top:3px; letter-spacing:1px; }
-    .ms-rew{ font-family:var(--f-num); font-weight:600; font-size:15px; color:var(--gold); display:flex; align-items:center; gap:4px; flex:none; }
+    .ms-num{ font-family:var(--f-num); font-weight:900; font-size:11px; color:var(--muted); margin-top:3px; letter-spacing:1px; }
+    .ms-rew{ font-family:var(--f-num); font-weight:900; font-size:15px; color:var(--gold); display:flex; align-items:center; gap:4px; flex:none; }
     .ms-rew .svgi{ width:17px; height:17px; }
     .ms.done{ box-shadow:inset 0 0 0 2px var(--gold); }
-    .ms-claim{ font-family:var(--f-num); font-weight:600; font-size:13px; letter-spacing:1px; color:#1a1206; cursor:pointer;
+    .ms-claim{ font-family:var(--f-num); font-weight:900; font-size:13px; letter-spacing:1px; color:#1a1206; cursor:pointer;
       background:linear-gradient(180deg,#ffd86b,var(--gold)); border:none; padding:7px 13px 5px; flex:none;
       clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px); animation:drPulse 1.4s ease-in-out infinite; }
     .ms.claimed{ opacity:.45; }
@@ -587,7 +591,7 @@
     #daily-modal .sheet{ width:min(470px,95vw); }
     .dr-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
     .dr{ position:relative; aspect-ratio:.82; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-      background:linear-gradient(180deg,var(--gun),var(--navy3)); font-family:var(--f-num); font-weight:600; letter-spacing:.5px;
+      background:linear-gradient(180deg,var(--gun),var(--navy3)); font-family:var(--f-num); font-weight:900; letter-spacing:.5px;
       clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
       box-shadow:inset 0 0 0 1.5px var(--steel), inset 0 2px 0 rgba(255,255,255,.08); filter:drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
     .dr .d{ font-size:12px; color:var(--muted); letter-spacing:1px; }
@@ -607,7 +611,7 @@
     #dr-note{ font-family:var(--f-ui); font-size:13px; color:var(--muted); text-align:center; margin-top:10px; }
     #daily-btn{ position:absolute; top:max(14px,env(safe-area-inset-top)); left:16px; z-index:2; pointer-events:auto;
       display:flex; align-items:center; gap:6px; padding:6px 14px 4px; border:none; cursor:pointer;
-      font-family:var(--f-num); font-size:17px; font-weight:600; letter-spacing:1px; color:var(--text);
+      font-family:var(--f-num); font-size:17px; font-weight:900; letter-spacing:1px; color:var(--text);
       background:linear-gradient(180deg,var(--gun2),var(--navy));
       clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
       box-shadow:inset 0 0 0 1.5px var(--steel); }
@@ -639,6 +643,7 @@
     <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 1.6h10a2 2 0 0 1 2 2v16.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3.6a2 2 0 0 1 2-2Zm0 2.4v14h10V4H7Zm3 15.4h4v1.4h-4v-1.4Z"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.6 1 4 13.6h5.4L9 23l9.8-13.4h-5.6L13.6 1Z"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><path d="M12 1.8A5.2 5.2 0 0 1 17.2 7v3H19a1.6 1.6 0 0 1 1.6 1.6v9A1.6 1.6 0 0 1 19 22.2H5A1.6 1.6 0 0 1 3.4 20.6v-9A1.6 1.6 0 0 1 5 10h1.8V7A5.2 5.2 0 0 1 12 1.8Zm0 2.6A2.6 2.6 0 0 0 9.4 7v3h5.2V7A2.6 2.6 0 0 0 12 4.4Zm0 9.2a2 2 0 0 1 1 3.7V19h-2v-1.7a2 2 0 0 1 1-3.7Z"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M20 3v12.4a3.6 3.6 0 1 1-2.2-3.32V7.4l-7.6 1.65v8.75a3.6 3.6 0 1 1-2.2-3.32V6.2L20 3Z"/></symbol>
     <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2h7.2L20 8.8V22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.8V9h5.2L13 3.8ZM8 12h8v2H8v-2Zm0 4h8v2H8v-2Zm0-8h3v2H8V8Z"/></symbol>
     <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 2.2 22.4 20.6a1.4 1.4 0 0 1-1.2 2.1H2.8a1.4 1.4 0 0 1-1.2-2.1L12 2.2Zm-1.2 6.2v6.2h2.4V8.4h-2.4Zm0 8v2.4h2.4v-2.4h-2.4Z"/></symbol>
     <symbol id="i-city" viewBox="0 0 24 24"><path d="M3 22V9h5v13H3Zm7 0V2h6v20h-6Zm2-17v2h2V5h-2Zm0 4v2h2V9h-2Zm0 4v2h2v-2h-2ZM18 22V12h4v10h-4Z"/></symbol>
@@ -706,7 +711,8 @@
   <div id="settings-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Settings</span><button class="x" data-close>×</button></div>
-      <div class="opt"><span><svg class="svgi si"><use href="#i-sound"/></svg>Sound</span><button id="sound-btn" class="toggle on">ON</button></div>
+      <div class="opt"><span><svg class="svgi si"><use href="#i-sound"/></svg>Sound Effects</span><button id="sound-btn" class="toggle on">ON</button></div>
+      <div class="opt"><span><svg class="svgi si"><use href="#i-note"/></svg>Music</span><button id="music-btn" class="toggle on">ON</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-moon"/></svg>Night Mode</span><button id="night-btn" class="toggle">OFF</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-tilt"/></svg>Gyro Aim <small>(tilt to steer)</small></span><button id="gyro-btn" class="toggle">OFF</button></div>
       <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-stick"/></svg>Move Sensitivity</span><span class="val" id="movesens-val">1.0×</span></div>
@@ -715,7 +721,7 @@
         <input type="range" class="slider" id="gyrosens" min="50" max="200" value="100"></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-doc"/></svg>Legal &amp; Privacy</span><button id="legal-btn" class="toggle">OPEN</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-warn"/></svg>Health &amp; Safety</span><button id="health-btn" class="toggle">OPEN</button></div>
-      <div class="sheet-note" style="margin:6px 2px 0">CITYBREAKER v1.0 · plays entirely on your device · no account, no ads, no tracking.</div>
+      <div class="sheet-note" style="margin:6px 2px 0">CITYBREAKER v1.0 · no account needed to play · optional in-app purchases · contains ads.</div>
     </div>
   </div>
 
@@ -724,114 +730,184 @@
     <div class="sheet">
       <div class="sheet-head"><span>Legal &amp; Privacy</span><button class="x" data-close>×</button></div>
       <div class="legal">
-        <p class="lg-upd">Last updated 8 August 2026 · Effective on first use</p>
+        <p class="lg-upd">Last updated 9 August 2026 · Effective on first use</p>
 
         <h4>1. Agreement to these Terms</h4>
-        <p>CITYBREAKER (the "Game") is provided to you by its developer ("we", "us"). By opening, installing or
-        playing the Game you accept these Terms of Use and the Privacy Notice below. If you do not accept them,
-        do not use the Game.</p>
+        <p>CITYBREAKER (the "App") is published by its developer ("we", "us"). By downloading,
+        installing or using the App you accept these Terms of Service and the Privacy Policy below. If
+        you do not accept them, do not install or use the App and delete it from your device. These
+        Terms are between you and us only — <strong>not</strong> with Apple Inc. or Google LLC, who are
+        not responsible for the App or its content.</p>
 
-        <h4>2. Who may play</h4>
-        <p>You must be at least 13 years old, or the minimum age of digital consent where you live, whichever is
-        higher. If you are under 18 you confirm a parent or guardian has reviewed and accepted these Terms on your
-        behalf. We do not knowingly permit accounts for, or collect information from, children under 13.</p>
+        <h4>2. Eligibility</h4>
+        <p>You must be at least 13 (16 in the EEA/UK where required, or the minimum age of digital
+        consent where you live). If you are under 18, a parent or guardian must review and accept these
+        Terms and supervise any purchase. We do not knowingly collect personal information from
+        children under 13.</p>
 
         <h4>3. Licence</h4>
-        <p>We grant you a personal, revocable, non-exclusive, non-transferable, non-sublicensable licence to play
-        the Game for your own non-commercial entertainment. You may not: copy, sell, rent, sublicense or
-        redistribute the Game; modify, decompile or reverse engineer it except where that right cannot lawfully be
-        restricted; use cheats, bots, memory editors or automation; interfere with the Game's operation; or remove
-        any proprietary notice.</p>
+        <p>We grant you a personal, revocable, non-exclusive, non-transferable, non-sublicensable
+        licence to install and use the App on a device you own or control, as permitted by the usage
+        rules of the store you obtained it from. You may not copy, sell, rent, lend, redistribute or
+        commercially exploit the App; modify, decompile or reverse engineer it except where that right
+        cannot lawfully be restricted; use cheats, bots, modified clients, memory editors or
+        automation; or attempt to obtain items, currency or progression by any means other than normal
+        play and legitimate in-app purchases.</p>
 
-        <h4>4. Virtual items and progress</h4>
-        <p>Shards, characters, ranks, missions, daily rewards and any other in-game item are a licensed feature of
-        the Game, not your property. They have <strong>no monetary value</strong>, cannot be exchanged for money or
-        anything of value, and may be changed, rebalanced, reset or removed at any time. The Game does not sell
-        anything and contains no purchases. Progress is stored only in your own browser and can be lost if you
-        clear site data, use private browsing, switch device or browser, or if your browser evicts storage. We are
-        not liable for lost progress.</p>
+        <h4>4. In-app purchases</h4>
+        <p>The App may offer optional in-app purchases (for example shard packs, character unlocks,
+        cosmetic bundles or an ad-free option). Key points:</p>
+        <p>• <strong>All purchases are processed by the App Store or Google Play</strong>, not by us. Price,
+        currency, tax and payment method are handled by that store under its own terms.<br>
+        • <strong>All sales are final</strong> except where refunds are required by law or granted at the
+        store's discretion. We cannot issue refunds ourselves — refund requests must go to Apple or
+        Google.<br>
+        • Purchases grant a <strong>limited licence to use virtual items inside the App</strong>. They are
+        not your property, have <strong>no monetary value</strong>, cannot be traded, sold, transferred or
+        exchanged for cash or anything of value, and do not survive the App being discontinued.<br>
+        • Items, prices, odds, balance and availability may change at any time. We may add, alter,
+        rebalance, withdraw or reset items and currencies.<br>
+        • Consumable items are spent on use and are not restorable. Non-consumable items and unlocks can
+        be restored on a device signed in to the same store account.<br>
+        • Any subscription auto-renews unless cancelled at least 24 hours before the period ends and is
+        managed entirely in your store account settings.<br>
+        • Purchases may be unavailable where your device or account has purchasing disabled. Parents
+        can disable in-app purchases in the device's screen-time or family settings, and we encourage
+        it for shared devices.</p>
 
-        <h4>5. Our content</h4>
-        <p>The Game, its code, artwork, characters, models, sounds, names and design are owned by us or our
-        licensors and protected by copyright and other laws. All rights not expressly granted are reserved.
-        Character and world designs are fictional. Any resemblance to a real person, living or dead, or to a real
-        business, place or event, is coincidental. Place names are used to evoke a setting and imply no
-        affiliation with, sponsorship by or endorsement from any city, company or brand.</p>
+        <h4>5. Advertising</h4>
+        <p>The App may show advertising, including banners, interstitials and optional rewarded video
+        that you choose to watch in exchange for an in-game reward. Ads are served by third-party ad
+        networks. Those networks are independent controllers of any data they process and are governed
+        by their own privacy policies and terms — we do not control the specific ads shown. Ads may be
+        personalised or non-personalised depending on your device settings and the consent you give;
+        see the Privacy Policy below. We are not responsible for third-party products, services or
+        websites reached through an advertisement. Reward delivery depends on the ad network reporting
+        a completed view; if an ad fails to load or complete, no reward is granted.</p>
 
-        <h4>6. Third-party software</h4>
-        <p>The Game includes three.js and its loaders (© three.js authors, MIT Licence) and Basis Universal /
-        Meshopt decoders under their respective open-source licences. Those components remain the property of
-        their authors and are used under the terms of their licences, copies of which accompany the source.</p>
+        <h4>6. Our content</h4>
+        <p>The App, its code, artwork, characters, models, sound, names and design are owned by us or
+        our licensors and protected by copyright and other laws. All rights not expressly granted are
+        reserved. Characters and worlds are fictional; any resemblance to a real person, living or
+        dead, or to a real business, place or event is coincidental. Place names are used to evoke a
+        setting and imply no affiliation with, sponsorship by or endorsement from any city, company or
+        brand.</p>
 
-        <h4>7. Health and safety</h4>
-        <p>The Game contains flashing lights, high-contrast neon, rapid motion and screen shake. Read the
-        <strong>Health &amp; Safety</strong> notice in Settings before playing. By playing you confirm you have read
-        it and accept the risks it describes.</p>
+        <h4>7. Third-party software</h4>
+        <p>The App includes three.js and its loaders (© three.js authors, MIT Licence) and Basis
+        Universal / Meshopt decoders under their respective open-source licences, together with any
+        advertising, analytics or store SDKs required for distribution. Those components remain the
+        property of their authors and are used under their own licence terms.</p>
 
-        <h4>8. Availability</h4>
-        <p>The Game is provided on an "as available" basis. We may change, suspend, update or discontinue it, in
-        whole or in part, at any time and without notice or liability.</p>
+        <h4>8. Health and safety</h4>
+        <p>The App contains flashing lights, high-contrast colour, rapid motion and screen shake. Read
+        the <strong>Health &amp; Safety</strong> notice in Settings before playing. By playing you confirm
+        you have read it and accept the risks it describes.</p>
 
-        <h4>9. Disclaimer of warranties</h4>
-        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE GAME IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT
-        WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR STATUTORY, INCLUDING ANY IMPLIED WARRANTY OF MERCHANTABILITY,
-        FITNESS FOR A PARTICULAR PURPOSE, TITLE, ACCURACY OR NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE GAME WILL
-        BE UNINTERRUPTED, ERROR-FREE, SECURE, OR COMPATIBLE WITH YOUR DEVICE.</p>
+        <h4>9. Availability and updates</h4>
+        <p>The App is provided on an "as available" basis. We may change, update, suspend or
+        discontinue it or any feature, in whole or in part, at any time and without notice or
+        liability. Some features may require an internet connection; we are not responsible for your
+        carrier's data charges.</p>
 
-        <h4>10. Limitation of liability</h4>
-        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
-        CONSEQUENTIAL, EXEMPLARY OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, DATA, GOODWILL, PROGRESS OR
-        DEVICE USE, ARISING OUT OF OR RELATING TO THE GAME, ON ANY THEORY OF LIABILITY, EVEN IF ADVISED OF THE
-        POSSIBILITY. OUR TOTAL AGGREGATE LIABILITY FOR ALL CLAIMS RELATING TO THE GAME WILL NOT EXCEED THE GREATER
-        OF THE AMOUNT YOU PAID US FOR IT (WHICH IS ZERO) OR USD 10.</p>
-        <p>Some jurisdictions do not allow the exclusion of certain warranties or the limitation of certain
-        damages. Where that is the case, the above exclusions and limits apply only to the fullest extent that law
-        allows, and nothing here limits liability for death or personal injury caused by negligence, for fraud, or
-        for anything else that cannot lawfully be limited.</p>
+        <h4>10. Disclaimer of warranties</h4>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE",
+        WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR STATUTORY, INCLUDING ANY IMPLIED WARRANTY OF
+        MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, ACCURACY OR NON-INFRINGEMENT. WE DO
+        NOT WARRANT THAT THE APP WILL BE UNINTERRUPTED, ERROR-FREE, SECURE OR COMPATIBLE WITH YOUR
+        DEVICE.</p>
 
-        <h4>11. Indemnity</h4>
-        <p>You agree to indemnify and hold us harmless from any claim, damage, loss or expense (including
-        reasonable legal fees) arising from your misuse of the Game or your breach of these Terms, to the extent
-        permitted by law.</p>
+        <h4>11. Limitation of liability</h4>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+        SPECIAL, CONSEQUENTIAL, EXEMPLARY OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, DATA,
+        GOODWILL, PROGRESS, VIRTUAL ITEMS OR DEVICE USE, ARISING OUT OF OR RELATING TO THE APP, ON ANY
+        THEORY OF LIABILITY, EVEN IF ADVISED OF THE POSSIBILITY. OUR TOTAL AGGREGATE LIABILITY FOR ALL
+        CLAIMS RELATING TO THE APP WILL NOT EXCEED THE GREATER OF THE AMOUNT YOU PAID FOR IN-APP
+        PURCHASES IN THE TWELVE MONTHS BEFORE THE CLAIM OR USD 50.</p>
+        <p>Some jurisdictions do not allow the exclusion of certain warranties or the limitation of
+        certain damages. Where that is the case, the above applies only to the fullest extent the law
+        allows, and nothing here limits liability for death or personal injury caused by negligence,
+        for fraud, or for anything else that cannot lawfully be limited.</p>
 
-        <h4>12. Disputes</h4>
-        <p>Before starting any formal proceeding, you agree to contact us and attempt to resolve the matter
-        informally for at least 30 days. If that fails, any dispute will be resolved on an individual basis. To the
-        extent permitted by law, <strong>you and we waive any right to a jury trial and to bring or participate in a
-        class, collective or representative action</strong>. This paragraph does not apply where it is unenforceable,
-        and it does not deprive a consumer of the right to bring a claim in their local courts or before their
-        national consumer body where the law gives them that right.</p>
+        <h4>12. Indemnity</h4>
+        <p>You agree to indemnify and hold us harmless from any claim, damage, loss or expense
+        (including reasonable legal fees) arising from your misuse of the App or your breach of these
+        Terms, to the extent permitted by law.</p>
 
-        <h4>13. Governing law</h4>
-        <p>These Terms are governed by the laws of the developer's place of residence, without regard to
-        conflict-of-law rules. If you are a consumer, you keep the benefit of any mandatory protections of the law
-        of your own country of residence.</p>
+        <h4>13. Termination</h4>
+        <p>We may suspend or terminate your licence if you breach these Terms, including for cheating
+        or fraudulent purchases. On termination your right to use the App and any virtual items ends.
+        You may end this agreement at any time by deleting the App.</p>
 
-        <h4>14. Changes and severability</h4>
-        <p>We may update these Terms; the "last updated" date above will change and continued play means you
-        accept the update. If any provision is held unenforceable, the rest remains in force.</p>
+        <h4>14. Apple and Google</h4>
+        <p>Apple and Google are third-party beneficiaries of these Terms and may enforce them against
+        you. They have no obligation to provide maintenance or support for the App. If the App fails to
+        conform to any applicable warranty, you may notify Apple, and Apple may refund the purchase
+        price; to the maximum extent permitted by law Apple has no other warranty obligation. Apple and
+        Google are not responsible for addressing any claim relating to the App, including product
+        liability, legal or regulatory non-compliance, consumer protection, or third-party intellectual
+        property claims.</p>
 
-        <h4 class="lg-sec">Privacy Notice</h4>
-        <p><strong>We do not collect your personal data.</strong> The Game has no accounts, no sign-in, no ads, no
-        analytics, no advertising identifiers and no third-party trackers. It does not transmit gameplay,
-        behavioural or personal information anywhere.</p>
-        <p><strong>What is stored, and where.</strong> Your best score, shard balance, chosen character and map,
-        mission progress, daily-reward day, and your sound / night-mode / sensitivity settings are written to your
-        browser's <code>localStorage</code>. That data stays on your device, is readable only by this site, and is
-        never sent to us or to anyone else.</p>
-        <p><strong>Device sensors.</strong> If you turn on Gyro Aim, the Game reads your device's motion sensors to
-        steer. Those readings are used in the current frame and immediately discarded — they are never stored,
-        logged or transmitted. On iOS your browser will ask for permission first, and you can decline and keep
-        playing with touch controls.</p>
-        <p><strong>Your rights.</strong> Because nothing is collected or transmitted, there is nothing for us to
-        access, correct, export, delete or sell — and we do not sell or share personal information under any
-        definition. You can erase everything the Game has stored at any time by clearing site data for this
-        page in your browser settings.</p>
-        <p><strong>Children.</strong> The Game is not directed to children under 13 and collects no information
-        from anyone, including children.</p>
-        <p><strong>Hosting.</strong> The page itself is served by a static web host, which — like every web server —
-        may keep standard access logs (such as IP address and request time) under its own privacy policy. We do not
-        control, receive or use those logs.</p>
+        <h4>15. Disputes</h4>
+        <p>Before starting any formal proceeding you agree to contact us and attempt to resolve the
+        matter informally for at least 30 days. If that fails, any dispute will be resolved on an
+        individual basis. To the extent permitted by law, <strong>you and we waive any right to a jury
+        trial and to bring or participate in a class, collective or representative action</strong>. This
+        paragraph does not apply where it is unenforceable, and it does not deprive a consumer of the
+        right to bring a claim in their local courts or before their national consumer body where the
+        law gives them that right.</p>
+
+        <h4>16. Governing law, changes, severability</h4>
+        <p>These Terms are governed by the laws of the developer's place of residence, without regard
+        to conflict-of-law rules; if you are a consumer you keep the benefit of the mandatory
+        protections of your own country of residence. We may update these Terms — the date above will
+        change and continued use means you accept the update. If any provision is held unenforceable,
+        the rest remains in force.</p>
+
+        <h4 class="lg-sec">Privacy Policy</h4>
+        <p><strong>What the App itself stores.</strong> Your best score, shard balance, chosen character
+        and map, mission progress, daily-reward day and your settings are saved locally on your device.
+        We do not operate accounts and do not require a sign-in to play.</p>
+        <p><strong>What third parties may collect.</strong> To show advertising and to process purchases,
+        the App uses services we do not control:</p>
+        <p>• <strong>Advertising networks</strong> may collect an advertising identifier (IDFA on iOS, GAID
+        on Android), coarse location derived from IP address, device and OS details, and ad interaction
+        events, in order to serve, cap, measure and — where you allow it — personalise ads.<br>
+        • <strong>Apple / Google billing</strong> processes your purchase. We receive only a confirmation
+        that a purchase succeeded. <strong>We never see or store your card number, billing address or
+        store account credentials.</strong><br>
+        • <strong>Crash and performance reporting</strong>, if enabled in a release, may collect device
+        model, OS version and anonymous crash traces so we can fix faults.</p>
+        <p><strong>Your choices.</strong> On iOS the App must ask before tracking you across other
+        companies' apps, and you can decline — the App remains fully playable and you will simply see
+        non-personalised ads. You can change this later in Settings → Privacy &amp; Security → Tracking.
+        On Android you can delete or opt out of the advertising ID in Settings → Privacy → Ads. Where
+        required, a consent prompt lets you choose personalised or non-personalised advertising, and you
+        can change that choice at any time from the in-game privacy option. Buying any advertised
+        ad-free option removes advertising entirely.</p>
+        <p><strong>Legal bases (EEA/UK).</strong> We rely on contract necessity to deliver the game and
+        your purchases, consent for personalised advertising and any optional analytics, and legitimate
+        interests for security, fraud prevention and non-personalised frequency capping.</p>
+        <p><strong>Retention.</strong> Local progress stays until you delete the App or clear its data.
+        Purchase records are retained by the stores under their own policies. Ad and crash data are
+        retained by those providers per their published retention periods.</p>
+        <p><strong>Your rights.</strong> Depending on where you live you may have the right to access,
+        correct, delete, port or restrict processing of your personal data, to object to processing, and
+        to opt out of "sale" or "sharing" of personal information for cross-context behavioural
+        advertising. <strong>We do not sell personal information for money.</strong> To exercise a right,
+        contact us through the store listing; for data held by an ad network, use that network's own
+        published mechanism, and you can stop the sharing entirely by declining tracking or by removing
+        ads. You may also complain to your local data protection authority.</p>
+        <p><strong>Children.</strong> The App is not directed to children under 13. Where a store's
+        child-directed or age-appropriate programme applies, advertising is served in
+        non-personalised mode and no advertising identifier is used.</p>
+        <p><strong>International transfers.</strong> Third-party providers may process data outside your
+        country, including in the United States, under the safeguards described in their own policies
+        (such as standard contractual clauses).</p>
+        <p><strong>Security.</strong> No method of transmission or storage is completely secure, but we
+        and our providers use industry-standard measures to protect data.</p>
+        <p><strong>Changes.</strong> If this policy changes materially we will update the date above and
+        surface the change in the App.</p>
 
         <p class="lg-foot">Questions about these Terms or this notice can be raised through the channel you obtained
         the Game from. This document is provided for transparency and is not legal advice.</p>
@@ -1783,9 +1859,12 @@
         if(!FlightPlayer._ktx2) FlightPlayer._ktx2=new KTX2Loader().setTranscoderPath('./vendor/basis/')
           .detectSupport(this.game.renderer);
         loader.setKTX2Loader(FlightPlayer._ktx2); }catch(e){ console.warn('decoder setup',e); }
-      loader.load(cfg.url,(gltf)=>{
+      // Parsed scenes are cached and every villain is prefetched in the background, so tapping a
+      // card swaps the model on the same frame instead of showing an empty rig for a few seconds.
+      const C=FlightPlayer._cache||(FlightPlayer._cache=new Map());
+      const build=(gltf)=>{
         if(token!==this._loadToken) return;                   // superseded — drop this stale result
-        const model=gltf.scene;
+        const model=gltf.scene.clone(true);
         const box=new THREE.Box3().setFromObject(model), size=new THREE.Vector3(), ctr=new THREE.Vector3();
         box.getSize(size); box.getCenter(ctr);
         // RIGGED models: geometry lives in bind space, so Box3 lies — measure by the skeleton span instead
@@ -1867,9 +1946,23 @@
         }
         this.villainBody.visible=false; if(this.cape) this.cape.visible=false;   // hide procedural body + red cape (model has its own)
         if(window.__hideLoader) window.__hideLoader();                            // dismiss the loading screen
-      },
+        if(!this._prefetched){ this._prefetched=true; this.prefetchAll(); }
+      };
+      if(C.has(cfg.url)){ build(C.get(cfg.url)); return; }                        // already parsed -> instant
+      loader.load(cfg.url,(gltf)=>{ C.set(cfg.url,gltf); build(gltf); },
       (ev)=>{ if(window.__setLoader && ev && ev.total) window.__setLoader(ev.loaded/ev.total); },   // progress -> loading bar
       (err)=>{ console.warn('villain GLB failed to load; using fallback',err); if(window.__hideLoader) window.__hideLoader(); });
+    }
+    // Warm every other villain in the background once the picked one is up, newest-first, one at a
+    // time so the prefetch never competes with the frame budget during a run.
+    prefetchAll(){
+      const C=FlightPlayer._cache||(FlightPlayer._cache=new Map());
+      const urls=Object.values(CHARACTERS).map(c=>c.url).filter(u=>!C.has(u));
+      const loader=new GLTFLoader();
+      try{ loader.setMeshoptDecoder(MeshoptDecoder); if(FlightPlayer._ktx2) loader.setKTX2Loader(FlightPlayer._ktx2); }catch(e){}
+      const next=()=>{ const u=urls.shift(); if(!u) return;
+        loader.load(u,(g)=>{ C.set(u,g); setTimeout(next,200); },undefined,()=>setTimeout(next,200)); };
+      setTimeout(next,600);
     }
     // switch the active playable character (from the Skins menu): reload the model live
     setCharacter(key){
@@ -1931,7 +2024,9 @@
       if(this._windU) this._windU.value=now*0.006;        // drives the model's flowing cape
       if(this.villainModel){   // ALIVE flight: heroic arch + gentle undulation + roll into turns (not a rigid plank)
         this.villainModel.rotation.x=this._mRotX + Math.sin(now*0.0022)*0.045;
-        this.villainModel.rotation.z=-this.bank*0.32 + Math.sin(now*0.0027)*0.04;
+        // NO idle roll term here: it would shift the neutral, so leaning left and leaning right
+        // would not be mirror images of each other. Roll is purely a function of steering.
+        this.villainModel.rotation.z=-this.bank*0.32;
         this.villainModel.position.y=this._mBaseY + Math.sin(now*0.003)*0.075;
         if(this._rigSway){ const t=now*0.003;                    // rigged characters: wings/cape flap gently
           for(const sB of this._rigSway){ const bn=sB.b;
@@ -2051,16 +2146,26 @@
         hlL.visible=hlR.visible=wsh.visible=sign.visible=false; m.add(hlL); m.add(hlR); m.add(wsh); m.add(sign);
         this.pool.push({mesh:m,edge,roof,crown,cap,hlL,hlR,wsh,sign,active:false,w:1,h:1,d:1,hit:false,decor:false});
       }
-      // ===== NYC BILLBOARDS: lit signboards on the skyline rooftops (decor only) =====
-      this.boards=[]; const bgeo=new THREE.PlaneGeometry(1,1);
-      for(let i=0;i<14;i++){
-        const m=new THREE.Mesh(bgeo,new THREE.MeshBasicMaterial({map:this._boardTex(i),transparent:true,side:THREE.DoubleSide,depthWrite:false}));
-        m.visible=false; this.game.scene.add(m);
-        const frame=new THREE.Mesh(new THREE.BoxGeometry(1,1,0.6),new THREE.MeshStandardMaterial({color:0x2b3038,roughness:.8,metalness:.3}));
-        frame.visible=false; this.game.scene.add(frame);
-        this.boards.push({mesh:m, frame, side:i%2?1:-1, z:0, w:rand(3.4,5.2), h:rand(11,19), y:0});
+      // ===== TOKYO SIGNAGE: actual geometry. Each sign is a BOX standing off the block wall with
+      // a printed face, so it catches light, casts a silhouette and reads from any angle — which a
+      // sign painted into a facade texture never does. Vertical boards, horizontal banners and
+      // projecting blades, recycled along z on both sides of the street.
+      this.signs=[];
+      { const sgeo=new THREE.BoxGeometry(1,1,1);
+        const blank=new THREE.MeshStandardMaterial({color:0x2a2e33,roughness:.75,metalness:.15});
+        for(let i=0;i<64;i++){
+          const face=new THREE.MeshStandardMaterial({map:this._signTex(i),roughness:.62,metalness:.05,
+                       emissive:0xffffff,emissiveMap:this._signTex(i),emissiveIntensity:0.0});
+          // box materials are [+x,-x,+y,-y,+z,-z]. Wall-hugging boards show their +-Z faces and
+          // projecting blades show their +-X faces, so both pairs are printed; only the thin top
+          // and bottom edges stay blank metal.
+          const m=new THREE.Mesh(sgeo,[face,face,blank,blank,face,face]);
+          m.castShadow=false; m.visible=false; this.game.scene.add(m);
+          const brk=new THREE.Mesh(sgeo,blank); brk.visible=false; this.game.scene.add(brk);
+          this.signs.push({mesh:m, brk, face, side:i%2?1:-1, z:0, w:1,h:1,d:1, y:0, off:0});
+        }
       }
-      this.BR_CEIL=17;
+      this.BR_CEIL=17;      this.BR_CEIL=17;
       // BACKROOMS ROOM SHELL — built as continuous ribbons (no panels => no seams, no gaps)
       this.BR_HALF=30;
       { const mk=(vertical)=>{ const N=this.roadN;
@@ -2087,6 +2192,24 @@
       this._buildEnv();
     }
     // procedural neon billboard face
+    // one printed signboard: solid ground, hard border, a bold kanji run, a maker's strip
+    _signTex(i){
+      const c=document.createElement('canvas'); c.width=128; c.height=384; const x=c.getContext('2d');
+      const K=['\u5bff','\u53f8','\u30e9','\u30fc','\u30e1','\u30f3','\u713c','\u9ce5','\u9152','\u5c4b',
+               '\u5546','\u4f1a','\u9280','\u5ea7','\u6e0b','\u8c37','\u65b0','\u5bbf','\u30ab','\u30d5',
+               '\u5927','\u5b89','\u58f2','\u55b6','\u696d','\u4e2d'];
+      const CG=[['#e11d2e','#ffffff'],['#ffffff','#c62026'],['#f5a800','#1b1f24'],['#1f4fd8','#ffffff'],
+                ['#12161a','#ffd23a'],['#0f8f4a','#ffffff'],['#ffffff','#16307a'],['#ff6a12','#ffffff'],
+                ['#ffffff','#111417'],['#7b1fa2','#ffffff']];
+      const [bg,fg]=CG[i%CG.length];
+      x.fillStyle=bg; x.fillRect(0,0,128,384);
+      x.strokeStyle=fg; x.lineWidth=7; x.strokeRect(9,9,110,366);
+      x.fillStyle=fg; x.textAlign='center'; x.textBaseline='middle';
+      x.font='bold 76px "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif';
+      for(let k=0;k<4;k++) x.fillText(K[(i*7+k*5)%K.length], 64, 64+k*84);
+      x.globalAlpha=.9; x.fillStyle=fg; x.fillRect(26,352,76,5); x.globalAlpha=1;
+      const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t;
+    }
     _boardTex(i){
       // TOKYO: a tall vertical signboard — kanji stacked down a glowing tube-lit box.
       const c=document.createElement('canvas'); c.width=128; c.height=384; const x=c.getContext('2d');
@@ -2198,64 +2321,25 @@
         rg.addColorStop(0.52,'rgba(255,255,255,.10)'); rg.addColorStop(0.62,'rgba(255,255,255,.30)'); rg.addColorStop(0.78,'rgba(255,255,255,0)');
         x.fillStyle=rg; x.fillRect(0,0,128,128);
       } else {                                                              // window -> TOKYO
-        // A Tokyo street facade is not a grid of offices: it is a wall of SIGNAGE. Tiles are
-        // a dark tiled/panel skin almost entirely covered by stacked lightboxes, vertical kanji
-        // banners and a lit ground-floor shopfront. Drawn once per map, tiled over every building.
-        const K=this._glyphs||(this._glyphs=['\u65e5','\u672c','\u9152','\u5c4b','\u98df','\u5802','\u30e9','\u30e1','\u30f3','\u5e02','\u4eac','\u6771','\u30d0','\u30fc','\u713c','\u9ce5','\u5348','\u62db','\u5e97','\u91d1']);
-        x.fillStyle='#15171d'; x.fillRect(0,0,128,128);                     // dark tiled carcass
-        for(let y=0;y<128;y+=9){ x.fillStyle='rgba(255,255,255,.035)'; x.fillRect(0,y,128,1); }
-        for(let vx=0;vx<128;vx+=16){ x.fillStyle='rgba(0,0,0,.30)'; x.fillRect(vx,0,1,128); }
-        for(let i=0;i<180;i++){ const v=(Math.random()*26|0);
-          x.fillStyle=`rgba(${40+v},${44+v},${54+v},.35)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
-        // real signage is mostly warm — red, orange, amber, white — with cool used as an accent.
-        // An even rainbow is what makes a fake street look fake.
-        const NEON=['#ff3b30','#ff3b30','#ff6a12','#ff6a12','#ffc233','#ffc233','#fff2d0','#fff2d0',
-                    '#ff2d6f','#38d0ff','#3ee08a','#b46bff'];
-        const pick=()=>NEON[(Math.random()*NEON.length)|0];
-        // horizontal LIGHTBOX bands stacked up the storey line
-        let y=4;
-        while(y<104){
-          const bh=8+Math.random()*11, col=pick(), inset=Math.random()<0.3?10:2;
-          x.fillStyle='#0a0b0f'; x.fillRect(inset-1,y-1,128-inset*2+2,bh+2);      // sign box shadow
-          const bg=x.createLinearGradient(0,y,0,y+bh);
-          bg.addColorStop(0,'#22242c'); bg.addColorStop(1,'#0e1015');
-          x.fillStyle=bg; x.fillRect(inset,y,128-inset*2,bh);
-          x.strokeStyle=col; x.lineWidth=1.6; x.strokeRect(inset+0.8,y+0.8,128-inset*2-1.6,bh-1.6);
-          x.shadowColor=col; x.shadowBlur=7; x.fillStyle=col;                     // glowing glyph run
-          x.font=`bold ${Math.round(bh*0.72)}px "Hiragino Sans","Yu Gothic",sans-serif`;
-          x.textBaseline='middle';
-          const n=2+((Math.random()*3)|0); let gx=inset+5;
-          for(let k=0;k<n;k++){ x.fillText(K[(Math.random()*K.length)|0], gx, y+bh/2); gx+=bh*0.8; }
-          x.shadowBlur=0;
-          if(Math.random()<0.45){ x.fillStyle=col; x.globalAlpha=.75;             // tube underline
-            x.fillRect(inset+4,y+bh-2.4,128-inset*2-8,1.4); x.globalAlpha=1; }
-          y += bh + 2 + Math.random()*5;
-        }
-        // a couple of VERTICAL banner signs riding over the bands
-        for(let b=0;b<2;b++){
-          const bw=11+Math.random()*5, bx=8+Math.random()*100, by=6+Math.random()*20, bhh=44+Math.random()*44, col=pick();
-          x.fillStyle='#07080b'; x.fillRect(bx-1,by-1,bw+2,bhh+2);
-          x.fillStyle='#131519'; x.fillRect(bx,by,bw,bhh);
-          x.strokeStyle=col; x.lineWidth=1.4; x.strokeRect(bx+0.7,by+0.7,bw-1.4,bhh-1.4);
-          x.shadowColor=col; x.shadowBlur=8; x.fillStyle=col;
-          x.font=`bold ${Math.round(bw*0.74)}px "Hiragino Sans","Yu Gothic",sans-serif`;
-          x.textAlign='center';
-          const rows=Math.max(2,Math.floor(bhh/(bw*0.95)));
-          for(let r2=0;r2<rows;r2++) x.fillText(K[(Math.random()*K.length)|0], bx+bw/2, by+bw*0.62+r2*bw*0.95);
-          x.shadowBlur=0; x.textAlign='left';
-        }
-        // GROUND FLOOR: a lit shopfront with a warm interior and a noren curtain
-        const fg=x.createLinearGradient(0,104,0,128);
-        fg.addColorStop(0,'#ffe6b0'); fg.addColorStop(0.55,'#f0b45c'); fg.addColorStop(1,'#5a3a18');
-        x.fillStyle=fg; x.fillRect(0,104,128,24);
-        x.fillStyle='rgba(20,14,8,.55)';                                          // mullions + silhouettes inside
-        for(let mx=0;mx<128;mx+=21) x.fillRect(mx,104,2.5,24);
-        for(let i=0;i<4;i++){ const px2=10+Math.random()*105;
-          x.fillStyle='rgba(30,20,12,.5)'; x.fillRect(px2,112,5,16); x.beginPath(); x.arc(px2+2.5,110,3,0,6.2832); x.fill(); }
-        x.fillStyle='#c8202e'; x.fillRect(0,104,128,6);                           // red noren band
-        x.fillStyle='rgba(255,255,255,.9)'; x.font='bold 5px "Hiragino Sans",sans-serif';
-        for(let mx=6;mx<128;mx+=24) x.fillText(K[(mx*7)%K.length]+K[(mx*3)%K.length], mx, 108.5);
-        x.fillStyle='rgba(0,0,0,.45)'; x.fillRect(0,126,128,2);                    // pavement shadow line
+        // Just the building: pale tile, floor bands, window slots, a bit of grime. Signage is
+        // REAL GEOMETRY bolted to the frontage (see _buildSigns) — a sign painted flat into a wall
+        // texture never reads as a sign, it reads as wallpaper.
+        const wall=x.createLinearGradient(0,0,0,128);
+        wall.addColorStop(0,'#eceee9'); wall.addColorStop(0.5,'#dcdfda'); wall.addColorStop(1,'#c6cac6');
+        x.fillStyle=wall; x.fillRect(0,0,128,128);
+        for(let i=0;i<300;i++){ const v=(Math.random()*22|0);
+          x.fillStyle=`rgba(${168+v},${172+v},${170+v},.35)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+        for(let y=0;y<128;y+=16){                                            // floor slab bands
+          x.fillStyle='rgba(255,255,255,.5)'; x.fillRect(0,y,128,1.4);
+          x.fillStyle='rgba(110,118,124,.20)'; x.fillRect(0,y+1.4,128,0.8); }
+        for(let y=4;y<124;y+=16){ for(let vx=5;vx<122;vx+=20){              // window slots
+          const g2=x.createLinearGradient(0,y,0,y+9);
+          g2.addColorStop(0,'#8fa4b2'); g2.addColorStop(1,'#5f7686');
+          x.fillStyle=g2; x.fillRect(vx,y,14,9);
+          x.fillStyle='rgba(255,255,255,.45)'; x.fillRect(vx,y,14,2.4);
+          x.fillStyle='rgba(60,70,78,.35)'; x.fillRect(vx,y+9,14,1); } }
+        for(let vx=0;vx<128;vx+=32){ x.fillStyle='rgba(120,128,132,.18)'; x.fillRect(vx,0,1.2,128); }
+        x.fillStyle='rgba(90,96,100,.20)'; x.fillRect(0,124,128,4);          // pavement grime line
       }
       for(const p of this.pool){ if(p.mesh.material.map) p.mesh.material.map.needsUpdate=true; }
       // Tokyo signage is self-lit: use the facade as its own emissive map so the neon reads at any hour
@@ -2286,56 +2370,61 @@
         while(p.grp.children.length){ p.grp.remove(p.grp.children[0]); }
         const k=i%6; p.kind=k; p.off=0;
         if(style==='window'){                                   // ---- TOKYO ----
-          // Everything on a Tokyo back street is either lit, stacked, or both. Emissives stay on
-          // day and night — the signage is the light source, not the sun.
-          const NE=[0xff3b30,0xff6a12,0xffc233,0xfff2d0,0xff2d6f,0x38d0ff];
-          const nc=NE[i%NE.length];
-          const lit=(c,e)=>new THREE.MeshStandardMaterial({color:c,emissive:e===undefined?c:e,
-                        emissiveIntensity:1.15,roughness:.4,metalness:.1,flatShading:true});
-          const dark=(c)=>M(c,{roughness:.72,metalness:.25});
-          if(k===0){                                                                  // SIGN PYLON: stacked lightboxes up a pole
-            add(p.grp,G.box,dark(0x23262d),0,5.5,0,0.5,11,0.5);
-            for(let j=0;j<5;j++){ const cj=NE[(i+j)%NE.length];
-              add(p.grp,G.box,dark(0x14161b),0.1,2.4+j*1.9,0,2.9,1.55,0.55);
-              add(p.grp,G.box,lit(cj),0.1,2.4+j*1.9,0.31,2.55,1.2,0.06); }
-            add(p.grp,G.box,dark(0x2c313a),0,11.4,0,3.4,0.35,0.8); }
-          else if(k===1){                                                             // VENDING MACHINE ROW
-            for(let j=0;j<2;j++){ const vx=-1.1+j*2.2, cj=NE[(i+j)%NE.length];
-              add(p.grp,G.box,dark(0x1c2028),vx,1.7,0,2.0,3.4,1.1);
-              add(p.grp,G.box,lit(0xf2f6ff,0xbfd6ff),vx,2.25,0.58,1.7,1.9,0.06);      // lit product window
-              add(p.grp,G.box,lit(cj),vx,3.28,0.58,1.75,0.42,0.07);                   // brand band
-              for(let r2=0;r2<3;r2++) add(p.grp,G.box,M(0x2a3040),vx,1.75+r2*0.55,0.63,1.5,0.09,0.03); }
-            add(p.grp,G.box,M(0x30363f),0,0.12,0,4.8,0.24,1.4); }
-          else if(k===2){                                                             // LANTERN RACK outside an izakaya
-            add(p.grp,G.box,dark(0x1a1d23),0,2.9,0,4.6,0.28,0.3);
-            add(p.grp,G.cyl,dark(0x23272f),-2.2,1.45,0,0.14,2.9,0.14);
-            add(p.grp,G.cyl,dark(0x23272f), 2.2,1.45,0,0.14,2.9,0.14);
-            for(let j=0;j<4;j++){ const lx=-1.65+j*1.1;
-              add(p.grp,G.cyl,lit(0xff5a3c,0xd83a1e),lx,2.1,0,0.36,0.82,0.36);
-              add(p.grp,G.box,M(0x1a1a1a),lx,2.55,0,0.24,0.1,0.24); }
-            add(p.grp,G.box,lit(0xc8202e,0x7a0f18),0,3.55,0,4.2,1.0,0.12); }          // red noren banner
-          else if(k===3){                                                             // UTILITY POLE + transformer + wire tangle
-            add(p.grp,G.cyl,dark(0x39332c),0,6,0,0.3,12,0.3);
-            add(p.grp,G.cyl,dark(0x4a4f57),0.55,9.2,0,0.55,1.5,0.55);                 // transformer can
-            for(let j=0;j<3;j++) add(p.grp,G.box,dark(0x2f333a),0,10.4-j*1.1,0,3.6,0.14,0.14);
-            for(let j=0;j<6;j++) add(p.grp,G.box,M(0x101216),0,10.3-j*0.42,0,0.06,0.06,46);   // strung cables bridge to the next pole
-            add(p.grp,G.box,lit(nc),0.1,4.2,0.24,0.9,2.6,0.07);                       // little wall sign on the pole
-            add(p.grp,G.box,M(0x9aa4b0,{emissive:0xfff0c0,emissiveIntensity:.9}),0,11.6,0.7,0.5,0.16,1.6); } // street lamp head
-          else if(k===4){                                                             // SHOPFRONT: awning, crates, bike
-            add(p.grp,G.box,dark(0x191c22),0,2.2,0,5.4,4.4,1.6);
-            add(p.grp,G.box,lit(0xffd9a0,0xffb45a),0,1.75,0.85,4.4,2.5,0.08);         // warm interior glass
-            add(p.grp,G.box,lit(nc),0,3.85,0.9,4.8,0.75,0.1);                         // neon shop sign
-            add(p.grp,G.box,M(0x2b2f36),0,4.5,1.5,5.6,0.18,2.0,-0.22);                // awning
-            for(let j=0;j<3;j++) add(p.grp,G.box,M(0x5a4a34),-1.6+j*1.5,0.45,2.2,1.1,0.9,0.9);
-            add(p.grp,G.cyl,M(0x2a2e35,{metalness:.5}),2.3,0.72,2.4,0.62,0.12,0.62,1.57);     // bike wheels
-            add(p.grp,G.cyl,M(0x2a2e35,{metalness:.5}),3.4,0.72,2.4,0.62,0.12,0.62,1.57);
-            add(p.grp,G.box,M(0x6b7079),2.85,1.1,2.4,1.5,0.12,0.12); }
-          else {                                                                      // VERTICAL KANJI TOWER SIGN + AC units
-            add(p.grp,G.box,dark(0x101318),0,6.5,0,1.9,13,0.7);
-            for(let j=0;j<6;j++){ const cj=NE[(i+j)%NE.length];
-              add(p.grp,G.box,lit(cj),0,1.6+j*2.1,0.4,1.35,1.35,0.07); }
-            add(p.grp,G.box,dark(0x2a2f38),0,13.3,0,2.3,0.4,1.0);
-            for(let j=0;j<2;j++) add(p.grp,G.box,M(0x7d848d,{metalness:.4}),-1.5,3.4+j*3.2,0.5,1.2,1.0,0.9); }
+          // A canal of cherry blossom down both sides with lantern strings between the trunks —
+          // the sakura avenue — plus the low shopfronts and street furniture under the towers.
+          const bark=M(0x4a3a33,{roughness:.95});
+          const blossom=(c)=>new THREE.MeshStandardMaterial({color:c,emissive:0x521028,
+                          emissiveIntensity:night?0.85:0.16,roughness:.85,flatShading:true});
+          const PK=[0xffc0d8,0xffa9cc,0xffd2e4,0xff96bf];
+          const lantern=new THREE.MeshStandardMaterial({color:0xff7a4a,emissive:0xff5a20,
+                          emissiveIntensity:night?1.5:0.55,roughness:.7});
+          const tree=(grp,sx2,sy2)=>{                                    // trunk + leaning boughs + canopy
+            add(grp,G.cyl,bark,0,2.1*sy2,0,0.42*sx2,4.2*sy2,0.42*sx2);
+            for(let j=0;j<4;j++){ const a2=j*1.57+0.4;
+              add(grp,G.cyl,bark,Math.cos(a2)*1.2*sx2,4.1*sy2,Math.sin(a2)*1.2*sx2,
+                  0.2*sx2,2.6*sy2,0.2*sx2, Math.sin(a2)*0.55, Math.cos(a2)*0.55); }
+            for(let j=0;j<7;j++){ const a2=j*0.9, r2=(0.5+Math.random()*1.9)*sx2;
+              add(grp,G.sph,blossom(PK[j%PK.length]),Math.cos(a2)*r2,(5.2+Math.random()*1.9)*sy2,Math.sin(a2)*r2,
+                  (1.7+Math.random()*1.1)*sx2,(1.1+Math.random()*0.7)*sy2,(1.7+Math.random()*1.1)*sx2); }
+          };
+          if(k===0||k===3){                                              // SAKURA: two trees + a lantern string
+            tree(p.grp, 1, 1); 
+            const g2=new THREE.Group(); g2.position.set(0,0,9); p.grp.add(g2); tree(g2, 0.85, 0.9);
+            add(p.grp,G.box,M(0x1e1a18),0,6.6,4.5,0.07,0.07,9);          // the wire
+            for(let j=0;j<5;j++) add(p.grp,G.cyl,lantern,0,6.2,0.9+j*1.8,0.34,0.72,0.34);
+            add(p.grp,G.box,M(0x6f7a72),0,0.18,4.5,3.4,0.36,11); }       // planting kerb
+          else if(k===1){                                                // LOW SHOPFRONT under the towers
+            add(p.grp,G.box,M(0xdad3c8),0,2.6,0,7.5,5.2,4.2);
+            add(p.grp,G.box,new THREE.MeshStandardMaterial({color:0xbfe0f2,emissive:0xffe6b4,
+                emissiveIntensity:night?1.1:0.25,roughness:.2,metalness:.3}),0,1.9,2.15,6.4,2.8,0.12);
+            add(p.grp,G.box,M(0xc8202e,{emissive:0x6a0d14,emissiveIntensity:night?0.9:0.15}),0,4.5,2.25,7.0,1.1,0.14);
+            add(p.grp,G.box,M(0x3a4148),0,5.4,2.9,7.6,0.16,1.9,-0.2);
+            add(p.grp,G.cyl,M(0x9aa4ad,{metalness:.6}),3.4,0.7,3.1,0.16,1.4,0.16); }
+          else if(k===2){                                                // PEDESTRIAN BRIDGE leg + signal mast
+            const mt=M(0x9fb2c0,{metalness:.5,roughness:.4});
+            add(p.grp,G.cyl,mt,0,4.4,0,0.62,8.8,0.62);
+            add(p.grp,G.box,mt,-2.6,8.9,0,6.2,0.75,3.4);
+            for(let j=0;j<5;j++) add(p.grp,G.box,mt,-5.4+j*1.4,9.7,0,0.12,1.3,3.2);
+            add(p.grp,G.cyl,M(0x3a4148),3.2,3.2,0,0.22,6.4,0.22);
+            add(p.grp,G.box,M(0x14181c),3.2,6.6,0,1.9,0.6,0.5);
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0x30d158}),3.9,6.6,0.3,0.19,0.19,0.1); }
+          else if(k===4){                                                // VENDING BANK + bicycles
+            for(let j=0;j<2;j++){ const vx=-1.1+j*2.2;
+              add(p.grp,G.box,M(0xe8edf2),vx,1.7,0,2.0,3.4,1.1);
+              add(p.grp,G.box,new THREE.MeshStandardMaterial({color:0xf6fbff,emissive:0xcfe8ff,
+                  emissiveIntensity:night?1.3:0.4,roughness:.25}),vx,2.25,0.58,1.7,1.9,0.06);
+              add(p.grp,G.box,M(0xd8232f,{emissive:0x6a0d14,emissiveIntensity:night?0.8:0.12}),vx,3.28,0.58,1.75,0.42,0.07); }
+            for(let j=0;j<2;j++){ const bx2=3.0+j*1.3;
+              add(p.grp,G.cyl,M(0x2a2e35,{metalness:.5}),bx2,0.7,0.9,0.6,0.11,0.6,1.57);
+              add(p.grp,G.cyl,M(0x2a2e35,{metalness:.5}),bx2,0.7,2.2,0.6,0.11,0.6,1.57);
+              add(p.grp,G.box,M(0x7d858e),bx2,1.15,1.55,0.11,0.11,1.5); } }
+          else {                                                          // STREET LAMP + planter + hedge
+            add(p.grp,G.cyl,M(0x8e979f,{metalness:.5}),0,4.6,0,0.19,9.2,0.19);
+            add(p.grp,G.box,M(0x8e979f,{metalness:.5}),0.9,9.2,0,2.0,0.18,0.18);
+            add(p.grp,G.box,new THREE.MeshStandardMaterial({color:0xfff3d2,emissive:0xffe9b0,
+                emissiveIntensity:night?1.6:0.45}),1.8,9.0,0,0.75,0.2,0.5);
+            add(p.grp,G.box,M(0x9aa19a),0,0.6,2.4,2.6,1.2,2.6);
+            add(p.grp,G.sph,M(0x3f7a45),0,1.7,2.4,1.4,0.9,1.4); }
         } else if(style==='glass'){                             // ---- FRUTIGER AERO ----
           const gl=M(0x9fe8ff,{roughness:.06,metalness:.6,transparent:true,opacity:.72,emissive:0x0a3a44,emissiveIntensity:.35});
           if(k===0){ add(p.grp,G.cyl,gl,0,4,0,2.4,8,2.4); add(p.grp,G.sph,gl,0,8.4,0,2.6,1.8,2.6); }   // glass tower
@@ -2429,7 +2518,8 @@
         const spr=this._cloudSprite();                 // each cloud its own puffy shape -> looks real
         const m=new THREE.Mesh(cgeo,new THREE.MeshBasicMaterial({map:spr,transparent:true,opacity:0.95,depthWrite:false,fog:true}));
         m.visible=false; m.renderOrder=-1; g.scene.add(m);
-        this.cloudBills.push({mesh:m,x:rand(-500,500),y:rand(130,240),z:0,w:rand(220,420),h:rand(110,200)});
+        // small and far: tiny puffs parked high and wide, nowhere near the flight path
+        this.cloudBills.push({mesh:m,x:rand(-620,620),y:rand(190,320),z:0,w:rand(58,120),h:rand(28,58)});
       }
       // STREET LAMPS: glowing lights along the roadside, shown only at NIGHT (colour set per map).
       this.lamps=[]; const lgeo=new THREE.SphereGeometry(1,10,8); const pgeo=new THREE.CylinderGeometry(0.25,0.35,1,6);
@@ -2631,11 +2721,12 @@
           this.brRoof.material.map=this._brRoofTex; this.brRoof.material.color.setHex(0xf4f0e2);
           this.brRoof.material.emissive.setHex(0xcfc8b4); this.brRoof.material.emissiveIntensity=0.5;
           this.brRoof.material.needsUpdate=true; } }
-      for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);
+      for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);   // outdoor maps only; parked 130-240m up and up to 500m out, far beyond any flight path
       this._skinProps(t,night);
       if(this.props) for(const pr of this.props) pr.grp.visible=!back;   // BACKROOMS: no roadside props at all
       { const bb=(t.building.style==='window');    // billboards: NYC only
-        if(this.boards) for(const b2 of this.boards){ b2.mesh.visible=bb; b2.frame.visible=bb; } }
+        if(this.signs) for(const sg of this.signs){ sg.mesh.visible=bb; sg.brk.visible=bb;
+          sg.face.emissiveIntensity = bb && night ? 0.85 : 0.0; } }
       // street lamps: on only at night, coloured per map
       const lampCol=night? n.lamp : 0xffb14a;
       for(const l of this.lamps){ l.grp.visible=night; l.bulb.material.color.setHex(lampCol); }
@@ -2862,7 +2953,13 @@
         if(!decor){ const rh=Math.max(w,d)*0.85+4;
           b.roof.visible=true; b.roof.position.set(bx, h+crownH+rh/2-0.4, z); b.roof.scale.set(w*1.02, rh, d*1.02);
           b.roof.material.color.setHex(0x7d3a2c); }
-      } else if(style==='window' && decor && h>30 && R<0.34){
+      } else if(style==='window' && this.game.theme.tokyo && decor && R<0.5){
+        // TOKYO rooftop: a billboard frame or rooftop plant box — never a water tank or a spire
+        if(R<0.26){ b.cap.visible=true; b.cap.position.set(bx, h+3.2, z); b.cap.scale.set(w*0.9, 6.4, 0.6);
+          b.cap.material.color.setHex(0xdfe3e6); b.cap.material.emissive.setHex(0x000000); }
+        else { b.cap.visible=true; b.cap.position.set(bx, h+1.3, z); b.cap.scale.set(w*0.5, 2.6, d*0.5);
+          b.cap.material.color.setHex(0xa8adb2); b.cap.material.emissive.setHex(0x000000); }
+      } else if(style==='window' && !this.game.theme.tokyo && decor && h>30 && R<0.34){
         // NYC SKYLINE: art-deco / futurist SPIRE with a red aviation beacon on the tall towers
         const capH=h*(0.20+Math.random()*0.26)+6, r=Math.min(w,d)*0.07+0.3;
         b.cap.visible=true; b.cap.position.set(bx, h+capH/2, z); b.cap.scale.set(r,capH,r);
@@ -2871,7 +2968,7 @@
         b.roof.visible=true;                                    // stepped deco crown under the spire
         b.roof.position.set(bx, h+1.6, z); b.roof.scale.set(w*0.72, 3.4, d*0.72);
         b.roof.material.color.setHex(0x9aa4b0);
-      } else if(style==='window' && decor && R<0.4){
+      } else if(style==='window' && !this.game.theme.tokyo && decor && R<0.4){
         // NYC: iconic wooden ROOFTOP WATER TANK (cylinder body + little conical lid) on some roofs
         const r=Math.min(w,d)*0.24+0.6, bodyH=r*2.2;
         b.cap.visible=true; b.cap.position.set(bx+rand(-w*0.2,w*0.2), h+bodyH/2, z+rand(-d*0.2,d*0.2)); b.cap.scale.set(r,bodyH,r);
@@ -3009,18 +3106,30 @@
           cb.mesh.lookAt(cam.position.x, cb.y, cam.position.z);
         }
       }
-      if(this.boards && this.boards[0].mesh.visible){   // TOKYO: vertical signboards bolted to the block face
-        const cam=this.game.camera.cam, bspan=Math.ceil(this.boards.length/2)*52;
-        for(const bd of this.boards){
-          // hung low and close so they crowd the street the way a real alley does, not on far rooftops
-          if(bd.z===0 || bd.z < pz-50){ bd.z=pz+rand(70,300); bd.y=rand(9,30); bd.w=rand(3.4,5.4); bd.h=bd.w*rand(2.9,4.0); bd.off=rand(0,10); }
-          if(bd.z < pz-50) bd.z+=bspan;
-          const bx=this._pathX(bd.z)+bd.side*(this.roadHalf+9+bd.off);
-          bd.mesh.position.set(bx, bd.y, bd.z); bd.mesh.scale.set(bd.w,bd.h,1);
-          bd.mesh.lookAt(cam.position.x, bd.y, cam.position.z);         // always faces the player
-          bd.frame.position.set(bx - bd.side*bd.w*0.52, bd.y, bd.z);    // stub bracket back to the wall
-          bd.frame.scale.set(bd.w*0.22,0.32,0.9);
-          bd.frame.quaternion.copy(bd.mesh.quaternion);
+      if(this.signs && this.signs[0].mesh.visible){   // TOKYO: 3D signboards bolted to the block frontage
+        const WALL=this.roadHalf+4;                     // the decor block face on this map
+        const sspan=Math.ceil(this.signs.length/2)*11;  // dense: a sign every few metres per side
+        for(const sg of this.signs){
+          if(sg.z===0 || sg.z < pz-40){
+            if(sg.z===0) sg.z=pz+20+Math.random()*sspan; else sg.z+=sspan;
+            const kind=Math.random();
+            if(kind<0.62){                               // TALL VERTICAL BOARD hugging the wall
+              sg.w=1.9+Math.random()*1.3; sg.h=9+Math.random()*13; sg.d=0.5;
+              sg.y=4+Math.random()*16; sg.off=0.6;
+            } else if(kind<0.86){                        // PROJECTING BLADE sticking out over the street
+              sg.w=0.45; sg.h=5+Math.random()*7; sg.d=2.6+Math.random()*1.8;
+              sg.y=6+Math.random()*13; sg.off=-(sg.d*0.5)+0.3;
+            } else {                                     // HORIZONTAL BANNER across the shopfront
+              sg.w=6+Math.random()*5; sg.h=1.6+Math.random()*1.2; sg.d=0.45;
+              sg.y=3.4+Math.random()*3.4; sg.off=0.5;
+            }
+          }
+          const cx0=this._pathX(sg.z), sx0=cx0 + sg.side*(WALL - sg.off);
+          sg.mesh.position.set(sx0, sg.y, sg.z);
+          sg.mesh.scale.set(sg.w, sg.h, sg.d);            // printed on both broad faces, so no flip needed
+          // the stub bracket back to the wall
+          sg.brk.position.set(cx0 + sg.side*(WALL+0.25), sg.y, sg.z);
+          sg.brk.scale.set(0.9,0.28,0.28);
         }
       }
       if(this.brLights){                                // BACKROOMS ceiling light panels
@@ -3041,11 +3150,15 @@
         }
       }
       if(this.props && !(this.game.theme&&this.game.theme.backrooms)){   // themed roadside props (recycled)
-        const pspan=Math.ceil(this.props.length/2)*46;
+        const tky=!!(this.game.theme&&this.game.theme.tokyo);
+        // TOKYO packs its props twice as densely and hard against the kerb, so the cherry trees
+        // read as a continuous avenue lining the road rather than scattered bushes in the distance.
+        const pspan=Math.ceil(this.props.length/2)*(tky?26:46);
+        const roll=()=>{ const bkp=!!(this.game.theme&&this.game.theme.backrooms);
+                         return bkp?rand(-6,-2):(tky?rand(1.5,4.5):rand(3,11)); };
         for(const pr of this.props){
-          const bkp=!!(this.game.theme&&this.game.theme.backrooms);
-          if(pr.z===0){ pr.z=pz+40+((pr.side>0?1:0)*23)+Math.floor(Math.random()*pspan); pr.off=bkp?rand(-6,-2):rand(3,11); }
-          if(pr.z < pz-50){ pr.z+=pspan; pr.off=bkp?rand(-6,-2):rand(3,11); }
+          if(pr.z===0){ pr.z=pz+40+((pr.side>0?1:0)*(tky?13:23))+Math.floor(Math.random()*pspan); pr.off=roll(); }
+          if(pr.z < pz-50){ pr.z+=pspan; pr.off=roll(); }
           pr.grp.visible=true;
           pr.grp.position.set(this._pathX(pr.z)+pr.side*(this.roadHalf+pr.off), 0, pr.z);
           pr.grp.rotation.y = pr.side>0? -0.5 : 0.5;
@@ -3132,8 +3245,9 @@
       if(this.mountains) this.mountains.forEach((mn,i)=>mn.z=pz+i*150);
       if(this.skyline) this.skyline.forEach((s,i)=>s.z=pz+(i>>1)*70+rand(-20,20));
       if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
-      if(this.boards) this.boards.forEach((b2,i)=>{ b2.z=pz+120+i*44; });
-      if(this.props) this.props.forEach((pr,i)=>{ pr.z=pz+40+(i>>1)*46; pr.off=rand(3,11); });
+      if(this.signs) this.signs.forEach((sg,i)=>{ sg.z=0; });
+      if(this.props){ const tky=!!(this.game.theme&&this.game.theme.tokyo);
+        this.props.forEach((pr,i)=>{ pr.z=pz+40+(i>>1)*(tky?26:46); pr.off=tky?rand(1.5,4.5):rand(3,11); }); }
       if(this.brLights) this.brLights.forEach((L,i)=>{ L.z=pz+14+i*9; L.flick=Math.random()<0.22?rand(1,4):0; });
       if(this.bubbles) this.bubbles.forEach(bb=>bb.z=0);
       if(this.ceilRibs) this.ceilRibs.forEach((r,i)=>r.z=pz+i*this.CEIL_GAP);
@@ -3307,14 +3421,56 @@
   // AUDIO — synthesised WebAudio crash/whoosh/combo hooks. No assets.
   // ===================================================================================
   class AudioSystem {
-    constructor(){ this.ctx=null; this.muted=false; }
+    constructor(){ this.ctx=null; this.muted=false;
+      this.musicOn=(localStorage.getItem('invrun_music')??'1')==='1'; this._mus=null; }
     _ensure(){ if(this.ctx) return; this.ctx=new (window.AudioContext||window.webkitAudioContext)();
-      this.master=this.ctx.createGain(); this.master.gain.value=this.muted?0:0.35; this.master.connect(this.ctx.destination); }
-    setMuted(m){ this.muted=m; if(this.master) this.master.gain.value=m?0:0.35; }
+      this.out=this.ctx.createGain(); this.out.gain.value=0.35; this.out.connect(this.ctx.destination);
+      // two buses off one output: effects and music mute independently
+      this.sfx=this.ctx.createGain(); this.sfx.gain.value=this.muted?0:1; this.sfx.connect(this.out);
+      this.musBus=this.ctx.createGain(); this.musBus.gain.value=this.musicOn?0.5:0.0001; this.musBus.connect(this.out);
+      this.master=this.sfx;                                  // every existing effect routes here
+      if(this.musicOn) this._startMusic(); }
+    setMuted(m){ this.muted=m; if(this.sfx) this.sfx.gain.value=m?0:1; }
+    // ===== MUSIC: a driving synth bed on its own bus, so it mutes independently of the effects.
+    // Two detuned saw pads over a pulsing bass and a hat, built from oscillators — no asset, no
+    // download, and it survives a tab suspend because it is one continuous graph.
+    setMusic(on){ this.musicOn=on; try{ localStorage.setItem('invrun_music', on?'1':'0'); }catch(e){}
+      if(on){ this._ensure(); this._startMusic(); if(this.musBus) this.musBus.gain.setTargetAtTime(0.5,this.ctx.currentTime,0.25); }
+      else if(this.musBus) this.musBus.gain.setTargetAtTime(0.0001,this.ctx.currentTime,0.25); }
+    _startMusic(){
+      if(this._mus||!this.ctx) return;
+      const t0=this.ctx.currentTime, C=this.ctx;
+      const bus=this.musBus;
+      const mk=(type,freq,det,gain,filt)=>{ const o=C.createOscillator(), g=C.createGain(), f=C.createBiquadFilter();
+        o.type=type; o.frequency.value=freq; o.detune.value=det;
+        f.type='lowpass'; f.frequency.value=filt; f.Q.value=1.2;
+        g.gain.value=gain; o.connect(f); f.connect(g); g.connect(bus); o.start(t0); return {o,g,f}; };
+      // a minor-key pad: root, fifth, minor third an octave up
+      const pad=[mk('sawtooth',110,-6,0.10,900), mk('sawtooth',110,7,0.10,900),
+                 mk('sawtooth',164.81,4,0.07,1100), mk('sawtooth',261.63,-5,0.05,1300)];
+      // slow filter sweep so the bed breathes instead of droning
+      const lfo=C.createOscillator(), lg=C.createGain(); lfo.type='sine'; lfo.frequency.value=0.06; lg.gain.value=420;
+      lfo.connect(lg); for(const p2 of pad) lg.connect(p2.f.frequency); lfo.start(t0);
+      // pulsing sub on the beat
+      const sub=C.createOscillator(), sg=C.createGain(); sub.type='sine'; sub.frequency.value=55;
+      sub.connect(sg); sg.connect(bus); sg.gain.value=0; sub.start(t0);
+      const beat=0.5; let n=0;
+      this._musTimer=setInterval(()=>{ if(!this.ctx) return; const t=this.ctx.currentTime;
+        sg.gain.cancelScheduledValues(t);
+        sg.gain.setValueAtTime(n%2?0.16:0.30,t); sg.gain.exponentialRampToValueAtTime(0.0001,t+beat*0.9);
+        if(n%4===2){ const h=C.createBufferSource(), hb=C.createBuffer(1,1200,C.sampleRate);
+          const d=hb.getChannelData(0); for(let i=0;i<1200;i++) d[i]=(Math.random()*2-1)*(1-i/1200);
+          h.buffer=hb; const hf=C.createBiquadFilter(); hf.type='highpass'; hf.frequency.value=6500;
+          const hg=C.createGain(); hg.gain.value=0.09; h.connect(hf); hf.connect(hg); hg.connect(bus); h.start(t); }
+        n++;
+      }, beat*1000);
+      this._mus={pad,sub,lfo};
+    }
     resume(){ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume(); }
     // iOS / home-screen (standalone) need the AudioContext created+resumed inside a user gesture,
     // and a silent buffer played to fully unlock. Safe to call repeatedly.
     unlock(){ try{ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume();
+      if(this.musicOn) this._startMusic();
       const b=this.ctx.createBuffer(1,1,22050); const s=this.ctx.createBufferSource(); s.buffer=b;
       s.connect(this.ctx.destination); s.start(0); }catch(e){} }
     // ===== MUSIC — a procedural driving loop (kick/hat/snare + bass arp, Am-F-C-G). It runs only
@@ -3698,15 +3854,15 @@
   function nextRank(score){ for(const x of RANKS) if(score<x.min) return x; return null; }
 
   const CHARACTERS = {
-    dominus:  { name:'Dominus', url:'./assets/villain.glb', aura:{epic:0x6a7480, eth:0xe8eef5},  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    dominus:  { name:'Dominus', url:'./assets/villain.glb', aura:{epic:0x6a7480, eth:0xe8eef5},  rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', aura:{epic:0x1170d8, eth:0x86ee2e}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', aura:{epic:0x1170d8, eth:0x86ee2e}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    knight:   { name:'Evil Knight', url:'./assets/knight.glb', aura:{epic:0x2b2228, eth:0xc4121a}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    knight:   { name:'Evil Knight', url:'./assets/knight.glb', aura:{epic:0x2b2228, eth:0xc4121a}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', aura:{epic:0x1a3fd8, eth:0xf4f8ff}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', aura:{epic:0x1a3fd8, eth:0xf4f8ff}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
-    entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
+    entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', wind:'capeX', aim:false,
                 smash:{y:-0.05,z:3.0} },
     // Voidstrike's GLB is already posed prone along +Z (head forward, back up) — no yaw, only a
     // slight nose-up so she reads as climbing into the smash like the others.
@@ -3719,17 +3875,17 @@
   // MAPS — swappable themes. Each retunes sky/light/ground/road/buildings + the hit sound.
   // ===================================================================================
   const THEMES = {
-    // TOKYO — a narrow back street after rain: overcast dusk sky, wet black asphalt throwing the
-    // signage back at you, and buildings buried under stacked neon from pavement to roofline.
+    // TOKYO — a Shibuya side street at midday: hard blue sky, bright sun, and buildings whose
+    // whole frontage is mounted signboards. Night mode turns it into the lantern-lit sakura evening.
     nyc: { name:'Tokyo', tag:'SMASH THROUGH TOKYO', hit:'crash',
-      ground:0x23262e, groundEmissive:0x090a0e, clouds:false, skyTop:0x1a2740, fog:0x2b3550, skyBot:0x55627e,
-      hemiSky:0xa8bcdc, hemiGround:0x3a4152, sunColor:0xdfe8f8, sunInt:1.15,
-      road:{ asphalt:'#0b0c10', edge:'#8794a4', dash:'#cfc79a', dashed:true, sidewalk:'#3f444d', curb:'#5c636e', wet:true },
-      amb:{ color:0xcfe0ff, size:0.34, op:0.5, fall:16, swirl:0.5, yMin:0.5, yMax:26 },   // fine falling drizzle
-      building:{ style:'window', tower:[0.94,0.10,0.86], towerEmissive:0x3a0a20, towerEdge:0xff4d8d,
-                 decorA:[0.60,0.07,0.60], decorB:[0.95,0.09,0.55], decorEdge:0x2a3242 },
+      ground:0x8e9691, groundEmissive:0x000000, clouds:true, skyTop:0x1878e8, fog:0xbcdcf8, skyBot:0xf2f9ff,
+      hemiSky:0xeaf5ff, hemiGround:0x8a918c, sunColor:0xfff8e8, sunInt:2.0,
+      road:{ asphalt:'#43474d', edge:'#f4f6f8', dash:'#f4f6f8', dashed:true, sidewalk:'#b9beC4', curb:'#8d9298' },
+      amb:{ color:0xffd7e6, size:0.5, op:0.5, fall:2.6, swirl:2.6, yMin:0.5, yMax:24 },   // drifting sakura petals
+      building:{ style:'window', tower:[0.09,0.06,0.88], towerEmissive:0x2a1c00, towerEdge:0xffb13b,
+                 decorA:[0.10,0.05,0.84], decorB:[0.58,0.04,0.80], decorEdge:0x8b939c },
       roofs:false, bubbles:false, mountains:false, tokyo:true,
-      night:{ skyTop:0x05080f, fog:0x0d121e, skyBot:0x18202f, hemiSky:0x2b3550, hemiGround:0x14171e, sunColor:0x6b7a9c, sunInt:0.3, lamp:0xffd9a0, glow:0x2a0a1c } },
+      night:{ skyTop:0x120a24, fog:0x2a1030, skyBot:0x431a44, hemiSky:0x6d3a63, hemiGround:0x241426, sunColor:0xb079a8, sunInt:0.55, lamp:0xff9a5c, glow:0x3a1020 } },
     aero: { name:'Frutiger Aero', tag:'GLIDE THROUGH THE AERO', hit:'bubble',
       ground:0x11ea34, groundEmissive:0x14751f, clouds:true, skyTop:0x009bff, fog:0xbaf4ff, skyBot:0xf4ffff,
       hemiSky:0xe6fdff, hemiGround:0x2bf24a, sunColor:0xffffff, sunInt:1.7,
@@ -3746,7 +3902,7 @@
       amb:{ color:0xffc06a, size:0.55, op:0.55, fall:-1.4, swirl:1.6, yMin:1, yMax:24 },  // warm embers rising off the citadel
       building:{ style:'stone', tower:[0.09,0.34,0.52], towerEmissive:0x3a1e00, towerEdge:0xe0b054,
                  decorA:[0.09,0.28,0.44], decorB:[0.1,0.18,0.52], decorEdge:0x4a3a24, castle:true },
-      roofs:true, bubbles:false, mountains:true,
+      roofs:true, bubbles:false, mountains:true, clouds:true,
       night:{ skyTop:0x080f22, fog:0x27223a, skyBot:0x38324e, hemiSky:0x3a3556, hemiGround:0x2a2418, sunColor:0x9a94b8, sunInt:0.4, lamp:0xff8a2a, glow:0x2a1400 } },
     backrooms: { name:'The Backrooms', tag:'CARVE THROUGH THE LEVEL', hit:'drywall',
       ground:0xb9a05a, groundEmissive:0x000000, clouds:false, skyTop:0x2a2410, fog:0xb5a05a, skyBot:0xc9b46a,
@@ -3946,6 +4102,12 @@
         try{localStorage.setItem('invrun_sound',on?'1':'0');}catch(e){} };
       soundBtn.onclick=()=>applySound(this.audio.muted);   // muted->true means currently off, so turn on
       applySound((localStorage.getItem('invrun_sound')??'1')==='1');
+      // music toggle (persisted, independent of effects)
+      const musicBtn=document.getElementById('music-btn');
+      const applyMusic=(on)=>{ this.audio.resume(); this.audio.setMusic(on);
+        musicBtn.textContent=on?'ON':'OFF'; musicBtn.classList.toggle('on',on); };
+      musicBtn.onclick=()=>applyMusic(!this.audio.musicOn);
+      musicBtn.textContent=this.audio.musicOn?'ON':'OFF'; musicBtn.classList.toggle('on',this.audio.musicOn);
       // NIGHT MODE toggle (turns the current map to night: dark sky, stars, street lamps, lit buildings)
       const nightBtn=document.getElementById('night-btn');
       const setNight=(on)=>{ this.maps.setNight(on); nightBtn.textContent=on?'ON':'OFF'; nightBtn.classList.toggle('on',on); };
