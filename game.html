@@ -60,6 +60,14 @@
     body{ font-family:var(--f-ui); font-weight:600; color:var(--text); user-select:none; -webkit-user-select:none;
           -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
     #app{ position:fixed; inset:0; }
+    /* ---- LOOK: vignette + grade. Both are pure overlays on top of the canvas; deleting these
+       two rules (or setting LOOK.vignette / LOOK.grade to false) returns the raw render. ---- */
+    #vignette{ position:fixed; inset:0; z-index:3; pointer-events:none; opacity:0; transition:opacity .4s;
+      background:
+        radial-gradient(120% 95% at 50% 42%, rgba(0,0,0,0) 52%, rgba(0,0,0,.30) 84%, rgba(0,0,0,.52) 100%),
+        linear-gradient(180deg, rgba(0,0,0,.14) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 74%, rgba(0,0,0,.20) 100%); }
+    body.look-vig #vignette{ opacity:1; }
+    body.look-grade #app>canvas{ filter:saturate(1.10) contrast(1.06) brightness(1.02); }
     canvas{ display:block; }
     .hidden{ display:none !important; }
 
@@ -666,6 +674,7 @@
     <symbol id="i-burst" viewBox="0 0 24 24"><path d="M12 0l2.2 6.4L20.5 3.5 17.6 9.8 24 12l-6.4 2.2 2.9 6.3-6.3-2.9L12 24l-2.2-6.4-6.3 2.9 2.9-6.3L0 12l6.4-2.2L3.5 3.5 9.8 6.4 12 0Z"/></symbol>
   </svg>
   <div id="app"></div>
+  <div id="vignette"></div>
   <div id="flash"></div>
   <div id="impact-burst"></div>
   <div id="vignette"></div>
@@ -1482,8 +1491,24 @@
       this.game=game;
       // debris pool (manual lightweight physics, no solver)
       this.debris=[];
-      const dgeo=new THREE.BoxGeometry(1,1,1);
+      // Rubble reads cheap when every chunk is the same perfect cube. Three chipped silhouettes,
+      // each jittered per-vertex once at build time, so a burst looks like broken masonry.
+      // LOOK.richDebris=false falls back to the original box.
+      const dgeos=[];
+      { const mk=(g)=>{ const P=g.attributes.position;
+          for(let i=0;i<P.count;i++){ P.setXYZ(i, P.getX(i)*(0.72+Math.random()*0.56),
+                                              P.getY(i)*(0.72+Math.random()*0.56),
+                                              P.getZ(i)*(0.72+Math.random()*0.56)); }
+          g.computeVertexNormals(); return g; };
+        if(LOOK.richDebris){
+          dgeos.push(mk(new THREE.BoxGeometry(1,1,1)));
+          dgeos.push(mk(new THREE.DodecahedronGeometry(0.62,0)));
+          dgeos.push(mk(new THREE.BoxGeometry(1.4,0.7,0.9)));
+          dgeos.push(mk(new THREE.IcosahedronGeometry(0.6,0)));
+        } else dgeos.push(new THREE.BoxGeometry(1,1,1));
+      }
       for(let i=0;i<160;i++){
+        const dgeo=dgeos[i%dgeos.length];
         const m=new THREE.Mesh(dgeo,new THREE.MeshStandardMaterial({color:0x888888,roughness:.9,flatShading:true}));
         m.visible=false; m.castShadow=true; game.scene.add(m);
         this.debris.push({mesh:m,vel:new THREE.Vector3(),spin:new THREE.Vector3(),life:0,max:1});
@@ -1573,8 +1598,8 @@
         const d=this.debris[this._dPtr=(this._dPtr+1)%this.debris.length];
         d.mesh.visible=true;
         d.mesh.position.copy(pos).add(new THREE.Vector3(rand(-2,2),rand(-2,2),rand(-2,2)));
-        const s=rand(0.4,1.4); d.mesh.scale.setScalar(s);
-        d.mesh.material.color.copy(color).offsetHSL(0,0,rand(-0.05,0.05));
+        const s=rand(0.30,1.05); d.mesh.scale.set(s*rand(0.8,1.25), s*rand(0.8,1.25), s*rand(0.8,1.25));
+        d.mesh.material.color.copy(color).offsetHSL(rand(-0.015,0.015), rand(-0.10,0.06), rand(-0.14,0.10));
         d.vel.set(rand(-1,1),rand(0.15,1.1),rand(-1,1)).normalize().multiplyScalar(power*rand(0.5,1.2));
         // no forward bias: the villain overtakes the debris so it streams PAST the camera (speed!)
         d.spin.set(rand(-8,8),rand(-8,8),rand(-8,8));
@@ -1705,6 +1730,24 @@
   // laterally correct inside a razor-thin slice of z, while a long one forgives the same swing
   // over a long stretch. That single number was worth ~1.7x on time-to-200k between those maps.
   const PLAY={ laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hitDepth:8 };
+
+  // How hard the villain rolls into a turn. Both zero = he stays dead level and only slides
+  // sideways, which is the only way a left turn and a right turn can look identical on a mesh
+  // that is not itself symmetric. Restore {group:1, model:0.32} for the old banking flight.
+  const BANK_ROLL={ group:0, model:0 };
+
+  // ===================================================================================
+  // LOOK — the presentation pass. Everything here is cosmetic and every item is a switch:
+  // flip any of these to false and that piece goes away with no other consequence.
+  // ===================================================================================
+  const LOOK={
+    richDebris:true,   // chipped rubble shapes instead of identical grey cubes
+    vignette:true,     // soft dark corners so the frame reads as a shot, not a viewport
+    grade:true,        // gentle contrast/saturation lift over the canvas
+    contactShadow:true,// a soft shadow on the ground under the villain — grounds him in the world
+    softerFog:true,    // per-map fog pulled in so the horizon fades instead of cutting off
+    richerSun:true,    // tighter, higher-resolution shadow map
+  };
 
   const TIERS=[
     {name:'glance',  min:0,   score:40,  mom:11, adr:8,  shake:0.25, debris:6,  flash:0.08},
@@ -1857,6 +1900,19 @@
         this.capeGeo=cg; this._capeBase=pos.slice();
         this.cape=new THREE.Mesh(cg,capeM); this.cape.castShadow=true; this.rig.add(this.cape); }
       // FIRE AURA
+      // CONTACT SHADOW: a soft blob on the ground directly under the villain. Cheap, and it is
+      // the single biggest thing that stops a flying character looking pasted onto the scene.
+      if(LOOK.contactShadow){
+        const c=document.createElement('canvas'); c.width=c.height=64; const cx2=c.getContext('2d');
+        const g2=cx2.createRadialGradient(32,32,0,32,32,32);
+        g2.addColorStop(0,'rgba(0,0,0,.55)'); g2.addColorStop(0.55,'rgba(0,0,0,.22)'); g2.addColorStop(1,'rgba(0,0,0,0)');
+        cx2.fillStyle=g2; cx2.fillRect(0,0,64,64);
+        const t2=new THREE.CanvasTexture(c);
+        this.contactShadow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),
+          new THREE.MeshBasicMaterial({map:t2,transparent:true,depthWrite:false,opacity:0.75}));
+        this.contactShadow.rotation.x=-Math.PI/2; this.contactShadow.renderOrder=-1;
+        this.game.scene.add(this.contactShadow);
+      }
       this.fireAura=new THREE.Mesh(new THREE.SphereGeometry(1.9,14,14),
         new THREE.MeshBasicMaterial({color:0xff5a14,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
       this.fireAura.position.z=0.2; this.fireAura.visible=false; this.rig.add(this.fireAura);
@@ -2039,11 +2095,22 @@
         this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
-      this.bank =damp(this.bank, sx*0.7,8,dt);     // leans into turns (visual weight)
+      // BANK is still tracked (the cape shader reads it), but the villain no longer ROLLS.
+      // A roll on an asymmetric mesh can never look identical left and right, so the fix is to
+      // not roll at all: he simply moves side to side, dead level, exactly like the other way.
+      // Set BANK_ROLL back to 0.7 / 0.32 below to restore the old leaning flight.
+      this.bank =damp(this.bank, sx*0.7,8,dt);
       this._smashPulse=damp(this._smashPulse,0,4,dt);
 
+      if(this.contactShadow){                     // track the villain, fade and spread with altitude
+        const gy=0.08, h=Math.max(0.5,this.pos.y-gy);
+        this.contactShadow.position.set(this.pos.x, gy, this.pos.z+1.2);
+        const sc=clamp(5.5+h*0.20, 5.5, 12);
+        this.contactShadow.scale.set(sc, sc*1.45, 1);
+        this.contactShadow.material.opacity=clamp(0.62-h*0.016, 0.10, 0.62);
+      }
       this.group.position.copy(this.pos);
-      this.group.rotation.set(0,0,this.bank);
+      this.group.rotation.set(0,0,this.bank*BANK_ROLL.group);   // BANK_ROLL.group = 0 -> no lean
       const now=performance.now();
       if(this._windU) this._windU.value=now*0.006;        // drives the model's flowing cape
       if(this.villainModel){   // ALIVE flight: heroic arch + gentle undulation + roll into turns (not a rigid plank)
@@ -2053,7 +2120,7 @@
         this.villainModel.rotation.x=this._mRotX;
         // NO idle roll term here: it would shift the neutral, so leaning left and leaning right
         // would not be mirror images of each other. Roll is purely a function of steering.
-        this.villainModel.rotation.z=-this.bank*0.32;
+        this.villainModel.rotation.z=-this.bank*BANK_ROLL.model;
         this.villainModel.position.y=this._mBaseY + Math.sin(now*0.003)*0.075;
         if(this._rigSway){ const t=now*0.003;                    // rigged characters: wings/cape flap gently
           for(const sB of this._rigSway){ const bn=sB.b;
@@ -4031,6 +4098,10 @@
       this.scene=new THREE.Scene();
       const HORIZON=0x9fd0ff;
       this.scene.fog=new THREE.Fog(HORIZON,180,680);            // road/buildings fade into the sky
+      if(LOOK.softerFog){ this.scene.fog.near=150; this.scene.fog.far=620; }   // pull the horizon in a touch
+      { const bc=document.body.classList;
+        if(LOOK.vignette) bc.add('look-vig');
+        if(LOOK.grade) bc.add('look-grade'); }
 
       // ----- gradient SKY dome (follows the camera) -----
       const skyGeo=new THREE.SphereGeometry(900,32,16);
@@ -4080,7 +4151,7 @@
       // ----- lights: bright daytime (colours retuned per map) -----
       this.hemi=new THREE.HemisphereLight(0xcfe6ff,0x6b7a55,1.0); this.scene.add(this.hemi);   // sky / ground bounce
       const sun=new THREE.DirectionalLight(0xfff2d6,1.5); sun.position.set(60,90,-20); sun.castShadow=true;
-      sun.shadow.mapSize.set(1024,1024); const c=sun.shadow.camera;
+      sun.shadow.mapSize.set(LOOK.richerSun?2048:1024,LOOK.richerSun?2048:1024); const c=sun.shadow.camera;
       c.left=-100;c.right=100;c.top=100;c.bottom=-100;c.near=1;c.far=320; sun.shadow.bias=-0.0004;
       this.scene.add(sun); this.scene.add(sun.target); this.sun=sun;
 

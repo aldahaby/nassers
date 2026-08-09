@@ -74,3 +74,33 @@ very long message, so this is best for small ones.
 
 For any of these, the swap is: put the PNG in `assets/`, and I replace the canvas call with a
 `TextureLoader().load('./assets/yourfile.png')`.
+
+## Reverting the look / feel changes
+
+Everything cosmetic added in the polish pass sits behind two objects near the top of the script in
+`game.html`. Flip a value and that piece is gone — nothing else depends on any of them.
+
+```js
+// no lean at all (current). Restore {group:1, model:0.32} for the old banking flight.
+const BANK_ROLL = { group:0, model:0 };
+
+const LOOK = {
+  richDebris:    true,  // chipped rubble shapes -> false gives the old identical grey cubes
+  vignette:      true,  // dark corners
+  grade:         true,  // saturation/contrast lift over the canvas
+  contactShadow: true,  // soft shadow on the ground under the villain
+  softerFog:     true,  // horizon fades in a touch sooner
+  richerSun:     true,  // 2048 shadow map -> false goes back to 1024
+};
+```
+
+Gameplay numbers live in one object too, if pacing ever needs retuning:
+
+```js
+const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hitDepth:8 };
+```
+
+- `xBox` — how far off centre the player may fly, shared by every map.
+- `hitDepth` — shared collision depth of a target, so a thin wall and a long train car are equally
+  forgiving.
+- `tierVol` — the volume every hittable target reports, so score/momentum per smash is map-independent.
