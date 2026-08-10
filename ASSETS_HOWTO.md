@@ -104,3 +104,25 @@ const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hit
 - `hitDepth` — shared collision depth of a target, so a thin wall and a long train car are equally
   forgiving.
 - `tierVol` — the volume every hittable target reports, so score/momentum per smash is map-independent.
+
+## Powers — all the tuning in one object
+
+```js
+const PWR = {
+  max:100,          // a shot needs the bar FULL
+  perSmash:9,       // energy per clean smash
+  perCloseCall:6,   // energy per close call
+  cooldown:7.0,     // hard lockout after firing, on top of the bar
+  range:150,        // how far ahead a gate can be and still be targetable
+  gateScore:3.0,    // score multiplier for clearing a gate with a power
+  slamCost:34,      // momentum lost for body-slamming a gate
+};
+const PLAY = { ..., gateEvery:12 };   // a gate every 12 rows
+```
+
+The economy is deliberately tight: `perSmash × gateEvery = 108` against a 100 bar, so perfect play
+arrives at each gate exactly charged, and one dropped smash means skipping a gate or eating it.
+Raise `gateEvery` to make gates rarer, lower `perSmash` to make charge scarcer.
+
+Per-character power names and colours live in `POWERS` next to it. Setting `gateEvery` very high
+(e.g. 9999) effectively turns the whole mechanic off without removing any code.

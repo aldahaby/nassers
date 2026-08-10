@@ -173,6 +173,18 @@
                 background:radial-gradient(circle at 50% 36%, #ffb14a, #e0431f);
                 box-shadow:inset 0 2px 3px rgba(255,240,200,.6), inset 0 -6px 12px rgba(90,10,0,.55), 0 5px 0 #8f2a10, 0 9px 12px rgba(0,0,0,.45), 0 0 22px rgba(255,120,30,.4);
                 transition:transform .05s,box-shadow .05s; }
+    #btn-power{ right:34px; bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);
+      width:74px; height:74px; overflow:hidden;
+      background:linear-gradient(180deg,#3a2a5e,#1b1030); color:#cfa8ff;
+      box-shadow:inset 0 0 0 2px rgba(190,150,255,.45), inset 0 -6px 12px rgba(20,4,40,.6), 0 3px 0 #17092a, 0 6px 10px rgba(0,0,0,.45);
+      font-family:var(--f-display); font-weight:900; font-size:12px; letter-spacing:1px;
+      display:flex; align-items:center; justify-content:center; }
+    #btn-power #power-fill{ position:absolute; left:0; right:0; bottom:0; height:0%;
+      background:linear-gradient(180deg, rgba(190,110,255,.75), rgba(120,40,220,.55)); pointer-events:none; transition:height .12s; }
+    #btn-power #power-label{ position:relative; z-index:1; text-shadow:0 1px 2px rgba(0,0,0,.7); }
+    #btn-power.rdy{ color:#fff; box-shadow:inset 0 0 0 2px rgba(255,255,255,.85), 0 0 22px rgba(190,110,255,.85), 0 3px 0 #17092a; animation:pwrPulse 1s ease-in-out infinite; }
+    @keyframes pwrPulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
+    #btn-power.tgt{ box-shadow:inset 0 0 0 3px #ffd23a, 0 0 26px rgba(255,190,60,.9), 0 3px 0 #17092a; }
     #btn-boost::before{ content:''; position:absolute; inset:7px; border-radius:50%; box-shadow:inset 0 0 0 2px rgba(255,240,200,.5); }
     #btn-boost:active{ transform:translateY(4px); box-shadow:inset 0 2px 3px rgba(255,240,200,.6), inset 0 -6px 12px rgba(90,10,0,.55), 0 2px 0 #8f2a10, 0 4px 6px rgba(0,0,0,.45); }
     body:not(.touch) #touch{ display:none; }
@@ -389,6 +401,22 @@
     .card.lock .big .svgi{ color:#586079; }
     #gameover-stats .svgi{ color:var(--gold); }
     #loading-overlay .l-emblem{ font-size:0; } #loading-overlay .l-emblem .svgi{ width:58px; height:58px; color:var(--orange); }
+
+    /* ============================ POWERS SHEET ============================ */
+    #pw-list{ max-height:min(46vh,400px); overflow-y:auto; }
+    .pw{ display:flex; align-items:center; gap:11px; padding:9px 10px; margin-bottom:8px;
+      background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.18));
+      clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
+    .pw-who{ flex:1 1 auto; min-width:0; }
+    .pw-name{ font-family:var(--f-display); font-weight:900; font-size:13px; letter-spacing:.06em;
+      text-transform:uppercase; color:#fff; }
+    .pw-set{ font-family:var(--f-ui); font-size:11.5px; color:var(--muted); margin-top:2px; }
+    .pw-dot{ flex:none; width:34px; height:34px; border-radius:50%; }
+    .pw-tag{ flex:none; font-family:var(--f-num); font-weight:900; font-size:10px; letter-spacing:.08em;
+      padding:3px 7px 2px; color:#0b0b10; }
+    .pw-rules{ margin-top:12px; padding-top:11px; border-top:1px solid rgba(255,255,255,.14);
+      font-family:var(--f-ui); font-size:11.5px; line-height:1.65; color:rgba(255,255,255,.66); }
+    .pw-rules b{ color:var(--elec); letter-spacing:.05em; }
 
     /* ============================ LEGAL SHEETS ============================ */
     .legal{ max-height:min(62vh,560px); overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -698,6 +726,7 @@
   <div id="touch">
     <div id="joy-base"><div id="joy-knob"></div></div>
     <div id="btn-boost" class="pad">SURGE</div>
+    <div id="btn-power" class="pad"><span id="power-label">POWER</span><i id="power-fill"></i></div>
   </div>
 
   <!-- Overlays -->
@@ -722,6 +751,7 @@
     <div class="menu-row">
       <button id="settings-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-gear"/></svg></span><span>Settings</span></button>
       <button id="skins-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-helm"/></svg></span><span>Skins</span></button>
+      <button id="powers-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-bolt"/></svg></span><span>Powers</span></button>
       <button id="maps-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-map"/></svg></span><span>Maps</span></button>
     </div>
     <div class="menu-foot">Weave the streets · smash towers · dodge the drones</div>
@@ -981,6 +1011,21 @@
       </div>
     </div>
   </div>
+  <div id="powers-modal" class="modal hidden">
+    <div class="sheet">
+      <div class="sheet-head"><span>Powers</span><button class="x" data-close>×</button></div>
+      <div class="sheet-note">Every villain carries two. One button fires the one the road needs —
+        a <b>beam</b> cuts an <b>Armored</b> tower open, a <b>nova</b> shatters a <b>Shielded</b> row.</div>
+      <div id="pw-list"></div>
+      <div class="pw-rules">
+        <div><b>CHARGE</b> Only clean smashes and close calls fill the bar. Never time.</div>
+        <div><b>COST</b> A shot needs the bar completely full, then locks out for 7 seconds.</div>
+        <div><b>DISCIPLINE</b> Firing with no gate ahead does nothing and keeps your charge.</div>
+        <div><b>PENALTY</b> Body-slam a gate instead and it costs you a third of your momentum and half your streak.</div>
+        <div><b>CLOSE CALL</b> Shave past a tower without touching it for bonus score and free charge.</div>
+      </div>
+    </div>
+  </div>
   <div id="maps-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Maps</span><button class="x" data-close>×</button></div>
@@ -1134,13 +1179,14 @@
   // steer that way instantly (no drag distance). Keyboard A/D + arrows also work. + surge edge.
   // ===================================================================================
   class InputSystem {
-    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._restart=false; this.joy=0;
+    constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._power=false; this._restart=false; this.joy=0;
       this.gyro=0; this.gyroOn=false; this.gyroBase=null;
       this.moveSens=+(localStorage.getItem('invrun_movesens')||1); this.gyroSens=+(localStorage.getItem('invrun_gyrosens')||1); }
     init(){
       addEventListener('keydown',e=>{
         if(e.repeat) return; this.keys.add(e.code);
         if(e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='Space') this._surge=true;
+        if(e.code==='KeyE'||e.code==='KeyQ') this._power=true;
         if(e.code==='KeyR') this._restart=true;
       });
       addEventListener('keyup',e=>this.keys.delete(e.code));
@@ -1180,6 +1226,7 @@
       else this._setGyroBtn(btn,'N/A',false);
     }
     consumeSurge(){ const v=this._surge; this._surge=false; return v; }
+    consumePower(){ const v=this._power; this._power=false; return v; }
     consumeRestart(){ const v=this._restart; this._restart=false; return v; }
     _bindTouch(){
       if(matchMedia('(pointer: coarse)').matches||'ontouchstart' in window) document.body.classList.add('touch');
@@ -1202,6 +1249,11 @@
       if(boost){
         boost.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._surge=true; },{passive:false});
         boost.addEventListener('mousedown',e=>{ e.stopPropagation(); this._surge=true; });
+      }
+      const pw=document.getElementById('btn-power');
+      if(pw){
+        pw.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._power=true; },{passive:false});
+        pw.addEventListener('mousedown',e=>{ e.stopPropagation(); this._power=true; });
       }
     }
   }
@@ -1729,12 +1781,41 @@
   // backrooms partition is 1.1 deep and a metro car is 14 — but a thin target only lets you be
   // laterally correct inside a razor-thin slice of z, while a long one forgives the same swing
   // over a long stretch. That single number was worth ~1.7x on time-to-200k between those maps.
-  const PLAY={ laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hitDepth:8 };
+  const PLAY={ laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hitDepth:8, gateEvery:12 };
 
   // How hard the villain rolls into a turn. Both zero = he stays dead level and only slides
   // sideways, which is the only way a left turn and a right turn can look identical on a mesh
   // that is not itself symmetric. Restore {group:1, model:0.32} for the old banking flight.
   const BANK_ROLL={ group:0, model:0 };
+
+  // ===================================================================================
+  // POWERS — every villain carries a SET of two, and the button fires the one the road
+  // demands: a BEAM cuts an Armored tower open, a NOVA shatters a Shielded row. One button,
+  // no menu diving, and it always does the clutch thing.
+  //
+  // Cost is deliberately brutal so powers can never be spam: a shot needs a FULL energy bar,
+  // energy only comes from clean smashes and close calls (never from time), and there is a
+  // hard cooldown on top. Waste one on a normal building and you are defenceless at the next
+  // gate. Firing at nothing does not even fire — the charge is kept.
+  // ===================================================================================
+  const POWERS={
+    dominus:  { beam:{n:'SOLAR LANCE', c:0xfff0d0, c2:0xff8c20},  nova:{n:'TITAN QUAKE', c:0xe8eef5, c2:0x9fb0c4} },
+    frutiger: { beam:{n:'AQUA RAY',    c:0x86ee2e, c2:0x1170d8},  nova:{n:'BLOOM RINGS', c:0x86ee2e, c2:0x2ee6ff} },
+    knight:   { beam:{n:'HELLFIRE',    c:0xff3a2a, c2:0x7a0008},  nova:{n:'BLACK RUIN',  c:0xc4121a, c2:0x2b2228} },
+    patriot:  { beam:{n:'STARBOLT',    c:0xf4f8ff, c2:0x1a3fd8},  nova:{n:'LIBERTY WAVE',c:0xffffff, c2:0x2f6bff} },
+    entity:   { beam:{n:'WITHER RAY',  c:0xe8f24a, c2:0x9fb0a4},  nova:{n:'DREAD PULSE', c:0xc9d117, c2:0x6a7a66} },
+    countess: { beam:{n:'VOID LANCE',  c:0xff5ce0, c2:0x7b2ff7},  nova:{n:'STORMBREAK',  c:0xd08cff, c2:0x7b2ff7} },
+  };
+  // The whole economy in one place, so it can be retuned without hunting through the file.
+  const PWR={
+    max:100,          // a shot needs the bar FULL
+    perSmash:9,       // ~11 clean smashes to charge one shot
+    perCloseCall:6,   // rewarded for shaving a building instead of playing safe
+    cooldown:7.0,     // seconds of hard lockout after a shot, on top of the bar
+    range:150,        // how far ahead a gate can be and still be a valid target
+    gateScore:3.0,    // score multiplier for clearing a gate with the right power
+    slamCost:34,      // momentum lost for body-slamming a gate without a power
+  };
 
   // ===================================================================================
   // LOOK — the presentation pass. Everything here is cosmetic and every item is a switch:
@@ -1758,13 +1839,28 @@
   class ImpactSystem {
     constructor(game){ this.game=game; }
     tierFor(volume){ let t=TIERS[0]; for(const x of TIERS) if(volume>=x.min) t=x; return t; }
-    smash(building){
+    smash(building, powerMul){
       const g=this.game;
+      // A GATE cannot be punched through. Slam one and you lose the run's momentum and your
+      // streak — this is the whole reason powers exist, so the penalty has to bite.
+      if(building.gate && !powerMul){
+        building.hit=true; g.city.shatter(building);
+        g.momentum.value=clamp(g.momentum.value-PWR.slamCost,0,g.momentum.MAX);
+        if(g.momentum.value<=0) g.run.toGameOver();
+        g.combo.count=Math.floor(g.combo.count*0.5);   // setback, not a wipe
+        g.ui.flashCombo(g.combo.count);
+        g.effects.flash(0.42); g.camera.shake(0.85);
+        g.effects.burst(building.mesh.position.clone(), new THREE.Color(building.gate==='armor'?0xff7a00:0x00d8ff), 16, 20);
+        g.audio.gateBlock();
+        if(g.ui) g.ui.flashHint('BLOCKED — USE YOUR POWER');
+        return;
+      }
       // Reward is NOT read off the mesh: a backrooms partition is 1.1 deep and a metro car is 14,
       // which used to pay 120 vs 650 for the same skill. Every hittable target reports PLAY.tierVol.
       const tier=this.tierFor(PLAY.tierVol);
       const combo=g.combo.hit();
-      const gained=Math.round(tier.score*g.combo.multiplier()*g.adrenaline.scoreMul());
+      const gained=Math.round(tier.score*g.combo.multiplier()*g.adrenaline.scoreMul()*(powerMul||1));
+      if(g.powers) g.powers.gain(PWR.perSmash);
 
       g.momentum.addHit(tier.mom);
       g.adrenaline.addHit(tier);
@@ -3124,8 +3220,40 @@
       const med=this.game.theme.building.style==='stone';   // medieval -> narrow tall watch towers + wide keeps
       const station=!!this.game.theme.station;               // metro -> smash BIG TRAINS, no background buildings
       const b=this._take(); if(!b) return;
-      // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
       const back=!!(this.game.theme&&this.game.theme.backrooms);
+      // hittable: NYC/Aero towers vs medieval WATCH TOWERS vs metro BIG TRAIN CARS
+      // ---- GATEKEEPERS: every Nth row is a wall you cannot punch through. Same lane, same
+      // spacing, same width as any other target, so pacing is untouched — only the ANSWER differs.
+      this._rowN=(this._rowN||0)+1;
+      const gateReady = this._rowN>=6 && (this._rowN % PLAY.gateEvery)===0;
+      if(gateReady){
+        const shielded = (this._rowN % (PLAY.gateEvery*2))===0;     // alternate armored / shielded
+        const H = back? this.BR_CEIL : (station? rand(9,11) : rand(26,40));
+        const Y = back? this.BR_CEIL/2 : undefined;
+        if(shielded){
+          // a linked row of THREE behind one energy grid — one nova takes the whole row
+          const gid=++this._gateId, sw=rand(PLAY.wLo,PLAY.wHi);
+          for(let k=-1;k<=1;k++){
+            const gb=(k===-1)?b:this._take(); if(!gb) break;
+            this._place(gb, px+this.lastTowerX+k*(sw+0.6), z, sw, H, back?1.1:rand(6,9), false);
+            if(Y!==undefined) gb.mesh.position.y=Y;
+            gb.gate='shield'; gb.gid=gid; this._dressGate(gb);
+          }
+        } else {
+          this._place(b, px+this.lastTowerX, z, rand(PLAY.wLo,PLAY.wHi)*1.15, H, back?1.1:rand(6,9), false);
+          if(Y!==undefined) b.mesh.position.y=Y;
+          b.gate='armor'; b.gid=++this._gateId; this._dressGate(b);
+        }
+        if(!back && !station){                    // gates still get their block of skyline behind them
+          const edge0=this.game.theme.tokyo ? (this.roadHalf+8) : (this.roadHalf+12);
+          for(const side of [-1,1]){ let inner=edge0;
+            for(let k=0;k<3;k++){ const nb=this._take(); if(!nb) break;
+              const dw=rand(9,16), dd=rand(9,16), dh=rand(16,44)+k*rand(2,7);
+              this._place(nb, px+side*(inner+dw/2), z+rand(-9,9), dw, dh, dd, true);
+              nb.mesh.castShadow=k<2; inner += dw + rand(2,7); } }
+        }
+        return;
+      }
       if(back){
         // BACKROOMS: ONE wallpapered partition WALL per row, floor -> ceiling. Single target per
         // row keeps the rhythm identical to every other map (no stacked pairs, no free double combos).
@@ -3158,6 +3286,49 @@
           inner += dw + rand(2,7);                    // next building past this one with a small alley gap
         }
       }
+    }
+    // A gate has to read as "do not touch" from a long way off: black hazard body, a hard glowing
+    // rim, and a slowly pulsing warning shell around it.
+    _dressGate(b){
+      const armor = b.gate==='armor';
+      const m=b.mesh.material;
+      if(!this._gateTexA) this._gateTexA=this._gateTexture(true);
+      if(!this._gateTexS) this._gateTexS=this._gateTexture(false);
+      m.map = armor? this._gateTexA : this._gateTexS;
+      m.emissiveMap = m.map;
+      m.color.setHex(0xffffff);
+      m.emissive.setHex(armor?0xff7a00:0x00d8ff);
+      m.emissiveIntensity = 0.85;
+      m.metalness=0.55; m.roughness=0.35;
+      m.map.repeat.set(Math.max(1,Math.round(b.w/9)), Math.max(1,Math.round(b.h/12)));
+      m.needsUpdate=true;
+      b.edge.material.color.setHex(armor?0xff9a1f:0x35e8ff);
+      b.edge.material.opacity=1;
+      b.roof.visible=false; b.crown.visible=false; b.cap.visible=false;
+      if(b.hlL){ b.hlL.visible=b.hlR.visible=b.wsh.visible=b.sign.visible=false; }
+    }
+    _gateTexture(armor){
+      const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+      if(armor){
+        x.fillStyle='#15171c'; x.fillRect(0,0,128,128);
+        x.strokeStyle='#ff8a12'; x.lineWidth=9;                       // hazard chevrons
+        for(let i=-128;i<256;i+=34){ x.beginPath(); x.moveTo(i,0); x.lineTo(i+128,128); x.stroke(); }
+        x.fillStyle='rgba(10,11,14,.62)'; x.fillRect(0,0,128,128);
+        x.strokeStyle='#ffb13b'; x.lineWidth=7; x.strokeRect(6,6,116,116);
+        x.fillStyle='#2a2e36';                                        // armour plate bolts
+        for(let y=18;y<120;y+=26) for(let vx=18;vx<120;vx+=26){ x.beginPath(); x.arc(vx,y,4,0,6.2832); x.fill(); }
+        x.strokeStyle='rgba(255,150,20,.9)'; x.lineWidth=4;           // a lit seam down the middle
+        x.beginPath(); x.moveTo(64,10); x.lineTo(64,118); x.stroke();
+      } else {
+        x.fillStyle='#08161c'; x.fillRect(0,0,128,128);
+        x.strokeStyle='rgba(53,232,255,.85)'; x.lineWidth=3;          // energy grid
+        for(let i=0;i<=128;i+=16){ x.beginPath(); x.moveTo(i,0); x.lineTo(i,128); x.moveTo(0,i); x.lineTo(128,i); x.stroke(); }
+        x.fillStyle='rgba(53,232,255,.22)';
+        for(let y=0;y<128;y+=32) for(let vx=0;vx<128;vx+=32) x.fillRect(vx+4,y+4,24,24);
+        x.strokeStyle='#7cf6ff'; x.lineWidth=7; x.strokeRect(5,5,118,118);
+      }
+      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8;
+      t.colorSpace=THREE.SRGBColorSpace; return t;
     }
     shatter(b){
       b.active=false; b.hit=true; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false;
@@ -3550,6 +3721,134 @@
   }
 
   // ===================================================================================
+  // POWERS — energy, cooldown, targeting, and the visuals.
+  // ===================================================================================
+  class PowerSystem {
+    constructor(game){
+      this.game=game; this.energy=0; this.cd=0; this._t=0;
+      const G=game.scene;
+      // ---- BEAM: two lances that leave the eyes, converge, and punch a hole through the tower.
+      const bg=new THREE.CylinderGeometry(1,1,1,12,1,true);
+      const mk=(op)=>new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,
+                     opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+      this.beams=[]; for(let i=0;i<2;i++){
+        const core=mk(1), glow=mk(0.42);
+        core.visible=glow.visible=false; G.add(core); G.add(glow);
+        this.beams.push({core,glow});
+      }
+      // ---- muzzle sparks at the eyes, and the impact star where it lands
+      this.muzzle=[]; for(let i=0;i<2;i++){
+        const m=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),
+          new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+        m.visible=false; G.add(m); this.muzzle.push(m);
+      }
+      // ---- NOVA: three expanding rings + a bright shell
+      this.rings=[]; for(let i=0;i<3;i++){
+        const r=new THREE.Mesh(new THREE.TorusGeometry(1,0.045,8,48),
+          new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+        r.visible=false; G.add(r); this.rings.push(r);
+      }
+      this.shell=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),
+        new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+      this.shell.visible=false; G.add(this.shell);
+      this.fx=0; this.fxMax=1; this.mode='beam';
+      this._c1=new THREE.Color(); this._c2=new THREE.Color();
+      this._from=new THREE.Vector3(); this._to=new THREE.Vector3();
+    }
+    set(){ const k=currentCharKey(); return POWERS[k]||POWERS.dominus; }
+    ready(){ return this.energy>=PWR.max && this.cd<=0; }
+    frac(){ return clamp(this.energy/PWR.max,0,1); }
+    gain(n){ if(this.energy<PWR.max) this.energy=clamp(this.energy+n,0,PWR.max); }
+    reset(){ this.energy=0; this.cd=0; this.fx=0; this._hideAll(); }
+    _hideAll(){ for(const b of this.beams){ b.core.visible=false; b.glow.visible=false; }
+      for(const m of this.muzzle) m.visible=false;
+      for(const r of this.rings) r.visible=false; this.shell.visible=false; }
+    // the gate the player is about to meet, if any
+    target(){
+      const g=this.game, p=g.player; let best=null, bz=1e9;
+      for(const b of g.city.buildings){
+        if(b.hit||b.decor||!b.gate) continue;
+        const z=b.mesh.position.z;
+        if(z>p.pos.z+6 && z<p.pos.z+PWR.range && z<bz){ bz=z; best=b; }
+      }
+      return best;
+    }
+    fire(){
+      if(!this.ready()) return false;
+      const g=this.game, p=g.player, tgt=this.target();
+      if(!tgt) { g.ui.flashHint('NO TARGET — SAVE IT'); return false; }   // charge is kept
+      const set=this.set(), armor=tgt.gate==='armor';
+      const pw = armor? set.beam : set.nova;
+      this.energy=0; this.cd=PWR.cooldown; this.mode=armor?'beam':'nova';
+      this._c1.setHex(pw.c); this._c2.setHex(pw.c2);
+      this.fx=this.fxMax=armor?0.55:0.7;
+      this._from.set(p.pos.x, p.pos.y+0.5, p.pos.z+1.6);
+      this._to.copy(tgt.mesh.position);
+      // destroy the gate (and every block sharing its grid)
+      const kill=[];
+      for(const b of g.city.buildings) if(b.gate && b.gid===tgt.gid && !b.hit) kill.push(b);
+      let n=0;
+      for(const b of kill){ b.gate=null; g.impact.smash(b, PWR.gateScore); n++; }
+      g.effects.flash(armor?0.5:0.62); g.camera.shake(armor?0.9:1.15);
+      g.audio.power(armor);
+      g.ui.scorePop(pw.n, 'eth', true);
+      g.ui.flashHint(pw.n+(n>1?'  ×'+n:''));
+      return true;
+    }
+    update(dt){
+      this._t+=dt;
+      if(this.cd>0) this.cd=Math.max(0,this.cd-dt);
+      if(this.fx<=0){ this._hideAll(); return; }
+      this.fx=Math.max(0,this.fx-dt);
+      const k=1-this.fx/this.fxMax;                 // 0 -> 1 over the burst
+      const p=this.game.player;
+      this._from.set(p.pos.x, p.pos.y+0.55, p.pos.z+1.6);
+      if(this.mode==='beam'){
+        const grow=clamp(k*4.2,0,1), fade=1-Math.max(0,(k-0.55)/0.45);
+        const UP=new THREE.Vector3(0,1,0), eye=new THREE.Vector3(), dir=new THREE.Vector3(),
+              mid=new THREE.Vector3(), q=new THREE.Quaternion();
+        for(let i=0;i<2;i++){
+          // each lance starts at its own eye and is aimed at the target, so the two CONVERGE
+          eye.copy(this._from); eye.x += (i?1:-1)*0.62; eye.y += 0.10;
+          dir.subVectors(this._to,eye); const len=dir.length();
+          mid.addVectors(eye,this._to).multiplyScalar(0.5);
+          q.setFromUnitVectors(UP, dir.clone().normalize());
+          // shrink the far end into the near end as it grows, so it reads as fired, not spawned
+          const b=this.beams[i], flick=0.85+0.3*Math.sin(this._t*70+i*2.1);
+          for(const [m,w,col,op] of [[b.core,0.16,this._c1,1.0],[b.glow,0.52,this._c2,0.45]]){
+            m.visible=true;
+            m.position.lerpVectors(eye, mid, grow);
+            m.quaternion.copy(q);
+            m.scale.set(w*flick, len*grow, w*flick);
+            m.material.color.copy(col); m.material.opacity=op*fade;
+          }
+          const mz=this.muzzle[i]; mz.visible=true;
+          mz.position.copy(eye);
+          mz.scale.setScalar(0.26+0.52*(1-k));            // a spark at the eye, not a fog bank
+          mz.material.color.copy(this._c1); mz.material.opacity=fade;
+        }
+      } else {
+        for(let i=0;i<3;i++){
+          const r=this.rings[i], kk=clamp(k*1.35-i*0.16,0,1);
+          if(kk<=0){ r.visible=false; continue; }
+          r.visible=true; r.position.copy(this._to);
+          r.lookAt(this.game.camera.cam.position);
+          const rad=4+kk*44;
+          r.scale.set(rad,rad,rad*0.6);
+          r.material.color.copy(i%2?this._c2:this._c1);
+          r.material.opacity=(1-kk)*0.9;
+        }
+        const kk=clamp(k*1.8,0,1);
+        this.shell.visible=kk<1;
+        this.shell.position.copy(this._to);
+        this.shell.scale.setScalar(3+kk*26);
+        this.shell.material.color.copy(this._c1);
+        this.shell.material.opacity=(1-kk)*0.55;
+      }
+    }
+  }
+
+  // ===================================================================================
   // AUDIO — synthesised WebAudio crash/whoosh/combo hooks. No assets.
   // ===================================================================================
   class AudioSystem {
@@ -3607,6 +3906,35 @@
       s.connect(this.ctx.destination); s.start(0); }catch(e){} }
     // ===== MUSIC — a procedural driving loop (kick/hat/snare + bass arp, Am-F-C-G). It runs only
     // during a run, obeys the master Sound toggle, and INTENSIFIES with the combo (setMusicIntensity).
+    // POWER: a charging swell into a hard release. Beam is a searing descending laser,
+    // nova a deep detonation with a metallic ring-out.
+    power(beam){ if(!this.ctx) return; const t=this.ctx.currentTime, C=this.ctx;
+      const o=C.createOscillator(), g=C.createGain(), f=C.createBiquadFilter();
+      o.type=beam?'sawtooth':'square';
+      o.frequency.setValueAtTime(beam?2400:180,t);
+      o.frequency.exponentialRampToValueAtTime(beam?260:38,t+(beam?0.42:0.55));
+      f.type='lowpass'; f.frequency.setValueAtTime(beam?9000:1400,t); f.Q.value=6;
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.75,t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+(beam?0.55:0.8));
+      o.connect(f); f.connect(g); g.connect(this.master); o.start(t); o.stop(t+0.85);
+      const s2=C.createOscillator(), sg=C.createGain(); s2.type='sine';
+      s2.frequency.setValueAtTime(beam?120:60,t); s2.frequency.exponentialRampToValueAtTime(beam?40:24,t+0.5);
+      sg.gain.setValueAtTime(0.7,t); sg.gain.exponentialRampToValueAtTime(0.0001,t+0.6);
+      s2.connect(sg); sg.connect(this.master); s2.start(t); s2.stop(t+0.62);
+      this._fnoise(beam?0.22:0.4, 0.6, beam?5200:900, beam?'highpass':'lowpass', 0.8);
+      if(!beam) for(let i=0;i<4;i++) setTimeout(()=>this._tone(520+i*180,0.22,'triangle',0.2), 60+i*70); }
+    // GATE BLOCK: a dead, ugly clang. It should feel like a mistake.
+    gateBlock(){ if(!this.ctx) return; const t=this.ctx.currentTime;
+      this._fnoise(0.16,0.7,320,'lowpass',0.9);
+      this._tone(92,0.35,'square',0.5); this._tone(61,0.4,'sine',0.45);
+      setTimeout(()=>this._tone(140,0.2,'square',0.25),70); }
+    // CLOSE CALL: the bass drop for shaving a building
+    closeCall(){ if(!this.ctx) return; const t=this.ctx.currentTime, C=this.ctx;
+      const o=C.createOscillator(), g=C.createGain(); o.type='sine';
+      o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(34,t+0.34);
+      g.gain.setValueAtTime(0.62,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.4);
+      o.connect(g); g.connect(this.master); o.start(t); o.stop(t+0.42);
+      this._fnoise(0.10,0.34,3800,'highpass',0.7); }
     startMusic(){ try{ this._ensure(); }catch(e){ return; } if(this._musTimer) return;
       if(!this.musGain){ this.musGain=this.ctx.createGain(); this.musGain.gain.value=0.0001; this.musGain.connect(this.master); }
       this.musGain.gain.cancelScheduledValues(this.ctx.currentTime);
@@ -3789,6 +4117,8 @@
         warn:document.getElementById('warning'), state:document.getElementById('state-tag'),
         speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette'),
         surge:document.getElementById('surge-tag'), boostBtn:document.getElementById('btn-boost'),
+        powerBtn:document.getElementById('btn-power'), powerFill:document.getElementById('power-fill'),
+        powerLab:document.getElementById('power-label'),
         coins:document.getElementById('coins'), coinsNum:document.getElementById('coins-num'),
         best:document.getElementById('score-best'), bestTxt:document.getElementById('best-txt'), surgeTxt:document.getElementById('surge-txt'),
         pops:document.getElementById('popups'), lines:document.getElementById('speedlines') };
@@ -3800,6 +4130,10 @@
       this._popIdx=0;
     }
     // floating "+points" at the smash; class picks the colour (combo heat)
+    // a short banner reusing the warning slot: power name, blocked, close call
+    flashHint(txt){ if(!this.el.warn) return;
+      if(this._hintT<=0) this._warnTxt=this.el.warn.textContent;
+      this.el.warn.textContent=txt; this._hintT=1.15; }
     scorePop(text,cls,big){
       const d=this._popPool[this._popIdx++%this._popPool.length];
       d.textContent=text; d.className='pop '+(cls||'')+(big?' big':'');
@@ -3834,7 +4168,8 @@
       this.el.state.textContent=g.run.state;
       this.el.speed.textContent=Math.round(g.player.speed()*3.6)+' km/h';
       const low=g.momentum.isLow() && g.run.state!=='READY' && g.run.state!=='GameOver';
-      this.el.warn.style.opacity=low?'1':'0';
+      this.el.warn.style.opacity=(this._hintT>0)?'1':(low?'1':'0');
+      if(this._hintT>0){ this._hintT-=0.016; if(this._hintT<=0) this.el.warn.textContent=this._warnTxt||'LOW MOMENTUM — SMASH SOMETHING!'; }
       // screen edge glow: red when low momentum, fiery orange when ON FIRE, else none
       if(low) this.el.vig.style.boxShadow='inset 0 0 200px 50px rgba(160,0,0,.5)';
       else if(g.combo.onEthereal()) this.el.vig.style.boxShadow='inset 0 0 300px 100px rgba(155,60,255,.55)';
@@ -3843,6 +4178,13 @@
       else this.el.vig.style.boxShadow='inset 0 0 200px 40px rgba(120,0,0,0)';
       // surge indicator: SURGING / READY / cooldown countdown
       const p=g.player;
+      { const P=g.powers, el=this.el.powerBtn, fill=this.el.powerFill, lab=this.el.powerLab;
+        if(el){
+          const f=P.frac(); if(fill) fill.style.height=(f*100).toFixed(0)+'%';
+          const rdy=P.ready(), tgt=rdy && !!P.target();
+          el.classList.toggle('rdy',rdy); el.classList.toggle('tgt',tgt);
+          if(lab) lab.textContent = P.cd>0 ? Math.ceil(P.cd)+'s' : (tgt?'FIRE':(rdy?'READY':Math.round(f*100)+'%'));
+        } }
       if(p.surgeActive>0){ this.el.surgeTxt.textContent='SURGING'; this.el.surge.style.color='#d9a441'; this.el.boostBtn.style.opacity='1'; }
       else if(p.surgeReady()){ this.el.surgeTxt.textContent='SURGE READY'; this.el.surge.style.color='#4f9d63'; this.el.boostBtn.style.opacity='1'; }
       else if(p.surgeCd>0){ this.el.surgeTxt.textContent='SURGE '+Math.ceil(p.surgeCd)+'s'; this.el.surge.style.color='rgba(255,255,255,.45)'; this.el.boostBtn.style.opacity='0.4'; }
@@ -3891,6 +4233,20 @@
     }
     best(){ return +(localStorage.getItem('invrun_best')||0); }
     coinBank(){ return +(localStorage.getItem('invrun_coins')||0); }
+    // First three runs each day pay double shards. Cheap, honest, and it is the single most
+    // reliable daily-return hook there is: the reward is gone if you skip a day.
+    _today(){ return new Date().toISOString().slice(0,10); }
+    dailyRunsLeft(){
+      try{ if(localStorage.getItem('invrun_dm_day')!==this._today()) return 3;
+        return Math.max(0, 3 - (+localStorage.getItem('invrun_dm_n')||0)); }catch(e){ return 0; }
+    }
+    dailyMult(){ return this.dailyRunsLeft()>0 ? 2 : 1; }
+    _consumeDaily(){
+      try{ const d=this._today();
+        if(localStorage.getItem('invrun_dm_day')!==d){ localStorage.setItem('invrun_dm_day',d); localStorage.setItem('invrun_dm_n','0'); }
+        localStorage.setItem('invrun_dm_n', String((+localStorage.getItem('invrun_dm_n')||0)+1));
+      }catch(e){}
+    }
     toGameOver(){
       if(this.state==='GameOver') return; this.state='GameOver';
       const g=this.game; g.audio.stopMusic(0.6); g.audio.gameOver();
@@ -3899,7 +4255,8 @@
       if(isBest){ try{ localStorage.setItem('invrun_best',score); }catch(e){} }
       const best=Math.max(score,prev);
       // BANK the coins collected this run -> the persistent currency for skins later
-      const bank=this.coinBank()+g.score.coins;
+      const dm=this.dailyMult(); const earned=g.score.coins*dm; if(dm>1) this._consumeDaily();
+      const bank=this.coinBank()+earned;
       try{ localStorage.setItem('invrun_coins',bank); }catch(e){}
       const combBest=g.combo.best||0, dist=Math.round(g.score.distance||0);
       // RANK: the run's title, earned by score — gives every run a verdict instead of "you fell"
@@ -3917,7 +4274,7 @@
           `<div class="res-cell">${svg('i-map')}<div><b>${dist}m</b><span>Distance</span></div></div>`+
           `<div class="res-cell">${svg('i-trophy')}<div><b>${best.toLocaleString()}</b><span>All-Time Best</span></div></div>`+
         `</div>`+
-        `<div class="res-coins">${svg('i-coin')} +${g.score.coins} shards · ${bank.toLocaleString()} total</div>`;
+        `<div class="res-coins">${svg('i-coin')} +${earned} shards${dm>1?' <b style="color:var(--gold)">(2× DAILY)</b>':''} · ${bank.toLocaleString()} total</div>`;
       // count the final score UP so it's unmistakably shown
       { const el=document.getElementById('go-score'); const t0=performance.now(), dur=900;
         const step=(now)=>{ const k=Math.max(0,Math.min(1,(now-t0)/dur)); const e=1-Math.pow(1-k,3);
@@ -3948,8 +4305,32 @@
       this.resetAll(); this.refreshBestLine();
       if(this.game.snapMenuBg) this.game.snapMenuBg();
     }
+    // CLOSE CALL — you slipped past a tower you could have clipped. Pays energy, score and a
+    // proper hit of feedback. Only counts once per building, and only for a genuinely tight gap.
+    _closeCalls(){
+      const G=this.game, p=G.player, sph=p.hitSphere(), pz=p.pos.z;
+      for(const b of G.city.buildings){
+        if(b.decor||b.hit||b.closeCalled) continue;
+        const bz=b.mesh.position.z;
+        if(bz>pz-1 || bz<pz-14) continue;                       // just went past us
+        b.closeCalled=true;
+        const gap=Math.abs(p.pos.x-b.mesh.position.x)-b.w/2-sph.r;
+        if(gap<0 || gap>2.6) continue;                          // hit it, or was never close
+        const tight=1-gap/2.6;
+        G.score.total+=Math.round(120+380*tight);
+        G.powers.gain(PWR.perCloseCall);
+        G.adrenaline.value=clamp(G.adrenaline.value+9*tight,0,G.adrenaline.MAX);
+        G.camera.shake(0.30+0.45*tight);
+        G.effects.flash(0.10+0.14*tight);
+        p.rush=Math.min(p.rush+5, 26);       // a real speed kick
+        G.audio.closeCall();
+        G.ui.scorePop('CLOSE CALL', 'fire', tight>0.6);
+      }
+    }
     resetAll(){
       const g=this.game;
+      if(g.powers) g.powers.reset();
+      if(g.city){ g.city._rowN=0; g.city._gateId=0; }
       g.effects.reset();
       g.difficulty.reset();
       g.momentum.reset(); g.adrenaline.reset(); g.combo.reset(); g.score.reset();
@@ -4170,6 +4551,7 @@
       this.city=new CitySystem(this);
       this.pickups=new PickupSystem(this);
       this.drones=new DroneSystem(this);
+      this.powers=new PowerSystem(this);
       this.ui=new UISystem(this);
       this.audio=new AudioSystem();
       this.run=new RunStateManager(this);
@@ -4208,6 +4590,17 @@
       const openM=(id)=>document.getElementById(id).classList.remove('hidden');
       const closeAll=()=>document.querySelectorAll('.modal').forEach(m=>m.classList.add('hidden'));
       document.getElementById('settings-btn').onclick=()=>openM('settings-modal');
+      { const pb=document.getElementById('powers-btn'), list=document.getElementById('pw-list');
+        const hx=(n)=>'#'+n.toString(16).padStart(6,'0');
+        if(list) list.innerHTML=Object.keys(CHARACTERS).map(k=>{
+          const C=CHARACTERS[k], P=POWERS[k]; if(!P) return '';
+          return `<div class="pw">
+            <div class="pw-dot" style="background:radial-gradient(circle at 34% 30%, ${hx(P.beam.c)}, ${hx(P.nova.c2)})"></div>
+            <div class="pw-who"><div class="pw-name">${C.name}</div>
+              <div class="pw-set"><b style="color:${hx(P.beam.c)}">${P.beam.n}</b> — cuts open an Armored tower<br>
+              <b style="color:${hx(P.nova.c)}">${P.nova.n}</b> — shatters a Shielded row</div></div>
+          </div>`; }).join('');
+        if(pb) pb.onclick=()=>openM('powers-modal'); }
       { const legal=()=>{ closeAll(); openM('legal-modal'); }, health=()=>{ closeAll(); openM('health-modal'); };
         for(const id of ['legal-btn','foot-legal']){ const e=document.getElementById(id); if(e) e.onclick=legal; }
         for(const id of ['health-btn','foot-health']){ const e=document.getElementById(id); if(e) e.onclick=health; } }
@@ -4450,6 +4843,7 @@
           this.camera.shake(0.35); this.player._smashPulse=Math.min(1.4,this.player._smashPulse+0.6);
           this.effects.flash(0.12); this.audio.surge();
         }
+        if(this.input.consumePower()) this.powers.fire();
         this.player.update(dt,this.input.steer);
 
         // ---- hit detection: smash point vs buildings (surge widens the catch radius) ----
@@ -4465,6 +4859,8 @@
         this.adrenaline.update(dt);
         this.combo.update(dt);
         this.city.update(dt);
+        this.powers.update(dt);
+        this.run._closeCalls();
         this.pickups.update(dt);
         this.drones.update(dt);
         this.run.tick();
