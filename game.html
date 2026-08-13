@@ -184,7 +184,11 @@
     #btn-power #power-label{ position:relative; z-index:1; text-shadow:0 1px 2px rgba(0,0,0,.7); }
     #btn-power.rdy{ color:#fff; box-shadow:inset 0 0 0 2px rgba(255,255,255,.85), 0 0 22px rgba(190,110,255,.85), 0 3px 0 #17092a; animation:pwrPulse 1s ease-in-out infinite; }
     @keyframes pwrPulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
-    #btn-power.tgt{ box-shadow:inset 0 0 0 3px #ffd23a, 0 0 26px rgba(255,190,60,.9), 0 3px 0 #17092a; }
+    #btn-power.tgt{ color:#fff; box-shadow:inset 0 0 0 3px #ffd23a, 0 0 30px rgba(255,190,60,.95), 0 3px 0 #17092a;
+      animation:pwrPulse .55s ease-in-out infinite; }
+    #btn-power.tgt #power-fill{ background:linear-gradient(180deg, rgba(255,210,58,.9), rgba(255,120,20,.7)); }
+    #btn-power.inc{ color:#fff; box-shadow:inset 0 0 0 2px rgba(190,150,255,.9), 0 0 20px rgba(150,80,255,.6), 0 3px 0 #17092a; }
+    #btn-power.inc #power-label{ font-family:var(--f-num); font-size:14px; letter-spacing:0; }
     #btn-boost::before{ content:''; position:absolute; inset:7px; border-radius:50%; box-shadow:inset 0 0 0 2px rgba(255,240,200,.5); }
     #btn-boost:active{ transform:translateY(4px); box-shadow:inset 0 2px 3px rgba(255,240,200,.6), inset 0 -6px 12px rgba(90,10,0,.55), 0 2px 0 #8f2a10, 0 4px 6px rgba(0,0,0,.45); }
     body:not(.touch) #touch{ display:none; }
@@ -240,12 +244,16 @@
     #start-overlay::before, #start-overlay::after{ z-index:1; }
     /* the logo sits BELOW the DAILY chip and the shard counter, never behind them, and it never
        stretches: one capped size curve and no letter-spacing to blow the width out. */
-    .brand{ text-align:center; margin-bottom:auto; margin-top:96px; width:100%; padding:0 14px; }
-    .logo{ font-family:var(--f-display); font-size:clamp(30px,10.5vw,58px); font-weight:900; letter-spacing:0; line-height:.94; color:#fff;
-           white-space:nowrap; text-shadow:0 3px 0 #04060c,0 6px 14px rgba(0,0,0,.6); }
-    .logo span{ display:block; color:var(--orange); letter-spacing:0;
-                text-shadow:0 0 26px rgba(255,110,20,.5),0 3px 0 #3a1400,0 7px 16px rgba(0,0,0,.55); }
-    .tagline{ margin-top:12px; font-family:var(--f-num); font-weight:900; font-size:clamp(11px,3vw,14px); letter-spacing:3px; color:var(--elec); }
+    /* The wordmark is the biggest thing on the menu, but it must never touch the DAILY / coin
+       chips. Those sit at top:14px and are ~34px tall, so the brand starts below 48px + air.
+       BREAKER is the widest line: 7 glyphs at ~0.72em each, so 16vw keeps it inside the
+       412px-wide phone with room to spare and it never wraps. */
+    .brand{ text-align:center; margin-bottom:auto; margin-top:min(74px,9vh); width:100%; padding:0 12px; }
+    .logo{ font-family:var(--f-display); font-size:min(clamp(44px,16vw,88px), 11.5vh); font-weight:900; letter-spacing:1px; line-height:.92; color:#fff;
+           white-space:nowrap; text-shadow:0 4px 0 #04060c,0 8px 18px rgba(0,0,0,.6); }
+    .logo span{ display:block; color:var(--orange); letter-spacing:1px;
+                text-shadow:0 0 30px rgba(255,110,20,.5),0 4px 0 #3a1400,0 8px 18px rgba(0,0,0,.55); }
+    .tagline{ margin-top:min(14px,1.8vh); font-family:var(--f-num); font-weight:900; font-size:clamp(11px,3.1vw,15px); letter-spacing:3px; color:var(--elec); }
     .tagline::before,.tagline::after{ content:'✦'; color:var(--gold); margin:0 10px; font-size:.8em; opacity:.9; }
 
     .best-card{ position:relative; display:flex; align-items:center; gap:18px; padding:12px 30px; margin:0 0 26px;
@@ -546,7 +554,13 @@
       text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 4px 8px rgba(0,0,0,.6); }
     .pop.go{ animation:popFloat .9s cubic-bezier(.2,.7,.3,1) forwards; }
     .pop.gold{ color:var(--gold); } .pop.fire{ color:#ff8a3c; } .pop.eth{ color:#c08bff; } .pop.blue{ color:var(--elec-glow); }
+    .pop.bad{ color:#ff3b30; text-shadow:0 0 22px rgba(255,40,30,.9),0 3px 0 #2a0000; }
     .pop.big{ font-size:52px; }
+    /* full-screen red slam when a gate blocks you — the damage has to be impossible to miss */
+    #hurt-vig{ position:absolute; inset:0; pointer-events:none; z-index:6; opacity:0;
+               box-shadow:inset 0 0 200px 70px rgba(255,20,10,.85); background:rgba(255,20,10,.14); }
+    #hurt-vig.go{ animation:hurtFlash .62s ease-out forwards; }
+    @keyframes hurtFlash{ 0%{opacity:1} 100%{opacity:0} }
     @keyframes popFloat{ 0%{ opacity:0; transform:translate(-50%,-50%) scale(.5); }
       12%{ opacity:1; transform:translate(-50%,-58%) scale(1.18); }
       30%{ transform:translate(-50%,-66%) scale(1); }
@@ -729,6 +743,7 @@
 
   <!-- HUD -->
   <div id="hud">
+    <div id="hurt-vig"></div>
     <div id="momentum-wrap" class="bar-wrap"><div class="bar-label">Momentum</div><div id="momentum-bar" class="bar"><i></i></div></div>
     <div id="adrenaline-wrap" class="bar-wrap"><div class="bar-label">Adrenaline</div><div id="adrenaline-bar" class="bar"><i></i></div></div>
     <div id="score-box"><div id="coins"><svg class="svgi"><use href="#i-coin"/></svg><span id="coins-num">0</span></div><div id="score">0</div><div id="score-sub">0 m · 0 hits</div><div id="score-best"><svg class="svgi"><use href="#i-trophy"/></svg><span id="best-txt">BEST 0</span></div></div>
@@ -1051,10 +1066,12 @@
         <div><b>NO METER</b> No energy bar and no cooldown. It is always available.</div>
         <div><b>THE CHALLENGE</b> It fires while the gate is inside a fair radius ahead of you.
           Spot it and press in time and it lands every single time.</div>
-        <div><b>THE BUTTON</b> Lights up and reads FIRE the moment a shot will land. No banners,
-          no coaching — watch the road.</div>
-        <div><b>PENALTY</b> Body-slam a gate instead and it costs you a third of your momentum and
-          half your streak.</div>
+        <div><b>THE BUTTON</b> Counts down the metres to the next gate, then turns gold and reads
+          FIRE the moment a shot will land. No banners, no coaching — watch the road.</div>
+        <div><b>PENALTY</b> Body-slam a gate and it costs you <b>62 momentum</b>, your whole streak,
+          your surge and most of your speed. From a half-empty bar it ends the run.</div>
+        <div><b>THE ONE WAY THROUGH</b> A live <b>EPIC</b> or <b>ETHEREAL</b> window smashes a gate on
+          contact. ON FIRE and SURGE do not — you still need the power.</div>
       </div>
     </div>
   </div>
@@ -1813,7 +1830,7 @@
   // backrooms partition is 1.1 deep and a metro car is 14 — but a thin target only lets you be
   // laterally correct inside a razor-thin slice of z, while a long one forgives the same swing
   // over a long stretch. That single number was worth ~1.7x on time-to-200k between those maps.
-  const PLAY={ laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hitDepth:8, gateEvery:12, gateMinGap:9 };
+  const PLAY={ laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hitDepth:8, gateEvery:11, gateMinGap:9 };
 
   // How hard the villain rolls into a turn. Both zero = he stays dead level and only slides
   // sideways, which is the only way a left turn and a right turn can look identical on a mesh
@@ -1897,11 +1914,11 @@
   };
 
   const PWR={
-    range:400,        // if you can see it you can shoot it — this is past the fog line
+    range:400,        // if you can see it you can shoot it — gates sit ~500m apart, so FIRE is lit for the last ~4s of the approach
     blastAfter:2,     // a power is STRONG: it also takes the next few towers behind the gate
     blastRange:150,   // how far past the gate that follow-through reaches
     gateScore:3.0,    // score multiplier for clearing a gate with a power
-    slamCost:34,      // momentum lost for body-slamming a gate
+    slamCost:62,      // momentum lost for body-slamming a gate — a gate is meant to nearly kill you
   };
 
   // ===================================================================================
@@ -1926,27 +1943,52 @@
   class ImpactSystem {
     constructor(game){ this.game=game; }
     tierFor(volume){ let t=TIERS[0]; for(const x of TIERS) if(volume>=x.min) t=x; return t; }
+    // A gate is a GRID of blocks sharing one gid. Whatever happens to one happens to all of them,
+    // so the sweep can never bill the player twice for the same wall.
+    _clearGrid(building, hitSelf){
+      const g=this.game;
+      for(const b of g.city.buildings){
+        if(!b.gate || b.gid!==building.gid) continue;
+        b.gate=null;
+        if(b===building){ if(hitSelf){ b.hit=true; g.city.shatter(b); } }
+        else if(!b.hit){ b.hit=true; g.city.shatter(b); }
+      }
+      building.gate=null;
+    }
     smash(building, powerMul){
       const g=this.game;
-      // A GATE cannot be punched through. Slam one and you lose the run's momentum and your
-      // streak — this is the whole reason powers exist, so the penalty has to bite.
-      // Already superhuman? Then you go through it. EPIC, ETHEREAL and SURGE all break a gate on
-      // contact — the power is for when you are NOT in one of those states.
-      if(building.gate && !powerMul && (g.combo.onEpic() || g.player.surgeActive>0)){
-        building.gate=null;
+      // A GATE cannot be punched through. Slam one and it takes a huge bite out of you — this is
+      // the whole reason powers exist, so the penalty has to actually hurt.
+      // ONLY a live EPIC or ETHEREAL window lets you through. Not ON FIRE, not SURGE: those are
+      // ordinary states you spend most of a good run in, and letting them through made gates
+      // feel like they had no purpose at all.
+      if(building.gate && !powerMul && g.combo.onEpic()){
+        this._clearGrid(building);
         g.city.breakApart(building,'nova',new THREE.Color(g.combo.onEthereal()?0xff5ce0:0xffb13b));
         g.effects.flash(0.34); g.camera.shake(0.7);
         powerMul=1.8;                                  // still worth more than an ordinary tower
       }
       if(building.gate && !powerMul){
-        building.hit=true; g.city.shatter(building);
+        const armor = building.gate==='armor';
+        // Take the WHOLE grid out in one go. Otherwise the sweep hits a second block of the same
+        // gate on the same frame and charges the penalty twice, which reads as a random execution.
+        this._clearGrid(building, true);
+        // THE HIT. Momentum is the health bar, so this is the damage number and it is meant to be
+        // frightening: roughly two thirds of a full bar, and never survivable from a low bar.
         g.momentum.value=clamp(g.momentum.value-PWR.slamCost,0,g.momentum.MAX);
-        if(g.momentum.value<=0) g.run.toGameOver();
-        g.combo.count=Math.floor(g.combo.count*0.5);   // setback, not a wipe
-        g.ui.flashCombo(g.combo.count);
-        g.effects.flash(0.42); g.camera.shake(0.85);
-        g.effects.burst(building.mesh.position.clone(), new THREE.Color(building.gate==='armor'?0xff7a00:0x00d8ff), 16, 20);
+        g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;   // full wipe: streak, epic and ethereal
+        g.adrenaline.value=clamp(g.adrenaline.value*0.35,0,g.adrenaline.MAX);
+        g.player.surgeActive=0;                        // surge does not save you and does not survive
+        g.player.onGateSlam&&g.player.onGateSlam();    // hard speed bleed — you feel the wall
+        g.ui.flashCombo(0);
+        // make the damage unmissable
+        g.effects.flash(0.75); g.camera.shake(1.5);
+        g.effects.burst(building.mesh.position.clone(), new THREE.Color(armor?0xff7a00:0x00d8ff), 30, 34);
+        if(g.ui.hurt) g.ui.hurt();
+        if(g.ui.scorePop) g.ui.scorePop('BLOCKED  −'+PWR.slamCost, 'bad', true);
+        try{ if(navigator.vibrate) navigator.vibrate([40,50,90]); }catch(e){}
         g.audio.gateBlock();
+        if(g.momentum.value<=0) g.run.toGameOver();
         return;
       }
       // Reward is NOT read off the mesh: a backrooms partition is 1.1 deep and a metro car is 14,
@@ -2248,6 +2290,11 @@
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
                    this.rush=Math.min(this.RUSH_MAX,this.rush+3); }
+    // Hitting a gate is a WALL. Everything that makes you fast is taken away at once: the rush is
+    // gone, the surge is cancelled, and forward speed is knocked well under the floor so the
+    // recovery ramp is something you can actually feel before the run picks up again.
+    onGateSlam(){ this.rush=0; this.surgeActive=0; this.surgeCd=Math.max(this.surgeCd,2.5);
+                  this.fwdNow=Math.max(18,this.fwdNow*0.45); this._smashPulse=0; this._gateStun=1.1; }
 
     update(dt,steer){
       const g=this.game;
@@ -2262,8 +2309,11 @@
       // hits add a little kick on top but can't make it feel slower.
       const base=g.difficulty.baseSpeed()*surgeMul;  // surge gives a strong, clear speed boost
       const target=base + this.rush;                 // rush is small (<=8) and bleeds off
-      this.fwdNow=damp(this.fwdNow,target, this.surgeActive>0?9:5, dt);
-      if(this.fwdNow<base && this.surgeActive<=0) this.fwdNow=base;  // floor only climbs with time
+      // A gate slam suspends the speed floor for a moment, otherwise the wall would be erased on
+      // the very next frame and the hit would read as "nothing happened".
+      this._gateStun=Math.max(0,(this._gateStun||0)-dt);
+      this.fwdNow=damp(this.fwdNow,target, this._gateStun>0?2.2:(this.surgeActive>0?9:5), dt);
+      if(this.fwdNow<base && this.surgeActive<=0 && this._gateStun<=0) this.fwdNow=base;  // floor only climbs with time
 
       // Strafe scales PROPORTIONALLY with speed (no cap) so no matter how fast you get, a skilled
       // player can still reach the next tower — the wall is your REACTION time, not a hard limit.
@@ -3691,7 +3741,9 @@
       }
       return null;
     }
-    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=1; this._resetEnv(); } // one easy tower only, then it's earned
+    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=1;
+      this._rowN=0; this._gateId=0; this._gateNext=PLAY.gateEvery; this._lastGateRow=-99; this._gateCount=0;
+      this._resetEnv(); } // one easy tower only, then it's earned
     _resetEnv(){ const pz=this.game.player?this.game.player.pos.z:0;   // re-seed distant env near the player so a restart isn't left empty
       if(this.mountains) this.mountains.forEach((mn,i)=>mn.z=pz+i*150);
       if(this.skyline) this.skyline.forEach((s,i)=>s.z=pz+(i>>1)*70+rand(-20,20));
@@ -3945,7 +3997,7 @@
     incoming(){
       const g=this.game, p=g.player; let bz=1e9;
       for(const b of g.city.buildings){ if(b.hit||b.decor||!b.gate) continue;
-        const d=b.mesh.position.z-p.pos.z; if(d>0 && d<340 && d<bz) bz=d; }
+        const d=b.mesh.position.z-p.pos.z; if(d>0 && d<bz) bz=d; }
       return bz<1e9? bz : -1;
     }
     // Pressing the button is never mistimed. If a gate is reachable it fires now; if one is
@@ -3972,7 +4024,7 @@
       // go too, which is what makes a power feel like a power.
       { const gz=tgt.mesh.position.z, after=[];
         for(const b of g.city.buildings){
-          if(b.hit||b.decor||kill.indexOf(b)>=0) continue;
+          if(b.hit||b.decor||b.gate||kill.indexOf(b)>=0) continue;   // never swallow the NEXT gate
           const z=b.mesh.position.z;
           if(z>gz && z<gz+PWR.blastRange) after.push(b);
         }
@@ -4351,6 +4403,8 @@
       void d.offsetWidth;               // restart the CSS animation on a recycled node
       d.classList.add('go');
     }
+    hurt(){ const el=this.el.hurtVig||document.getElementById('hurt-vig'); if(!el) return;
+      this.el.hurtVig=el; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
     flashCombo(n){
       if(n>=2){
         const fire=this.game.combo.onFire(), epic=this.game.combo.onEpic(), eth=this.game.combo.onEthereal();
@@ -4388,13 +4442,27 @@
       else this.el.vig.style.boxShadow='inset 0 0 200px 40px rgba(120,0,0,0)';
       // surge indicator: SURGING / READY / cooldown countdown
       const p=g.player;
+      // POWER BUTTON — three unmistakable states, refreshed every frame:
+      //   FIRE (gold, full, pulsing)  a gate is in range RIGHT NOW and the shot will land
+      //   <n>m  (violet, filling)     a gate is on the way; the fill IS the approach
+      //   POWER (dim)                 nothing ahead
       { const P=g.powers, el=this.el.powerBtn, fill=this.el.powerFill, lab=this.el.powerLab;
         if(el){
           const inWindow=!!P.target();
-          if(fill) fill.style.height = inWindow?'100%':'0%';
-          el.classList.toggle('rdy', false);
-          el.classList.toggle('tgt', inWindow);             // lights only when a shot will land
-          if(lab) lab.textContent = inWindow?'FIRE':'POWER';
+          const dist=P.incoming();
+          if(inWindow){
+            if(fill) fill.style.height='100%';
+            if(lab) lab.textContent='FIRE';
+          } else if(dist>0){
+            // fill climbs from 0 to full across the last 900m so the approach is readable early
+            if(fill) fill.style.height=Math.round(clamp((900-dist)/(900-PWR.range),0,1)*100)+'%';
+            if(lab) lab.textContent=Math.round(dist)+'m';
+          } else {
+            if(fill) fill.style.height='0%';
+            if(lab) lab.textContent='POWER';
+          }
+          el.classList.toggle('tgt', inWindow);                       // gold: shoot now
+          el.classList.toggle('inc', !inWindow && dist>0);            // violet: incoming
         } }
       if(p.surgeActive>0){ this.el.surgeTxt.textContent='SURGING'; this.el.surge.style.color='#d9a441'; this.el.boostBtn.style.opacity='1'; }
       else if(p.surgeReady()){ this.el.surgeTxt.textContent='SURGE READY'; this.el.surge.style.color='#4f9d63'; this.el.boostBtn.style.opacity='1'; }
@@ -4570,7 +4638,11 @@
     resetAll(){
       const g=this.game;
       if(g.powers) g.powers.reset();
-      if(g.city){ g.city._rowN=0; g.city._gateId=0; }
+      // EVERY gate counter has to restart together. _rowN used to reset on its own while the
+      // "next gate at row N" target kept climbing across runs, so after a few deaths the schedule
+      // sat hundreds of rows in the future and gates simply stopped appearing.
+      if(g.city){ g.city._rowN=0; g.city._gateId=0; g.city._gateNext=PLAY.gateEvery;
+                  g.city._lastGateRow=-99; g.city._gateCount=0; }
       g.effects.reset();
       g.difficulty.reset();
       g.momentum.reset(); g.adrenaline.reset(); g.combo.reset(); g.score.reset();
