@@ -7,9 +7,9 @@ Everything lives in one file: **`game.html`**. There is no build step. Edit, sav
 
 # PART 1 — Change the font
 
-The game currently uses **Archivo Black**, and it is *baked into the file* as text (base64). That
+The game currently uses **Luckiest Guy**, and it is *baked into the file* as text (base64). That
 is why it looks the same on your iPhone as it does on my screen — there is nothing to download and
-nothing to go wrong.
+nothing to go wrong. It is the only typeface in the game: menus, HUD, numbers, buttons, everything.
 
 To swap it for a different one, you have two options.
 
@@ -22,9 +22,9 @@ Chunky, classic fonts that suit this game:
 
 | Font | Feel |
 |---|---|
-| **Archivo Black** | current — solid, neutral, very legible |
+| **Luckiest Guy** | current — cartoon comic-book, rounded and chunky |
+| **Archivo Black** | solid, neutral, very legible |
 | **Bungee** | arcade signage, boxy, very chunky |
-| **Luckiest Guy** | cartoon comic-book, rounded and friendly |
 | **Alfa Slab One** | heavy slab serif, retro-poster |
 | **Titan One** | bubbly, playful, thick outlines |
 | **Passion One** | tall and condensed, punchy headlines |
@@ -62,7 +62,7 @@ base64 -w0 myfont.woff2 > myfont.txt
 @font-face{ font-family:'CBDisplay';
 ```
 
-You will find **two** blocks that look like this:
+You will find **one** block that looks like this:
 
 ```css
 @font-face{ font-family:'CBDisplay'; font-style:normal; font-weight:100 900; font-display:block;
@@ -70,9 +70,9 @@ You will find **two** blocks that look like this:
   src:url(data:font/woff2;base64,d09GMgABAAAAA...THOUSANDS OF CHARACTERS...) format('woff2'); }
 ```
 
-In the **first** block, select everything between `base64,` and `)` and replace it with the whole
-contents of `myfont.txt`. **Delete the second block entirely** (it is only the extended-latin set;
-you do not need it).
+Select everything between `base64,` and `)` and replace it with the whole contents of
+`myfont.txt`. Nothing else needs to change — both `--f-display` and `--f-num` already point at
+this one face.
 
 **Step 5.** Save and refresh. Done.
 
@@ -216,6 +216,45 @@ map and power kind. Last run: 100% fire, 100% animation, 100% gate destroyed, 10
 > `_lastGateRow` and `_gateCount`. **They must all reset together.** `_rowN` used to reset alone
 > while `_gateNext` kept climbing across runs, so after a handful of deaths the next gate was
 > scheduled hundreds of rows away and gates stopped appearing at all.
+
+## Drones
+
+```js
+const DRONES = {
+  minScore:  100000,  // no drones at all below this — Silver rank, inside a SINGLE run
+  minDist:   2200,    // ...and not before this many metres
+  minTime:   40,      // ...and not in the first 40s, whatever else happens
+  rampScore: 150000,  // score span over which they ease to their normal cadence
+  easeIn:    2.6,     // gap multiplier the moment they unlock (2.6x rarer than normal)
+};
+```
+
+Drones are a **late** threat. The opening of every run is purely you against the city; they only
+turn up once the run is genuinely going, and even then they ease in. **All three gates must be
+passed** — score, distance and time — so a lucky early burst cannot summon them. Raise `minScore`
+to switch them off entirely without deleting any code.
+
+## Two buildings, and only two
+
+On every map there are exactly **two** things you can fly at:
+
+| | Looks like | Answer |
+|---|---|---|
+| **Normal tower** | one colour, one facade, no roof beacon — identical every time | fly through it |
+| **Armored / shielded gate** | hazard body in the map's own palette, glowing frame, a **pulsing** glow and a lit **roof beacon** | use a power, or a live EPIC / ETHEREAL |
+
+Normal towers carry **no** random variation — no colour jitter, no texture offset — because "is
+this one armored?" must be answerable at a glance, from the far end of the street. The decorative
+skyline behind them still varies freely; it is backdrop, and you never fly at it.
+
+Gate colours per map live in `GATE_LOOK`. The gate texture's tiling is baked **once**, at creation,
+and shared by every gate. Never set `repeat` on it per building — every gate shares the object, so
+that rewrites all of them at once, which is what used to make armored towers appear to morph as you
+flew toward them.
+
+Guarded by **`scripts/world-integrity.mjs`** — 240s of play per map, asserting that no normal tower
+ever wears the gate texture, no gate ever wears a facade, the tiling never changes, there is
+exactly one normal colour and one gate colour, and no drone arrives before its gates.
 
 ## Shard boost
 
