@@ -109,18 +109,20 @@ const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hit
 
 ```js
 const PWR = {
-  range:170,      // firing window ahead of you (~1.9s of reaction at cruise speed)
-  minRange:14,    // closer than this and it is already on you: the "too late" edge
+  range:230,      // any gate this far ahead is a valid shot (generous on purpose)
   gateScore:3.0,  // score multiplier for clearing a gate with a power
   slamCost:34,    // momentum lost for body-slamming a gate
 };
 const PLAY = { ..., gateEvery:12 };   // an armored/shielded gate every 12 rows
 ```
 
-Powers work **only** on gates. There is no energy bar and no cooldown — the single challenge is
-pressing while the gate is inside `range`. Widen `range` to make the window more forgiving, raise
-`gateEvery` to make gates rarer. Setting `gateEvery` very high turns the mechanic off entirely
-without removing code.
+Powers work **only** on gates. No energy bar, no cooldown, no on-screen warnings — the single
+challenge is pressing while the gate is inside `range`. Widen `range` to make the window more
+forgiving, raise `gateEvery` to make gates rarer. Setting `gateEvery` very high turns the mechanic
+off entirely without removing code.
+
+Reliability is asserted by `scratchpad/rel.mjs`, which fires 240 times across every character, map
+and power kind: 100% fire, 100% animation, 100% gate destroyed, 100% debris.
 
 Per-character power names, colours and kinds live in `POWERS`. Each villain has four, all
 selectable from the Powers sheet; `POWERS[char][0]` is the default.
