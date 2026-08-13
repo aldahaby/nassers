@@ -1048,10 +1048,10 @@
         <div><b>WHAT IT IS FOR</b> Powers only open <b>Armored</b> towers and <b>Shielded</b> rows. Ordinary
           buildings you just fly through — that never changes.</div>
         <div><b>NO METER</b> No energy bar and no cooldown. It is always available.</div>
-        <div><b>THE CHALLENGE</b> It only fires while the gate is inside a fair radius ahead of you.
-          Too far and nothing happens; leave it too late and you are already wearing it.</div>
-        <div><b>WARNING</b> <i>ARMORED AHEAD</i> shows the moment one is on the way, and the button
-          reads GET READY, then FIRE the instant you are in range.</div>
+        <div><b>THE CHALLENGE</b> It fires while the gate is inside a fair radius ahead of you.
+          Spot it and press in time and it lands every single time.</div>
+        <div><b>THE BUTTON</b> Lights up and reads FIRE the moment a shot will land. No banners,
+          no coaching — watch the road.</div>
         <div><b>PENALTY</b> Body-slam a gate instead and it costs you a third of your momentum and
           half your streak.</div>
       </div>
@@ -1886,8 +1886,7 @@
   const BOOST={ mult:2, hours:4, everyRuns:3, cooldownH:6 };
 
   const PWR={
-    range:170,        // the firing window: at ~90 m/s this is roughly a 1.9s reaction test
-    minRange:14,      // closer than this and it is already on you — the "too late" edge
+    range:230,        // any gate this far ahead is a valid shot — generous on purpose
     gateScore:3.0,    // score multiplier for clearing a gate with a power
     slamCost:34,      // momentum lost for body-slamming a gate
   };
@@ -1927,7 +1926,6 @@
         g.effects.flash(0.42); g.camera.shake(0.85);
         g.effects.burst(building.mesh.position.clone(), new THREE.Color(building.gate==='armor'?0xff7a00:0x00d8ff), 16, 20);
         g.audio.gateBlock();
-        if(g.ui) g.ui.flashHint('BLOCKED — USE YOUR POWER');
         return;
       }
       // Reward is NOT read off the mesh: a backrooms partition is 1.1 deep and a metro car is 14,
@@ -3408,8 +3406,12 @@
     // pooled clones of the target's own mesh, so the pieces match the building they came from.
     breakApart(b, kind, col){
       if(!this._tear){ this._tear=[]; }
-      const src=b.mesh, mk=()=>{ const m=new THREE.Mesh(src.geometry, src.material);
-        m.castShadow=false; this.game.scene.add(m); return m; };
+      // The building this came from goes straight back in the pool and is re-dressed for the next
+      // spawn, so a shell sharing its material would change appearance mid-fall. Clone once per
+      // teardown and share that clone across this burst's shells.
+      const src=b.mesh, mat=src.material.clone();
+      const mk=()=>{ const m=new THREE.Mesh(src.geometry, mat);
+        m.castShadow=false; m.frustumCulled=false; this.game.scene.add(m); return m; };
       const P=src.position, S=src.scale, add=(m,cfg)=>{ this._tear.push(Object.assign({m,t:0,life:0.85},cfg)); };
       if(kind==='split'){
         // one scything cut: two halves topple away from the seam
@@ -3896,7 +3898,8 @@
       for(const b of g.city.buildings){
         if(b.hit||b.decor||!b.gate) continue;
         const z=b.mesh.position.z;
-        if(z>p.pos.z+PWR.minRange && z<p.pos.z+PWR.range && z<bz){ bz=z; best=b; }
+        // anything still ahead of the smash point counts, right down to point blank
+        if(z>p.pos.z-2 && z<p.pos.z+PWR.range && z<bz){ bz=z; best=b; }
       }
       return best;
     }
@@ -3913,9 +3916,7 @@
     // No pre-arm, no queueing: hitting the window IS the skill. Fire early and nothing happens,
     // fire late and the gate is already on you.
     press(){
-      if(this.target()) return this.fire();
-      this.game.ui.flashHint(this.incoming()>0 ? 'TOO EARLY' : 'NO GATE');
-      return false;
+      return this.fire();
     }
     fire(){
       const g=this.game, p=g.player, tgt=this.target();
@@ -3929,13 +3930,20 @@
       // destroy the gate (and every block sharing its grid)
       const kill=[];
       for(const b of g.city.buildings) if(b.gate && b.gid===tgt.gid && !b.hit) kill.push(b);
+      // Take the gate out of the world OURSELVES rather than relying on the scoring path to do
+      // it. Score can be skipped for any number of reasons; the gate disappearing cannot be.
       let n=0;
-      for(const b of kill){ b.gate=null; g.city.breakApart(b, pw.kind, this._c1); g.impact.smash(b, PWR.gateScore); n++; }
+      for(const b of kill){
+        b.gate=null;
+        g.city.breakApart(b, pw.kind, this._c1);
+        g.impact.smash(b, PWR.gateScore);
+        if(!b.hit){ b.hit=true; g.city.shatter(b); }      // belt and braces: it is always gone
+        n++;
+      }
       const beamy=(pw.kind==='laser'||pw.kind==='split');
       g.effects.flash(beamy?0.5:0.62); g.camera.shake(beamy?0.9:1.15);
       g.audio.power(beamy);
       g.ui.scorePop(pw.n, 'eth', true);
-      g.ui.flashHint(pw.n+(n>1?'  ×'+n:''));
       return true;
     }
     update(dt){
@@ -4310,14 +4318,7 @@
       this.el.state.textContent=g.run.state;
       this.el.speed.textContent=Math.round(g.player.speed()*3.6)+' km/h';
       const low=g.momentum.isLow() && g.run.state!=='READY' && g.run.state!=='GameOver';
-      { const P=g.powers, inc=P.incoming();
-        if(this._hintT<=0 && inc>0 && !P.target()){
-          this.el.warn.textContent='ARMORED AHEAD'; this._warnGate=true;
-        } else if(this._warnGate && this._hintT<=0 && !(inc>0 && !P.target())){
-          this._warnGate=false; this.el.warn.textContent='LOW MOMENTUM — SMASH SOMETHING!';
-        } }
-      const gateWarn=(g.powers.incoming()>0 && !g.powers.target());
-      this.el.warn.style.opacity=(this._hintT>0||gateWarn)?'1':(low?'1':'0');
+      this.el.warn.style.opacity=(this._hintT>0)?'1':(low?'1':'0');
       if(this._hintT>0){ this._hintT-=0.016; if(this._hintT<=0) this.el.warn.textContent=this._warnTxt||'LOW MOMENTUM — SMASH SOMETHING!'; }
       // screen edge glow: red when low momentum, fiery orange when ON FIRE, else none
       if(low) this.el.vig.style.boxShadow='inset 0 0 200px 50px rgba(160,0,0,.5)';
@@ -4329,12 +4330,11 @@
       const p=g.player;
       { const P=g.powers, el=this.el.powerBtn, fill=this.el.powerFill, lab=this.el.powerLab;
         if(el){
-          const inWindow=!!P.target(), inc=P.incoming();
-          // the button only lights when a gate is actually inside the firing radius
+          const inWindow=!!P.target();
           if(fill) fill.style.height = inWindow?'100%':'0%';
-          el.classList.toggle('rdy', inc>0 && !inWindow);   // a gate is coming: get ready
-          el.classList.toggle('tgt', inWindow);             // NOW
-          if(lab) lab.textContent = inWindow?'FIRE':(inc>0?'GET READY':'POWER');
+          el.classList.toggle('rdy', false);
+          el.classList.toggle('tgt', inWindow);             // lights only when a shot will land
+          if(lab) lab.textContent = inWindow?'FIRE':'POWER';
         } }
       if(p.surgeActive>0){ this.el.surgeTxt.textContent='SURGING'; this.el.surge.style.color='#d9a441'; this.el.boostBtn.style.opacity='1'; }
       else if(p.surgeReady()){ this.el.surgeTxt.textContent='SURGE READY'; this.el.surge.style.color='#4f9d63'; this.el.boostBtn.style.opacity='1'; }
@@ -5091,6 +5091,8 @@
     }
   }
 
+  // small debug handle so automated tests can drive the tuning tables
+  try { window.__cb={POWERS,PWR,PLAY,BOOST,powerFor}; }catch(e){}
   try { window.__game=new Game(); }
   catch(err){
     document.body.innerHTML='<div style="color:#fff;padding:40px;font-family:monospace">Failed to start: '+
