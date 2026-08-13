@@ -1,138 +1,213 @@
-# Adding fonts and PNGs to CITYBREAKER
+# CITYBREAKER — how to change the font and add your own images
 
-## Fonts — done, and how it works now
+Two step-by-step guides, then a reference for every tuning number in the game.
+Everything lives in one file: **`game.html`**. There is no build step. Edit, save, refresh.
 
-The game no longer depends on any font your device happens to have.
-**Archivo Black is embedded directly in `game.html` as base64** inside two `@font-face` rules
-(`font-family: 'CBDisplay'`). It needs no network, no CDN, no CSP exception, and it renders
-byte-identically on iPhone, Android and desktop.
+---
 
-That was the whole bug: `Arial Black` does not exist on iOS, so the UI kept falling through to a
-thin system face — which is why my screenshots and your screen never matched.
+# PART 1 — Change the font
 
-The `@font-face` declares `font-weight: 100 900` on a single-weight file on purpose. That maps any
-requested weight onto the real face instead of letting the browser fake a bold, which smears it.
+The game currently uses **Archivo Black**, and it is *baked into the file* as text (base64). That
+is why it looks the same on your iPhone as it does on my screen — there is nothing to download and
+nothing to go wrong.
 
-### To swap in a different font later
+To swap it for a different one, you have two options.
 
-1. Pick one and get its `.woff2`. Any of these are good chunky/classic choices:
-   `Archivo Black` (current), `Bungee`, `Luckiest Guy`, `Passion One`, `Alfa Slab One`, `Titan One`.
-2. Get the file URL:
-   ```
-   curl -A "Mozilla/5.0 Chrome/120" \
-     "https://fonts.googleapis.com/css2?family=Bungee&display=swap" | grep -o "https://[^)]*woff2"
-   ```
-3. Download it and base64 it:
-   ```
-   curl -A "Mozilla/5.0 Chrome/120" -o f.woff2 "<url from step 2>"
-   base64 -w0 f.woff2 > f.b64
-   ```
-4. In `game.html`, replace the base64 blob inside the `@font-face` whose `src:` is
-   `url(data:font/woff2;base64,…)`. Keep `font-weight:100 900`.
+## Option A — just tell me the name (easiest)
 
-Or just tell me the font name and I will do all four steps — I can reach Google Fonts from here.
+Say *"use Bungee"* (or any font name) and I will do all of Option B for you in one go. I can reach
+Google Fonts from here.
 
-## PNGs — how to get one into the game
+Chunky, classic fonts that suit this game:
 
-I **cannot** read images you attach to a chat message. They arrive to me as pictures, not as files,
-so there is nothing for me to write to disk. There are two ways round that.
+| Font | Feel |
+|---|---|
+| **Archivo Black** | current — solid, neutral, very legible |
+| **Bungee** | arcade signage, boxy, very chunky |
+| **Luckiest Guy** | cartoon comic-book, rounded and friendly |
+| **Alfa Slab One** | heavy slab serif, retro-poster |
+| **Titan One** | bubbly, playful, thick outlines |
+| **Passion One** | tall and condensed, punchy headlines |
+| **Bowlby One SC** | very round and heavy, toy-like |
 
-### Option A — you put the file in the repo (easiest, works every time)
+Browse more at **fonts.google.com** — filter by *Display*, sort by popularity. Any of them works.
 
-1. Drop the file into `assets/` in the repo, e.g. `assets/cloud.png`.
-2. Commit and push it, or just tell me the filename if you have added it in the web editor.
-3. Tell me: *"use assets/cloud.png for the clouds"*.
+## Option B — do it yourself
 
-I will wire it up. In code that is a one-liner — the loader already exists:
+**Step 1.** Go to `https://fonts.google.com` and pick a font. Note the exact name, e.g. `Bungee`.
 
-```js
-const tex = new THREE.TextureLoader().load('./assets/cloud.png');
-tex.colorSpace = THREE.SRGBColorSpace;
-// transparent PNG on a camera-facing plane:
-const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+**Step 2.** Get the font file URL. In a terminal, replace `Bungee` with your font (spaces become
+`+`, e.g. `Alfa+Slab+One`):
+
+```
+curl -A "Mozilla/5.0 Chrome/120" \
+  "https://fonts.googleapis.com/css2?family=Bungee&display=swap" \
+  | grep -o "https://[^)]*woff2"
 ```
 
-Requirements for it to look right:
-- **PNG with a real alpha channel** (transparent background, not white).
-- Power-of-two dimensions are ideal (512×512, 1024×512). Not required, but sharper.
-- Keep it under ~400 KB or it slows the first load on mobile.
+You will get one or more URLs. **Take the LAST one** — that is the plain latin set.
 
-### Option B — paste it as base64
+**Step 3.** Download it and turn it into text:
 
-If you can get the file as base64 text (on iPhone: any "file to base64" shortcut or site), paste it
-to me in a message and I will write it straight into `assets/` and wire it in. Large images make a
-very long message, so this is best for small ones.
+```
+curl -A "Mozilla/5.0 Chrome/120" -o myfont.woff2 "PASTE_THE_URL_HERE"
+base64 -w0 myfont.woff2 > myfont.txt
+```
 
-### Where PNGs currently plug in
+`myfont.txt` now contains one very long line of letters and numbers.
 
-| What | Where it is used | File it would replace |
+**Step 4.** Open `game.html` and search for:
+
+```
+@font-face{ font-family:'CBDisplay';
+```
+
+You will find **two** blocks that look like this:
+
+```css
+@font-face{ font-family:'CBDisplay'; font-style:normal; font-weight:100 900; font-display:block;
+  unicode-range:U+0000-00FF,...;
+  src:url(data:font/woff2;base64,d09GMgABAAAAA...THOUSANDS OF CHARACTERS...) format('woff2'); }
+```
+
+In the **first** block, select everything between `base64,` and `)` and replace it with the whole
+contents of `myfont.txt`. **Delete the second block entirely** (it is only the extended-latin set;
+you do not need it).
+
+**Step 5.** Save and refresh. Done.
+
+> ⚠️ **Do not change `font-weight:100 900`.** That line tells the browser "this one file covers
+> every weight". Remove it and the browser will try to fake a bold and the letters will smear.
+
+---
+
+# PART 2 — Add your own PNG images
+
+## The one thing I cannot do
+
+When you attach an image to a chat message, it reaches me as a **picture I can look at**, not as a
+**file I can save**. So I can describe it, match it, copy its style — but I cannot put it in the
+game myself. You have to place the file. That is what this section is for.
+
+## Step 1 — Prepare the image
+
+- Format: **PNG**
+- If it should have a see-through background (clouds, logos, effects) → it must have a real
+  **transparent background**, not white.
+- Size: ideally a power of two — `512×512`, `1024×512`, `1024×1024`. Not required, just sharper.
+- Weight: keep it **under 400 KB** or the game gets slow to open on a phone.
+
+Free tools: **remove.bg** to cut out a background, **squoosh.app** to shrink the file size.
+
+## Step 2 — Put the file in the repo
+
+**On a computer**
+
+1. Open the repo folder.
+2. Drop the file into the **`assets/`** folder.
+3. Commit and push.
+
+**On a phone, straight from GitHub**
+
+1. Open `github.com/aldahaby/nassers` in a browser.
+2. Tap into the **`assets`** folder.
+3. Tap **Add file → Upload files**.
+4. Choose your PNG, then **Commit changes**.
+
+## Step 3 — Tell me the filename
+
+Send me a message like:
+
+> use `assets/cloud.png` for the clouds
+
+That is genuinely all I need. I will wire it in and deploy.
+
+## Where a PNG can go right now
+
+| What you want to replace | Filename to use | Notes |
 |---|---|---|
-| Clouds | `_cloudSprite()` in `CitySystem` | procedural canvas sprite |
-| Villain card portraits | `assets/prev_*.png` | already PNGs — drop in a replacement with the same name |
-| Sign faces (Tokyo) | `_signTex(i)` | procedural canvas texture |
-| Building facades | `_drawFacade(style)` | procedural canvas texture |
+| Clouds in the sky | `assets/cloud.png` | needs transparency |
+| A villain's menu portrait | `assets/prev_dominus.png` (etc.) | already a PNG — upload with the **same name** and it swaps automatically, no message needed |
+| Tokyo shop signs | `assets/sign1.png`, `sign2.png` … | any number |
+| A building wall | `assets/facade_tokyo.png` | tiles, so make the edges match |
+| The game logo | `assets/logo.png` | replaces the text logo on the menu |
 
-For any of these, the swap is: put the PNG in `assets/`, and I replace the canvas call with a
-`TextureLoader().load('./assets/yourfile.png')`.
+**Portraits are the special case** — those files already exist, so uploading one with the same name
+replaces it instantly with no code change at all.
 
-## Reverting the look / feel changes
+## If you cannot use GitHub
 
-Everything cosmetic added in the polish pass sits behind two objects near the top of the script in
-`game.html`. Flip a value and that piece is gone — nothing else depends on any of them.
+Convert the image to base64 (search "png to base64", or use any Shortcuts app on iOS), paste the
+result to me, and I will write the file into `assets/` myself. Best for small images — big ones
+make an enormous message.
+
+---
+
+# PART 3 — Every tuning number, in one place
+
+All of these sit near the top of the `<script>` in `game.html`.
+
+## Look and feel — every item is an on/off switch
 
 ```js
-// no lean at all (current). Restore {group:1, model:0.32} for the old banking flight.
-const BANK_ROLL = { group:0, model:0 };
+const BANK_ROLL = { group:0, model:0 };   // 0,0 = no lean at all. {1, 0.32} restores banking.
 
 const LOOK = {
-  richDebris:    true,  // chipped rubble shapes -> false gives the old identical grey cubes
+  richDebris:    true,  // chipped rubble shapes; false = plain grey cubes
   vignette:      true,  // dark corners
-  grade:         true,  // saturation/contrast lift over the canvas
+  grade:         true,  // saturation / contrast lift
   contactShadow: true,  // soft shadow on the ground under the villain
-  softerFog:     true,  // horizon fades in a touch sooner
-  richerSun:     true,  // 2048 shadow map -> false goes back to 1024
+  softerFog:     true,  // horizon fades a touch sooner
+  richerSun:     true,  // 2048 shadow map; false = 1024
 };
 ```
 
-Gameplay numbers live in one object too, if pacing ever needs retuning:
+## Gameplay pacing — shared by every map, which is what keeps them equal
 
 ```js
-const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200, xBox:22, hitDepth:8 };
+const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200,
+               xBox:22, hitDepth:8, gateEvery:12, gateMinGap:9 };
 ```
 
-- `xBox` — how far off centre the player may fly, shared by every map.
-- `hitDepth` — shared collision depth of a target, so a thin wall and a long train car are equally
-  forgiving.
-- `tierVol` — the volume every hittable target reports, so score/momentum per smash is map-independent.
+| Key | What it does |
+|---|---|
+| `xBox` | how far off centre you may fly |
+| `hitDepth` | collision depth of a target, so a thin wall and a long train car are equally forgiving |
+| `tierVol` | the volume every target reports, so score per smash is map-independent |
+| `gateEvery` | average rows between armored/shielded gates |
+| `gateMinGap` | hard minimum rows between two gates, so they never bunch up |
 
-## Powers — all the tuning in one object
+## Powers
 
 ```js
 const PWR = {
-  range:230,      // any gate this far ahead is a valid shot (generous on purpose)
-  gateScore:3.0,  // score multiplier for clearing a gate with a power
-  slamCost:34,    // momentum lost for body-slamming a gate
+  range:400,       // if you can see it you can shoot it
+  blastAfter:2,    // how many towers BEHIND the gate also go down
+  blastRange:150,  // how far past the gate that follow-through reaches
+  gateScore:3.0,   // score multiplier for clearing a gate with a power
+  slamCost:34,     // momentum lost for body-slamming a gate instead
 };
-const PLAY = { ..., gateEvery:12 };   // an armored/shielded gate every 12 rows
 ```
 
-Powers work **only** on gates. No energy bar, no cooldown, no on-screen warnings — the single
-challenge is pressing while the gate is inside `range`. Widen `range` to make the window more
-forgiving, raise `gateEvery` to make gates rarer. Setting `gateEvery` very high turns the mechanic
-off entirely without removing code.
+Powers work **only** on gates. No energy bar, no cooldown, no on-screen warnings. The only
+challenge is pressing while the gate is inside `range`. **EPIC, ETHEREAL and SURGE break gates on
+contact** without needing a power.
 
-Reliability is asserted by `scratchpad/rel.mjs`, which fires 240 times across every character, map
-and power kind: 100% fire, 100% animation, 100% gate destroyed, 100% debris.
+Per-character names, colours and kinds live in `POWERS`. Each villain has four, all selectable in
+the Powers sheet; `POWERS[char][0]` is the default. Setting `gateEvery` very high turns the whole
+mechanic off without deleting any code.
 
-Per-character power names, colours and kinds live in `POWERS`. Each villain has four, all
-selectable from the Powers sheet; `POWERS[char][0]` is the default.
+Gate colours per map live in `GATE_LOOK`.
 
-## Timed shard boost
+Reliability is asserted by **`scripts/power-reliability.mjs`** — 240 shots across every character,
+map and power kind. Last run: 100% fire, 100% animation, 100% gate destroyed, 100% debris.
+
+## Shard boost
 
 ```js
 const BOOST = { mult:2, hours:4, everyRuns:3, cooldownH:6 };
 ```
 
 Offered on the results screen every `everyRuns` runs. Accept and shards count `mult`× for `hours`
-hours; while it is live the prompt never appears again, and after a decline it waits `cooldownH`
-hours before asking. Stacks with the first-three-runs-of-the-day daily multiplier.
+hours. While it is live the prompt never appears again; after a decline it waits `cooldownH` hours.
+Stacks with the separate first-three-runs-of-the-day daily multiplier.
