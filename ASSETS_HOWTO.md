@@ -181,17 +181,27 @@ const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200,
 
 ```js
 const PWR = {
-  range:400,       // if you can see it you can shoot it
-  blastAfter:2,    // how many towers BEHIND the gate also go down
+  range:400,       // if you can see it you can shoot it (~4 s of FIRE window)
+  blastAfter:2,    // how many towers BEHIND the gate also go down (never another gate)
   blastRange:150,  // how far past the gate that follow-through reaches
   gateScore:3.0,   // score multiplier for clearing a gate with a power
-  slamCost:34,     // momentum lost for body-slamming a gate instead
+  slamCost:62,     // momentum lost for body-slamming a gate instead
 };
 ```
 
 Powers work **only** on gates. No energy bar, no cooldown, no on-screen warnings. The only
-challenge is pressing while the gate is inside `range`. **EPIC, ETHEREAL and SURGE break gates on
-contact** without needing a power.
+challenge is pressing while the gate is inside `range`.
+
+**Only a live EPIC or ETHEREAL window breaks a gate on contact.** ON FIRE and SURGE do not — they
+are states you spend most of a good run in, and letting them through made gates pointless.
+
+**The penalty for slamming one is meant to be brutal:** `slamCost` momentum off a 100 bar, the
+whole streak wiped (including any epic/ethereal window), surge cancelled, adrenaline cut to a
+third, and forward speed knocked to 45% with the speed floor suspended for 1.1 s so you feel the
+wall. From a half-empty bar it ends the run.
+
+**The power button has three states:** `POWER` (dim, nothing ahead), a metre countdown with a
+filling bar (violet, a gate is on the way), and `FIRE` (gold, pulsing, full — the shot will land).
 
 Per-character names, colours and kinds live in `POWERS`. Each villain has four, all selectable in
 the Powers sheet; `POWERS[char][0]` is the default. Setting `gateEvery` very high turns the whole
@@ -201,6 +211,11 @@ Gate colours per map live in `GATE_LOOK`.
 
 Reliability is asserted by **`scripts/power-reliability.mjs`** — 240 shots across every character,
 map and power kind. Last run: 100% fire, 100% animation, 100% gate destroyed, 100% debris.
+
+> Note for future edits: the gate schedule lives in four counters — `_rowN`, `_gateNext`,
+> `_lastGateRow` and `_gateCount`. **They must all reset together.** `_rowN` used to reset alone
+> while `_gateNext` kept climbing across runs, so after a handful of deaths the next gate was
+> scheduled hundreds of rows away and gates stopped appearing at all.
 
 ## Shard boost
 
