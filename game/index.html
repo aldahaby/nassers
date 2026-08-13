@@ -119,11 +119,11 @@
             background:linear-gradient(180deg,#3a2c0c,#241803); padding:1px 12px 0; margin-bottom:4px;
             clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
             box-shadow:inset 0 0 0 1.5px var(--gold-d), inset 0 1px 0 rgba(255,220,140,.4); text-shadow:0 1px 2px #000; }
-    #score{ font-family:var(--f-num); font-size:58px; font-weight:900; line-height:.82; color:#fff; letter-spacing:1px;
+    #score{ font-family:var(--f-num); font-size:38px; font-weight:900; line-height:.82; color:#fff; letter-spacing:1px;
             text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 3px 0 var(--ink),0 5px 8px rgba(0,0,0,.6); }
     #score.lead{ color:var(--gold); text-shadow:-2px 0 #3a1c00,2px 0 #3a1c00,0 2px #3a1c00,0 4px 10px rgba(255,140,0,.5); }
-    #score-sub{ font-family:var(--f-num); font-size:16px; font-weight:900; letter-spacing:2px; color:var(--muted); margin-top:1px; text-shadow:0 1px 2px #000; }
-    #score-best{ font-family:var(--f-num); font-size:16px; font-weight:900; letter-spacing:2px; color:var(--gold); margin-top:2px; text-shadow:0 1px 2px #000; }
+    #score-sub{ font-family:var(--f-num); font-size:12px; font-weight:900; letter-spacing:2px; color:var(--muted); margin-top:1px; text-shadow:0 1px 2px #000; }
+    #score-best{ font-family:var(--f-num); font-size:12px; font-weight:900; letter-spacing:2px; color:var(--gold); margin-top:2px; text-shadow:0 1px 2px #000; }
 
     /* pause key */
     #pause-btn{ position:fixed; top:12px; right:12px; z-index:16; width:46px; height:46px; border:none; cursor:pointer; pointer-events:auto;
@@ -149,32 +149,32 @@
               clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
               box-shadow:inset 0 0 0 1.5px #ff8a8a, inset 0 2px 0 rgba(255,255,255,.3); filter:drop-shadow(0 4px 0 var(--crimson-d)); transition:opacity .15s; }
 
-    #state-tag{ position:absolute; bottom:12px; left:15px; font-family:var(--f-num); font-weight:900; font-size:14px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); opacity:.85; text-shadow:0 1px 2px #000; }
-    #speed-tag{ position:absolute; bottom:11px; right:15px; font-family:var(--f-num); font-size:20px; font-weight:900; letter-spacing:1px; color:var(--elec); text-shadow:0 1px 3px #000,0 0 10px rgba(55,198,255,.4); }
-    #surge-tag{ position:absolute; bottom:10px; left:50%; transform:translateX(-50%); font-family:var(--f-num); font-size:15px; font-weight:900; letter-spacing:2px;
+    #state-tag{ position:absolute; bottom:5px; left:14px; font-family:var(--f-num); font-weight:900; font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); opacity:.85; text-shadow:0 1px 2px #000; }
+    #speed-tag{ position:absolute; bottom:5px; right:14px; font-family:var(--f-num); font-size:16px; font-weight:900; letter-spacing:1px; color:var(--elec); text-shadow:0 1px 3px #000,0 0 10px rgba(55,198,255,.4); }
+    #surge-tag{ position:absolute; bottom:5px; left:50%; transform:translateX(-50%); font-family:var(--f-num); font-size:12px; font-weight:900; letter-spacing:2px;
                 color:var(--elec); background:linear-gradient(180deg,var(--gun2),var(--navy)); padding:3px 16px 1px;
                 clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
                 box-shadow:inset 0 0 0 1.5px var(--steel); text-shadow:0 1px 2px #000; }
 
     /* ============================ TOUCH ============================ */
     #touch{ position:fixed; inset:0; z-index:15; pointer-events:none; }
-    #joy-base{ position:absolute; left:22px; bottom:max(28px,env(safe-area-inset-bottom)); width:142px; height:142px; border-radius:50%;
+    #joy-base{ position:absolute; left:18px; bottom:calc(max(26px,env(safe-area-inset-bottom)) + 24px); width:118px; height:118px; border-radius:50%;
                background:radial-gradient(circle at 50% 38%, #16203a, #060a14);
                box-shadow:inset 0 0 0 2px var(--steel), inset 0 4px 14px rgba(0,0,0,.7), 0 4px 10px rgba(0,0,0,.5);
                pointer-events:auto; touch-action:none; }
     #joy-base::before{ content:''; position:absolute; inset:14px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(55,198,255,.18); }
-    #joy-knob{ position:absolute; left:39px; top:39px; width:64px; height:64px; border-radius:50%;
+    #joy-knob{ position:absolute; left:33px; top:33px; width:52px; height:52px; border-radius:50%;
                background:radial-gradient(circle at 50% 34%, #4fd0ff, #0f6fa8);
                box-shadow:0 3px 8px rgba(0,0,0,.5), inset 0 2px 3px rgba(255,255,255,.5), inset 0 -4px 8px rgba(0,40,70,.6), 0 0 14px rgba(55,198,255,.35);
                will-change:transform; }
-    .pad{ position:absolute; bottom:max(28px,env(safe-area-inset-bottom)); pointer-events:auto; border-radius:50%;
+    .pad{ position:absolute; bottom:calc(max(26px,env(safe-area-inset-bottom)) + 24px); pointer-events:auto; border-radius:50%;
           display:flex; align-items:center; justify-content:center; font-family:var(--f-display); font-weight:900; font-size:16px; letter-spacing:1px; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.5); }
-    #btn-boost{ right:24px; width:100px; height:100px;
+    #btn-boost{ right:20px; width:76px; height:76px; font-size:12px;
                 background:radial-gradient(circle at 50% 36%, #ffb14a, #e0431f);
                 box-shadow:inset 0 2px 3px rgba(255,240,200,.6), inset 0 -6px 12px rgba(90,10,0,.55), 0 5px 0 #8f2a10, 0 9px 12px rgba(0,0,0,.45), 0 0 22px rgba(255,120,30,.4);
                 transition:transform .05s,box-shadow .05s; }
-    #btn-power{ right:34px; bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);
-      width:74px; height:74px; overflow:hidden;
+    #btn-power{ right:20px; bottom:calc(max(26px,env(safe-area-inset-bottom)) + 112px);
+      width:68px; height:68px; overflow:hidden;
       background:linear-gradient(180deg,#3a2a5e,#1b1030); color:#cfa8ff;
       box-shadow:inset 0 0 0 2px rgba(190,150,255,.45), inset 0 -6px 12px rgba(20,4,40,.6), 0 3px 0 #17092a, 0 6px 10px rgba(0,0,0,.45);
       font-family:var(--f-display); font-weight:900; font-size:12px; letter-spacing:1px;
@@ -406,6 +406,14 @@
     .card.lock .big .svgi{ color:#586079; }
     #gameover-stats .svgi{ color:var(--gold); }
     #loading-overlay .l-emblem{ font-size:0; } #loading-overlay .l-emblem .svgi{ width:58px; height:58px; color:var(--orange); }
+
+    .boost-hero{ display:flex; align-items:center; justify-content:center; gap:12px; margin:6px 0 12px; }
+    .boost-hero .svgi{ width:46px; height:46px; color:var(--gold); }
+    .boost-hero b{ font-family:var(--f-display); font-weight:900; font-size:52px; color:var(--gold);
+      text-shadow:0 3px 0 rgba(0,0,0,.5); }
+    #boost-timer{ position:absolute; top:max(14px,env(safe-area-inset-top)); right:16px; margin-top:46px;
+      font-family:var(--f-num); font-weight:900; font-size:12px; letter-spacing:1px; color:var(--gold);
+      text-shadow:0 1px 2px #000; z-index:2; }
 
     /* ============================ POWERS SHEET ============================ */
     #pw-list{ max-height:min(46vh,400px); overflow-y:auto; }
@@ -1020,6 +1028,15 @@
       </div>
     </div>
   </div>
+  <div id="boost-modal" class="modal hidden">
+    <div class="sheet" style="width:min(360px,88vw)">
+      <div class="sheet-head"><span>Shard Boost</span><button class="x" id="boost-no">×</button></div>
+      <div class="boost-hero"><svg class="svgi"><use href="#i-coin"/></svg><b id="boost-x">2×</b></div>
+      <div class="sheet-note" id="boost-sub" style="text-align:center"></div>
+      <button class="btn" id="boost-yes" style="width:100%;margin-top:4px">ACTIVATE</button>
+      <button class="btn btn-sec" id="boost-later" style="width:100%">NOT NOW</button>
+    </div>
+  </div>
   <div id="powers-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Powers</span><button class="x" data-close>×</button></div>
@@ -1028,12 +1045,15 @@
       <div class="pw-hero">EQUIPPED FOR <b id="pw-who">—</b></div>
       <div id="pw-list"></div>
       <div class="pw-rules">
-        <div><b>CHARGE</b> Only clean smashes and close calls fill the bar. Never time.</div>
-        <div><b>COST</b> A shot needs the bar completely full, then locks out for 7 seconds.</div>
-        <div><b>TIMING</b> Never mistimed. Press it early and it ARMS, firing itself the instant a
-          gate is in range. Press it late and the shot is instant anyway. Your charge is never wasted.</div>
-        <div><b>PENALTY</b> Body-slam a gate instead and it costs you a third of your momentum and half your streak.</div>
-        <div><b>CLOSE CALL</b> Shave past a tower without touching it for bonus score and free charge.</div>
+        <div><b>WHAT IT IS FOR</b> Powers only open <b>Armored</b> towers and <b>Shielded</b> rows. Ordinary
+          buildings you just fly through — that never changes.</div>
+        <div><b>NO METER</b> No energy bar and no cooldown. It is always available.</div>
+        <div><b>THE CHALLENGE</b> It only fires while the gate is inside a fair radius ahead of you.
+          Too far and nothing happens; leave it too late and you are already wearing it.</div>
+        <div><b>WARNING</b> <i>ARMORED AHEAD</i> shows the moment one is on the way, and the button
+          reads GET READY, then FIRE the instant you are in range.</div>
+        <div><b>PENALTY</b> Body-slam a gate instead and it costs you a third of your momentum and
+          half your streak.</div>
       </div>
     </div>
   </div>
@@ -1242,7 +1262,7 @@
     _bindTouch(){
       if(matchMedia('(pointer: coarse)').matches||'ontouchstart' in window) document.body.classList.add('touch');
       const base=document.getElementById('joy-base'), knob=document.getElementById('joy-knob');
-      const R=48;                                     // max knob travel; bigger = less sensitive
+      const R=40;                                     // max knob travel; bigger = less sensitive
       let active=false;
       const moveTo=(clientX)=>{
         const r=base.getBoundingClientRect(), center=r.left+r.width/2;
@@ -1859,14 +1879,17 @@
     return list.find(p=>p.id===id) || list[0];      // list[0] is the character's signature power
   }
   // The whole economy in one place, so it can be retuned without hunting through the file.
+  // Powers exist for ONE job: opening a gate. No energy bar and no cooldown — you can only ever
+  // spend it on a gate, so metering it would only add bookkeeping. The single challenge is
+  // pressing it while the gate is inside a fair radius, at speed.
+  // Timed shard boost: offered every few runs, accepted once, live for a fixed window.
+  const BOOST={ mult:2, hours:4, everyRuns:3, cooldownH:6 };
+
   const PWR={
-    max:100,          // a shot needs the bar FULL
-    perSmash:9,       // ~11 clean smashes to charge one shot
-    perCloseCall:6,   // rewarded for shaving a building instead of playing safe
-    cooldown:7.0,     // seconds of hard lockout after a shot, on top of the bar
-    range:150,        // how far ahead a gate can be and still be a valid target
-    gateScore:3.0,    // score multiplier for clearing a gate with the right power
-    slamCost:34,      // momentum lost for body-slamming a gate without a power
+    range:170,        // the firing window: at ~90 m/s this is roughly a 1.9s reaction test
+    minRange:14,      // closer than this and it is already on you — the "too late" edge
+    gateScore:3.0,    // score multiplier for clearing a gate with a power
+    slamCost:34,      // momentum lost for body-slamming a gate
   };
 
   // ===================================================================================
@@ -1912,7 +1935,6 @@
       const tier=this.tierFor(PLAY.tierVol);
       const combo=g.combo.hit();
       const gained=Math.round(tier.score*g.combo.multiplier()*g.adrenaline.scoreMul()*(powerMul||1));
-      if(g.powers) g.powers.gain(PWR.perSmash);
 
       g.momentum.addHit(tier.mom);
       g.adrenaline.addHit(tier);
@@ -3830,7 +3852,7 @@
   // ===================================================================================
   class PowerSystem {
     constructor(game){
-      this.game=game; this.energy=0; this.cd=0; this._t=0; this.armed=0;
+      this.game=game; this._t=0;
       const G=game.scene;
       // ---- BEAM: two lances that leave the eyes, converge, and punch a hole through the tower.
       const bg=new THREE.CylinderGeometry(1,1,1,12,1,true);
@@ -3861,10 +3883,10 @@
       this._from=new THREE.Vector3(); this._to=new THREE.Vector3();
     }
     set(){ return powerFor(currentCharKey()); }
-    ready(){ return this.energy>=PWR.max && this.cd<=0; }
-    frac(){ return clamp(this.energy/PWR.max,0,1); }
-    gain(n){ if(this.energy<PWR.max) this.energy=clamp(this.energy+n,0,PWR.max); }
-    reset(){ this.energy=0; this.cd=0; this.fx=0; this.armed=0; this._hideAll(); }
+    ready(){ return true; }        // always available; the gate window is the only gate
+    frac(){ return 1; }
+    gain(n){}
+    reset(){ this.fx=0; this._hideAll(); }
     _hideAll(){ for(const b of this.beams){ b.core.visible=false; b.glow.visible=false; }
       for(const m of this.muzzle) m.visible=false;
       for(const r of this.rings) r.visible=false; this.shell.visible=false; }
@@ -3874,28 +3896,32 @@
       for(const b of g.city.buildings){
         if(b.hit||b.decor||!b.gate) continue;
         const z=b.mesh.position.z;
-        if(z>p.pos.z+6 && z<p.pos.z+PWR.range && z<bz){ bz=z; best=b; }
+        if(z>p.pos.z+PWR.minRange && z<p.pos.z+PWR.range && z<bz){ bz=z; best=b; }
       }
       return best;
+    }
+    // nearest gate ahead at ANY distance — drives the incoming warning
+    incoming(){
+      const g=this.game, p=g.player; let bz=1e9;
+      for(const b of g.city.buildings){ if(b.hit||b.decor||!b.gate) continue;
+        const d=b.mesh.position.z-p.pos.z; if(d>0 && d<340 && d<bz) bz=d; }
+      return bz<1e9? bz : -1;
     }
     // Pressing the button is never mistimed. If a gate is reachable it fires now; if one is
     // coming it ARMS and fires itself the instant the gate is in range; if the gate is already
     // on top of you it still fires, because the shot is instant. You cannot be early or late.
+    // No pre-arm, no queueing: hitting the window IS the skill. Fire early and nothing happens,
+    // fire late and the gate is already on you.
     press(){
-      if(!this.ready()){ if(this.cd>0) this.game.ui.flashHint('RECHARGING  '+Math.ceil(this.cd)+'s');
-                         else this.game.ui.flashHint('POWER  '+Math.round(this.frac()*100)+'%'); return false; }
       if(this.target()) return this.fire();
-      this.armed=2.6;                                   // hold the trigger for the next gate
-      this.game.ui.flashHint('ARMED — WAITING FOR A GATE');
+      this.game.ui.flashHint(this.incoming()>0 ? 'TOO EARLY' : 'NO GATE');
       return false;
     }
     fire(){
-      if(!this.ready()) return false;
       const g=this.game, p=g.player, tgt=this.target();
       if(!tgt) return false;
-      this.armed=0;
       const pw=this.set();
-      this.energy=0; this.cd=PWR.cooldown; this.mode=pw.kind;
+      this.mode=pw.kind;
       this._c1.setHex(pw.c); this._c2.setHex(pw.c2);
       this.fx=this.fxMax=(pw.kind==='laser'||pw.kind==='split')?0.55:0.7;
       this._from.set(p.pos.x, p.pos.y+0.5, p.pos.z+1.6);
@@ -3914,8 +3940,6 @@
     }
     update(dt){
       this._t+=dt;
-      if(this.cd>0) this.cd=Math.max(0,this.cd-dt);
-      if(this.armed>0){ this.armed-=dt; if(this.target()) this.fire(); }
       if(this.fx<=0){ this._hideAll(); return; }
       this.fx=Math.max(0,this.fx-dt);
       const k=1-this.fx/this.fxMax;                 // 0 -> 1 over the burst
@@ -4286,7 +4310,14 @@
       this.el.state.textContent=g.run.state;
       this.el.speed.textContent=Math.round(g.player.speed()*3.6)+' km/h';
       const low=g.momentum.isLow() && g.run.state!=='READY' && g.run.state!=='GameOver';
-      this.el.warn.style.opacity=(this._hintT>0)?'1':(low?'1':'0');
+      { const P=g.powers, inc=P.incoming();
+        if(this._hintT<=0 && inc>0 && !P.target()){
+          this.el.warn.textContent='ARMORED AHEAD'; this._warnGate=true;
+        } else if(this._warnGate && this._hintT<=0 && !(inc>0 && !P.target())){
+          this._warnGate=false; this.el.warn.textContent='LOW MOMENTUM — SMASH SOMETHING!';
+        } }
+      const gateWarn=(g.powers.incoming()>0 && !g.powers.target());
+      this.el.warn.style.opacity=(this._hintT>0||gateWarn)?'1':(low?'1':'0');
       if(this._hintT>0){ this._hintT-=0.016; if(this._hintT<=0) this.el.warn.textContent=this._warnTxt||'LOW MOMENTUM — SMASH SOMETHING!'; }
       // screen edge glow: red when low momentum, fiery orange when ON FIRE, else none
       if(low) this.el.vig.style.boxShadow='inset 0 0 200px 50px rgba(160,0,0,.5)';
@@ -4298,10 +4329,12 @@
       const p=g.player;
       { const P=g.powers, el=this.el.powerBtn, fill=this.el.powerFill, lab=this.el.powerLab;
         if(el){
-          const f=P.frac(); if(fill) fill.style.height=(f*100).toFixed(0)+'%';
-          const rdy=P.ready(), tgt=rdy && !!P.target();
-          el.classList.toggle('rdy',rdy); el.classList.toggle('tgt',tgt);
-          if(lab) lab.textContent = P.cd>0 ? Math.ceil(P.cd)+'s' : (tgt?'FIRE':(rdy?'READY':Math.round(f*100)+'%'));
+          const inWindow=!!P.target(), inc=P.incoming();
+          // the button only lights when a gate is actually inside the firing radius
+          if(fill) fill.style.height = inWindow?'100%':'0%';
+          el.classList.toggle('rdy', inc>0 && !inWindow);   // a gate is coming: get ready
+          el.classList.toggle('tgt', inWindow);             // NOW
+          if(lab) lab.textContent = inWindow?'FIRE':(inc>0?'GET READY':'POWER');
         } }
       if(p.surgeActive>0){ this.el.surgeTxt.textContent='SURGING'; this.el.surge.style.color='#d9a441'; this.el.boostBtn.style.opacity='1'; }
       else if(p.surgeReady()){ this.el.surgeTxt.textContent='SURGE READY'; this.el.surge.style.color='#4f9d63'; this.el.boostBtn.style.opacity='1'; }
@@ -4351,6 +4384,33 @@
     }
     best(){ return +(localStorage.getItem('invrun_best')||0); }
     coinBank(){ return +(localStorage.getItem('invrun_coins')||0); }
+    // ---- TIMED SHARD BOOST -------------------------------------------------------------
+    // Offered after every few runs. Accept once and it runs for a fixed number of hours; while
+    // it is live the prompt never appears again, and it only comes back once it has expired.
+    boostLeft(){ try{ return Math.max(0, (+localStorage.getItem('invrun_boost_until')||0) - Date.now()); }catch(e){ return 0; } }
+    boostActive(){ return this.boostLeft()>0; }
+    boostMult(){ return this.boostActive()? BOOST.mult : 1; }
+    _acceptBoost(){ try{ localStorage.setItem('invrun_boost_until', String(Date.now()+BOOST.hours*3600e3));
+      localStorage.setItem('invrun_boost_asked', String(Date.now())); }catch(e){} }
+    _declineBoost(){ try{ localStorage.setItem('invrun_boost_asked', String(Date.now())); }catch(e){} }
+    _bumpRuns(){ try{ const n=(+localStorage.getItem('invrun_runs')||0)+1;
+      localStorage.setItem('invrun_runs', String(n)); return n; }catch(e){ return 0; } }
+    _shouldOfferBoost(){
+      if(this.boostActive()) return false;                         // never nag while it is running
+      try{
+        const n=+localStorage.getItem('invrun_runs')||0;
+        if(n<BOOST.everyRuns) return false;
+        const asked=+localStorage.getItem('invrun_boost_asked')||0;
+        if(Date.now()-asked < BOOST.cooldownH*3600e3) return false; // and not straight after a decline
+        return (n % BOOST.everyRuns)===0;
+      }catch(e){ return false; }
+    }
+    _offerBoost(){
+      const m=document.getElementById('boost-modal'); if(!m) return;
+      const t=document.getElementById('boost-sub');
+      if(t) t.textContent=`Every shard you collect counts ${BOOST.mult}× for the next ${BOOST.hours} hours.`;
+      m.classList.remove('hidden');
+    }
     // First three runs each day pay double shards. Cheap, honest, and it is the single most
     // reliable daily-return hook there is: the reward is gone if you skip a day.
     _today(){ return new Date().toISOString().slice(0,10); }
@@ -4373,7 +4433,8 @@
       if(isBest){ try{ localStorage.setItem('invrun_best',score); }catch(e){} }
       const best=Math.max(score,prev);
       // BANK the coins collected this run -> the persistent currency for skins later
-      const dm=this.dailyMult(); const earned=g.score.coins*dm; if(dm>1) this._consumeDaily();
+      const dm=this.dailyMult()*this.boostMult();
+      const earned=Math.round(g.score.coins*dm); if(this.dailyMult()>1) this._consumeDaily();
       const bank=this.coinBank()+earned;
       try{ localStorage.setItem('invrun_coins',bank); }catch(e){}
       const combBest=g.combo.best||0, dist=Math.round(g.score.distance||0);
@@ -4392,7 +4453,7 @@
           `<div class="res-cell">${svg('i-map')}<div><b>${dist}m</b><span>Distance</span></div></div>`+
           `<div class="res-cell">${svg('i-trophy')}<div><b>${best.toLocaleString()}</b><span>All-Time Best</span></div></div>`+
         `</div>`+
-        `<div class="res-coins">${svg('i-coin')} +${earned} shards${dm>1?' <b style="color:var(--gold)">(2× DAILY)</b>':''} · ${bank.toLocaleString()} total</div>`;
+        `<div class="res-coins">${svg('i-coin')} +${earned} shards${dm>1?` <b style="color:var(--gold)">(${dm}× BOOST)</b>`:''} · ${bank.toLocaleString()} total</div>`;
       // count the final score UP so it's unmistakably shown
       { const el=document.getElementById('go-score'); const t0=performance.now(), dur=900;
         const step=(now)=>{ const k=Math.max(0,Math.min(1,(now-t0)/dur)); const e=1-Math.pow(1-k,3);
@@ -4400,6 +4461,8 @@
           if(k<1) requestAnimationFrame(step); else if(el) el.textContent=score.toLocaleString(); };
         requestAnimationFrame(step); }
       if(g.missions) g.missions.onRunEnd({score, hits:g.score.hits, dist, combo:combBest, coins:g.score.coins});
+      this._bumpRuns();
+      if(this._shouldOfferBoost()) setTimeout(()=>this._offerBoost(), 900);
       // share payload for the Share Score button (viral hook)
       this._shareText=`I scored ${score.toLocaleString()} smashing ${g.score.hits} buildings in CITYBREAKER 💥 Beat that:`;
       const ov=document.getElementById('gameover-overlay');
@@ -4436,7 +4499,6 @@
         if(gap<0 || gap>2.6) continue;                          // hit it, or was never close
         const tight=1-gap/2.6;
         G.score.total+=Math.round(120+380*tight);
-        G.powers.gain(PWR.perCloseCall);
         G.adrenaline.value=clamp(G.adrenaline.value+9*tight,0,G.adrenaline.MAX);
         G.camera.shake(0.30+0.45*tight);
         G.effects.flash(0.10+0.14*tight);
@@ -4707,6 +4769,13 @@
       // ----- classic menu: settings / skins / maps sheets -----
       const openM=(id)=>document.getElementById(id).classList.remove('hidden');
       const closeAll=()=>document.querySelectorAll('.modal').forEach(m=>m.classList.add('hidden'));
+      { const close=()=>document.getElementById('boost-modal').classList.add('hidden');
+        const yes=document.getElementById('boost-yes'), later=document.getElementById('boost-later'),
+              no=document.getElementById('boost-no'), xm=document.getElementById('boost-x');
+        if(xm) xm.textContent=BOOST.mult+'×';
+        if(yes) yes.onclick=()=>{ this.run._acceptBoost(); this.audio.uiClick(); close(); this.ui.refreshMenu&&this.ui.refreshMenu(); };
+        const dec=()=>{ this.run._declineBoost(); this.audio.uiClick(); close(); };
+        if(later) later.onclick=dec; if(no) no.onclick=dec; }
       document.getElementById('settings-btn').onclick=()=>openM('settings-modal');
       { const pb=document.getElementById('powers-btn'), list=document.getElementById('pw-list'),
               who=document.getElementById('pw-who');
