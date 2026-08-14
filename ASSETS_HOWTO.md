@@ -267,6 +267,27 @@ turn up once the run is genuinely going, and even then they ease in. **All three
 passed** — score, distance and time — so a lucky early burst cannot summon them. Raise `minScore`
 to switch them off entirely without deleting any code.
 
+## The maps
+
+| Key | Name | Look |
+|---|---|---|
+| `nyc` | Tokyo | Shibuya side street, real 3D signage |
+| `aero` | Frutiger Aero | glass towers, bright sky, bubbles |
+| `medieval` | Medieval | stone watch towers, cobbles, citadel |
+| `metro` | Frutiger Metro | underground tunnel, train cars on the track |
+| `backrooms` | The Backrooms | yellow carpet, drywall partitions, ceiling tiles |
+| `inferno` | **Inferno** | black basalt splitting over a magma river, ash storming upward |
+| `synth` | **Neon Void** | a black void ruled by a glowing grid; towers drawn only in light |
+
+Adding a map is one `THEMES` entry, one `GATE_LOOK` entry, one `body.theme-<key>` CSS block and one
+card in the maps sheet. Facade styles live in `_drawFacade` (`window`, `glass`, `stone`, `metro`,
+`drywall`, `basalt`, `neon`) and road styles in `_roadTexture` (`jp`, `cobble`, `carpet`, `rails`,
+`lava`, `grid`).
+
+Difficulty parity is enforced by `PLAY`, so a new map is automatically in line with the rest.
+Measured across nyc / metro / inferno / synth: score-per-minute spread **1.11×**, hits 1.03×,
+distance 1.01×.
+
 ## Two buildings, and only two
 
 On every map there are exactly **two** things you can fly at:
@@ -294,6 +315,28 @@ Guarded by **`scripts/world-integrity.mjs`** — 240s of play per map, asserting
 ever wears the gate texture, no gate ever wears a facade, the tiling never changes, there is
 exactly one normal colour and one gate colour, and no drone arrives before its gates.
 
+## Vibration (haptics)
+
+```js
+const HAPTIC = { tap:12, shard:8, smashLight:14, smashHeavy:26, smashHuge:[30,24,44],
+                 combo:[10,30,10], fire:[22,40,22], epic:[34,40,20,40,52],
+                 ethereal:[46,30,26,30,26,30,64], closeCall:[8,26,8],
+                 power:[16,26,58], powerBig:[22,30,34,26,70], dud:[6,40,6],
+                 gateBlock:[70,60,120], drone:[90,50,60,50,90], death:[140,70,220],
+                 stage:[18,50,18,50,54], milestone:[12,36,12] };
+```
+
+A number is one buzz; an array alternates buzz / pause / buzz. Every meaningful event has its own
+pattern, so the phone tells you what happened without you reading anything.
+
+Two rules keep it from turning into a permanent hum: light events (`tap`, `shard`, `smashLight`,
+`smashHeavy`, `closeCall`) are rate-limited to one every 90 ms, and heavy events to one every
+40 ms. In a 120-second run that works out to about 50 buzzes — noticeable, never constant.
+
+Toggle lives in **Settings → Vibration**, persisted as `invrun_haptic`. `navigator.vibrate` is
+Android/Chrome only; **iOS Safari has no vibration API at all**, so on an iPhone the row shows
+"(not available on this device)" and the switch is disabled rather than pretending to work.
+
 ## Shard boost
 
 ```js
@@ -303,3 +346,50 @@ const BOOST = { mult:2, hours:4, everyRuns:3, cooldownH:6 };
 Offered on the results screen every `everyRuns` runs. Accept and shards count `mult`× for `hours`
 hours. While it is live the prompt never appears again; after a decline it waits `cooldownH` hours.
 Stacks with the separate first-three-runs-of-the-day daily multiplier.
+
+
+---
+
+# PART 4 — Missions
+
+Four goals a day, drawn from a twelve-entry pool, each at one of three tiers. They are meant to be
+**hard** — a mission is a reason to get better, not a participation tick.
+
+| Goal | Tiers |
+|---|---|
+| Smash N buildings in one run | 260 / 420 / 650 |
+| Fly N m in one run | 20k / 34k / 55k |
+| Reach a xN combo | 80 / 130 / 190 |
+| Collect N shards in one run | 300 / 500 / 780 |
+| Score N in one run | 1.2M / 3.5M / 7.5M |
+| Break N armored gates in one run | 12 / 22 / 36 |
+| Clear N gates with a power, no slams | 10 / 18 / 30 |
+| Smash N in a row without a miss | 60 / 95 / 140 |
+| Enter EPIC N times in one run | 4 / 7 / 11 |
+| Reach ETHEREAL N times in one run | 2 / 4 / 7 |
+| Get N close calls in one run | 25 / 45 / 70 |
+| Reach escalation stage N in one run | 3 / 4 / 5 |
+
+The bottom seven demand the mechanics the game is actually about, so they cannot be reached by
+simply surviving. **"No slams" is literal**: body-slamming a single gate resets that run's power
+counter to zero.
+
+Per-run tallies live in `ScoreSystem.st` and are handed to `missions.onRunEnd` at the results
+screen. To add a goal: add a row to `POOL` with an `id`, then `score.tally('<id>')` wherever the
+event happens.
+
+---
+
+# PART 5 — Impact
+
+What makes a hit land, in order of how much you feel it:
+
+| | Hitstop | Camera punch | Shake | Haptic |
+|---|---|---|---|---|
+| Ordinary smash | — | 0.22 + tier | tier | light / heavy |
+| Power clears a gate | 70–105 ms | 0.9–1.3 | 0.9–1.15 | `power` / `powerBig` |
+| Body-slam a gate | 150 ms | 1.6 | 1.5 | `gateBlock` |
+
+`player.punch(n)` is a sharp recoil that decays about three times faster than the smash pulse and
+kicks the camera's FOV out by `punch * 7` degrees. `time.hitstop(ms)` is a hard freeze-frame, not
+an ease — it snaps back instantly so it reads as weight rather than slow motion.
