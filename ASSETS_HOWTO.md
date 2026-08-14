@@ -200,23 +200,31 @@ Add, remove or reorder stages freely — `at` is the only field that has to incr
 
 ```js
 const PWR = {
-  range:210,       // BASE reach, then scaled per power kind below
+  leadSec:3.0,     // SECONDS of window, before the per-kind multiplier
+  minRange:150,    // never a shorter reach than this at low speed
+  maxRange:560,    // never past the spawn horizon (city.aheadDist is 620)
   blastAfter:2,    // how many towers BEHIND the gate also go down (never another gate)
   blastRange:150,  // how far past the gate that follow-through reaches
   gateScore:3.0,   // score multiplier for clearing a gate with a power
   slamCost:62,     // momentum lost for body-slamming a gate instead
-  kindRange:{ laser:0.80, split:0.95, nova:1.15, storm:1.35 },
+  kindRange:{ laser:0.85, split:0.95, nova:1.10, storm:1.25 },
 };
 ```
 
-Reach is **per power kind**, so the four do not feel the same:
+**Reach is measured in seconds, not metres.** A fixed distance is a shrinking window — 210 m is
+four seconds early in a run and barely one and a half at top speed, which is how a gate could
+arrive with no time to answer it. Reach is `speed × leadSec × kindMul`, so the window is the same
+length of time at 140 km/h and at 500 km/h.
 
-| Kind | Reach | Feel |
+| Kind | Window | Feel |
 |---|---|---|
-| `laser` | ~168 m | a focused lance — line it up late, the tightest window |
-| `split` | ~200 m | a scything cut |
-| `nova` | ~241 m | a blast, so it reaches further |
-| `storm` | ~284 m | lightning called down from above, the longest reach |
+| `laser` | 2.55 s | a focused lance — the tightest window |
+| `split` | 2.85 s | a scything cut |
+| `nova` | 3.30 s | a blast, so it reaches further |
+| `storm` | 3.75 s | lightning called down from above, the longest |
+
+Measured in real play across all six villains: **every** gate approach gave at least **2.72 s**,
+median 3.0 s. Asserted by `scripts/cape-and-window.mjs`.
 
 **Pressing with nothing in range does not fire.** It plays a flat dud click and prints
 `NO TARGET <n>m`, and the button is visibly dimmed (`.dead`) the whole time a press would do
@@ -393,3 +401,51 @@ What makes a hit land, in order of how much you feel it:
 `player.punch(n)` is a sharp recoil that decays about three times faster than the smash pulse and
 kicks the camera's FOV out by `punch * 7` degrees. `time.hitstop(ms)` is a hard freeze-frame, not
 an ease — it snaps back instantly so it reads as weight rather than slow motion.
+
+
+---
+
+# PART 6 — Capes and wings
+
+Every villain is **one mesh, one material, no bones**. There is no cape object to animate, and the
+models are open double-sided shells, so nothing can be worked out from the geometry — there are no
+back faces to measure thickness against and the shells are too fragmented for boundary loops.
+
+So the cloth is **declared**, per character, in the model's own local space:
+
+```js
+flow:[ { a:'z', d:-1, from:0.22, to:0.98, box:{ y:[-0.55,1] } },   // cape, ramping backward
+       { a:'y', d:-1, from:-0.20, to:0.86, box:{ z:[-1,-0.26], y:[-0.66,1] } } ]  // ...and down to the hem
+```
+
+| Field | Meaning |
+|---|---|
+| `a` | which local axis the cloth extends along — `x`, `y` or `z` |
+| `d` | which way: `-1`, `1`, or **`0` for symmetric** (a pair of wings) |
+| `from`, `to` | the ramp, in normalised bbox units — `0` is the centre, `1` the edge |
+| `box` | optional hard bounds, same units, to keep limbs out |
+
+Weight is **0** at `from` and **1** at `to`, so the seam is pinned and only the free edge flies.
+Anything outside every region is exactly zero and *cannot* move. That is the whole design: the
+previous version guessed with a single threshold on an axis that, for most characters, pointed at
+an arm or a leg instead of the cape.
+
+Two ramps are usually needed for a hanging cape — backward off the shoulders **and** downward to
+the hem — or the hem stays pinned while the middle of the cape flaps. The `y` bound on the
+downward ramp is what keeps a trailing **boot** out of it.
+
+Current regions: Dominus and The Patriot — cape behind and below. Frutiger Villain — trailing
+ribbons. Evil Knight — both wings (symmetric on `x`) plus the robe hem. The Entity — tattered
+shreds trailing on `z`. Violet Voidstrike — hair and ribbons on the upper trailing half, with a `y`
+floor separating them from her boots.
+
+## Checking a change
+
+`scripts/cape-and-window.mjs` guards that the weights exist and the shader is live on every
+character. To actually *see* the mask, render the model with `aFlow` as vertex colour — grey is
+pinned, yellow moves. That is how each region above was set, and it is the check to repeat if a
+model is ever replaced.
+
+The wind itself is applied along the model's own local axes, derived by carrying world "behind /
+up / sideways" back through each character's `rotX` and `yaw`. Phase advances with **flight
+speed**, so the faster you go the harder the air pushes and the tighter the ripple.
