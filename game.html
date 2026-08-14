@@ -2015,21 +2015,61 @@
   class Haptics {
     constructor(){
       // ---- BACKENDS, best first ---------------------------------------------------------
+      // 'native'   A native shell is hosting the page and has published a haptic bridge. This is
+      //            the ONLY way to get real haptics on an iPhone (see below) and it is also the
+      //            best path on Android. See HAPTIC_BRIDGE below for the contract.
       // 'vibrate'  navigator.vibrate — Android / Chrome. Real patterns, real durations.
-      // 'ios'      iOS has a Taptic Engine but SAFARI HAS NEVER SHIPPED navigator.vibrate, on
-      //            any iPhone or any iOS version. The one hook Safari does give a web page is
-      //            the switch control added in iOS 17.4: toggling an <input type="checkbox"
-      //            switch> plays a system haptic. So we keep one hidden switch and tap it.
-      //            A pattern becomes a burst of taps — the rhythm survives, the durations do
-      //            not, because iOS gives no control over strength or length.
+      // 'ios'      Best effort on iOS Safari, and it usually does NOTHING. Worth stating plainly:
+      //            an iPhone has a Taptic Engine, but Safari has never shipped navigator.vibrate
+      //            on any iOS version, and Add to Home Screen does not change that — it is still
+      //            WebKit under the same rules. The one hook that exists is the system tap played
+      //            when an <input type="checkbox" switch> is toggled (iOS 17.4+), but iOS only
+      //            plays it for a genuine finger-on-glass activation. A script-driven click is not
+      //            user activation, so mid-game events almost never fire. It is left in because it
+      //            costs nothing and does work on some builds — but on iOS the honest answer is
+      //            that the app build is what makes haptics work, and the UI says so.
       // 'none'     no haptic hook at all.
       this.mode='none';
-      try{ if(typeof navigator!=='undefined' && navigator.vibrate) this.mode='vibrate'; }catch(e){}
+      if(this._initNative()) this.mode='native';
+      if(this.mode==='none'){ try{ if(typeof navigator!=='undefined' && navigator.vibrate) this.mode='vibrate'; }catch(e){} }
       if(this.mode==='none') this._initIOS();
       this.supported = this.mode!=='none';
+      // iOS Safari can only ever be best-effort, so it is reported separately from a backend we
+      // know actually fires. The settings row uses this to tell the truth.
+      this.reliable = (this.mode==='native'||this.mode==='vibrate');
       let on=true; try{ const v=localStorage.getItem('invrun_haptic'); if(v!==null) on=(v==='1'); }catch(e){}
       this.enabled=on;
       this._last=0; this._timers=[];
+    }
+    // ---- NATIVE BRIDGE --------------------------------------------------------------------
+    // A native shell (Capacitor, Cordova, or a plain WKWebView / Android WebView) can publish a
+    // haptic hook and this picks it up with no further changes. Any ONE of these is enough:
+    //
+    //   window.CBHaptics.play(name, patternArray)            plain injected object
+    //   window.webkit.messageHandlers.cbHaptic.postMessage(msg)   iOS WKWebView
+    //   window.CBAndroid.haptic(JSON.stringify(msg))         Android addJavascriptInterface
+    //
+    // `name` is the event ('smashHeavy', 'gateBlock', ...) so the shell can map it onto a real
+    // UIImpactFeedbackGenerator style instead of replaying a buzz pattern. The pattern is passed
+    // too, for shells that would rather use Core Haptics directly.
+    _initNative(){
+      try{
+        if(typeof window==='undefined') return false;
+        if(window.CBHaptics && typeof window.CBHaptics.play==='function'){
+          this._native=(name,pat)=>{ try{ window.CBHaptics.play(name,pat); }catch(e){} };
+          return true;
+        }
+        const wk=window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cbHaptic;
+        if(wk && typeof wk.postMessage==='function'){
+          this._native=(name,pat)=>{ try{ wk.postMessage({name, pattern:pat}); }catch(e){} };
+          return true;
+        }
+        if(window.CBAndroid && typeof window.CBAndroid.haptic==='function'){
+          this._native=(name,pat)=>{ try{ window.CBAndroid.haptic(JSON.stringify({name,pattern:pat})); }catch(e){} };
+          return true;
+        }
+      }catch(e){}
+      return false;
     }
     // Build the hidden iOS switch. It has to remain part of the rendered page — a display:none
     // control is not activatable and plays nothing — so it is parked off-screen at 1x1 and made
@@ -2076,6 +2116,7 @@
       if(now-this._last < gap) return false;
       if(weight!==undefined && weight<0.35 && light) return false;
       this._last=now;
+      if(this.mode==='native'){ this._native(name, (typeof pat==='number')?[pat]:pat); return true; }
       if(this.mode==='vibrate'){
         try{ navigator.vibrate(pat); }catch(e){ return false; }
         return true;
@@ -5747,7 +5788,12 @@
           if(note) note.textContent='(this browser has no haptics)';
           hb.textContent='—'; hb.classList.remove('on'); hb.style.opacity='0.45';
         } else {
-          if(note && this.haptics.mode==='ios') note.textContent='(needs System Haptics on)';
+          // Do not claim iOS Safari works. It almost never does: Safari has no Vibration API and
+          // the one hook that exists needs a real finger-on-glass activation, which an in-game
+          // event is not. Say what is actually true instead of leaving the player poking at a
+          // switch that cannot do anything.
+          if(note) note.textContent = this.haptics.reliable ? ''
+            : '(iOS: Safari can\u2019t \u2014 works in the app build)';
           hb.onclick=()=>applyH(!this.haptics.enabled);
           hb.textContent=this.haptics.enabled?'ON':'OFF'; hb.classList.toggle('on',this.haptics.enabled); } }
       // NIGHT MODE toggle (turns the current map to night: dark sky, stars, street lamps, lit buildings)

@@ -2,14 +2,19 @@
 //
 // Runs the game three times with a different platform emulated each time:
 //
-//   android   navigator.vibrate present            -> real patterns, real durations
-//   iphone    NO navigator.vibrate, but the iOS 17.4+ <input type="checkbox" switch>
-//             control exists                       -> the pattern's RHYTHM replayed as taps
-//   bare      neither                              -> silent, and the UI says so honestly
+//   wkwebview  a native iOS shell published window.webkit.messageHandlers.cbHaptic
+//   capacitor  a native shell published window.CBHaptics.play
+//   androidapp a native Android shell published window.CBAndroid.haptic
+//   android    navigator.vibrate present            -> real patterns, real durations
+//   iphone     NO navigator.vibrate, but the iOS 17.4+ switch control exists -> best effort only
+//   bare       neither                              -> silent, and the UI says so honestly
 //
-// iOS is the case worth explaining: an iPhone obviously has a Taptic Engine, but Safari has
-// never shipped the Vibration API on any iOS version. The system tap played when a switch
-// control is toggled is the only haptic a web page can reach there, so that is what is used.
+// iOS is the case worth explaining. An iPhone obviously has a Taptic Engine, but Safari has
+// never shipped the Vibration API on any iOS version, and Add to Home Screen does not change
+// that — it is the same WebKit under the same rules. The switch-control tap is the only hook a
+// web page has, and iOS only plays it for a genuine finger-on-glass activation, so in-game
+// events almost never fire it. On iOS the app build is what makes haptics real, which is why
+// the `native` bridge exists and why `reliable` is false for the Safari path.
 //
 //   node scripts/haptics.mjs
 //
@@ -25,11 +30,16 @@ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/ch
 // ---- CASE 1: Android-like. navigator.vibrate present. ----
 // ---- CASE 2: iPhone-like. NO navigator.vibrate, but the iOS 17.4+ switch control exists. ----
 let bad=0;
-for(const CASE of ['android','iphone','bare']){
+for(const CASE of ['wkwebview','capacitor','androidapp','android','iphone','bare']){
   const pg=await b.newPage({viewport:{width:412,height:892},deviceScaleFactor:1});
   const errs=[]; pg.on('pageerror',e=>errs.push(e.message));
   await pg.addInitScript((CASE)=>{
-    window.__vib=[]; window.__taps=[];
+    window.__vib=[]; window.__taps=[]; window.__nat=[];
+    if(CASE==='wkwebview'){
+      window.webkit={messageHandlers:{cbHaptic:{postMessage:(m)=>window.__nat.push(m)}}};
+    }
+    if(CASE==='capacitor'){ window.CBHaptics={play:(n,p)=>window.__nat.push({name:n,pattern:p})}; }
+    if(CASE==='androidapp'){ window.CBAndroid={haptic:(j)=>window.__nat.push(JSON.parse(j))}; }
     if(CASE==='android'){ navigator.vibrate=(p)=>{ window.__vib.push(p); return true; }; }
     else {
       try{ delete Navigator.prototype.vibrate; }catch(e){}
@@ -59,17 +69,23 @@ for(const CASE of ['android','iphone','bare']){
     const wait=(ms)=>new Promise(r2=>setTimeout(r2,ms));
     // fire a light event and a heavy one, count what each produced
     const count=async(name)=>{
-      window.__vib.length=0; window.__taps.length=0; H._last=0; H.stop();
+      window.__vib.length=0; window.__taps.length=0; window.__nat.length=0; H._last=0; H.stop();
       H.fire(name); await wait(600);
-      return {vib:window.__vib.length, taps:window.__taps.length};
+      return {vib:window.__vib.length, taps:window.__taps.length, nat:window.__nat.length};
     };
     out.shard = await count('shard');
     out.death = await count('death');
     out.gateBlock = await count('gateBlock');
     // OFF must be absolute on every backend
     H.set(false); window.__vib.length=0; window.__taps.length=0; H._last=0;
+    window.__nat.length=0;
     H.fire('death'); H.fire('gateBlock'); await wait(500);
-    out.silentWhenOff = window.__vib.length + window.__taps.length;
+    out.silentWhenOff = window.__vib.length + window.__taps.length + window.__nat.length;
+    out.reliable = H.reliable;
+    // the bridge must receive the EVENT NAME, so a shell can map it to a real feedback style
+    out.sampleNativeMsg = null;
+    { H.set(true); window.__nat.length=0; H._last=0; H.fire('gateBlock'); await wait(50);
+      out.sampleNativeMsg = window.__nat[0]||null; }
     H.set(true);
     // the settings row must not accuse the device
     const note=document.getElementById('haptic-note'), btn=document.getElementById('haptic-btn');
@@ -77,16 +93,23 @@ for(const CASE of ['android','iphone','bare']){
     out.btn = btn? btn.textContent : null;
     return out;
   });
-  const want = { android:{mode:'vibrate', fires:true}, iphone:{mode:'ios', fires:true},
-                 bare:{mode:'none', fires:false} }[CASE];
-  const hits = (x)=> x.vib>0 || x.taps>0;
+  const want = { wkwebview:{mode:'native', fires:true, reliable:true},
+                 capacitor:{mode:'native', fires:true, reliable:true},
+                 androidapp:{mode:'native', fires:true, reliable:true},
+                 android:{mode:'vibrate', fires:true, reliable:true},
+                 iphone:{mode:'ios', fires:true, reliable:false},
+                 bare:{mode:'none', fires:false, reliable:false} }[CASE];
+  const hits = (x)=> x.vib>0 || x.taps>0 || x.nat>0;
   const checks=[
     ['backend chosen',        r.mode===want.mode],
     ['light event fires',     hits(r.shard)===want.fires],
     ['heavy event fires',     hits(r.death)===want.fires],
     ['heavy > light',         !want.fires || (r.death.vib+r.death.taps) >= (r.shard.vib+r.shard.taps)],
     ['OFF is absolute',       r.silentWhenOff===0],
-    ['UI does not blame the device', CASE!=='iphone' || !/device/i.test(r.note||'')],
+    ['reliability reported honestly', r.reliable===want.reliable],
+    ['UI does not blame the device',  !/device/i.test(r.note||'')],
+    ['iOS Safari is not sold as working', CASE!=='iphone' || /app build/i.test(r.note||'')],
+    ['a working backend shows no caveat', want.reliable!==true || (r.note||'')===''],
     ['no page errors',        errs.length===0],
   ];
   const failed=checks.filter(c=>!c[1]).map(c=>c[0]);

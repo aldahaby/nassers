@@ -343,35 +343,93 @@ Two rules keep it from turning into a permanent hum: light events (`tap`, `shard
 
 Toggle lives in **Settings → Vibration**, persisted as `invrun_haptic`.
 
-## Three backends
+## Four backends, picked automatically
 
-| Mode | When | What you get |
-|---|---|---|
-| `vibrate` | `navigator.vibrate` exists — Android / Chrome | the real pattern, real durations |
-| `ios` | no `navigator.vibrate`, but the iOS 17.4+ switch control exists | the pattern's **rhythm**, replayed as system taps |
-| `none` | neither | silent, and the row says so |
+| Mode | When | What you get | Reliable? |
+|---|---|---|---|
+| `native` | a native shell published a bridge | real haptics, mapped to real feedback styles | **yes** |
+| `vibrate` | `navigator.vibrate` exists — Android / Chrome | the real pattern, real durations | **yes** |
+| `ios` | iOS Safari, iOS 17.4+ | best effort, and usually nothing | no |
+| `none` | neither | silent, and the row says so | no |
 
-**Why iOS needs its own path.** An iPhone obviously has a Taptic Engine — but **Safari has never
-shipped the Vibration API**, on any iPhone or any iOS version. It is a browser gap, not a device
-one, and the setting must never imply otherwise.
+## iOS: read this before touching the haptics code
 
-The one haptic a web page *can* reach on iOS is the system tap played when an
-`<input type="checkbox" switch>` is toggled (added in iOS 17.4). So one hidden switch is kept in
-the page and tapped. Three things matter if you touch this code:
+An iPhone obviously has a Taptic Engine. What it does not have is a way for a **web page** to
+reach it:
 
-- It must stay **activatable**. Parked off-screen at its real size — `display:none`,
-  `visibility:hidden` and `opacity:0` all kill the haptic.
-- Only `click()` is called on it. That both toggles it and runs its activation behaviour, which is
-  what plays the tap; flipping `.checked` first would just undo the toggle.
-- iOS gives **no control over strength or duration**, so a pattern's buzzes become a burst of
-  taps — a long buzz becomes up to three, capped at seven per event. A death rumble still reads
-  as heavier than a shard pickup, which is the point.
+- **Safari has never shipped `navigator.vibrate`** — not on any iPhone, not on any iOS version.
+- **Add to Home Screen does not help.** A "web app" on iOS is the same WebKit under the same
+  rules. There is no PWA escape hatch for this.
+- The only hook that exists is the system tap played when an `<input type="checkbox" switch>` is
+  toggled (iOS 17.4+). iOS plays it **only for a genuine finger-on-glass activation** — a
+  script-driven `click()` is not user activation, so in-game events almost never fire it. It is
+  left in because it costs nothing, but it must never be advertised as working. `Haptics.reliable`
+  is `false` for this path and the settings row says *"iOS: Safari can't — works in the app build"*.
 
-It also needs **Settings → Sounds & Haptics → System Haptics** switched on, which the row says.
+**On iOS, the app build is what makes haptics real.** That is what the `native` bridge is for.
 
-Asserted by **`scripts/haptics.mjs`** — runs the game three times with each platform emulated and
-checks the right backend is chosen, that heavy events out-fire light ones, that OFF is absolute,
-and that the UI never blames the device.
+## The native bridge
+
+Publish **any one** of these before the page loads and the game uses it automatically — no change
+to the game is needed:
+
+```js
+window.CBHaptics = { play(name, pattern) { /* ... */ } };          // any shell
+window.webkit.messageHandlers.cbHaptic.postMessage({name, pattern}) // iOS WKWebView
+window.CBAndroid.haptic(JSON.stringify({name, pattern}))            // Android JS interface
+```
+
+The message carries the **event name** as well as the pattern, e.g.:
+
+```json
+{ "name": "gateBlock", "pattern": [70, 60, 120] }
+```
+
+Use the name — a shell should map it onto a real feedback style rather than replaying a buzz
+pattern, which is what makes native haptics feel better than vibration in the first place:
+
+| Event | Suggested iOS feedback |
+|---|---|
+| `shard`, `tap` | `UISelectionFeedbackGenerator` |
+| `smashLight` | `UIImpactFeedbackGenerator(style: .light)` |
+| `smashHeavy`, `smashHuge` | `.medium` / `.heavy` |
+| `gateBlock`, `drone`, `death` | `UINotificationFeedbackGenerator(.error)` |
+| `epic`, `ethereal`, `stage` | `UINotificationFeedbackGenerator(.success)` |
+| `power`, `powerBig` | `.rigid` / `.heavy` |
+
+### Minimal iOS shell (WKWebView)
+
+```swift
+// 1. register the handler on the web view's config
+config.userContentController.add(self, name: "cbHaptic")
+
+// 2. play the mapped feedback
+func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {
+    guard m.name == "cbHaptic",
+          let body = m.body as? [String: Any],
+          let name = body["name"] as? String else { return }
+    switch name {
+    case "shard", "tap":            UISelectionFeedbackGenerator().selectionChanged()
+    case "smashLight":              UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    case "smashHeavy", "power":     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    case "smashHuge", "powerBig":   UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+    case "gateBlock", "drone", "death":
+                                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+    case "epic", "ethereal", "stage":
+                                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    default:                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+}
+```
+
+With Capacitor, the same thing is a few lines on top of `@capacitor/haptics` — define
+`window.CBHaptics.play` and call `Haptics.impact({ style })`.
+
+Asserted by **`scripts/haptics.mjs`** — runs the game with six platforms emulated (three native
+shell shapes, Android, iOS Safari, and a bare browser) and checks the right backend is chosen,
+that heavy events out-fire light ones, that OFF is absolute, that reliability is reported
+honestly, that iOS Safari is never sold as working, and that a genuinely working backend shows no
+caveat.
 
 ## Shard boost
 
