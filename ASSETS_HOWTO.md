@@ -166,7 +166,7 @@ const LOOK = {
 
 ```js
 const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200,
-               xBox:22, hitDepth:8, gateEvery:12, gateMinGap:9 };
+               xBox:22, hitDepth:8, gateMinGap:9 };
 ```
 
 | Key | What it does |
@@ -174,20 +174,53 @@ const PLAY = { laneLo:11, laneHi:16.5, wLo:8, wHi:11, tierVol:2200,
 | `xBox` | how far off centre you may fly |
 | `hitDepth` | collision depth of a target, so a thin wall and a long train car are equally forgiving |
 | `tierVol` | the volume every target reports, so score per smash is map-independent |
-| `gateEvery` | average rows between armored/shielded gates |
 | `gateMinGap` | hard minimum rows between two gates, so they never bunch up |
+
+Gate *cadence* is no longer a constant — it comes from `STAGES` below.
+
+## Escalation — how a run progresses
+
+```js
+const STAGES = [
+  { at:0,       gateEvery:14, shielded:false, label:'OPENING'    },
+  { at:250000,  gateEvery:11, shielded:false, label:'PRESSURE'   },
+  { at:1200000, gateEvery:10, shielded:true,  label:'SHIELDED'   },
+  { at:3500000, gateEvery:8,  shielded:true,  label:'RELENTLESS' },
+  { at:7500000, gateEvery:7,  shielded:true,  label:'CHAOS'      },
+];
+```
+
+The run escalates on **your score inside a single life**, not on the clock, so a good run visibly
+changes shape under you. Each stage is announced on screen as you reach it. Early on every gate is
+a single armored tower; shielded rows only unlock at `SHIELDED`; drones only at `CHAOS`.
+
+Add, remove or reorder stages freely — `at` is the only field that has to increase.
 
 ## Powers
 
 ```js
 const PWR = {
-  range:400,       // if you can see it you can shoot it (~4 s of FIRE window)
+  range:210,       // BASE reach, then scaled per power kind below
   blastAfter:2,    // how many towers BEHIND the gate also go down (never another gate)
   blastRange:150,  // how far past the gate that follow-through reaches
   gateScore:3.0,   // score multiplier for clearing a gate with a power
   slamCost:62,     // momentum lost for body-slamming a gate instead
+  kindRange:{ laser:0.80, split:0.95, nova:1.15, storm:1.35 },
 };
 ```
+
+Reach is **per power kind**, so the four do not feel the same:
+
+| Kind | Reach | Feel |
+|---|---|---|
+| `laser` | ~168 m | a focused lance — line it up late, the tightest window |
+| `split` | ~200 m | a scything cut |
+| `nova` | ~241 m | a blast, so it reaches further |
+| `storm` | ~284 m | lightning called down from above, the longest reach |
+
+**Pressing with nothing in range does not fire.** It plays a flat dud click and prints
+`NO TARGET <n>m`, and the button is visibly dimmed (`.dead`) the whole time a press would do
+nothing. A silent dead press is what made the power feel broken.
 
 Powers work **only** on gates. No energy bar, no cooldown, no on-screen warnings. The only
 challenge is pressing while the gate is inside `range`.
@@ -204,8 +237,8 @@ wall. From a half-empty bar it ends the run.
 filling bar (violet, a gate is on the way), and `FIRE` (gold, pulsing, full — the shot will land).
 
 Per-character names, colours and kinds live in `POWERS`. Each villain has four, all selectable in
-the Powers sheet; `POWERS[char][0]` is the default. Setting `gateEvery` very high turns the whole
-mechanic off without deleting any code.
+the Powers sheet; `POWERS[char][0]` is the default. Setting every `STAGES` `gateEvery` very high
+turns the whole mechanic off without deleting any code.
 
 Gate colours per map live in `GATE_LOOK`.
 
@@ -221,11 +254,11 @@ map and power kind. Last run: 100% fire, 100% animation, 100% gate destroyed, 10
 
 ```js
 const DRONES = {
-  minScore:  100000,  // no drones at all below this — Silver rank, inside a SINGLE run
+  minScore:  7500000, // no drones at all below this — a Grandmaster-grade run, inside ONE life
   minDist:   2200,    // ...and not before this many metres
   minTime:   40,      // ...and not in the first 40s, whatever else happens
-  rampScore: 150000,  // score span over which they ease to their normal cadence
-  easeIn:    2.6,     // gap multiplier the moment they unlock (2.6x rarer than normal)
+  rampScore: 4000000, // score span over which they ease to their normal cadence
+  easeIn:    3.2,     // gap multiplier the moment they unlock (3.2x rarer than normal)
 };
 ```
 
@@ -240,12 +273,17 @@ On every map there are exactly **two** things you can fly at:
 
 | | Looks like | Answer |
 |---|---|---|
-| **Normal tower** | one colour, one facade, no roof beacon — identical every time | fly through it |
-| **Armored / shielded gate** | hazard body in the map's own palette, glowing frame, a **pulsing** glow and a lit **roof beacon** | use a power, or a live EPIC / ETHEREAL |
+| **Normal tower** | one colour, one facade, no glowing rim — identical every time | fly through it |
+| **Armored / shielded gate** | hazard body in the map's own palette, glowing frame, a **pulsing** glow and a glowing **capping rim** on its top edge | use a power, or a live EPIC / ETHEREAL |
 
 Normal towers carry **no** random variation — no colour jitter, no texture offset — because "is
 this one armored?" must be answerable at a glance, from the far end of the street. The decorative
 skyline behind them still varies freely; it is backdrop, and you never fly at it.
+
+A gate is always **taller than any normal target** on its map, and a shielded row's three blocks
+are placed **flush** so it reads as one barrier rather than loose crates. The capping rim sits *on*
+the top edge instead of floating above it — a detached cap looked like an unfinished prop, worst of
+all on metro where a gate is short and wide.
 
 Gate colours per map live in `GATE_LOOK`. The gate texture's tiling is baked **once**, at creation,
 and shared by every gate. Never set `repeat` on it per building — every gate shares the object, so
