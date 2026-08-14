@@ -6,7 +6,7 @@ const srv=http.createServer((q,r)=>{ const p=path.join(ROOT,decodeURIComponent(q
   fs.readFile(p,(e,d)=>{ if(e){r.writeHead(404);r.end();return;} r.writeHead(200,{'Content-Type':MIME[path.extname(p)]||'application/octet-stream'}); r.end(d); }); });
 await new Promise(r=>srv.listen(0,r)); const port=srv.address().port;
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--use-gl=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
-const combos=[['dominus','nyc'],['frutiger','aero'],['knight','medieval'],['patriot','metro'],['entity','backrooms'],['countess','nyc']];
+const combos=[['dominus','nyc'],['frutiger','aero'],['knight','medieval'],['patriot','metro'],['entity','backrooms'],['countess','synth'],['dominus','inferno']];
 let grand={att:0,fired:0,anim:0,gone:0,shells:0};
 for(const [CH,MP] of combos){
   const pg=await b.newPage({viewport:{width:412,height:892},deviceScaleFactor:1});

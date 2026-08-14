@@ -527,6 +527,37 @@
       box-shadow:inset 0 0 0 1.5px rgba(255,240,180,.5), inset 0 2px 0 rgba(255,255,255,.35), inset 0 -8px 14px rgba(90,64,0,.45);
       filter:drop-shadow(0 6px 0 #5c4408) drop-shadow(0 9px 10px rgba(0,0,0,.45)); color:#2a2005; }
     body.theme-backrooms .btn:not(.btn-sec):active{ filter:drop-shadow(0 1px 0 #5c4408) drop-shadow(0 3px 5px rgba(0,0,0,.4)); }
+    /* INFERNO — forge orange on charcoal */
+    body.theme-inferno{ --elec:#ff8a2a; --elec-glow:#ffc46a; --orange:#ff5a10; --steel:#7a3418; --steel-hi:#b05a28;
+      --gun:#2a1210; --gun2:#3e1a14; --navy:#1e0e0c; --navy2:#2c1512; --navy3:#140807; }
+    body.theme-inferno .overlay, body.theme-inferno #loading-overlay{ background:
+      radial-gradient(120% 80% at 50% 110%, rgba(255,90,16,.34), transparent 58%),
+      linear-gradient(180deg,#1a0608 0%,#3a0e06 55%,#0c0303 100%); }
+    body.theme-inferno .btn-play{ background:linear-gradient(180deg,#ffb14a 0%,#f0500f 55%,#a02505 100%);
+      box-shadow:inset 0 0 0 2px #ffd9a0, inset 0 3px 0 rgba(255,255,255,.42), inset 0 -10px 18px rgba(90,16,0,.55);
+      filter:drop-shadow(0 8px 0 #5c1403) drop-shadow(0 12px 14px rgba(0,0,0,.55)); color:#2a0a02; }
+    body.theme-inferno .btn-play:active{ filter:drop-shadow(0 2px 0 #5c1403) drop-shadow(0 4px 7px rgba(0,0,0,.45)); }
+    body.theme-inferno .btn:not(.btn-sec){ background:linear-gradient(180deg,#f08a30,#c04408);
+      box-shadow:inset 0 0 0 1.5px rgba(255,200,150,.5), inset 0 2px 0 rgba(255,255,255,.3), inset 0 -8px 14px rgba(90,16,0,.5);
+      filter:drop-shadow(0 6px 0 #5c1403) drop-shadow(0 9px 10px rgba(0,0,0,.45)); color:#2a0a02; }
+    body.theme-inferno .btn:not(.btn-sec):active{ filter:drop-shadow(0 1px 0 #5c1403) drop-shadow(0 3px 5px rgba(0,0,0,.4)); }
+
+    /* NEON VOID — magenta and cyan on black */
+    body.theme-synth{ --elec:#46f4ff; --elec-glow:#b0fbff; --orange:#ff2ec4; --steel:#5a2a8a; --steel-hi:#8a4ac0;
+      --gun:#1a0630; --gun2:#280a48; --navy:#12042a; --navy2:#1c0640; --navy3:#0a0218; }
+    body.theme-synth .overlay, body.theme-synth #loading-overlay{ background:
+      radial-gradient(120% 70% at 50% 108%, rgba(255,46,196,.30), transparent 58%),
+      radial-gradient(90% 60% at 50% -10%, rgba(70,244,255,.16), transparent 60%),
+      linear-gradient(180deg,#12042a 0%,#1c0640 52%,#050110 100%); }
+    body.theme-synth .btn-play{ background:linear-gradient(180deg,#ff86e0 0%,#e01ba8 55%,#8a0a6a 100%);
+      box-shadow:inset 0 0 0 2px #ffd0f4, inset 0 3px 0 rgba(255,255,255,.45), inset 0 -10px 18px rgba(60,0,50,.55);
+      filter:drop-shadow(0 8px 0 #4a0538) drop-shadow(0 12px 16px rgba(255,46,196,.28)); color:#2a0020; }
+    body.theme-synth .btn-play:active{ filter:drop-shadow(0 2px 0 #4a0538) drop-shadow(0 4px 8px rgba(255,46,196,.3)); }
+    body.theme-synth .btn:not(.btn-sec){ background:linear-gradient(180deg,#7a3ade,#4a1a9a);
+      box-shadow:inset 0 0 0 1.5px rgba(180,140,255,.55), inset 0 2px 0 rgba(255,255,255,.3), inset 0 -8px 14px rgba(30,0,60,.5);
+      filter:drop-shadow(0 6px 0 #2a0a5a) drop-shadow(0 9px 12px rgba(70,244,255,.22)); color:#f0e0ff; }
+    body.theme-synth .btn:not(.btn-sec):active{ filter:drop-shadow(0 1px 0 #2a0a5a) drop-shadow(0 3px 6px rgba(70,244,255,.2)); }
+
     body.theme-metro{ --elec:#2fe08a; --elec-glow:#7cffd6; --orange:#2fe08a; --steel:#2f6a5c; --steel-hi:#4f9a86;
       --gun:#0d2a26; --gun2:#124038; --navy:#0a201d; --navy2:#0e2e29; --navy3:#071815; }
     body.theme-metro .overlay, body.theme-metro #loading-overlay{ background:
@@ -801,6 +832,7 @@
       <div class="opt"><span><svg class="svgi si"><use href="#i-sound"/></svg>Sound Effects</span><button id="sound-btn" class="toggle on">ON</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-note"/></svg>Music</span><button id="music-btn" class="toggle on">ON</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-moon"/></svg>Night Mode</span><button id="night-btn" class="toggle">OFF</button></div>
+      <div class="opt"><span><svg class="svgi si"><use href="#i-phone"/></svg>Vibration <small id="haptic-note"></small></span><button id="haptic-btn" class="toggle on">ON</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-tilt"/></svg>Gyro Aim <small>(tilt to steer)</small></span><button id="gyro-btn" class="toggle">OFF</button></div>
       <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-stick"/></svg>Move Sensitivity</span><span class="val" id="movesens-val">1.0×</span></div>
         <input type="range" class="slider" id="movesens" min="50" max="180" value="100"></div>
@@ -832,7 +864,26 @@
         Terms and supervise any purchase. We do not knowingly collect personal information from
         children under 13.</p>
 
-        <h4>3. Licence</h4>
+        <h4>3. Use of AI in making this App</h4>
+        <p><strong>Parts of this App were created with the help of generative artificial
+        intelligence.</strong> AI assistance was used in producing some of the App's source code,
+        text, artwork, 3D models, textures, sound and music. All AI-assisted output was directed,
+        reviewed and accepted by a human developer before release, and we remain responsible for the
+        App as published.</p>
+        <p>Notes on what this does and does not mean:</p>
+        <p>• <strong>Nothing about you is sent to an AI service.</strong> The App does not use AI while
+        you play. There is no AI feature inside the App, and no gameplay data, device data or personal
+        information is transmitted to any AI model or provider at any time.<br>
+        • <strong>Copyright status may vary.</strong> In some countries, material generated by AI
+        without sufficient human authorship may not attract copyright protection. We claim rights only
+        to the extent the law allows, and this does not affect the licence granted to you below or your
+        right to play.<br>
+        • <strong>AI-assisted material may contain errors.</strong> This is one of the reasons the App
+        is provided "as is" — see the disclaimer of warranties below.</p>
+        <p>We disclose this so you can make an informed choice about installing and playing. If you
+        would rather not use software made with AI assistance, please do not install the App.</p>
+
+        <h4>4. Licence</h4>
         <p>We grant you a personal, revocable, non-exclusive, non-transferable, non-sublicensable
         licence to install and use the App on a device you own or control, as permitted by the usage
         rules of the store you obtained it from. You may not copy, sell, rent, lend, redistribute or
@@ -841,7 +892,7 @@
         automation; or attempt to obtain items, currency or progression by any means other than normal
         play and legitimate in-app purchases.</p>
 
-        <h4>4. In-app purchases</h4>
+        <h4>5. In-app purchases</h4>
         <p>The App may offer optional in-app purchases (for example shard packs, character unlocks,
         cosmetic bundles or an ad-free option). Key points:</p>
         <p>• <strong>All purchases are processed by the App Store or Google Play</strong>, not by us. Price,
@@ -862,7 +913,7 @@
         can disable in-app purchases in the device's screen-time or family settings, and we encourage
         it for shared devices.</p>
 
-        <h4>5. Advertising</h4>
+        <h4>6. Advertising</h4>
         <p>The App may show advertising, including banners, interstitials and optional rewarded video
         that you choose to watch in exchange for an in-game reward. Ads are served by third-party ad
         networks. Those networks are independent controllers of any data they process and are governed
@@ -872,7 +923,7 @@
         websites reached through an advertisement. Reward delivery depends on the ad network reporting
         a completed view; if an ad fails to load or complete, no reward is granted.</p>
 
-        <h4>6. Our content</h4>
+        <h4>7. Our content</h4>
         <p>The App, its code, artwork, characters, models, sound, names and design are owned by us or
         our licensors and protected by copyright and other laws. All rights not expressly granted are
         reserved. Characters and worlds are fictional; any resemblance to a real person, living or
@@ -880,31 +931,31 @@
         setting and imply no affiliation with, sponsorship by or endorsement from any city, company or
         brand.</p>
 
-        <h4>7. Third-party software</h4>
+        <h4>8. Third-party software</h4>
         <p>The App includes three.js and its loaders (© three.js authors, MIT Licence) and Basis
         Universal / Meshopt decoders under their respective open-source licences, together with any
         advertising, analytics or store SDKs required for distribution. Those components remain the
         property of their authors and are used under their own licence terms.</p>
 
-        <h4>8. Health and safety</h4>
+        <h4>9. Health and safety</h4>
         <p>The App contains flashing lights, high-contrast colour, rapid motion and screen shake. Read
         the <strong>Health &amp; Safety</strong> notice in Settings before playing. By playing you confirm
         you have read it and accept the risks it describes.</p>
 
-        <h4>9. Availability and updates</h4>
+        <h4>10. Availability and updates</h4>
         <p>The App is provided on an "as available" basis. We may change, update, suspend or
         discontinue it or any feature, in whole or in part, at any time and without notice or
         liability. Some features may require an internet connection; we are not responsible for your
         carrier's data charges.</p>
 
-        <h4>10. Disclaimer of warranties</h4>
+        <h4>11. Disclaimer of warranties</h4>
         <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE",
         WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR STATUTORY, INCLUDING ANY IMPLIED WARRANTY OF
         MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, ACCURACY OR NON-INFRINGEMENT. WE DO
         NOT WARRANT THAT THE APP WILL BE UNINTERRUPTED, ERROR-FREE, SECURE OR COMPATIBLE WITH YOUR
         DEVICE.</p>
 
-        <h4>11. Limitation of liability</h4>
+        <h4>12. Limitation of liability</h4>
         <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
         SPECIAL, CONSEQUENTIAL, EXEMPLARY OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, DATA,
         GOODWILL, PROGRESS, VIRTUAL ITEMS OR DEVICE USE, ARISING OUT OF OR RELATING TO THE APP, ON ANY
@@ -916,17 +967,17 @@
         allows, and nothing here limits liability for death or personal injury caused by negligence,
         for fraud, or for anything else that cannot lawfully be limited.</p>
 
-        <h4>12. Indemnity</h4>
+        <h4>13. Indemnity</h4>
         <p>You agree to indemnify and hold us harmless from any claim, damage, loss or expense
         (including reasonable legal fees) arising from your misuse of the App or your breach of these
         Terms, to the extent permitted by law.</p>
 
-        <h4>13. Termination</h4>
+        <h4>14. Termination</h4>
         <p>We may suspend or terminate your licence if you breach these Terms, including for cheating
         or fraudulent purchases. On termination your right to use the App and any virtual items ends.
         You may end this agreement at any time by deleting the App.</p>
 
-        <h4>14. Apple and Google</h4>
+        <h4>15. Apple and Google</h4>
         <p>Apple and Google are third-party beneficiaries of these Terms and may enforce them against
         you. They have no obligation to provide maintenance or support for the App. If the App fails to
         conform to any applicable warranty, you may notify Apple, and Apple may refund the purchase
@@ -935,7 +986,7 @@
         liability, legal or regulatory non-compliance, consumer protection, or third-party intellectual
         property claims.</p>
 
-        <h4>15. Disputes</h4>
+        <h4>16. Disputes</h4>
         <p>Before starting any formal proceeding you agree to contact us and attempt to resolve the
         matter informally for at least 30 days. If that fails, any dispute will be resolved on an
         individual basis. To the extent permitted by law, <strong>you and we waive any right to a jury
@@ -944,7 +995,7 @@
         right to bring a claim in their local courts or before their national consumer body where the
         law gives them that right.</p>
 
-        <h4>16. Governing law, changes, severability</h4>
+        <h4>17. Governing law, changes, severability</h4>
         <p>These Terms are governed by the laws of the developer's place of residence, without regard
         to conflict-of-law rules; if you are a consumer you keep the benefit of the mandatory
         protections of your own country of residence. We may update these Terms — the date above will
@@ -1087,6 +1138,8 @@
         <div class="card map" data-map="medieval"><span class="big"><svg class="svgi"><use href="#i-castle"/></svg></span>Medieval<small>Tap to play</small></div>
         <div class="card map" data-map="metro"><span class="big"><svg class="svgi"><use href="#i-train"/></svg></span>Frutiger Metro<small>Tap to play</small></div>
         <div class="card map" data-map="backrooms"><span class="big"><svg class="svgi"><use href="#i-map"/></svg></span>Backrooms<small>Tap to play</small></div>
+        <div class="card map" data-map="inferno"><span class="big"><svg class="svgi"><use href="#i-burst"/></svg></span>Inferno<small>Tap to play</small></div>
+        <div class="card map" data-map="synth"><span class="big"><svg class="svgi"><use href="#i-bolt"/></svg></span>Neon Void<small>Tap to play</small></div>
         <div class="card lock"><span class="big"><svg class="svgi"><use href="#i-lock"/></svg></span>Mars<small>Soon</small></div>
       </div>
     </div>
@@ -1103,7 +1156,8 @@
   <div id="missions-modal" class="modal hidden">
     <div class="sheet">
       <div class="sheet-head"><span>Missions</span><button class="x" data-close>×</button></div>
-      <div class="sheet-note">Finish a mission, claim the shards. New set every day.</div>
+      <div class="sheet-note">Four goals, new set every day. They are meant to be hard — finish
+        one and the shards are worth it.</div>
       <div id="ms-list"></div>
     </div>
   </div>
@@ -1162,7 +1216,7 @@
       showTip(); setInterval(showTip,3600); } };
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',startTips); else startTips();
     try{ var mk=localStorage.getItem('invrun_map');
-      document.body.classList.add('theme-'+(['nyc','aero','medieval','metro','backrooms'].indexOf(mk)>=0?mk:'nyc')); }catch(e){}
+      document.body.classList.add('theme-'+(['nyc','aero','medieval','metro','backrooms','inferno','synth'].indexOf(mk)>=0?mk:'nyc')); }catch(e){}
     var ov=document.getElementById('loading-overlay'),
         bar=document.getElementById('load-bar-fill'),
         pct=document.getElementById('load-pct');
@@ -1410,14 +1464,15 @@
       this.EPIC_TIME=5.0; this.ETH_TIME=5.0; this.epicTime=0; this.etherealTime=0; }  // fixed 5s bursts, then they END
     hit(){
       this.count++; this.best=Math.max(this.best,this.count);
+      this.game.score.best('clean', this.count);      // longest miss-free streak this run
       this.game.ui.flashCombo(this.count);
-      if(this.count>=2 && this.count%5===0) this.game.audio.comboMilestone(this.count);
-      if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); }   // ignite
+      if(this.count>=2 && this.count%5===0){ this.game.audio.comboMilestone(this.count); this.game.haptics.fire('combo'); }
+      if(this.count===this.FIRE){ this.game.audio.fire(); this.game.effects.flash(0.3); this.game.haptics.fire('fire'); }   // ignite
       // EPIC fires ONCE on crossing 26 and lasts a FIXED 5s (NOT refreshed by later hits) -> it ends.
       // (The cinematic "Snyder shot" for this peak is driven from ImpactSystem, tied to the building.)
-      if(this.count===this.EPIC){ this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME; }
+      if(this.count===this.EPIC){ this.game.score.tally('epic'); this.game.audio.epic(); this.game.effects.flash(0.55); this.epicTime=this.EPIC_TIME; this.game.haptics.fire('epic'); }
       // ETHEREAL: only reachable by chaining ANOTHER 16 smashes DURING epic -> a rarer, faster super state.
-      if(this.count===this.ETHEREAL){ this.game.audio.ethereal(); this.game.effects.flash(0.75); this.etherealTime=this.ETH_TIME; }
+      if(this.count===this.ETHEREAL){ this.game.score.tally('eth'); this.game.audio.ethereal(); this.game.effects.flash(0.75); this.etherealTime=this.ETH_TIME; this.game.haptics.fire('ethereal'); }
       return this.count;
     }
     miss(){
@@ -1469,7 +1524,13 @@
     constructor(){ this.reset(); }
     addHit(p){ this.total+=p; this.hits++; this.destroyed++; }
     addDistance(m){ this.distance+=m; this.total+=m*0.5; }
-    reset(){ this.total=0; this.hits=0; this.distance=0; this.destroyed=0; this.coins=0; }
+    // ---- per-run tallies the harder missions are scored against ----
+    tally(k,n){ this.st[k]=(this.st[k]||0)+(n===undefined?1:n); }
+    best(k,v){ if(v>(this.st[k]||0)) this.st[k]=v; }
+    reset(){ this.total=0; this.hits=0; this.distance=0; this.destroyed=0; this.coins=0;
+      // gates: gates broken any way. powers: gates cleared BY A POWER, reset to 0 on any slam,
+      // so "no slams" in the mission text is literally true. clean: longest miss-free streak.
+      this.st={gates:0, powers:0, clean:0, epic:0, eth:0, close:0, stage:1}; }
   }
 
   // ===================================================================================
@@ -1918,6 +1979,8 @@
     medieval: { base:0x241a10, hot:0xffb13b, cool:0xffe0a0 },   // Medieval: forge orange
     metro:    { base:0x08201c, hot:0x7cffd6, cool:0x2fe0b0 },   // Metro: service green
     backrooms:{ base:0x2a2410, hot:0xffd23a, cool:0xfff0b0 },   // Backrooms: fluorescent amber
+    inferno:  { base:0x120a0c, hot:0xff5a10, cool:0xffc24a },   // Inferno: white-hot forge orange
+    synth:    { base:0x0a0316, hot:0xff2ec4, cool:0x46f4ff },   // Neon Void: magenta / cyan
   };
 
   // Drones are a LATE threat. They do not exist at all until the run has proved itself, which
@@ -1929,6 +1992,61 @@
     rampScore: 4000000, // score span over which they ease from rare to their normal cadence
     easeIn:    3.2,     // gap multiplier the moment they unlock (3.2x rarer than normal)
   };
+
+  // ===================================================================================
+  // HAPTICS — every meaningful event has its own pattern, so the phone tells you what just
+  // happened without you reading anything. Vibration is a scarce resource: fire too often and the
+  // motor blurs into one continuous buzz and stops meaning anything, so light events are throttled
+  // and heavy ones always win. navigator.vibrate is Android/Chrome only and silently absent on
+  // iOS Safari, so every call is guarded and the toggle still shows so the setting is honest.
+  // ===================================================================================
+  const HAPTIC={
+    // name: pattern in ms. A number is a single buzz; an array alternates buzz/pause/buzz...
+    tap:        12,
+    shard:      8,
+    smashLight: 14,
+    smashHeavy: 26,
+    smashHuge:  [30,24,44],
+    combo:      [10,30,10],
+    fire:       [22,40,22],
+    epic:       [34,40,20,40,52],
+    ethereal:   [46,30,26,30,26,30,64],
+    closeCall:  [8,26,8],
+    power:      [16,26,58],
+    powerBig:   [22,30,34,26,70],
+    dud:        [6,40,6],
+    gateBlock:  [70,60,120],
+    drone:      [90,50,60,50,90],
+    death:      [140,70,220],
+    stage:      [18,50,18,50,54],
+    milestone:  [12,36,12],
+  };
+  class Haptics {
+    constructor(){
+      this.supported = (()=>{ try{ return typeof navigator!=='undefined' && !!navigator.vibrate; }catch(e){ return false; } })();
+      let on=true; try{ const v=localStorage.getItem('invrun_haptic'); if(v!==null) on=(v==='1'); }catch(e){}
+      this.enabled=on;
+      this._last=0; this._lastName='';
+    }
+    set(on){ this.enabled=!!on; try{ localStorage.setItem('invrun_haptic', on?'1':'0'); }catch(e){}
+      if(on) this.fire('tap'); }
+    // `weight` 0..1 lets a caller scale a light event down; heavy named events ignore it.
+    fire(name, weight){
+      if(!this.enabled||!this.supported) return false;
+      const pat=HAPTIC[name]; if(pat===undefined) return false;
+      const now=(typeof performance!=='undefined'?performance.now():Date.now());
+      // Throttle: a light buzz cannot interrupt anything, and repeats of the SAME light event are
+      // rate-limited so a combo chain does not turn the motor into a permanent hum.
+      const light = (name==='tap'||name==='shard'||name==='smashLight'||name==='smashHeavy'||name==='closeCall');
+      const gap = light? 90 : 40;
+      if(now-this._last < gap) return false;
+      if(weight!==undefined && weight<0.35 && light) return false;
+      this._last=now; this._lastName=name;
+      try{ navigator.vibrate(pat); }catch(e){ return false; }
+      return true;
+    }
+    stop(){ try{ if(this.supported) navigator.vibrate(0); }catch(e){} }
+  }
 
   // ESCALATION — the run gets harder as YOUR SCORE climbs, not just as the clock runs. Each stage
   // is reached inside a single life, so a good run visibly changes shape under you. Every value is
@@ -1998,6 +2116,7 @@
       // ordinary states you spend most of a good run in, and letting them through made gates
       // feel like they had no purpose at all.
       if(building.gate && !powerMul && g.combo.onEpic()){
+        g.score.tally('gates');
         this._clearGrid(building);
         g.city.breakApart(building,'nova',new THREE.Color(g.combo.onEthereal()?0xff5ce0:0xffb13b));
         g.effects.flash(0.34); g.camera.shake(0.7);
@@ -2005,6 +2124,7 @@
       }
       if(building.gate && !powerMul){
         const armor = building.gate==='armor';
+        g.score.st.powers=0;                          // a slam voids the "no slams" mission outright
         // Take the WHOLE grid out in one go. Otherwise the sweep hits a second block of the same
         // gate on the same frame and charges the penalty twice, which reads as a random execution.
         this._clearGrid(building, true);
@@ -2018,10 +2138,11 @@
         g.ui.flashCombo(0);
         // make the damage unmissable
         g.effects.flash(0.75); g.camera.shake(1.5);
+        g.time.hitstop(150); g.player.punch(1.6);      // a wall stops you dead
         g.effects.burst(building.mesh.position.clone(), new THREE.Color(armor?0xff7a00:0x00d8ff), 30, 34);
         if(g.ui.hurt) g.ui.hurt();
         if(g.ui.scorePop) g.ui.scorePop('BLOCKED  −'+PWR.slamCost, 'bad', true);
-        try{ if(navigator.vibrate) navigator.vibrate([40,50,90]); }catch(e){}
+        g.haptics.fire('gateBlock');
         g.audio.gateBlock();
         if(g.momentum.value<=0) g.run.toGameOver();
         return;
@@ -2038,7 +2159,9 @@
       // floating "+points" popup, coloured by combo heat; a tiny rumble on capable phones
       if(g.ui){ const cls=g.combo.onEthereal()?'eth':g.combo.onEpic()?'gold':g.combo.onFire()?'fire':'';
         g.ui.scorePop('+'+gained.toLocaleString(), cls, tier.mom>=23); }
-      try{ if(navigator.vibrate) navigator.vibrate(tier.mom>=19?24:12); }catch(e){}
+      // the smash you feel scales with what you actually hit, and with how hot the run is
+      g.haptics.fire(g.combo.onEthereal()?'smashHuge':(tier.mom>=19?'smashHeavy':'smashLight'),
+                     clamp(tier.mom/24,0,1));
 
       // crash effects
       const hitPos=building.mesh.position.clone();
@@ -2048,6 +2171,7 @@
       g.effects.ring(hitPos, building.mesh.material.color, building.w+building.d);
       g.effects.flash(tier.flash);
       g.camera.shake(tier.shake*(0.8+g.adrenaline.factor()*0.3));
+      g.player.punch(0.22+tier.mom*0.016);            // contact recoil, scaled by what you broke
       // Regular smashes stay FAST — no per-hit freeze. Each smash just ADDS speed (player.onSmash)
       // so chaining accelerates the run. The cinematic weight is saved for rare milestones (below).
 
@@ -2345,6 +2469,8 @@
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
                    this.rush=Math.min(this.RUSH_MAX,this.rush+3); }
+    // a short, sharp recoil the camera reads off — this is what makes a hit feel like contact
+    punch(amount){ this._punch=Math.min(1.8,(this._punch||0)+amount); }
     // Hitting a gate is a WALL. Everything that makes you fast is taken away at once: the rush is
     // gone, the surge is cancelled, and forward speed is knocked well under the floor so the
     // recovery ramp is something you can actually feel before the run picks up again.
@@ -2395,6 +2521,7 @@
       // Set BANK_ROLL back to 0.7 / 0.32 below to restore the old leaning flight.
       this.bank =damp(this.bank, sx*0.7,8,dt);
       this._smashPulse=damp(this._smashPulse,0,4,dt);
+      this._punch=damp(this._punch||0,0,11,dt);       // snappy: recoil decays much faster than the pulse
 
       if(this.contactShadow){                     // track the villain, fade and spread with altitude
         const gy=0.08, h=Math.max(0.5,this.pos.y-gy);
@@ -2699,6 +2826,54 @@
         x.strokeStyle='rgba(40,55,60,.5)'; x.lineWidth=2; x.strokeRect(1,21,126,76);
         for(let i=0;i<5;i++){ x.fillStyle='rgba(60,75,80,.35)';             // rivet dots along the waist
           for(let rx=6;rx<128;rx+=12) x.fillRect(rx,100,2,2); break; }
+      } else if(style==='basalt'){
+        // ---- INFERNO: a tower of cooled volcanic rock, still splitting open. Fractured columns
+        // with molten seams glowing out from between them.
+        x.fillStyle='#161016'; x.fillRect(0,0,128,128);
+        for(let i=0;i<2600;i++){ const v=(Math.random()*30|0);                    // coarse rock grain
+          x.fillStyle=`rgba(${30+v},${22+v},${26+v},.6)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+        // columnar jointing: uneven vertical slabs, each with a shadowed edge
+        let cx2=0;
+        while(cx2<128){ const w=9+Math.random()*13;
+          x.fillStyle=`rgba(${18+Math.random()*16|0},${13+Math.random()*12|0},${17+Math.random()*14|0},.85)`;
+          x.fillRect(cx2,0,w,128);
+          x.fillStyle='rgba(0,0,0,.5)'; x.fillRect(cx2+w-2,0,2,128);
+          x.fillStyle='rgba(120,96,110,.10)'; x.fillRect(cx2,0,1.4,128);
+          cx2+=w; }
+        // molten seams bleeding out of the joints — the only bright thing on the tower
+        for(let i=0;i<9;i++){
+          const sx=Math.random()*128, sy=Math.random()*128, h=14+Math.random()*40;
+          for(const [w,col] of [[7,'rgba(255,70,10,.18)'],[3.4,'rgba(255,130,26,.44)'],
+                                [1.5,'rgba(255,200,90,.92)'],[0.6,'rgba(255,248,220,.95)']]){
+            x.strokeStyle=col; x.lineWidth=w; x.lineCap='round';
+            x.beginPath(); x.moveTo(sx,sy);
+            x.lineTo(sx+rand(-5,5), sy+h); x.stroke(); }
+        }
+        // ash haze settling down the face
+        const ag=x.createLinearGradient(0,0,0,128);
+        ag.addColorStop(0,'rgba(60,46,52,.30)'); ag.addColorStop(1,'rgba(10,6,10,.10)');
+        x.fillStyle=ag; x.fillRect(0,0,128,128);
+      } else if(style==='neon'){
+        // ---- SYNTHWAVE: a black monolith drawn only in light. No surface, just wireframe edges
+        // and a stack of glowing window bands, so the towers read as pure neon against the void.
+        x.fillStyle='#0a0316'; x.fillRect(0,0,128,128);
+        const bar=(y,h,col,glow)=>{
+          x.fillStyle=glow; x.fillRect(0,y-3,128,h+6);
+          x.fillStyle=col;  x.fillRect(0,y,128,h);
+        };
+        for(let y=6;y<128;y+=17){
+          const hot=(Math.random()<0.5);
+          bar(y, 4, hot?'rgba(255,72,196,.95)':'rgba(70,244,255,.95)',
+                    hot?'rgba(255,40,170,.14)':'rgba(40,220,255,.14)');
+        }
+        // vertical mullions cutting the bands into windows
+        x.fillStyle='rgba(6,2,16,.92)';
+        for(let vx=0;vx<128;vx+=13) x.fillRect(vx+9,0,4,128);
+        // a bright outline so every edge of the tower catches
+        x.strokeStyle='rgba(190,120,255,.9)'; x.lineWidth=3; x.strokeRect(1.5,1.5,125,125);
+        // scanline shimmer
+        x.fillStyle='rgba(255,255,255,.045)';
+        for(let y=0;y<128;y+=4) x.fillRect(0,y,128,1);
       } else if(style==='glass'){
         x.fillStyle='#c8f2fa'; x.fillRect(0,0,128,128);                     // bright glass
         const cols=4,rows=4,pad=8,gap=8, ww=(128-pad*2-gap*(cols-1))/cols, wh=(128-pad*2-gap*(rows-1))/rows;
@@ -3196,6 +3371,58 @@
         if(cfg.jp) this._roadKanji(x);
         const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; return t;
       }
+      if(cfg.lava){
+        // ===== INFERNO: cooled black basalt cracked open over a river of magma. The crack network
+        // is drawn as branching veins, each with a hot core and a cooling halo, so the road glows
+        // from underneath instead of looking like orange paint on tarmac.
+        x.fillStyle='#141013'; x.fillRect(0,0,128,128);
+        for(let i=0;i<3000;i++){ const v=(Math.random()*26|0);                       // basalt grain
+          x.fillStyle=`rgba(${28+v},${22+v},${24+v},.55)`; x.fillRect(Math.random()*128,Math.random()*128,2,2); }
+        // molten veins: a trunk down the tile, then forks, drawn hot-core-last so it blooms
+        const vein=(x0,y0,x1,y1,w,a)=>{
+          for(const [lw,col] of [[w*3.4,'rgba(255,74,10,'+(a*0.16)+')'],
+                                 [w*1.9,'rgba(255,120,20,'+(a*0.34)+')'],
+                                 [w,    'rgba(255,196,80,'+a+')'],
+                                 [w*0.4,'rgba(255,246,214,'+a+')']]){
+            x.strokeStyle=col; x.lineWidth=lw; x.lineCap='round';
+            x.beginPath(); x.moveTo(x0,y0);
+            const mx=(x0+x1)/2+rand(-14,14), my=(y0+y1)/2+rand(-14,14);
+            x.quadraticCurveTo(mx,my,x1,y1); x.stroke();
+          }
+        };
+        for(let t2=0;t2<3;t2++){
+          const bx=20+t2*44;
+          vein(bx+rand(-8,8),-6, bx+rand(-10,10),134, 2.6, 0.9);          // trunk, tile-to-tile
+          for(let f=0;f<3;f++){ const fy=18+f*38;
+            vein(bx,fy, bx+rand(-40,40), fy+rand(-22,22), 1.3, 0.65); }   // forks
+        }
+        for(let i=0;i<26;i++){                                            // scattered embers in the rock
+          const ex=Math.random()*128, ey=Math.random()*128, r=1+Math.random()*2.4;
+          const g2=x.createRadialGradient(ex,ey,0,ex,ey,r*4);
+          g2.addColorStop(0,'rgba(255,170,60,.85)'); g2.addColorStop(1,'rgba(255,120,20,0)');
+          x.fillStyle=g2; x.beginPath(); x.arc(ex,ey,r*4,0,6.2832); x.fill(); }
+        const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=8;
+        t.colorSpace=THREE.SRGBColorSpace; return t;
+      }
+      if(cfg.grid){
+        // ===== SYNTHWAVE: a black mirror ruled with glowing magenta and cyan lines, with a soft
+        // horizon bloom baked in so the surface reads as receding even when it is standing still.
+        x.fillStyle='#07020e'; x.fillRect(0,0,128,128);
+        const line=(x0,y0,x1,y1,col,w,glow)=>{
+          x.strokeStyle=glow; x.lineWidth=w*4; x.beginPath(); x.moveTo(x0,y0); x.lineTo(x1,y1); x.stroke();
+          x.strokeStyle=col;  x.lineWidth=w;   x.beginPath(); x.moveTo(x0,y0); x.lineTo(x1,y1); x.stroke();
+        };
+        for(let i=0;i<=128;i+=16)                                          // lanes running with you
+          line(i,0,i,128,'rgba(255,60,190,.95)',1.4,'rgba(255,40,170,.16)');
+        for(let i=0;i<=128;i+=32)                                          // rungs crossing them
+          line(0,i,128,i,'rgba(60,240,255,.95)',1.8,'rgba(40,220,255,.18)');
+        for(let i=0;i<=128;i+=32) for(let j=0;j<=128;j+=16){                // a node at every crossing
+          const g2=x.createRadialGradient(j,i,0,j,i,7);
+          g2.addColorStop(0,'rgba(255,255,255,.9)'); g2.addColorStop(1,'rgba(180,80,255,0)');
+          x.fillStyle=g2; x.beginPath(); x.arc(j,i,7,0,6.2832); x.fill(); }
+        const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.RepeatWrapping; t.anisotropy=8;
+        t.colorSpace=THREE.SRGBColorSpace; return t;
+      }
       if(cfg.carpet){
         // ===== BACKROOMS CARPET: damp, worn, faintly patterned yellow-brown =====
         x.fillStyle='#b09548'; x.fillRect(0,0,128,128);
@@ -3357,6 +3584,8 @@
       if(B.style==='glass'){ m.roughness=0.14; m.metalness=0.55; }
       else if(B.style==='stone'){ m.roughness=0.94; m.metalness=0.0; }
       else if(B.style==='metro'){ m.roughness=0.34; m.metalness=0.5; }   // brushed-steel train car
+      else if(B.style==='basalt'){ m.roughness=0.88; m.metalness=0.06; }  // dry volcanic rock
+      else if(B.style==='neon'){ m.roughness=0.22; m.metalness=0.75; }    // black lacquer that catches light
       else { m.roughness=0.62; m.metalness=0.12; }
       if(decor){ // street wall: two palette variants per map, dim outline
         const col = R<0.5 ? B.decorA : B.decorB;
@@ -3909,7 +4138,9 @@
       this.cam.position.y=p.pos.y+height;
       this.cam.up.set(0,1,0);                              // never roll
 
-      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p.surgeActive>0?14:0) - cine*5;
+      // the punch kicks the FOV out and snaps back — a short widening at the moment of contact
+      const fov=62 + speedF*18 + g.adrenaline.factor()*4 + p._smashPulse*8 + (p._punch||0)*7
+                + (p.surgeActive>0?14:0) - cine*5;
       this.cam.fov=damp(this.cam.fov,fov, cine>0.02?9:(p.surgeActive>0?10:6), realDt); this.cam.updateProjectionMatrix();
 
       // look down-ahead as always; during the shot, ease the aim slightly lower/nearer (same direction)
@@ -4003,7 +4234,7 @@
       g.effects.burst(pos,new THREE.Color(0xff6a1a),onPlayer?22:9,onPlayer?26:10);
       g.effects.burst(pos,new THREE.Color(0x555a61),onPlayer?10:5,onPlayer?12:6);
       g.effects.ring(pos,new THREE.Color(0xffa02a),onPlayer?16:8);
-      if(onPlayer){ g.effects.flash(0.4); g.camera.shake(0.7); g.momentum.hitByDrone(); }
+      if(onPlayer){ g.effects.flash(0.4); g.camera.shake(0.7); g.momentum.hitByDrone(); g.haptics.fire('drone'); }
       g.audio.droneBoom(onPlayer);
       d.active=false; d.grp.visible=false; d.mk.visible=false; d.beam.visible=false;
     }
@@ -4195,7 +4426,7 @@
         // Nothing to shoot. Say so rather than firing into an ordinary wall and doing nothing —
         // a dead press with no feedback is what made the power feel broken.
         const g=this.game, d=this.incoming();
-        g.audio.powerDud&&g.audio.powerDud();
+        g.audio.powerDud&&g.audio.powerDud(); g.haptics.fire('dud');
         g.ui.scorePop(d>0?('NO TARGET  '+Math.round(d)+'m'):'NO TARGET','bad',false);
         return false;
       }
@@ -4226,6 +4457,7 @@
       // Take the gate out of the world OURSELVES rather than relying on the scoring path to do
       // it. Score can be skipped for any number of reasons; the gate disappearing cannot be.
       let n=0;
+      g.score.tally('powers'); g.score.tally('gates');
       for(const b of kill){
         b.gate=null;
         g.city.breakApart(b, pw.kind, this._c1);
@@ -4235,7 +4467,12 @@
       }
       const beamy=(pw.kind==='laser'||pw.kind==='split');
       g.effects.flash(beamy?0.5:0.62); g.camera.shake(beamy?0.9:1.15);
+      // The gate coming apart is the payoff shot of the whole mechanic. Stop time for a beat so
+      // it actually lands, and kick the camera so the shot has recoil.
+      g.time.hitstop(beamy?70:105);
+      g.player.punch(beamy?0.9:1.3);
       g.audio.power(beamy);
+      g.haptics.fire(beamy?'power':'powerBig');
       g.ui.scorePop(pw.n, 'eth', true);
       return true;
     }
@@ -4784,13 +5021,14 @@
       if(g.run.state==='READY'){ this._milestone=0; this._lastCoins=0; this._stage=null; }
       if(running){
         const mk=Math.floor(g.score.distance/500);
-        if(mk>this._milestone){ this._milestone=mk; this.scorePop((mk*500).toLocaleString()+' m','blue',true);
+        if(mk>this._milestone){ this._milestone=mk; this.scorePop((mk*500).toLocaleString()+' m','blue',true); g.haptics.fire('milestone');
           try{ g.audio._tone(880,0.12,'triangle',0.25); g.audio._tone(1320,0.18,'triangle',0.2); }catch(e){} }
         // ESCALATION: call out each stage as the run reaches it, so the difficulty ramp is
         // something the player can feel arriving rather than a silent change in the spawner.
         const st=stageFor(g.score.total);
+        g.score.best('stage', STAGES.indexOf(st)+1);
         if(st!==this._stage){
-          if(this._stage) { this.scorePop(st.label, 'gold', true); this.flashHint(st.label);
+          if(this._stage) { this.scorePop(st.label, 'gold', true); this.flashHint(st.label); g.haptics.fire('stage');
             try{ g.audio._tone(300,0.1,'square',0.3); g.audio._tone(450,0.14,'square',0.28);
                  g.audio._tone(600,0.22,'square',0.26); }catch(e){} }
           this._stage=st;
@@ -4869,7 +5107,7 @@
     }
     toGameOver(){
       if(this.state==='GameOver') return; this.state='GameOver';
-      const g=this.game; g.audio.stopMusic(0.6); g.audio.gameOver();
+      const g=this.game; g.audio.stopMusic(0.6); g.audio.gameOver(); g.haptics.fire('death');
       const score=Math.round(g.score.total);
       const prev=this.best(); const isBest=score>prev;
       if(isBest){ try{ localStorage.setItem('invrun_best',score); }catch(e){} }
@@ -4902,7 +5140,8 @@
           if(el) el.textContent=Math.round(score*e).toLocaleString();
           if(k<1) requestAnimationFrame(step); else if(el) el.textContent=score.toLocaleString(); };
         requestAnimationFrame(step); }
-      if(g.missions) g.missions.onRunEnd({score, hits:g.score.hits, dist, combo:combBest, coins:g.score.coins});
+      if(g.missions) g.missions.onRunEnd(Object.assign(
+        {score, hits:g.score.hits, dist, combo:combBest, coins:g.score.coins}, g.score.st));
       this._bumpRuns();
       if(this._shouldOfferBoost()) setTimeout(()=>this._offerBoost(), 900);
       // share payload for the Share Score button (viral hook)
@@ -4946,7 +5185,8 @@
         G.effects.flash(0.10+0.14*tight);
         p.rush=Math.min(p.rush+5, 26);       // a real speed kick
         G.audio.closeCall();
-        G.ui.scorePop('CLOSE CALL', 'fire', tight>0.6);
+        G.ui.scorePop('CLOSE CALL', 'fire', tight>0.6); G.haptics.fire('closeCall', tight);
+        G.score.tally('close');
       }
     }
     resetAll(){
@@ -5052,6 +5292,31 @@
       roofs:false, bubbles:false, mountains:false, ceiling:true, backrooms:true,
       amb:{ color:0xfff0b8, size:0.30, op:0.22, fall:0.9, swirl:0.4, yMin:0.8, yMax:10 },
       night:{ skyTop:0x0e0c04, fog:0x2a2410, skyBot:0x3a3216, hemiSky:0x6a5c28, hemiGround:0x2a2410, sunColor:0xbfae70, sunInt:0.45, lamp:0xfff0b0, glow:0x3a3010 } },
+    // INFERNO — a volcanic fissure at ground level. Black basalt towers splitting open over a
+    // magma river, ash falling, everything lit from BELOW by the road itself.
+    inferno: { name:'Inferno', tag:'BURN THROUGH THE FISSURE', hit:'brick',
+      ground:0x1a1216, groundEmissive:0x3d0c04, clouds:true, skyTop:0x1a0508, fog:0x5e1206, skyBot:0xd6421a,
+      hemiSky:0xff7a2a, hemiGround:0x5a1608, sunColor:0xffb060, sunInt:1.5,
+      road:{ asphalt:'#141013', edge:'#ff7a20', dash:null, dashed:false, sidewalk:'#241a1e', curb:'#3a1a12', lava:true },
+      amb:{ color:0xff8a2a, size:0.62, op:0.85, fall:-2.2, swirl:2.2, yMin:0.5, yMax:34 },  // embers storming upward
+      building:{ style:'basalt', tower:[0.02,0.14,0.075], towerEmissive:0x5e1400, towerEdge:0xff6a1a,
+                 decorA:[0.02,0.16,0.06], decorB:[0.96,0.12,0.05], decorEdge:0x6a2a18 },
+      roofs:false, bubbles:false, mountains:true,
+      night:{ skyTop:0x0a0204, fog:0x3a0a04, skyBot:0x7a1e08, hemiSky:0xd85a18, hemiGround:0x2a0a04,
+              sunColor:0xc06030, sunInt:0.6, lamp:0xff7a20, glow:0x6a1400 } },
+    // SYNTHWAVE — a black void ruled by a neon grid. No sky, no ground, just light. The most
+    // deliberately artificial map in the game and the one that photographs best.
+    synth: { name:'Neon Void', tag:'RIDE THE NEON GRID', hit:'metal',
+      ground:0x07020e, groundEmissive:0x2a0a4a, clouds:false, skyTop:0x090218, fog:0x2a0740, skyBot:0x7a1a86,
+      hemiSky:0xff4ac8, hemiGround:0x2a0740, sunColor:0xffd0ff, sunInt:1.15,
+      road:{ asphalt:'#07020e', edge:'#ff3cbe', dash:'#46f4ff', dashed:false, sidewalk:'#12042a', curb:'#3a0a5e', grid:true },
+      amb:{ color:0x9a5cff, size:0.5, op:0.7, fall:-0.6, swirl:1.4, yMin:1, yMax:30 },     // drifting light motes
+      // near-neutral so the facade's own magenta/cyan bands survive; the tint lives in the texture
+      building:{ style:'neon', tower:[0.78,0.10,0.86], towerEmissive:0x5a1a8a, towerEdge:0xff4ac8,
+                 decorA:[0.78,0.30,0.42], decorB:[0.52,0.30,0.40], decorEdge:0x7a3ade },
+      roofs:false, bubbles:false, mountains:true,
+      night:{ skyTop:0x03000a, fog:0x18042a, skyBot:0x4a0e58, hemiSky:0xc02a9a, hemiGround:0x18042a,
+              sunColor:0xb060c0, sunInt:0.8, lamp:0xff3cbe, glow:0x4a0a6a } },
     metro: { name:'Frutiger Metro', tag:'TEAR THROUGH THE UNDERGROUND', hit:'metal',
       ground:0x223038, groundEmissive:0x0a1418, clouds:false, skyTop:0x0a1418, fog:0x123038, skyBot:0x1d4c54,
       hemiSky:0x9ff0d8, hemiGround:0x14343a, sunColor:0xe0fff4, sunInt:1.2,
@@ -5070,7 +5335,7 @@
     setNight(on){ this.night=on; try{localStorage.setItem('invrun_night',on?'1':'0');}catch(e){} this.apply(); }
     apply(){ const t=THEMES[this.key], g=this.game; g.theme=t;
       // re-skin the whole UI (menu/loading/overlays) to match the selected map
-      const bc=document.body.classList; ['nyc','aero','medieval','metro','backrooms'].forEach(k=>bc.remove('theme-'+k)); bc.add('theme-'+this.key);
+      const bc=document.body.classList; Object.keys(THEMES).forEach(k=>bc.remove('theme-'+k)); bc.add('theme-'+this.key);
       const tg=document.querySelector('#start-overlay .tagline'); if(tg) tg.textContent=t.tag;
       const n=this.night?t.night:null, P=(k)=> (n && n[k]!==undefined)? n[k] : t[k];   // night overrides
       g.skyMat.uniforms.top.value.setHex(P('skyTop')); g.skyMat.uniforms.mid.value.setHex(P('fog')); g.skyMat.uniforms.bot.value.setHex(P('skyBot'));
@@ -5180,6 +5445,7 @@
       this.powers=new PowerSystem(this);
       this.ui=new UISystem(this);
       this.audio=new AudioSystem();
+      this.haptics=new Haptics();
       this.run=new RunStateManager(this);
       this.maps=new MapSystem(this);
 
@@ -5281,6 +5547,14 @@
         musicBtn.textContent=on?'ON':'OFF'; musicBtn.classList.toggle('on',on); };
       musicBtn.onclick=()=>applyMusic(!this.audio.musicOn);
       musicBtn.textContent=this.audio.musicOn?'ON':'OFF'; musicBtn.classList.toggle('on',this.audio.musicOn);
+      // VIBRATION toggle (persisted). Says so plainly when the device has no vibration motor
+      // exposed to the browser — iOS Safari never does — rather than pretending the switch works.
+      { const hb=document.getElementById('haptic-btn'), note=document.getElementById('haptic-note');
+        const applyH=(on)=>{ this.haptics.set(on); hb.textContent=on?'ON':'OFF'; hb.classList.toggle('on',on); };
+        if(!this.haptics.supported){ if(note) note.textContent='(not available on this device)';
+          hb.textContent='—'; hb.classList.remove('on'); hb.style.opacity='0.45'; }
+        else { hb.onclick=()=>applyH(!this.haptics.enabled);
+               hb.textContent=this.haptics.enabled?'ON':'OFF'; hb.classList.toggle('on',this.haptics.enabled); } }
       // NIGHT MODE toggle (turns the current map to night: dark sky, stars, street lamps, lit buildings)
       const nightBtn=document.getElementById('night-btn');
       const setNight=(on)=>{ this.maps.setNight(on); nightBtn.textContent=on?'ON':'OFF'; nightBtn.classList.toggle('on',on); };
@@ -5313,12 +5587,23 @@
       // ===== MISSIONS: 3 goals per day, claim coins when done =====
       this.missions=(()=>{
         const G=this;                      // the Game (object-literal methods rebind `this`)
+        // Missions are meant to be a REASON TO GET BETTER, not a participation tick. Every tier
+        // here is a target you have to play well to reach, and the later ones demand the mechanics
+        // the game is actually about — gates, powers, clean streaks, super states.
         const POOL=[
-          {id:'hits',  icon:'i-city',   name:'Smash %N buildings in one run', tiers:[120,200,320],  rew:[400,700,1200]},
-          {id:'dist',  icon:'i-map',    name:'Fly %N m in one run',           tiers:[9000,16000,26000], rew:[400,700,1200]},
-          {id:'combo', icon:'i-bolt',   name:'Reach a x%N combo',             tiers:[45,70,100],   rew:[600,950,1500]},
-          {id:'coins', icon:'i-coin',   name:'Collect %N shards in one run',   tiers:[140,240,380],  rew:[400,700,1200]},
-          {id:'score', icon:'i-trophy', name:'Score %N in one run',           tiers:[250000,600000,1200000], rew:[700,1100,1800]},
+          {id:'hits',   icon:'i-city',   name:'Smash %N buildings in one run',  tiers:[260,420,650],           rew:[700,1200,2000]},
+          {id:'dist',   icon:'i-map',    name:'Fly %N m in one run',            tiers:[20000,34000,55000],     rew:[700,1200,2000]},
+          {id:'combo',  icon:'i-bolt',   name:'Reach a x%N combo',              tiers:[80,130,190],            rew:[1000,1700,2800]},
+          {id:'coins',  icon:'i-coin',   name:'Collect %N shards in one run',   tiers:[300,500,780],           rew:[700,1200,2000]},
+          {id:'score',  icon:'i-trophy', name:'Score %N in one run',            tiers:[1200000,3500000,7500000], rew:[1300,2200,3600]},
+          // ---- mechanic-driven goals: these cannot be reached by just surviving ----
+          {id:'gates',  icon:'i-burst',  name:'Break %N armored gates in one run', tiers:[12,22,36],           rew:[1100,1900,3100]},
+          {id:'powers', icon:'i-bolt',   name:'Clear %N gates with a power, no slams', tiers:[10,18,30],       rew:[1200,2000,3300]},
+          {id:'clean',  icon:'i-trophy', name:'Smash %N in a row without a miss', tiers:[60,95,140],           rew:[1200,2000,3300]},
+          {id:'epic',   icon:'i-burst',  name:'Enter EPIC %N times in one run',  tiers:[4,7,11],               rew:[1000,1700,2800]},
+          {id:'eth',    icon:'i-bolt',   name:'Reach ETHEREAL %N times in one run', tiers:[2,4,7],             rew:[1500,2500,4200]},
+          {id:'close',  icon:'i-city',   name:'Get %N close calls in one run',   tiers:[25,45,70],             rew:[900,1500,2500]},
+          {id:'stage',  icon:'i-map',    name:'Reach escalation stage %N in one run', tiers:[3,4,5],           rew:[1400,2400,4000]},
         ];
         const K='invrun_ms';
         const today=()=>Math.floor(Date.now()/86400000);
@@ -5326,7 +5611,7 @@
           if(j&&j.day===today()) return j; }catch(e){}
           // pick 3 distinct missions for today, tier scales with the day for variety
           const idx=[...POOL.keys()], pick=[]; let seed=today();
-          while(pick.length<3&&idx.length){ seed=(seed*1103515245+12345)&0x7fffffff;
+          while(pick.length<4&&idx.length){ seed=(seed*1103515245+12345)&0x7fffffff;
             pick.push(idx.splice(seed%idx.length,1)[0]); }
           const st={day:today(), m:pick.map(i=>{ const t=(today()+i)%3;
             return {i, t, prog:0, claimed:false}; })};
