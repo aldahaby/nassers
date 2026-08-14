@@ -2014,13 +2014,56 @@
   };
   class Haptics {
     constructor(){
-      this.supported = (()=>{ try{ return typeof navigator!=='undefined' && !!navigator.vibrate; }catch(e){ return false; } })();
+      // ---- BACKENDS, best first ---------------------------------------------------------
+      // 'vibrate'  navigator.vibrate — Android / Chrome. Real patterns, real durations.
+      // 'ios'      iOS has a Taptic Engine but SAFARI HAS NEVER SHIPPED navigator.vibrate, on
+      //            any iPhone or any iOS version. The one hook Safari does give a web page is
+      //            the switch control added in iOS 17.4: toggling an <input type="checkbox"
+      //            switch> plays a system haptic. So we keep one hidden switch and tap it.
+      //            A pattern becomes a burst of taps — the rhythm survives, the durations do
+      //            not, because iOS gives no control over strength or length.
+      // 'none'     no haptic hook at all.
+      this.mode='none';
+      try{ if(typeof navigator!=='undefined' && navigator.vibrate) this.mode='vibrate'; }catch(e){}
+      if(this.mode==='none') this._initIOS();
+      this.supported = this.mode!=='none';
       let on=true; try{ const v=localStorage.getItem('invrun_haptic'); if(v!==null) on=(v==='1'); }catch(e){}
       this.enabled=on;
-      this._last=0; this._lastName='';
+      this._last=0; this._timers=[];
+    }
+    // Build the hidden iOS switch. It has to remain part of the rendered page — a display:none
+    // control is not activatable and plays nothing — so it is parked off-screen at 1x1 and made
+    // inert to pointers and to the accessibility tree.
+    _initIOS(){
+      try{
+        if(typeof document==='undefined') return;
+        const probe=document.createElement('input');
+        probe.type='checkbox';
+        if(!('switch' in probe)) return;           // pre-17.4 Safari, or not Safari at all
+        const wrap=document.createElement('label');
+        wrap.setAttribute('aria-hidden','true');
+        // Parked off-screen at its REAL size, and deliberately NOT hidden with display:none,
+        // visibility:hidden or opacity:0 — an inactivatable control plays no haptic. Off-screen
+        // is the only concealment that leaves it a working switch.
+        wrap.style.cssText='position:fixed;left:-300px;top:-300px;width:64px;height:36px;'
+                          +'margin:0;padding:0;z-index:-1;';
+        probe.setAttribute('switch','');
+        probe.tabIndex=-1;
+        wrap.appendChild(probe);
+        const attach=()=>{ if(document.body && !probe.isConnected) document.body.appendChild(wrap); };
+        if(document.body) attach(); else document.addEventListener('DOMContentLoaded',attach,{once:true});
+        this._sw=probe; this._swWrap=wrap; this.mode='ios';
+      }catch(e){}
+    }
+    // One system tap on iOS. click() both toggles the switch and runs its activation behaviour,
+    // which is what plays the haptic — so it is the only thing that should be called. Flipping
+    // .checked by hand first would just undo the toggle.
+    _iosTap(){
+      const sw=this._sw; if(!sw||!sw.isConnected) return;
+      try{ sw.click(); }catch(e){}
     }
     set(on){ this.enabled=!!on; try{ localStorage.setItem('invrun_haptic', on?'1':'0'); }catch(e){}
-      if(on) this.fire('tap'); }
+      if(!on) this.stop(); else this.fire('tap'); }
     // `weight` 0..1 lets a caller scale a light event down; heavy named events ignore it.
     fire(name, weight){
       if(!this.enabled||!this.supported) return false;
@@ -2032,11 +2075,37 @@
       const gap = light? 90 : 40;
       if(now-this._last < gap) return false;
       if(weight!==undefined && weight<0.35 && light) return false;
-      this._last=now; this._lastName=name;
-      try{ navigator.vibrate(pat); }catch(e){ return false; }
+      this._last=now;
+      if(this.mode==='vibrate'){
+        try{ navigator.vibrate(pat); }catch(e){ return false; }
+        return true;
+      }
+      // ---- iOS: replay the pattern's RHYTHM as taps -------------------------------------
+      // A pattern is [buzz, pause, buzz, pause, ...]; the even entries are the buzzes. iOS gives
+      // one fixed tap and no duration control, so a long buzz becomes a short run of taps —
+      // that is what keeps a death rumble distinguishable from a shard pickup.
+      this.stop();
+      const arr = (typeof pat==='number') ? [pat] : pat;
+      let t=0, fired=0;
+      for(let i=0;i<arr.length && fired<7;i++){
+        if(i%2===0){
+          const reps = arr[i]>=90 ? 3 : arr[i]>=40 ? 2 : 1;   // longer buzz -> more taps
+          for(let r=0;r<reps && fired<7;r++){
+            const at=t+r*34;
+            if(at<=0) this._iosTap();
+            else this._timers.push(setTimeout(()=>this._iosTap(), at));
+            fired++;
+          }
+          t += Math.max(arr[i], (reps-1)*34);
+        } else t += arr[i];
+      }
       return true;
     }
-    stop(){ try{ if(this.supported) navigator.vibrate(0); }catch(e){} }
+    stop(){
+      for(const id of this._timers) clearTimeout(id);
+      this._timers.length=0;
+      try{ if(this.mode==='vibrate') navigator.vibrate(0); }catch(e){}
+    }
   }
 
   // ESCALATION — the run gets harder as YOUR SCORE climbs, not just as the clock runs. Each stage
@@ -5668,14 +5737,19 @@
         musicBtn.textContent=on?'ON':'OFF'; musicBtn.classList.toggle('on',on); };
       musicBtn.onclick=()=>applyMusic(!this.audio.musicOn);
       musicBtn.textContent=this.audio.musicOn?'ON':'OFF'; musicBtn.classList.toggle('on',this.audio.musicOn);
-      // VIBRATION toggle (persisted). Says so plainly when the device has no vibration motor
-      // exposed to the browser — iOS Safari never does — rather than pretending the switch works.
+      // VIBRATION toggle (persisted). The note names the real limitation rather than blaming the
+      // phone: on iOS the Taptic Engine is there, but Safari exposes only the system tap, so the
+      // rhythm of a pattern survives and its strength does not. Only when there is no hook at all
+      // does the row disable itself.
       { const hb=document.getElementById('haptic-btn'), note=document.getElementById('haptic-note');
         const applyH=(on)=>{ this.haptics.set(on); hb.textContent=on?'ON':'OFF'; hb.classList.toggle('on',on); };
-        if(!this.haptics.supported){ if(note) note.textContent='(not available on this device)';
-          hb.textContent='—'; hb.classList.remove('on'); hb.style.opacity='0.45'; }
-        else { hb.onclick=()=>applyH(!this.haptics.enabled);
-               hb.textContent=this.haptics.enabled?'ON':'OFF'; hb.classList.toggle('on',this.haptics.enabled); } }
+        if(!this.haptics.supported){
+          if(note) note.textContent='(this browser has no haptics)';
+          hb.textContent='—'; hb.classList.remove('on'); hb.style.opacity='0.45';
+        } else {
+          if(note && this.haptics.mode==='ios') note.textContent='(needs System Haptics on)';
+          hb.onclick=()=>applyH(!this.haptics.enabled);
+          hb.textContent=this.haptics.enabled?'ON':'OFF'; hb.classList.toggle('on',this.haptics.enabled); } }
       // NIGHT MODE toggle (turns the current map to night: dark sky, stars, street lamps, lit buildings)
       const nightBtn=document.getElementById('night-btn');
       const setNight=(on)=>{ this.maps.setNight(on); nightBtn.textContent=on?'ON':'OFF'; nightBtn.classList.toggle('on',on); };
