@@ -52,7 +52,8 @@ for(const map of MAPS){
     G.time.frozen = ()=>false; G.time.update = (rd)=>rd;
 
     const out = { gateTexRepeat:new Set(), normalWearingGateTex:0, gateWearingFacade:0,
-                  normalColours:new Set(), gateColours:new Set(), capOnNormal:0, capOnGate:0,
+                  normalColours:new Set(), gateColours:new Set(), rimOnGate:0, gatesNoRim:0,
+                  floatingCapOnGate:0,
                   gatesSeen:0, normalsSeen:0, recycledGates:0, droneSpawns:[], deaths:0 };
 
     // count how often a pool entry that WAS a gate gets reused — the leak only shows after reuse
@@ -92,7 +93,10 @@ for(const map of MAPS){
           out.gatesSeen++;
           if(!wearingGate) out.gateWearingFacade++;
           out.gateColours.add(b.mesh.material.color.getHexString());
-          if(b.cap.visible) out.capOnGate++;
+          // a gate's identity is the glowing CAPPING RIM on its top edge (b.crown). It must be
+          // flush with the wall — a separate floating cap read as an unfinished prop.
+          if(b.crown.visible && b.crown.material.map===null) out.rimOnGate++; else out.gatesNoRim++;
+          if(b.cap.visible) out.floatingCapOnGate++;
         } else if(!b.decor){
           out.normalsSeen++;
           if(wearingGate) out.normalWearingGateTex++;
@@ -103,7 +107,8 @@ for(const map of MAPS){
     return { gateTexRepeat:[...out.gateTexRepeat], normalWearingGateTex:out.normalWearingGateTex,
              gateWearingFacade:out.gateWearingFacade, normalColours:[...out.normalColours],
              gateColours:[...out.gateColours], gatesSeen:out.gatesSeen, normalsSeen:out.normalsSeen,
-             capOnGate:out.capOnGate, recycledGates:out.recycledGates, deaths:out.deaths,
+             rimOnGate:out.rimOnGate, gatesNoRim:out.gatesNoRim,
+             floatingCapOnGate:out.floatingCapOnGate, recycledGates:out.recycledGates, deaths:out.deaths,
              droneCfg:DR, drones:out.droneSpawns.length, firstDrone:out.droneSpawns[0]||null };
   });
 
@@ -117,7 +122,8 @@ for(const map of MAPS){
     ['gate texture tiling never changes',      repeatStable],
     ['exactly ONE normal tower colour',        r.normalColours.length === 1],
     ['exactly ONE gate body colour',           r.gateColours.length === 1],
-    ['every gate carries a roof beacon',       r.capOnGate > 0],
+    ['every gate carries a capping rim',       r.rimOnGate > 0 && r.gatesNoRim === 0],
+    ['no gate has a floating roof cap',        r.floatingCapOnGate === 0],
     ['pool actually recycled gates',           r.recycledGates > 0],
     ['gates were seen at all',                 r.gatesSeen > 0],
     ['no drone before its score gate',         !r.firstDrone || r.firstDrone.score >= r.droneCfg.minScore],
@@ -130,6 +136,7 @@ for(const map of MAPS){
     failed.length ? 'FAIL  ' + failed.join('; ') : 'ok    ',
     JSON.stringify({ gates:r.gatesSeen, normals:r.normalsSeen, recycled:r.recycledGates,
                      normalCols:r.normalColours, gateCols:r.gateColours,
+                     rim:r.rimOnGate, noRim:r.gatesNoRim, floatCap:r.floatingCapOnGate,
                      tiling:r.gateTexRepeat, drones:r.drones, firstDrone:r.firstDrone }),
     errs.slice(0,2).join('|'));
   await pg.close();
