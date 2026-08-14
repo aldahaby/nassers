@@ -341,9 +341,37 @@ Two rules keep it from turning into a permanent hum: light events (`tap`, `shard
 `smashHeavy`, `closeCall`) are rate-limited to one every 90 ms, and heavy events to one every
 40 ms. In a 120-second run that works out to about 50 buzzes — noticeable, never constant.
 
-Toggle lives in **Settings → Vibration**, persisted as `invrun_haptic`. `navigator.vibrate` is
-Android/Chrome only; **iOS Safari has no vibration API at all**, so on an iPhone the row shows
-"(not available on this device)" and the switch is disabled rather than pretending to work.
+Toggle lives in **Settings → Vibration**, persisted as `invrun_haptic`.
+
+## Three backends
+
+| Mode | When | What you get |
+|---|---|---|
+| `vibrate` | `navigator.vibrate` exists — Android / Chrome | the real pattern, real durations |
+| `ios` | no `navigator.vibrate`, but the iOS 17.4+ switch control exists | the pattern's **rhythm**, replayed as system taps |
+| `none` | neither | silent, and the row says so |
+
+**Why iOS needs its own path.** An iPhone obviously has a Taptic Engine — but **Safari has never
+shipped the Vibration API**, on any iPhone or any iOS version. It is a browser gap, not a device
+one, and the setting must never imply otherwise.
+
+The one haptic a web page *can* reach on iOS is the system tap played when an
+`<input type="checkbox" switch>` is toggled (added in iOS 17.4). So one hidden switch is kept in
+the page and tapped. Three things matter if you touch this code:
+
+- It must stay **activatable**. Parked off-screen at its real size — `display:none`,
+  `visibility:hidden` and `opacity:0` all kill the haptic.
+- Only `click()` is called on it. That both toggles it and runs its activation behaviour, which is
+  what plays the tap; flipping `.checked` first would just undo the toggle.
+- iOS gives **no control over strength or duration**, so a pattern's buzzes become a burst of
+  taps — a long buzz becomes up to three, capped at seven per event. A death rumble still reads
+  as heavier than a shard pickup, which is the point.
+
+It also needs **Settings → Sounds & Haptics → System Haptics** switched on, which the row says.
+
+Asserted by **`scripts/haptics.mjs`** — runs the game three times with each platform emulated and
+checks the right backend is chosen, that heavy events out-fire light ones, that OFF is absolute,
+and that the UI never blames the device.
 
 ## Shard boost
 
