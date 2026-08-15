@@ -425,6 +425,29 @@ func userContentController(_ c: WKUserContentController, didReceive m: WKScriptM
 With Capacitor, the same thing is a few lines on top of `@capacitor/haptics` — define
 `window.CBHaptics.play` and call `Haptics.impact({ style })`.
 
+## Testing it on a phone
+
+Open **`haptics-test.html`** on the device — deployed alongside the game, so on a phone it is
+`<site>/game/haptics-test.html`. It reports what the browser exposes, then gives six things to
+tap:
+
+| | Test | What it proves |
+|---|---|---|
+| 2 | Vibration API | works on Android; does nothing on iPhone, as expected |
+| 3 | flip the switch **with a finger** | whether this iPhone / iOS build can play the tap at all |
+| 4 | flip the same switch **from code** | whether a script-driven event can play it — this is what the game needs for a smash |
+| 5 | flip it **inside a finger press** | the case the game's FIRE / SURGE buttons use |
+
+If 3 buzzes and 4 does not, that is the whole iOS limitation in one screen.
+
+## What can work on iOS today, without an app
+
+A haptic asked for **synchronously inside a real `touchstart`** still has the user's activation
+live, and iOS will play it. So `Haptics.gesture()` is wired into the touch handlers for the
+**FIRE** button, the **SURGE** button and the joystick, and those do tick on an iPhone. Everything
+that happens *without* a finger on the glass — a smash, a gate block, a death, a combo milestone —
+has no activation left and cannot. That asymmetry is why the native bridge exists.
+
 Asserted by **`scripts/haptics.mjs`** — runs the game with six platforms emulated (three native
 shell shapes, Android, iOS Safari, and a bare browser) and checks the right backend is chosen,
 that heavy events out-fire light ones, that OFF is absolute, that reliability is reported
