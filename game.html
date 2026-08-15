@@ -173,6 +173,17 @@
                 background:radial-gradient(circle at 50% 36%, #ffb14a, #e0431f);
                 box-shadow:inset 0 2px 3px rgba(255,240,200,.6), inset 0 -6px 12px rgba(90,10,0,.55), 0 5px 0 #8f2a10, 0 9px 12px rgba(0,0,0,.45), 0 0 22px rgba(255,120,30,.4);
                 transition:transform .05s,box-shadow .05s; }
+    /* An invisible, real switch control laid over a game button. On iOS this is what makes the
+       button vibrate: the finger lands on a genuine control, so the system plays its tap. It must
+       keep its native appearance and stay hit-testable — see Haptics.attachSwitch. */
+    /* Sized to FILL the button rather than scaled up from the platform's default control size,
+       which differs between iOS and everything else — the finger has to land on the switch
+       wherever on the button it touches. Appearance is left native on purpose. */
+    .hap-sw{ position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0;
+             opacity:.001; z-index:4; cursor:pointer; }
+    /* touch-action does the job preventDefault() used to, without cancelling the activation the
+       haptic depends on */
+    #btn-power, #btn-boost{ touch-action:none; }
     #btn-power{ right:20px; bottom:calc(max(26px,env(safe-area-inset-bottom)) + 112px);
       width:68px; height:68px; overflow:hidden;
       background:linear-gradient(180deg,#3a2a5e,#1b1030); color:#cfa8ff;
@@ -1349,13 +1360,17 @@
       document.addEventListener('mouseup',end);
       const boost=document.getElementById('btn-boost');
       if(boost){
-        boost.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._surge=true;
+        // NO preventDefault here: it would cancel the switch activation the iOS haptic rides on.
+        // touch-action:none in the CSS stops the page scrolling instead.
+        if(this.hap) this.hap.attachSwitch(boost);
+        boost.addEventListener('touchstart',e=>{ e.stopPropagation(); this._surge=true;
           this.hap&&this.hap.gesture('tap'); },{passive:false});
         boost.addEventListener('mousedown',e=>{ e.stopPropagation(); this._surge=true; });
       }
       const pw=document.getElementById('btn-power');
       if(pw){
-        pw.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._power=true;
+        if(this.hap) this.hap.attachSwitch(pw);
+        pw.addEventListener('touchstart',e=>{ e.stopPropagation(); this._power=true;
           this.hap&&this.hap.gesture('power'); },{passive:false});
         pw.addEventListener('mousedown',e=>{ e.stopPropagation(); this._power=true; });
       }
@@ -2127,6 +2142,39 @@
     _iosTap(){
       const sw=this._sw; if(!sw||!sw.isConnected) return;
       try{ sw.click(); }catch(e){}
+    }
+    // ---- THE ONLY THING THAT WORKS ON iOS SAFARI ----------------------------------------
+    // Tested on a real iPhone: flipping a switch control WITH A FINGER plays the Taptic Engine.
+    // Flipping the same switch from a script does not. iOS is not gating on "is this a switch",
+    // it is gating on "did the user actually activate this control" — and a script-driven click
+    // never counts, no matter when it is fired.
+    //
+    // So instead of tapping a hidden switch, put a real one UNDER THE FINGER: an actual switch
+    // control stretched over the game button, effectively invisible, sitting above the artwork.
+    // The player's tap lands on a genuine control, iOS plays the tap, and the game reads the same
+    // touch for its own action. Nothing is faked.
+    //
+    // Three things this depends on, all of them easy to break:
+    //   * opacity may be near-zero but NOT display:none / visibility:hidden — those remove the
+    //     element from hit testing, so the finger never lands on a control at all.
+    //   * the native appearance must be left alone. appearance:none makes it a plain checkbox and
+    //     the system tap goes with it.
+    //   * the touch must NOT be preventDefault()ed, or the activation is cancelled before iOS
+    //     plays anything. Scrolling is blocked with touch-action:none instead.
+    attachSwitch(el){
+      if(this.mode!=='ios' || !el) return null;
+      try{
+        if(el._hapSw) return el._hapSw;
+        const sw=document.createElement('input');
+        sw.type='checkbox'; sw.setAttribute('switch',''); sw.tabIndex=-1;
+        sw.setAttribute('aria-hidden','true');
+        sw.className='hap-sw';
+        const cs=getComputedStyle(el);
+        if(cs.position==='static') el.style.position='relative';
+        el.appendChild(sw);
+        el._hapSw=sw;
+        return sw;
+      }catch(e){ return null; }
     }
     // Fired SYNCHRONOUSLY from inside a real touchstart/pointerdown handler. This is the one
     // situation where iOS Safari will actually play a haptic for a web page: the tap happens
@@ -5728,7 +5776,10 @@
       this._clock=new THREE.Clock();
 
       addEventListener('resize',()=>{ this.renderer.setSize(innerWidth,innerHeight); this.camera.resize(); });
-      document.getElementById('start-btn').onclick=()=>this.run.startRun();
+      { const sb=document.getElementById('start-btn');
+        sb.onclick=()=>this.run.startRun();
+        // PLAY gets the same real-switch overlay, so the run starts with a tap you can feel
+        this.haptics.attachSwitch(sb); }
       document.getElementById('retry-btn').onclick=()=>this.run.startRun();
       document.getElementById('pause-btn').onclick=()=>this.run.togglePause();
       document.getElementById('resume-btn').onclick=()=>this.run.togglePause();
@@ -5825,12 +5876,15 @@
       // does the row disable itself.
       { const hb=document.getElementById('haptic-btn'), note=document.getElementById('haptic-note');
         const applyH=(on)=>{ this.haptics.set(on); hb.textContent=on?'ON':'OFF'; hb.classList.toggle('on',on); };
-        if(!this.haptics.supported){
-          // Tested on a real iPhone: iOS Safari plays nothing, so the row is disabled and says
-          // why. A switch that reads ON while the phone stays silent is worse than no switch.
-          if(note) note.textContent = this.haptics.gestureOnly
-            ? '(Safari can\u2019t \u2014 app version only)'
-            : '(this browser has no haptics)';
+        if(this.haptics.gestureOnly){
+          // iOS Safari, with a real switch under the finger. Buttons DO tick; a smash cannot,
+          // because there is no finger down when it happens. Say exactly that — the row was
+          // wrong when it claimed everything worked, and would be wrong again claiming nothing does.
+          if(note) note.textContent='(buttons only \u2014 full haptics in the app)';
+          hb.onclick=()=>applyH(!this.haptics.enabled);
+          hb.textContent=this.haptics.enabled?'ON':'OFF'; hb.classList.toggle('on',this.haptics.enabled);
+        } else if(!this.haptics.supported){
+          if(note) note.textContent='(this browser has no haptics)';
           hb.textContent='\u2014'; hb.classList.remove('on'); hb.style.opacity='0.45'; hb.onclick=null;
         } else {
           if(note) note.textContent='';

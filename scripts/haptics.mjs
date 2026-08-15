@@ -108,8 +108,9 @@ for(const CASE of ['wkwebview','capacitor','androidapp','android','iphone','bare
     ['OFF is absolute',       r.silentWhenOff===0],
     ['reliability reported honestly', r.reliable===want.reliable],
     ['UI does not blame the device',  !/device/i.test(r.note||'')],
-    ['iOS Safari is not sold as working', CASE!=='iphone' || /app version only/i.test(r.note||'')],
-    ['iOS Safari toggle is disabled',     CASE!=='iphone' || r.btn==='\u2014'],
+    // iOS Safari: buttons DO tick (a real switch sits under the finger), passive events cannot.
+    ['iOS Safari note names both halves', CASE!=='iphone' || /buttons only/i.test(r.note||'')],
+    ['iOS Safari scheduled events stay silent', CASE!=='iphone' || !(r.death.taps>0||r.death.vib>0)],
     ['a working backend shows no caveat', want.reliable!==true || (r.note||'')===''],
     ['no page errors',        errs.length===0],
   ];
