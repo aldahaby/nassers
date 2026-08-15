@@ -2036,10 +2036,14 @@
       if(this._initNative()) this.mode='native';
       if(this.mode==='none'){ try{ if(typeof navigator!=='undefined' && navigator.vibrate) this.mode='vibrate'; }catch(e){} }
       if(this.mode==='none') this._initIOS();
-      this.supported = this.mode!=='none';
-      // iOS Safari can only ever be best-effort, so it is reported separately from a backend we
-      // know actually fires. The settings row uses this to tell the truth.
       this.reliable = (this.mode==='native'||this.mode==='vibrate');
+      // TESTED ON A REAL iPhone 14 running current iOS Safari: NOTHING plays. Not a scheduled
+      // event, and not even a switch flipped directly by a finger. So iOS Safari is no longer
+      // reported as supported — the toggle must not sit there saying ON while doing nothing. The
+      // switch tap is still attempted from inside a real touch (see `gesture`) because it costs
+      // nothing and does work on some builds, but it is never promised.
+      this.supported = this.reliable;
+      this.gestureOnly = (this.mode==='ios');
       let on=true; try{ const v=localStorage.getItem('invrun_haptic'); if(v!==null) on=(v==='1'); }catch(e){}
       this.enabled=on;
       this._last=0; this._timers=[];
@@ -2058,6 +2062,25 @@
     _initNative(){
       try{
         if(typeof window==='undefined') return false;
+        // Capacitor, detected directly. Wrapping the game and adding @capacitor/haptics is then
+        // the whole job — no bridge to write, no edit to this file. Event names are mapped onto
+        // real feedback styles here rather than replaying a buzz pattern, because that mapping is
+        // the entire reason native haptics feel better than vibration.
+        const cap=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+        if(cap && typeof cap.impact==='function'){
+          const IMPACT={ tap:'LIGHT', shard:'LIGHT', smashLight:'LIGHT', closeCall:'LIGHT',
+                         smashHeavy:'MEDIUM', power:'MEDIUM', combo:'LIGHT', milestone:'LIGHT',
+                         smashHuge:'HEAVY', powerBig:'HEAVY', dud:'LIGHT' };
+          const NOTIFY={ gateBlock:'ERROR', drone:'ERROR', death:'ERROR',
+                         fire:'SUCCESS', epic:'SUCCESS', ethereal:'SUCCESS', stage:'SUCCESS' };
+          this._native=(name)=>{
+            try{
+              if(NOTIFY[name] && typeof cap.notification==='function') cap.notification({type:NOTIFY[name]});
+              else cap.impact({style:IMPACT[name]||'LIGHT'});
+            }catch(e){}
+          };
+          return true;
+        }
         if(window.CBHaptics && typeof window.CBHaptics.play==='function'){
           this._native=(name,pat)=>{ try{ window.CBHaptics.play(name,pat); }catch(e){} };
           return true;
@@ -2111,7 +2134,7 @@
     // a smash, a death, a timer — has lost that activation and plays nothing, which is exactly
     // why the rest of the game's haptics need the native bridge on iOS.
     gesture(name){
-      if(!this.enabled||!this.supported) return false;
+      if(!this.enabled) return false;
       if(this.mode==='ios'){
         const now=(typeof performance!=='undefined'?performance.now():Date.now());
         if(now-this._last<60) return false;
@@ -5803,15 +5826,14 @@
       { const hb=document.getElementById('haptic-btn'), note=document.getElementById('haptic-note');
         const applyH=(on)=>{ this.haptics.set(on); hb.textContent=on?'ON':'OFF'; hb.classList.toggle('on',on); };
         if(!this.haptics.supported){
-          if(note) note.textContent='(this browser has no haptics)';
-          hb.textContent='—'; hb.classList.remove('on'); hb.style.opacity='0.45';
+          // Tested on a real iPhone: iOS Safari plays nothing, so the row is disabled and says
+          // why. A switch that reads ON while the phone stays silent is worse than no switch.
+          if(note) note.textContent = this.haptics.gestureOnly
+            ? '(Safari can\u2019t \u2014 app version only)'
+            : '(this browser has no haptics)';
+          hb.textContent='\u2014'; hb.classList.remove('on'); hb.style.opacity='0.45'; hb.onclick=null;
         } else {
-          // Do not claim iOS Safari works. It almost never does: Safari has no Vibration API and
-          // the one hook that exists needs a real finger-on-glass activation, which an in-game
-          // event is not. Say what is actually true instead of leaving the player poking at a
-          // switch that cannot do anything.
-          if(note) note.textContent = this.haptics.reliable ? ''
-            : '(iOS: Safari can\u2019t \u2014 works in the app build)';
+          if(note) note.textContent='';
           hb.onclick=()=>applyH(!this.haptics.enabled);
           hb.textContent=this.haptics.enabled?'ON':'OFF'; hb.classList.toggle('on',this.haptics.enabled); } }
       // NIGHT MODE toggle (turns the current map to night: dark sky, stars, street lamps, lit buildings)

@@ -97,7 +97,7 @@ for(const CASE of ['wkwebview','capacitor','androidapp','android','iphone','bare
                  capacitor:{mode:'native', fires:true, reliable:true},
                  androidapp:{mode:'native', fires:true, reliable:true},
                  android:{mode:'vibrate', fires:true, reliable:true},
-                 iphone:{mode:'ios', fires:true, reliable:false},
+                 iphone:{mode:'ios', fires:false, reliable:false},
                  bare:{mode:'none', fires:false, reliable:false} }[CASE];
   const hits = (x)=> x.vib>0 || x.taps>0 || x.nat>0;
   const checks=[
@@ -108,7 +108,8 @@ for(const CASE of ['wkwebview','capacitor','androidapp','android','iphone','bare
     ['OFF is absolute',       r.silentWhenOff===0],
     ['reliability reported honestly', r.reliable===want.reliable],
     ['UI does not blame the device',  !/device/i.test(r.note||'')],
-    ['iOS Safari is not sold as working', CASE!=='iphone' || /app build/i.test(r.note||'')],
+    ['iOS Safari is not sold as working', CASE!=='iphone' || /app version only/i.test(r.note||'')],
+    ['iOS Safari toggle is disabled',     CASE!=='iphone' || r.btn==='\u2014'],
     ['a working backend shows no caveat', want.reliable!==true || (r.note||'')===''],
     ['no page errors',        errs.length===0],
   ];
