@@ -1340,7 +1340,8 @@
         this.joy=dx/R; knob.style.transform=`translateX(${dx}px)`;
       };
       const end=()=>{ active=false; this.joy=0; knob.style.transform='translateX(0px)'; };
-      base.addEventListener('touchstart',e=>{ e.preventDefault(); active=true; moveTo(e.touches[0].clientX); },{passive:false});
+      base.addEventListener('touchstart',e=>{ e.preventDefault(); active=true; moveTo(e.touches[0].clientX);
+        this.hap&&this.hap.gesture('tap'); },{passive:false});
       base.addEventListener('touchmove', e=>{ e.preventDefault(); if(active) moveTo(e.touches[0].clientX); },{passive:false});
       base.addEventListener('touchend',end); base.addEventListener('touchcancel',end);
       base.addEventListener('mousedown',e=>{ active=true; moveTo(e.clientX); });
@@ -1348,12 +1349,14 @@
       document.addEventListener('mouseup',end);
       const boost=document.getElementById('btn-boost');
       if(boost){
-        boost.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._surge=true; },{passive:false});
+        boost.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._surge=true;
+          this.hap&&this.hap.gesture('tap'); },{passive:false});
         boost.addEventListener('mousedown',e=>{ e.stopPropagation(); this._surge=true; });
       }
       const pw=document.getElementById('btn-power');
       if(pw){
-        pw.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._power=true; },{passive:false});
+        pw.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); this._power=true;
+          this.hap&&this.hap.gesture('power'); },{passive:false});
         pw.addEventListener('mousedown',e=>{ e.stopPropagation(); this._power=true; });
       }
     }
@@ -2101,6 +2104,20 @@
     _iosTap(){
       const sw=this._sw; if(!sw||!sw.isConnected) return;
       try{ sw.click(); }catch(e){}
+    }
+    // Fired SYNCHRONOUSLY from inside a real touchstart/pointerdown handler. This is the one
+    // situation where iOS Safari will actually play a haptic for a web page: the tap happens
+    // while the user's finger-on-glass activation is still live. Anything scheduled for later —
+    // a smash, a death, a timer — has lost that activation and plays nothing, which is exactly
+    // why the rest of the game's haptics need the native bridge on iOS.
+    gesture(name){
+      if(!this.enabled||!this.supported) return false;
+      if(this.mode==='ios'){
+        const now=(typeof performance!=='undefined'?performance.now():Date.now());
+        if(now-this._last<60) return false;
+        this._last=now; this._iosTap(); return true;
+      }
+      return this.fire(name);
     }
     set(on){ this.enabled=!!on; try{ localStorage.setItem('invrun_haptic', on?'1':'0'); }catch(e){}
       if(!on) this.stop(); else this.fire('tap'); }
@@ -5680,6 +5697,7 @@
       this.run=new RunStateManager(this);
       this.maps=new MapSystem(this);
 
+      this.input.hap=this.haptics;   // touch handlers play haptics INSIDE the gesture (Haptics.gesture)
       this.input.init(); this.player.reset(); this.maps.apply(); this.city.update();
       setTimeout(()=>this.snapMenuBg(),700);
       this.run.refreshBestLine();

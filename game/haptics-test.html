@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>CITYBREAKER — Vibration Test</title>
+<style>
+  :root{ --bg:#0d0f16; --card:#171b26; --line:#2a3040; --txt:#e8ecf4; --dim:#8891a4;
+         --ok:#3ddc84; --no:#ff4d4d; --maybe:#ffc23a; --accent:#ff2e88; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; padding:18px 16px calc(40px + env(safe-area-inset-bottom));
+        background:var(--bg); color:var(--txt);
+        font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  h1{ font-size:22px; margin:0 0 4px; letter-spacing:-.01em; }
+  .sub{ color:var(--dim); font-size:14px; margin:0 0 18px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px;
+         padding:14px 14px 16px; margin:0 0 14px; }
+  .card h2{ font-size:15px; margin:0 0 2px; }
+  .card p{ font-size:13px; color:var(--dim); margin:0 0 12px; }
+  button{ width:100%; padding:16px; font-size:17px; font-weight:600; color:#fff;
+          background:linear-gradient(180deg,#2a3a5c,#1d2740); border:1px solid #3a4a6d; border-radius:11px; cursor:pointer; }
+  button:active{ transform:translateY(1px); filter:brightness(1.25); }
+  button.big{ background:linear-gradient(180deg,#ff5aa0,#d4176a); border-color:#ff86bd; }
+  .row{ display:flex; gap:10px; } .row button{ flex:1; }
+  .verdict{ display:flex; gap:10px; align-items:flex-start; padding:12px;
+            border-radius:10px; background:#10141f; border:1px solid var(--line);
+            margin-top:12px; font-size:14px; }
+  .dot{ width:10px; height:10px; border-radius:50%; margin-top:6px; flex:0 0 10px; background:var(--dim); }
+  .dot.ok{ background:var(--ok); } .dot.no{ background:var(--no); } .dot.maybe{ background:var(--maybe); }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  td{ padding:6px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  td:first-child{ color:var(--dim); width:46%; }
+  code{ font-family:ui-monospace,Menlo,monospace; font-size:12px; background:#0a0d14;
+        padding:1px 5px; border-radius:4px; }
+  .yes{ color:var(--ok); font-weight:600; } .nope{ color:var(--no); font-weight:600; }
+  /* The switch under test. It has to be REAL and on-screen — a hidden control is not
+     activatable and iOS plays nothing for it. */
+  .switchrow{ display:flex; align-items:center; justify-content:space-between; gap:14px;
+              padding:14px; background:#10141f; border:1px solid var(--line); border-radius:11px; }
+  input[type=checkbox]{ width:52px; height:32px; }
+</style>
+</head>
+<body>
+
+<h1>Vibration test</h1>
+<p class="sub">Open this on the phone you want to test. Tap the buttons and note whether you feel anything.</p>
+
+<div class="card">
+  <h2>1 · What this browser reports</h2>
+  <p>Read automatically, before you tap anything.</p>
+  <table id="caps"></table>
+  <div class="verdict"><span class="dot" id="vdot"></span><span id="verdict">checking…</span></div>
+</div>
+
+<div class="card">
+  <h2>2 · Vibration API</h2>
+  <p>Works on Android/Chrome. On iPhone this button does nothing at all — Safari has never shipped this API.</p>
+  <button id="b-vib">Buzz for 200 ms</button>
+</div>
+
+<div class="card">
+  <h2>3 · iOS switch tap — your finger</h2>
+  <p>Flip this switch <strong>with your finger</strong>. This is the only haptic a web page can ask
+     for on iOS. If you feel a tick here, your phone and iOS version can do it.</p>
+  <div class="switchrow">
+    <span>Toggle me</span>
+    <input type="checkbox" switch id="realsw">
+  </div>
+</div>
+
+<div class="card">
+  <h2>4 · iOS switch tap — from code</h2>
+  <p>The same switch, flipped by a script instead of your finger. This is what the game has to do
+     for a smash or a crash. If 3 buzzed and this one doesn't, that is the whole problem.</p>
+  <div class="row">
+    <button id="b-code">Flip it from code</button>
+    <button id="b-code3">Flip 3×</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>5 · Inside your tap</h2>
+  <p>A code-driven flip fired <em>during</em> your finger press, while the activation is still
+     live. This is the trick the game uses for the FIRE and SURGE buttons.</p>
+  <button class="big" id="b-gesture">Press me</button>
+</div>
+
+<div class="card">
+  <h2>6 · Native app bridge</h2>
+  <p>Only present when the game is running inside an app wrapper, never in a browser.</p>
+  <table id="bridge"></table>
+</div>
+
+<div class="card">
+  <h2>What to tell me</h2>
+  <p>Just the numbers that buzzed — e.g. “3 yes, 4 no, 5 yes”. That tells me exactly how much of
+     the game's haptics can work on your iPhone without an app build.</p>
+</div>
+
+<script>
+(function(){
+  var probe=document.createElement('input'); probe.type='checkbox';
+  var hasSwitch=('switch' in probe);
+  var hasVib=!!(navigator.vibrate);
+  var ua=navigator.userAgent;
+  var isIOS=/iPad|iPhone|iPod/.test(ua) ||
+            (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  var standalone=!!(window.navigator.standalone) ||
+                 (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+
+  function row(t,k,v,cls){ return '<tr><td>'+k+'</td><td class="'+(cls||'')+'">'+v+'</td></tr>'; }
+  var yn=function(b){ return b? '<span class="yes">yes</span>' : '<span class="nope">no</span>'; };
+
+  document.getElementById('caps').innerHTML =
+      row(0,'Looks like iOS', yn(isIOS))
+    + row(0,'Installed to Home Screen', yn(standalone))
+    + row(0,'<code>navigator.vibrate</code>', yn(hasVib))
+    + row(0,'switch control (iOS 17.4+)', yn(hasSwitch));
+
+  var bridges = [
+    ['window.CBHaptics.play', !!(window.CBHaptics && window.CBHaptics.play)],
+    ['webkit…cbHaptic', !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cbHaptic)],
+    ['window.CBAndroid.haptic', !!(window.CBAndroid && window.CBAndroid.haptic)]
+  ];
+  document.getElementById('bridge').innerHTML =
+    bridges.map(function(b){ return row(0,'<code>'+b[0]+'</code>', yn(b[1])); }).join('');
+  var anyBridge = bridges.some(function(b){ return b[1]; });
+
+  var dot=document.getElementById('vdot'), out=document.getElementById('verdict');
+  if(anyBridge){ dot.className='dot ok';
+    out.innerHTML='<strong>Native bridge found.</strong> Every haptic in the game works here.'; }
+  else if(hasVib){ dot.className='dot ok';
+    out.innerHTML='<strong>Vibration API available.</strong> Every haptic in the game works here.'; }
+  else if(isIOS && hasSwitch){ dot.className='dot maybe';
+    out.innerHTML='<strong>iOS Safari.</strong> No Vibration API. Only the switch tap is reachable, '
+      + 'and only while your finger is down — try 3, 4 and 5 below.'; }
+  else if(isIOS){ dot.className='dot no';
+    out.innerHTML='<strong>iOS Safari, before 17.4.</strong> No haptics are reachable from a web page at all.'; }
+  else { dot.className='dot no';
+    out.innerHTML='<strong>No haptic hook.</strong> This browser exposes nothing.'; }
+
+  document.getElementById('b-vib').addEventListener('click',function(){
+    if(navigator.vibrate) navigator.vibrate(200);
+    else alert('navigator.vibrate does not exist in this browser.\n\nOn iPhone this is expected — Safari has never shipped it.');
+  });
+
+  var sw=document.getElementById('realsw');
+  function tap(){ try{ sw.click(); }catch(e){} }
+
+  document.getElementById('b-code').addEventListener('click',function(){ tap(); });
+  document.getElementById('b-code3').addEventListener('click',function(){
+    tap(); setTimeout(tap,120); setTimeout(tap,240);
+  });
+
+  // fire INSIDE the touch, while the user activation is still live
+  var g=document.getElementById('b-gesture');
+  g.addEventListener('touchstart',function(e){ e.preventDefault(); tap(); },{passive:false});
+  g.addEventListener('mousedown',function(){ tap(); });
+})();
+</script>
+</body>
+</html>
