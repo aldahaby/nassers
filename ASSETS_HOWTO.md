@@ -440,13 +440,34 @@ tap:
 
 If 3 buzzes and 4 does not, that is the whole iOS limitation in one screen.
 
-## What can work on iOS today, without an app
+## iOS Safari: tested, and the answer is nothing
 
-A haptic asked for **synchronously inside a real `touchstart`** still has the user's activation
-live, and iOS will play it. So `Haptics.gesture()` is wired into the touch handlers for the
-**FIRE** button, the **SURGE** button and the joystick, and those do tick on an iPhone. Everything
-that happens *without* a finger on the glass — a smash, a gate block, a death, a combo milestone —
-has no activation left and cannot. That asymmetry is why the native bridge exists.
+Run on a real **iPhone 14**, current iOS: **no test produced any haptic.** Not the Vibration API
+(absent), not a scheduled switch tap, and not even the switch flipped **directly by a finger**.
+
+So iOS Safari is no longer reported as `supported`. The Vibration row is disabled and reads
+*"(Safari can't — app version only)"*, because a toggle sitting on ON while the phone stays silent
+is worse than no toggle. `Haptics.gesture()` still attempts the tap from inside a real touch — it
+costs nothing and does work on some builds — but nothing is promised.
+
+**On iOS the app build is the only way.** See `app/`.
+
+## Capacitor is detected automatically
+
+Wrapping the game in Capacitor with `@capacitor/haptics` needs **no change to `game.html`**.
+`Haptics._initNative` finds `window.Capacitor.Plugins.Haptics` by itself and maps each event onto a
+real feedback style:
+
+| Event | Feedback |
+|---|---|
+| `shard`, `tap`, `smashLight`, `closeCall` | impact **light** |
+| `smashHeavy`, `power`, `combo`, `milestone` | impact **medium** |
+| `smashHuge`, `powerBig` | impact **heavy** |
+| `gateBlock`, `drone`, `death` | notification **error** |
+| `fire`, `epic`, `ethereal`, `stage` | notification **success** |
+
+`app/` holds the scaffold: `cd app && npm install && npx cap add ios && npm run ios`. Its README
+covers what you need (a Mac, Xcode, an Apple ID) and how to confirm it worked.
 
 Asserted by **`scripts/haptics.mjs`** — runs the game with six platforms emulated (three native
 shell shapes, Android, iOS Safari, and a bare browser) and checks the right backend is chosen,
