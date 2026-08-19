@@ -299,7 +299,7 @@
         radial-gradient(120% 90% at 50% 115%, rgba(255,90,20,.12), transparent 55%),
         radial-gradient(90% 45% at 50% 30%, rgba(4,7,14,.55), transparent 70%),
         linear-gradient(180deg, rgba(10,17,34,.58) 0%, rgba(7,12,24,.44) 45%, rgba(5,7,14,.70) 100%);
-      transition:opacity .42s var(--ui-out); }
+      transition:opacity .58s cubic-bezier(.33,0,.2,1); }
     /* PLAY: the pane lifts and dissolves, the blur clears, and you are already flying. */
     #start-overlay.leaving{ opacity:0; pointer-events:none; }
     #start-overlay.leaving .brand,
@@ -307,22 +307,22 @@
     #start-overlay.leaving .best-card,
     #start-overlay.leaving .menu-row,
     #start-overlay.leaving .menu-foot,
-    #start-overlay.leaving .menu-legal{ animation:menuAway .34s var(--ui-out) both; }
-    #start-overlay.leaving .btn-play{ animation:playAway .42s var(--ui-out) both; }
-    @keyframes menuAway{ to{ opacity:0; transform:translateY(16px) scale(.96); } }
+    #start-overlay.leaving .menu-legal{ animation:menuAway .46s cubic-bezier(.33,0,.2,1) both; }
+    #start-overlay.leaving .btn-play{ animation:playAway .58s cubic-bezier(.33,0,.2,1) both; }
+    @keyframes menuAway{ to{ opacity:0; transform:translateY(12px) scale(.975); } }
     /* the button you pressed goes the other way — it rushes at you as the world opens up */
-    @keyframes playAway{ 30%{ transform:scale(1.06); } to{ opacity:0; transform:scale(1.5); } }
+    @keyframes playAway{ 22%{ transform:scale(1.045); } to{ opacity:0; transform:scale(1.32); } }
     /* coming back from a run, the menu settles in rather than snapping on */
     #start-overlay:not(.hidden):not(.leaving) .brand,
     #start-overlay:not(.hidden):not(.leaving) .best-card,
     #start-overlay:not(.hidden):not(.leaving) .btn-play,
     #start-overlay:not(.hidden):not(.leaving) .menu-row{ animation:menuIn .4s var(--ui-in) both; }
-    @keyframes menuIn{ from{ opacity:0; transform:translateY(18px) scale(.97); } to{ opacity:1; transform:none; } }
+    @keyframes menuIn{ from{ opacity:0; transform:translateY(14px) scale(.98); } to{ opacity:1; transform:none; } }
 
     /* Now that the menu is translucent, the live HUD and joystick behind it would show through as
        ghosts. They fade out under the menu and fade back in as it lifts, on the same curve — so
        the controls arrive with the world rather than popping on. */
-    #hud, #touch{ transition:opacity .40s var(--ui-out); }
+    #hud, #touch{ transition:opacity .52s cubic-bezier(.33,0,.2,1); }
     body.at-menu #hud, body.at-menu #touch{ opacity:0; pointer-events:none; }
 
     /* The live scene renders behind the menu every frame, so the old frozen snapshot is a second
@@ -397,14 +397,17 @@
          never left with an invalid rgba() before the first character is applied. */
       --aura-epic:#ffb13b; --aura-eth:#ff5ce0;
       --aura-epic-rgb:255,177,59; --aura-eth-rgb:255,92,224;
-      --ui-in:  cubic-bezier(.16,1.06,.32,1.28);   /* out-back: settles with a small overshoot */
-      --ui-out: cubic-bezier(.5,0,.78,.2);         /* in-quart: leaves fast, no hang */
-      --t-open: .34s;
-      --t-shut: .22s;
+      /* Softened: the old open curve overshot hard enough to read as a bounce. This still has a
+         little life at the end but glides into it, and both directions run longer so nothing
+         snaps. Everything animates transform/opacity only, so it stays on the compositor. */
+      --ui-in:  cubic-bezier(.22,.85,.28,1.04);    /* eases in gently, a whisper of overshoot */
+      --ui-out: cubic-bezier(.4,0,.5,.35);         /* leaves smoothly rather than yanking away */
+      --t-open: .46s;
+      --t-shut: .32s;
     }
     /* Buttons: a real press. Scale down on contact, spring back on release. */
     .btn, .chip, .toggle, .card, .btn-play, #daily-btn, #missions-btn, #ranks-btn{
-      transition:transform .13s var(--ui-in), filter .13s ease, box-shadow .13s ease; }
+      transition:transform .18s var(--ui-in), filter .18s ease, box-shadow .18s ease; }
     .btn:active, .chip:active, .toggle:active, .card:active, #daily-btn:active,
     #missions-btn:active, #ranks-btn:active{ transform:scale(.94); filter:brightness(1.15); }
     .btn-play:active{ transform:scale(.965); }
@@ -742,14 +745,14 @@
     .modal:not(.hidden){ animation:ovIn .18s ease both; }
     .modal:not(.hidden) .sheet{ animation:sheetIn var(--t-open) var(--ui-in) both; }
     /* POP OUT: rises from under the finger, overshoots a hair, settles. */
-    @keyframes sheetIn{ from{ opacity:0; transform:translateY(26px) scale(.9); }
+    @keyframes sheetIn{ from{ opacity:0; transform:translateY(18px) scale(.94); }
                         to{ opacity:1; transform:none; } }
     /* POP BACK IN: the mirror, but it drops AWAY from you rather than reversing the entrance —
        a close that plays the opening backwards reads as an undo, not a dismissal. */
     .modal.closing{ opacity:0; pointer-events:none; }
     .modal.closing .sheet{ animation:sheetOut var(--t-shut) var(--ui-out) both; }
     @keyframes sheetOut{ from{ opacity:1; transform:none; }
-                         to{ opacity:0; transform:translateY(10px) scale(.86); } }
+                         to{ opacity:0; transform:translateY(8px) scale(.92); } }
     /* ===== RESULTS SCREEN ===== */
     #gameover-overlay h1{ display:none; }
     .res{ width:min(430px,92vw); display:flex; flex-direction:column; align-items:center; gap:0; }
@@ -3421,33 +3424,112 @@
             add(p.grp,G.box,M(0x9aa19a),0,0.6,2.4,2.6,1.2,2.6);
             add(p.grp,G.sph,M(0x3f7a45),0,1.7,2.4,1.4,0.9,1.4); }
         } else if(style==='glass'){                             // ---- FRUTIGER AERO ----
+          // FRUTIGER AERO, c.2004-2013: the optimism of Vista/Zune-era product design. Glossy
+          // translucent surfaces, aqua and lime, water and lush greenery pressed right up against
+          // clean technology, everything catching a highlight. Nothing matte, nothing weathered.
           const gl=M(0x9fe8ff,{roughness:.06,metalness:.6,transparent:true,opacity:.72,emissive:0x0a3a44,emissiveIntensity:.35});
-          if(k===0){ add(p.grp,G.cyl,gl,0,4,0,2.4,8,2.4); add(p.grp,G.sph,gl,0,8.4,0,2.6,1.8,2.6); }   // glass tower
-          else if(k===1){ add(p.grp,G.box,M(0x7fe6ff,{transparent:true,opacity:.55,roughness:.05,metalness:.4}),0,3,0,0.4,6,3.2); // waterfall sheet
-            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xdffbff,transparent:true,opacity:.3,depthWrite:false}),0,0.4,0,2.2,0.8,2.2); }
-          else if(k===2){ add(p.grp,G.cyl,M(0x3f8f46),0,0.9,0,0.18,1.8,0.18);            // flowers
-            for(let j=0;j<5;j++) add(p.grp,G.sph,M([0xff6ea8,0xffd54a,0x9b6bff,0x66f0c0,0xff9d5c][j%5]),Math.cos(j*1.3)*0.9,1.7,Math.sin(j*1.3)*0.9,0.4,0.4,0.4); }
-          else if(k===3){ const bm=new THREE.MeshStandardMaterial({color:0xcdf4ff,transparent:true,opacity:.34,roughness:.02,metalness:.1,emissive:0x0a2a33,emissiveIntensity:.4});
-            for(let j=0;j<4;j++) add(p.grp,G.sph,bm,Math.cos(j*1.6)*1.4,2+j*1.1,Math.sin(j*1.6)*1.4,1+j*0.2,1+j*0.2,1+j*0.2); }   // bubble cluster
-          else if(k===4){ add(p.grp,G.cyl,M(0x4a8f4e),0,1.2,0,0.3,2.4,0.3);              // curved topiary
-            add(p.grp,G.sph,M(0x37c46a),0,3.2,0,1.8,1.6,1.8); }
-          else { add(p.grp,G.pl,new THREE.MeshStandardMaterial({color:0x7fd4ea,roughness:.02,metalness:.9,transparent:true,opacity:.55,side:THREE.DoubleSide}),0,0.06,0,7,7,1,-Math.PI/2); } // reflective pool
+          const glossWhite=M(0xf4feff,{roughness:.05,metalness:.35});
+          // metalness:1 + no envMap = solid black. Faked with a bright base, moderate metalness
+          // and a touch of emissive so it reads as polished chrome under any light.
+          const chrome=M(0xeaf8ff,{roughness:.12,metalness:.45,emissive:0x9fd8ea,emissiveIntensity:.30});
+          const water=new THREE.MeshStandardMaterial({color:0x6fd8f0,roughness:.02,metalness:.85,
+                        transparent:true,opacity:.55,emissive:0x0a4a5a,emissiveIntensity:.45});
+          // The lawn here is vivid Bliss-green, so planting has to sit DARKER than it or it
+          // disappears into the ground entirely.
+          const grass=M(0x1f8a35,{roughness:.85});
+          if(k===0){                                                     // GLASS TOWER + water jets
+            add(p.grp,G.cyl,gl,0,4,0,2.4,8,2.4); add(p.grp,G.sph,gl,0,8.4,0,2.6,1.8,2.6);
+            add(p.grp,G.cyl,chrome,0,0.5,0,3.0,1.0,3.0);                 // polished collar
+            for(let j=0;j<4;j++){ const a2=j*1.5708;                     // fountain jets arcing up the glass
+              add(p.grp,G.cyl,water,Math.cos(a2)*3.4,2.6,Math.sin(a2)*3.4,0.30,5.2,0.30,0.26*Math.cos(a2),0);
+              add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xdffbff,transparent:true,opacity:.5,depthWrite:false}),
+                  Math.cos(a2)*3.4,5.2,Math.sin(a2)*3.4,0.5,0.5,0.5); }  // spray at the top of each jet
+          }
+          else if(k===1){                                                // WATERFALL SHEET into a lit basin
+            add(p.grp,G.box,M(0x7fe6ff,{transparent:true,opacity:.55,roughness:.05,metalness:.4}),0,3,0,0.4,6,3.2);
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0xdffbff,transparent:true,opacity:.3,depthWrite:false}),0,0.4,0,2.2,0.8,2.2);
+            add(p.grp,G.cyl,glossWhite,0,0.35,0,3.4,0.7,3.4);            // white basin rim
+            add(p.grp,G.cyl,water,0,0.62,0,3.0,0.12,3.0);                // the pool surface
+          }
+          else if(k===2){                                                // PLANTING BED: flowers on a grass mound
+            add(p.grp,G.sph,grass,0,0.35,0,3.4,1.1,3.0);                 // lush mound
+            add(p.grp,G.cyl,M(0x3f8f46),0,0.9,0,0.18,1.8,0.18);
+            for(let j=0;j<7;j++) add(p.grp,G.sph,M([0xff6ea8,0xffd54a,0x9b6bff,0x66f0c0,0xff9d5c,0xff4a7a,0x4ad8ff][j%7],
+                {emissive:[0xff6ea8,0xffd54a,0x9b6bff,0x66f0c0,0xff9d5c,0xff4a7a,0x4ad8ff][j%7],emissiveIntensity:.22}),
+                Math.cos(j*0.9)*1.5,1.5+((j%3)*0.45),Math.sin(j*0.9)*1.3,0.62,0.62,0.62);
+            add(p.grp,G.cyl,glossWhite,0,0.28,0,3.9,0.56,3.9);          // glossy white planter ring
+            for(let j=0;j<7;j++){ const a2=j*0.9;                        // grass blades catching the light
+              add(p.grp,G.cone,grass,Math.cos(a2)*2.2,0.9,Math.sin(a2)*2.0,0.18,1.5,0.18,0.12*Math.cos(a2),0); }
+          }
+          else if(k===3){                                                // BUBBLE CLUSTER over a glass plinth
+            const bm=new THREE.MeshStandardMaterial({color:0xcdf4ff,transparent:true,opacity:.34,roughness:.02,metalness:.1,emissive:0x0a2a33,emissiveIntensity:.4});
+            for(let j=0;j<4;j++) add(p.grp,G.sph,bm,Math.cos(j*1.6)*1.4,2+j*1.1,Math.sin(j*1.6)*1.4,1+j*0.2,1+j*0.2,1+j*0.2);
+            add(p.grp,G.box,glossWhite,0,0.5,0,2.2,1.0,2.2);
+          }
+          else if(k===4){                                                // WIND TURBINE — clean-tech optimism
+            add(p.grp,G.cyl,glossWhite,0,5.0,0,0.34,10,0.34);
+            add(p.grp,G.sph,chrome,0,10.1,0,0.6,0.6,0.6);
+            // Each blade is offset outward from the hub before rotating, or a centred box draws a
+            // spoke on BOTH sides and three blades read as six.
+            for(let j=0;j<3;j++){ const a2=j*2.094;
+              const bl=add(p.grp,G.box,glossWhite,Math.sin(a2)*3.4,10.1+Math.cos(a2)*3.4,0.4,0.34,6.6,0.12);
+              bl.rotation.z=-a2; }
+            add(p.grp,G.sph,grass,0,0.25,0,2.6,0.8,2.6);                 // it stands on a green rise
+          }
+          else {                                                          // GLASS PERGOLA over a mirror pool
+            add(p.grp,G.pl,new THREE.MeshStandardMaterial({color:0x7fd4ea,roughness:.02,metalness:.9,transparent:true,opacity:.55,side:THREE.DoubleSide}),0,0.06,0,7,7,1,-Math.PI/2);
+            for(const sx of [-3.1,3.1]) add(p.grp,G.cyl,chrome,sx,2.2,0,0.16,4.4,0.16);
+            add(p.grp,G.box,gl,0,4.5,0,7.2,0.22,4.4);                    // translucent canopy
+            add(p.grp,G.box,glossWhite,0,0.14,0,7.6,0.28,5.0);           // pale kerb
+          }
         } else if(style==='stone'){                             // ---- MEDIEVAL ----
-          const st=M(0x9a8a68), wd=M(0x6b4a2c);
-          if(k===0){ add(p.grp,G.cyl,st,0,3,0,1.8,6,1.8); add(p.grp,G.cone,M(0x7a3b2e),0,7,0,2.2,2.4,2.2);   // watchtower
-            add(p.grp,G.box,M(0xc0392b),1.6,4.4,0,0.08,1.6,1.1); }
-          else if(k===1){ add(p.grp,G.box,st,0,1.2,0,2.6,2.4,2.6);                        // well
+          // HIGH MEDIEVAL, c.1100-1400. Everything here is stone, rough timber, thatch, iron,
+          // wool and fire. Deliberately nothing turned, milled, painted bright, or symmetrical
+          // beyond what a carpenter could eyeball — the moment one machined edge appears the
+          // whole street stops reading as the period.
+          const st=M(0x9a8a68), wd=M(0x6b4a2c), drk=M(0x4a3420), iron=M(0x3a3a3e,{metalness:.6,roughness:.6});
+          const thatch=M(0xb99a52,{roughness:1}), cloth=M(0xc0392b), cloth2=M(0x2e5f8a);
+          const fire=new THREE.MeshStandardMaterial({color:0xff8a2a,emissive:0xff5a10,
+                       emissiveIntensity:night?2.2:1.1,roughness:.9});
+          if(k===0){                                                     // WATCHTOWER + pennant
+            add(p.grp,G.cyl,st,0,3,0,1.8,6,1.8); add(p.grp,G.cone,M(0x7a3b2e),0,7,0,2.2,2.4,2.2);
+            add(p.grp,G.box,cloth,1.6,4.4,0,0.08,1.6,1.1);
+            add(p.grp,G.cyl,wd,0,8.4,0,0.1,2.4,0.1);                     // finial pole
+            add(p.grp,G.box,cloth2,0.7,8.9,0,1.4,0.9,0.06); }            // pennant
+          else if(k===1){                                                // WELL + water bucket
+            add(p.grp,G.box,st,0,1.2,0,2.6,2.4,2.6);
             add(p.grp,G.box,wd,0,3,0,0.2,1.8,0.2); add(p.grp,G.box,wd,0,3.9,0,3,0.2,0.2);
-            add(p.grp,G.cone,M(0x7a3b2e),0,4.5,0,2.2,1.2,2.2); }
-          else if(k===2){ add(p.grp,G.box,wd,0,1.1,0,3,0.25,2.2);                          // market stall
+            add(p.grp,G.cone,M(0x7a3b2e),0,4.5,0,2.2,1.2,2.2);
+            add(p.grp,G.cyl,wd,0,3.0,0,0.42,0.7,0.42);                   // bucket on the rope
+            add(p.grp,G.box,drk,0,2.5,0,2.9,0.16,0.16); }                // windlass beam
+          else if(k===2){                                                // MARKET STALL, loaded
+            add(p.grp,G.box,wd,0,1.1,0,3,0.25,2.2);
             for(let j=0;j<4;j++) add(p.grp,G.box,wd,(j<2?-1.3:1.3),1.6,(j%2?-0.9:0.9),0.16,3.2,0.16);
-            add(p.grp,G.box,M(0xc0392b),0,3.3,0,3.4,0.5,2.6); }
-          else if(k===3){ add(p.grp,G.cyl,st,0,3,0,2,6,2);                                 // windmill
+            add(p.grp,G.box,cloth,0,3.3,0,3.4,0.5,2.6);                  // awning
+            for(let j=0;j<4;j++) add(p.grp,G.sph,M([0xb5432f,0xc98a2e,0x6d8f3a,0x8a5a2c][j]),
+                (j-1.5)*0.7,1.42,0,0.32,0.28,0.32);                      // produce on the boards
+            add(p.grp,G.cyl,wd,1.7,0.6,1.4,0.44,1.2,0.44); }             // barrel beside it
+          else if(k===3){                                                // WINDMILL
+            add(p.grp,G.cyl,st,0,3,0,2,6,2);
             add(p.grp,G.cone,M(0x5a3a24),0,6.6,0,2.4,1.6,2.4);
-            for(let j=0;j<4;j++){ const bl=add(p.grp,G.box,wd,0,4.6,1.4,0.5,5.6,0.14); bl.rotation.z=j*1.57; } }
-          else if(k===4){ for(let j=0;j<3;j++) add(p.grp,G.box,st,0,0.9,j*2.4-2.4,4,1.8,2.2); } // stone wall run
-          else { add(p.grp,G.cone,M(0xd8b45a),0,1.3,0,1.9,2.6,1.9);                        // haystack
-            add(p.grp,G.cyl,M(0x2f6a2c),2.4,1,0,0.3,2,0.3); }
+            // sails offset off the hub, same reason as the turbine above
+            for(let j=0;j<4;j++){ const a2=j*1.5708;
+              const bl=add(p.grp,G.box,wd,Math.sin(a2)*2.6,4.6+Math.cos(a2)*2.6,1.5,0.42,5.0,0.16);
+              bl.rotation.z=-a2;
+              add(p.grp,G.box,cloth2,Math.sin(a2)*2.6,4.6+Math.cos(a2)*2.6,1.62,0.9,4.4,0.06).rotation.z=-a2; }
+            add(p.grp,G.box,drk,0,0.5,2.2,3.0,1.0,1.6); }                // grain store lean-to
+          else if(k===4){                                                // WALL RUN + BRAZIER
+            for(let j=0;j<3;j++) add(p.grp,G.box,st,0,0.9,j*2.4-2.4,4,1.8,2.2);
+            add(p.grp,G.cyl,iron,2.4,1.9,0,0.16,3.8,0.16);               // iron brazier stand
+            add(p.grp,G.cyl,iron,2.4,3.9,0,0.62,0.5,0.62);
+            add(p.grp,G.sph,fire,2.4,4.3,0,0.55,0.5,0.55); }             // the flame
+          else {                                                          // FARM CORNER: hay, cart, firewood
+            add(p.grp,G.cone,M(0xd8b45a),0,1.3,0,1.9,2.6,1.9);
+            add(p.grp,G.cyl,M(0x2f6a2c),2.4,1,0,0.3,2,0.3);
+            add(p.grp,G.box,wd,-2.6,1.0,0,2.6,0.3,1.5);                  // cart bed
+            for(const sx of [-3.5,-1.7]) add(p.grp,G.cyl,drk,sx,0.62,0.85,0.62,0.18,0.62,0,1.5708);
+            add(p.grp,G.cyl,wd,-2.6,1.45,0,0.4,0.8,0.4);                 // barrel on the cart
+            for(let j=0;j<4;j++) add(p.grp,G.cyl,drk,3.4,0.28+j*0.34,0,0.24,0.24,2.0,0,1.5708); }
         } else if(style==='drywall'){                           // ---- THE BACKROOMS ----
           const wall=M(0xc4a960), trim=M(0x8a7440), mtl=M(0x8f9298,{metalness:.5,roughness:.5});
           if(k===0){ add(p.grp,G.box,M(0x6f5a30),0,1.6,0,0.3,3.2,1.5);          // maintenance door + frame
@@ -3464,20 +3546,128 @@
           else { add(p.grp,G.box,M(0x9aa0a6,{metalness:.4}),0,1.1,0,1.5,2.2,0.9); // utility cabinet + clock
             add(p.grp,G.cyl,M(0xe8e2cc),0,3.4,0.5,0.55,0.12,0.55,Math.PI/2);
             add(p.grp,G.box,M(0x2a2a2a),0,3.4,0.58,0.06,0.4,0.02); }
-        } else {                                                // ---- FRUTIGER METRO ----
+        } else if(style==='metro'){                             // ---- FRUTIGER METRO ----
+          // METRO / MODERN UI, c.2010-2015: flat blocks of saturated colour, hard edges, no
+          // gloss and no bevel — the deliberate anti-skeuomorphism that followed Aero. Underground,
+          // so everything is service infrastructure: tile, steel, cable, signage.
+          // Heights are kept low on purpose; this map has a tunnel ceiling and anything tall
+          // punches straight through it.
           const mt=M(0x46555f,{metalness:.55,roughness:.4}), gr=M(0x2fe08a,{emissive:0x0f8a5a,emissiveIntensity:.8});
-          if(k===0){ add(p.grp,G.cyl,mt,0,4,0,0.5,8,0.5);                                  // catenary pylon + cable
-            add(p.grp,G.box,mt,0,7.8,0,4.4,0.3,0.3); add(p.grp,G.box,gr,0,7.4,0,4,0.08,0.08); }
-          else if(k===1){ add(p.grp,G.box,mt,0,1.4,0,3.4,0.3,1.6);                          // platform bench + sign
-            for(let j=0;j<2;j++) add(p.grp,G.box,mt,(j?1.3:-1.3),0.7,0,0.2,1.4,1.2);
-            add(p.grp,G.box,gr,0,3.4,0,2.6,0.8,0.1); }
-          else if(k===2){ add(p.grp,G.cyl,mt,0,2.2,0,0.28,4.4,0.28);                        // signal light
-            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0x2fe08a}),0,4.6,0,0.5,0.5,0.5); }
-          else if(k===3){ for(let j=0;j<5;j++) add(p.grp,G.box,mt,0,0.5+j*0.55,-j*0.9,3,0.28,0.9); } // maintenance stairs
-          else if(k===4){ add(p.grp,G.box,mt,0,5.4,0,10,0.5,2.2);                            // pedestrian bridge
-            add(p.grp,G.box,mt,-4.6,3,0,0.5,5,0.5); add(p.grp,G.box,mt,4.6,3,0,0.5,5,0.5);
-            add(p.grp,G.box,gr,0,6,1.1,10,0.6,0.08); }
-          else { add(p.grp,G.box,mt,0,1.6,0,2.6,3.2,2.2); add(p.grp,G.box,gr,0,3.4,0,2.2,0.4,0.1); } // service cabinet
+          const tile=M(0xd8e6e2,{roughness:.35}), dark=M(0x1b262b,{roughness:.7});
+          const strip=new THREE.MeshBasicMaterial({color:0xe8fff6});     // fluorescent tube
+          // flat Metro-style colour blocks — the signature of the era's design language
+          const FLAT=[0x2fe08a,0x21b8d8,0xf0a020,0xe04060,0x8a5ad8];
+          // Props sit BESIDE the road, angled ~29 degrees toward it, so a panel is always seen at a
+          // grazing angle. Anything with one printed face reads as a black slab from the other
+          // side — so every lit face here is doubled onto both sides of its panel.
+          const lit=(c,e)=>M(c,{emissive:c,emissiveIntensity:e===undefined?(night?1.4:0.85):e});
+          const face=(grp,mat,x,y,z,sx,sy,sz)=>{ add(grp,G.box,mat, x,y,z, sx,sy,sz);
+                                                 add(grp,G.box,mat,-x,y,z, sx,sy,sz); };
+          if(k===0){                                                     // TILED WALL + strip light
+            add(p.grp,G.box,tile,0,3.0,0,0.5,6.0,9.0);
+            for(let j=0;j<4;j++) face(p.grp,dark,0.28,1.1+j*1.5,0,0.06,0.12,8.8);   // grout courses
+            face(p.grp,strip,0.34,5.4,0,0.14,0.22,7.6);                             // fluorescent tube
+            face(p.grp,lit(FLAT[i%FLAT.length]),0.32,3.0,0,0.1,1.8,3.4); }          // flat Metro colour block
+          else if(k===1){                                                // PLATFORM EDGE: bench, sign, tactile strip
+            add(p.grp,G.box,mt,0,1.5,0,4.2,0.34,1.8);
+            for(let j=0;j<2;j++) add(p.grp,G.box,mt,(j?1.7:-1.7),0.75,0,0.24,1.5,1.3);
+            add(p.grp,G.box,mt,0,2.5,-0.7,4.2,1.7,0.14);                            // bench back
+            face(p.grp,lit(0x2fe08a),0.1,4.4,0,0.12,1.0,3.4);                       // station name panel
+            add(p.grp,G.box,lit(0xf0a020,night?1.1:0.7),0,0.2,1.9,5.6,0.1,0.6); }   // tactile edge strip
+          else if(k===2){                                                // SIGNAL MAST + conduit run
+            add(p.grp,G.cyl,mt,0,2.6,0,0.32,5.2,0.32);
+            add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0x2fe08a}),0,5.4,0,0.55,0.55,0.55);
+            add(p.grp,G.box,mt,0,4.6,0,1.5,0.9,0.5);                                // signal head housing
+            for(let j=0;j<4;j++) face(p.grp,dark,0.7,1.0+j*0.34,0,0.16,0.16,11.0); }
+          else if(k===3){                                                // STAIR + handrail up to a landing
+            for(let j=0;j<6;j++) add(p.grp,G.box,mt,0,0.5+j*0.6,-j*1.0,3.6,0.3,1.0);
+            add(p.grp,G.box,mt,0,4.0,-6.0,3.6,0.3,2.4);                             // landing
+            for(const sx of [-1.7,1.7]) add(p.grp,G.cyl,lit(0x2fe08a,night?1.2:0.6),sx,2.4,-2.6,0.09,6.4,0.09,0.62,0); }
+          else if(k===4){                                                // AD LIGHTBOX — flat colour, no gloss
+            add(p.grp,G.box,dark,0,3.0,0,0.55,5.0,6.4);
+            const c=FLAT[(i+2)%FLAT.length];
+            face(p.grp,lit(c,night?1.7:1.05),0.34,3.0,0,0.14,4.2,5.6);
+            face(p.grp,tile,0.42,4.4,0,0.08,0.6,4.0);                               // the bold sans bar
+            add(p.grp,G.box,mt,0,0.4,0,0.9,0.8,1.4); }                              // its foot
+          else {                                                          // SERVICE CABINET + pillar
+            add(p.grp,G.box,mt,0,1.9,0,3.0,3.8,2.4);
+            face(p.grp,lit(0x2fe08a,night?1.2:0.7),0.2,3.1,0,0.1,0.5,1.8);
+            add(p.grp,G.box,tile,0,3.5,-2.6,1.5,7.0,1.5); }                         // tunnel pillar behind it
+        } else if(style==='basalt'){                            // ---- INFERNO ----
+          // A live volcanic fissure. Everything is either cooled basalt, still-molten rock, or
+          // something the heat has destroyed. No built structures, no vegetation that isn't dead —
+          // the read is "nothing survives here", so anything intact would look wrong.
+          const rock=M(0x1c1418,{roughness:.95}), rock2=M(0x2a1e22,{roughness:.9});
+          const char=M(0x140e10,{roughness:1});
+          const magma=new THREE.MeshStandardMaterial({color:0xff6a18,emissive:0xff4a08,
+                        emissiveIntensity:night?2.6:1.9,roughness:.6});
+          const ember=new THREE.MeshBasicMaterial({color:0xffb457});
+          if(k===0){                                                     // BASALT COLUMNS — the real hexagonal jointing
+            for(let j=0;j<5;j++){ const h=3.4+((j*7)%5)*1.5;
+              add(p.grp,G.cyl,j%2?rock:rock2,(j-2)*1.5,h/2,((j*3)%3)-1,0.85,h,0.85); }
+            add(p.grp,G.box,magma,0,0.16,0,7.0,0.14,3.0); }              // molten seam at their feet
+          else if(k===1){                                                // LAVA POOL, crusted over
+            add(p.grp,G.cyl,rock,0,0.22,0,4.2,0.44,4.2);                 // cooled rim, laid FIRST
+            add(p.grp,G.cyl,magma,0,0.5,0,3.3,0.4,3.3);                  // molten surface sits proud of it
+            for(let j=0;j<5;j++){ const a2=j*1.26;                       // crust plates floating on it
+              add(p.grp,G.box,char,Math.cos(a2)*1.7,0.66,Math.sin(a2)*1.7,1.5,0.16,1.2,0,a2); }
+            for(let j=0;j<3;j++) add(p.grp,G.sph,ember,Math.cos(j*2.1)*2.4,1.0,Math.sin(j*2.1)*2.4,0.16,0.16,0.16); }
+          else if(k===2){                                                // OBSIDIAN SPIRE
+            add(p.grp,G.cone,M(0x120c12,{roughness:.25,metalness:.35}),0,4.2,0,1.7,8.4,1.7);
+            add(p.grp,G.cone,magma,0,1.1,0,1.9,2.2,1.9);                 // glowing at the base
+            add(p.grp,G.cone,rock,2.6,1.4,1.2,1.0,2.8,1.0); }
+          else if(k===3){                                                // CHARRED TREE, long dead
+            add(p.grp,G.cyl,char,0,2.6,0,0.34,5.2,0.34);
+            for(let j=0;j<4;j++){ const a2=j*1.57+0.5;
+              add(p.grp,G.cyl,char,Math.cos(a2)*0.9,4.2,Math.sin(a2)*0.9,0.16,2.4,0.16,Math.sin(a2)*0.9,Math.cos(a2)*0.9); }
+            add(p.grp,G.sph,ember,0,0.25,0,0.9,0.2,0.9); }               // embers still in the ash
+          else if(k===4){                                                // STEAM VENT over a glowing crack
+            add(p.grp,G.cone,rock2,0,0.9,0,2.2,1.8,2.2);
+            add(p.grp,G.cyl,magma,0,1.75,0,0.7,0.3,0.7);
+            for(let j=0;j<3;j++) add(p.grp,G.sph,new THREE.MeshBasicMaterial({color:0x6a5a58,
+                transparent:true,opacity:.30-j*0.07,depthWrite:false}),0,2.6+j*1.5,0,1.1+j*0.55,0.9+j*0.5,1.1+j*0.55); }
+          else {                                                          // RUBBLE FIELD, veined with heat
+            for(let j=0;j<6;j++){ const a2=j*1.05, r2=1.1+((j*5)%4)*0.7;
+              add(p.grp,G.box,j%2?rock:rock2,Math.cos(a2)*r2,0.45+((j%3)*0.2),Math.sin(a2)*r2,
+                  1.3,0.9+((j%3)*0.4),1.2,0,a2); }
+            add(p.grp,G.box,magma,0,0.1,0,5.0,0.12,1.2); }
+        } else if(style==='neon'){                              // ---- NEON VOID ----
+          // 1980s synthwave: chrome, laser grid, wireframe geometry, hot magenta against cyan.
+          // Everything is drawn in LIGHT and reads as a vector display — so nothing here is
+          // textured, weathered or naturalistic. Solid matte objects would break the illusion.
+          const mag=0xff2ec4, cyn=0x46f4ff, vio=0x9a5cff;
+          const neon=(c)=>new THREE.MeshBasicMaterial({color:c});
+          const glow=(c)=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:1.6,
+                            roughness:.25,metalness:.5});
+          const chrome=M(0xe8f4ff,{roughness:.12,metalness:.45,emissive:0xbfe6ff,emissiveIntensity:.55});
+          const dark=M(0x0a0316,{roughness:.4,metalness:.6});
+          if(k===0){                                                     // NEON ARCH over the road
+            for(const sx of [-4.2,4.2]) add(p.grp,G.box,dark,sx,3.2,0,0.5,6.4,0.5);
+            for(const sx of [-4.2,4.2]) add(p.grp,G.box,neon(mag),sx,3.2,0.28,0.16,6.0,0.1);
+            add(p.grp,G.box,dark,0,6.6,0,9.4,0.5,0.5);
+            add(p.grp,G.box,neon(cyn),0,6.6,0.28,9.0,0.16,0.1); }
+          else if(k===1){                                                // CHROME PALM — the genre's signature
+            add(p.grp,G.cyl,chrome,0,3.4,0,0.3,6.8,0.3);
+            for(let j=0;j<7;j++){ const a2=j*0.9;
+              add(p.grp,G.box,glow(j%2?cyn:mag),Math.cos(a2)*1.5,7.1,Math.sin(a2)*1.5,
+                  3.0,0.12,0.34,0.42*Math.sin(a2),a2); } }
+          else if(k===2){                                                // WIREFRAME PYRAMID
+            add(p.grp,G.cone,new THREE.MeshBasicMaterial({color:vio,wireframe:true}),0,2.6,0,3.0,5.2,3.0);
+            add(p.grp,G.cone,new THREE.MeshBasicMaterial({color:mag,transparent:true,opacity:.16}),0,2.6,0,2.9,5.1,2.9);
+            add(p.grp,G.box,neon(cyn),0,0.08,0,6.4,0.1,6.4); }           // the pad it sits on
+          else if(k===3){                                                // GRID PYLON + laser cross-beams
+            add(p.grp,G.cyl,dark,0,4.0,0,0.34,8.0,0.34);
+            for(let j=0;j<4;j++) add(p.grp,G.box,neon(j%2?cyn:mag),0,1.4+j*2.0,0,2.4,0.1,0.1);
+            add(p.grp,G.sph,neon(mag),0,8.3,0,0.5,0.5,0.5); }
+          else if(k===4){                                                // FLOATING CHROME SPHERES
+            add(p.grp,G.sph,chrome,0,3.4,0,1.7,1.7,1.7);
+            add(p.grp,G.sph,chrome,2.4,1.6,1.2,0.9,0.9,0.9);
+            add(p.grp,G.cyl,neon(vio),0,0.1,0,3.2,0.12,3.2); }           // light pool beneath them
+          else {                                                          // HORIZON MARKER: stacked neon bars
+            for(let j=0;j<5;j++) add(p.grp,G.box,neon(j%2?mag:cyn),0,0.5+j*1.15,0,4.6-j*0.7,0.24,0.24);
+            add(p.grp,G.box,dark,0,2.9,-0.3,0.4,5.8,0.4); }
+        } else {                                                // fallback: plain kerbstones
+          add(p.grp,G.box,M(0x8a8f96),0,0.3,0,3.0,0.6,4.0);
         }
       });
     }
@@ -3682,7 +3872,16 @@
       this.ribbons[1].mesh.material.map=this.ribbons[2].mesh.material.map=this._sidewalkTexture(t.road);
       // env visibility + theming
       for(const b of this.bubbles) b.mesh.visible=!!t.bubbles;
-      for(const mn of this.mountains){ mn.mesh.visible=!!t.mountains; mn.mesh.material.color.setHex(night?0x2a2c30:0x707663); }
+      // The horizon has to belong to the map. One grey-green ridge behind a volcano or a laser
+      // grid is the single most out-of-place thing on screen, because it is the largest.
+      { const H=t.horizon||{};
+        for(const mn of this.mountains){
+          mn.mesh.visible=!!t.mountains;
+          const m=mn.mesh.material;
+          m.color.setHex(night ? (H.night!==undefined?H.night:0x2a2c30) : (H.day!==undefined?H.day:0x707663));
+          m.wireframe=!!H.wire;
+          if(m.emissive){ m.emissive.setHex(H.glow||0x000000); m.emissiveIntensity=H.glowI||0; }
+        } }
       const metro=!!t.ceiling;                                   // underground -> hide the far skyline, show the tunnel
       for(const s of this.skyline){ s.mesh.visible=!metro; s.mesh.material.color.setHSL(t.building.tower[0], t.building.tower[1]*0.6, (t.building.tower[2]*0.7)*(night?0.4:1)); }
       const back=!!t.backrooms;
@@ -5738,6 +5937,8 @@
       roofs:false, bubbles:true, mountains:false,
       night:{ skyTop:0x03103a, fog:0x0e2a55, skyBot:0x123f70, hemiSky:0x2c5e92, hemiGround:0x0e6a54, sunColor:0x86c0e0, sunInt:0.5, lamp:0x66f0ff, glow:0x0a4450 } },
     medieval: { name:'Medieval', tag:'STORM THE OLD CITADEL', hit:'brick',
+      // rolling green-brown hills under a warm sky
+      horizon:{ day:0x6f7a52, night:0x2a2c30 },
       ground:0x7f8a34, groundEmissive:0x000000, clouds:false, skyTop:0x5a7fbe, fog:0xe0c88e, skyBot:0xf7e6b8,
       hemiSky:0xecd6a4, hemiGround:0x7f7648, sunColor:0xffd188, sunInt:1.8,
       road:{ asphalt:'#6b5a41', edge:'#7a6a4a', dash:null, dashed:false, sidewalk:'#8f8163', curb:'#5a4d38', cobble:true },
@@ -5758,6 +5959,8 @@
     // INFERNO — a volcanic fissure at ground level. Black basalt towers splitting open over a
     // magma river, ash falling, everything lit from BELOW by the road itself.
     inferno: { name:'Inferno', tag:'BURN THROUGH THE FISSURE', hit:'brick',
+      // volcanic cones, black rock lit from within by the fissure below
+      horizon:{ day:0x2a1614, night:0x180a09, glow:0x8a1a04, glowI:0.55 },
       ground:0x1a1216, groundEmissive:0x3d0c04, clouds:true, skyTop:0x1a0508, fog:0x5e1206, skyBot:0xd6421a,
       hemiSky:0xff7a2a, hemiGround:0x5a1608, sunColor:0xffb060, sunInt:1.5,
       road:{ asphalt:'#141013', edge:'#ff7a20', dash:null, dashed:false, sidewalk:'#241a1e', curb:'#3a1a12', lava:true },
@@ -5770,6 +5973,8 @@
     // SYNTHWAVE — a black void ruled by a neon grid. No sky, no ground, just light. The most
     // deliberately artificial map in the game and the one that photographs best.
     synth: { name:'Neon Void', tag:'RIDE THE NEON GRID', hit:'metal',
+      // the wireframe ridge — pure vector-display horizon, the genre's other signature
+      horizon:{ day:0xff2ec4, night:0xff2ec4, wire:true, glow:0xff2ec4, glowI:1.0 },
       ground:0x07020e, groundEmissive:0x2a0a4a, clouds:false, skyTop:0x090218, fog:0x2a0740, skyBot:0x7a1a86,
       hemiSky:0xff4ac8, hemiGround:0x2a0740, sunColor:0xffd0ff, sunInt:1.15,
       road:{ asphalt:'#07020e', edge:'#ff3cbe', dash:'#46f4ff', dashed:false, sidewalk:'#12042a', curb:'#3a0a5e', grid:true },
@@ -5937,7 +6142,7 @@
           this.audio.resume();
           ov.classList.add('leaving');
           document.body.classList.remove('at-menu');   // controls fade UP as the menu fades away
-          setTimeout(()=>this.run.startRun(), 300);
+          setTimeout(()=>this.run.startRun(), 380);   // matches the longer, gentler dissolve
         };
         // PLAY gets the same real-switch overlay, so the run starts with a tap you can feel
         this.haptics.attachSwitch(sb); }

@@ -454,6 +454,39 @@ loading, and on resize or rotation.
 Guarded by **`scripts/theme-fonts.mjs`** (the swap reaches every surface, and the face really
 renders) and **`scripts/wordmark-fit.mjs`** (nothing clips on any map at 360, 412 or 430 wide).
 
+## What each map is, and the detail that belongs to it
+
+Roadside props are six "kinds" per map, rebuilt on every map change in `_skinProps`, keyed on
+`theme.building.style`. **A style with no branch falls through to the next one** — Inferno and Neon
+Void were silently inheriting Frutiger Metro's subway benches and catenary pylons until each got
+its own branch.
+
+| Map | Era / trend | What belongs there |
+|---|---|---|
+| **Frutiger Aero** | c.2004–2013, Vista/Zune-era optimism | gloss, translucency, aqua and lime, water pressed against clean tech: glass towers with fountain jets, waterfalls into lit basins, flower beds on grass mounds, bubble clusters, a wind turbine, a glass pergola over a mirror pool. Nothing matte, nothing weathered. |
+| **Medieval** | high medieval, c.1100–1400 | stone, rough timber, thatch, iron, wool, fire: watchtower with pennant, well with windlass and bucket, loaded market stall, windmill with cloth sails, wall run with an iron brazier, farm corner with cart, hay and firewood. One machined edge and the street stops reading as the period. |
+| **Frutiger Metro** | c.2010–2015 Metro/Modern UI | flat blocks of saturated colour, hard edges, no gloss or bevel — the deliberate anti-skeuomorphism that followed Aero. Tiled walls, platform edge with tactile strip, signal masts and conduit, stairs, ad lightboxes, service cabinets. Heights stay low: there is a tunnel ceiling. |
+| **Inferno** | live volcanic fissure | basalt columns with hexagonal jointing, crusted lava pools, obsidian spires, charred dead trees, steam vents, heat-veined rubble. Nothing intact and nothing living — "nothing survives here" is the read. |
+| **Neon Void** | 1980s synthwave | everything drawn in light, as a vector display: neon arches, chrome palms, wireframe pyramids, grid pylons with laser cross-beams, floating chrome spheres. Nothing textured or naturalistic. |
+
+Tokyo and The Backrooms are deliberately untouched.
+
+**The horizon belongs to the map too.** `theme.horizon` sets the distant ridge — `{day, night,
+wire, glow, glowI}`. One grey-green ridge behind a volcano or a laser grid is the most out-of-place
+thing possible, because it is the largest thing on screen.
+
+Inspect any map's props with **`scripts/map-detail.mjs`** — it renders all six kinds side by side
+under that map's own lighting, which is the only practical way to judge them.
+
+### Three traps worth remembering
+
+- **`metalness:1` with no environment map renders solid black.** There is nothing to reflect. Every
+  "chrome" prop was a black silhouette until it was faked with a bright base plus a little emissive.
+- **A blade box centred on its hub extends both ways**, so three turbine blades drew six spokes.
+  Offset it outward before rotating.
+- **Props are seen at a grazing angle**, angled ~29° toward the road. Anything with one printed face
+  is a black slab from the other side — Metro's lit panels are doubled onto both faces.
+
 ## Motion
 
 One transition language, defined once as CSS variables and pulled in by everything:
