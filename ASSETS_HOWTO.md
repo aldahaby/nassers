@@ -425,6 +425,62 @@ func userContentController(_ c: WKUserContentController, didReceive m: WKScriptM
 With Capacitor, the same thing is a few lines on top of `@capacitor/haptics` — define
 `window.CBHaptics.play` and call `Haptics.impact({ style })`.
 
+## Per-map typefaces
+
+Every world speaks in its own voice. All seven faces are embedded as base64 for the same reason the
+display face is — identical on every device, nothing to download, nothing to fail — and are
+switched on `body.theme-<key>`, so the menu, every sheet, the HUD, the buttons and the results
+screen change together.
+
+| Map | Face | Why |
+|---|---|---|
+| Tokyo | **Bungee** | arcade signage, pure Shibuya |
+| Frutiger Aero | **Fredoka** | bubbly and round, 2000s glossy |
+| Medieval | **MedievalSharp** | carved, hand-cut blackletter |
+| Frutiger Metro | **Rajdhani** | clean squared tech, Metro design |
+| The Backrooms | **Special Elite** | battered institutional typewriter |
+| Inferno | **Rubik Mono One** | heavy molten slab |
+| Neon Void | **Audiowide** | retro-futurist chrome |
+
+To swap one: fetch its woff2 (Part 1 has the commands), then replace the base64 inside the matching
+`@font-face{ font-family:'CB<key>' … }` block. Nothing else needs to change.
+
+**The wordmark fits itself.** These faces are nowhere near the same width — Audiowide is far wider
+than Titan One at the same size — so a font-size tuned for one clips CITY / BREAKER on another.
+`Game.fitText` measures the headline and shrinks it until it fits, rather than carrying a per-font
+fudge factor that the next font would break. It re-runs when the map changes, when fonts finish
+loading, and on resize or rotation.
+
+Guarded by **`scripts/theme-fonts.mjs`** (the swap reaches every surface, and the face really
+renders) and **`scripts/wordmark-fit.mjs`** (nothing clips on any map at 360, 412 or 430 wide).
+
+## Motion
+
+One transition language, defined once as CSS variables and pulled in by everything:
+
+```css
+--ui-in:  cubic-bezier(.16,1.06,.32,1.28);   /* opens with a small overshoot */
+--ui-out: cubic-bezier(.5,0,.78,.2);         /* closes fast, no hang */
+--t-open: .34s;  --t-shut: .22s;
+```
+
+- **Sheets** rise and overshoot slightly on open (`sheetIn`); on close they drop *away* from you
+  (`sheetOut`) rather than replaying the entrance backwards, which reads as an undo instead of a
+  dismissal. `shutM` plays the exit and only then takes the sheet out of the layout — hiding it
+  outright would cut the animation off. Re-opening mid-close cancels the pending hide.
+- **Buttons** scale down on contact and spring back, on the same curves.
+- **PLAY** dissolves the menu: the panel fades and its blur clears, the rows drop away, and the
+  button itself rushes at you as the world opens. The run starts 300 ms in, under the dissolve.
+
+The start menu is a **translucent pane over the live city**, not a solid screen — the world is
+already running behind it, which is what makes PLAY feel like being let through rather than
+loading something. The HUD and joystick fade out under the menu and fade back up as it lifts, so
+the controls arrive with the world. `body.at-menu` drives that.
+
+Guarded by **`scripts/transitions.mjs`**, which asserts on the class *sequence* rather than
+sampling at fixed times — under software GL the page runs at ~1.5 fps and any wall-clock sample
+races the renderer.
+
 ## Testing it on a phone
 
 Open **`haptics-test.html`** on the device — deployed alongside the game, so on a phone it is
