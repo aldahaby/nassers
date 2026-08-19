@@ -481,6 +481,37 @@ Guarded by **`scripts/transitions.mjs`**, which asserts on the class *sequence* 
 sampling at fixed times — under software GL the page runs at ~1.5 fps and any wall-clock sample
 races the renderer.
 
+## The villain's aura colours the whole screen
+
+The aura is the villain's identity, so every state colour comes from it — the screen-edge glow, the
+combo readout, the score pops, the epic teardown flash. `applyAuraUI(key)` publishes the equipped
+villain's two colours as `--aura-epic` / `--aura-eth` (plus `-rgb` variants for `rgba()`), lifted
+through `auraCol` so a near-black aura still reads as a tint.
+
+Before this they were hardcoded gold and purple, which meant Voidstrike's violet aura sat inside an
+orange screen.
+
+Two things worth knowing if you touch it:
+
+- The screen glow lives on **`#state-glow`**, not `#vignette`. Those two shared an id, so
+  `getElementById` handed the game the static LOOK vignette and the glow was painted on the wrong
+  layer.
+- `UISystem.update` rewrites the glow every frame, so anything setting it from outside the loop
+  gets overwritten on the next frame.
+
+## Keeping the menu cheap
+
+The start menu had a `backdrop-filter: blur()` over the live WebGL canvas. That is the most
+expensive thing a full-screen overlay can do, it is flaky on iOS, and together with a second frozen
+JPEG background layer it was why the background sometimes came up wrong. Both are gone — a painted
+scrim does the legibility job for free. `snapMenuBg` is now a no-op: it used to force a render, read
+the canvas back and base64-encode it, for a layer that is no longer drawn.
+
+Measured effect under software GL: **36 frames in the same window where the blurred version managed
+24**.
+
+Guarded by **`scripts/menu-and-aura.mjs`**, which also asserts every sheet's ✕ actually closes it.
+
 ## Testing it on a phone
 
 Open **`haptics-test.html`** on the device — deployed alongside the game, so on a phone it is

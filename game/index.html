@@ -113,8 +113,11 @@
     #impact-burst{ position:fixed; inset:-10%; z-index:9; pointer-events:none; opacity:0;
       background:radial-gradient(circle at 50% 52%, rgba(255,238,200,.6) 0%, rgba(255,150,60,.3) 18%, rgba(120,200,255,.12) 40%, transparent 62%);
       mix-blend-mode:screen; will-change:opacity,transform; }
-    #vignette{ position:fixed; inset:0; z-index:7; pointer-events:none;
-               box-shadow:inset 0 0 200px 40px rgba(120,0,0,0); transition:box-shadow .2s; }
+    /* The screen-edge state glow: red when momentum is low, otherwise the equipped villain's own
+       aura colour (see applyAuraUI). Separate element from the static LOOK vignette above — the
+       two shared an id, so the game had been colouring the wrong layer. */
+    #state-glow{ position:fixed; inset:0; z-index:7; pointer-events:none;
+               box-shadow:inset 0 0 200px 40px rgba(120,0,0,0); transition:box-shadow .25s linear; }
 
     /* ---------- shared textures / motifs ---------- */
     /* hazard stripe band (used as thin accents) */
@@ -294,12 +297,11 @@
     #start-overlay{ background:
         radial-gradient(120% 80% at 50% -10%, rgba(55,198,255,.10), transparent 55%),
         radial-gradient(120% 90% at 50% 115%, rgba(255,90,20,.12), transparent 55%),
-        linear-gradient(180deg, rgba(10,17,34,.62) 0%, rgba(7,12,24,.50) 45%, rgba(5,7,14,.68) 100%);
-      backdrop-filter:blur(2px) saturate(1.1); -webkit-backdrop-filter:blur(2px) saturate(1.1);
-      transition:opacity .46s var(--ui-out), backdrop-filter .46s var(--ui-out); }
+        radial-gradient(90% 45% at 50% 30%, rgba(4,7,14,.55), transparent 70%),
+        linear-gradient(180deg, rgba(10,17,34,.58) 0%, rgba(7,12,24,.44) 45%, rgba(5,7,14,.70) 100%);
+      transition:opacity .42s var(--ui-out); }
     /* PLAY: the pane lifts and dissolves, the blur clears, and you are already flying. */
-    #start-overlay.leaving{ opacity:0; pointer-events:none;
-      backdrop-filter:blur(0) saturate(1); -webkit-backdrop-filter:blur(0) saturate(1); }
+    #start-overlay.leaving{ opacity:0; pointer-events:none; }
     #start-overlay.leaving .brand,
     #start-overlay.leaving #menu-row2,
     #start-overlay.leaving .best-card,
@@ -323,8 +325,11 @@
     #hud, #touch{ transition:opacity .40s var(--ui-out); }
     body.at-menu #hud, body.at-menu #touch{ opacity:0; pointer-events:none; }
 
-    /* the frozen snapshot is only a fallback for the frame or two before the live scene shows */
-    #menu-bg{ position:absolute; inset:0; z-index:0; background-size:cover; background-position:center;
+    /* The live scene renders behind the menu every frame, so the old frozen snapshot is a second
+       background competing with it — and one that could hold a stale or black frame, which is
+       exactly the "background doesn't show correctly" glitch. Retired. */
+    #menu-bg{ display:none !important;
+      position:absolute; inset:0; z-index:0; background-size:cover; background-position:center;
       filter:blur(18px) saturate(1.25) brightness(.72); transform:scale(1.12); opacity:0; transition:opacity .45s ease; pointer-events:none; }
     #menu-bg.on{ opacity:.22; }   /* a hint of depth only — the LIVE scene is the background now */
     #start-overlay::before, #start-overlay::after{ z-index:1; }
@@ -388,6 +393,10 @@
        accelerating exit, deliberately quicker — a lingering close feels like lag). Every sheet,
        every overlay and every button pulls from these, so nothing is bespoke and nothing drifts. */
     :root{
+      /* Heat colours, overwritten per villain by applyAuraUI. Declared here so the screen glow is
+         never left with an invalid rgba() before the first character is applied. */
+      --aura-epic:#ffb13b; --aura-eth:#ff5ce0;
+      --aura-epic-rgb:255,177,59; --aura-eth-rgb:255,92,224;
       --ui-in:  cubic-bezier(.16,1.06,.32,1.28);   /* out-back: settles with a small overshoot */
       --ui-out: cubic-bezier(.5,0,.78,.2);         /* in-quart: leaves fast, no hang */
       --t-open: .34s;
@@ -695,7 +704,9 @@
       font-size:34px; letter-spacing:1px; color:#fff; opacity:0; white-space:nowrap;
       text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),0 4px 8px rgba(0,0,0,.6); }
     .pop.go{ animation:popFloat .9s cubic-bezier(.2,.7,.3,1) forwards; }
-    .pop.gold{ color:var(--gold); } .pop.fire{ color:#ff8a3c; } .pop.eth{ color:#c08bff; } .pop.blue{ color:var(--elec-glow); }
+    /* the heat colours come from the equipped villain's aura (see applyAuraUI) */
+    .pop.gold{ color:var(--aura-epic,var(--gold)); } .pop.fire{ color:var(--aura-epic,#ff8a3c); }
+    .pop.eth{ color:var(--aura-eth,#c08bff); } .pop.blue{ color:var(--elec-glow); }
     .pop.bad{ color:#ff3b30; text-shadow:0 0 22px rgba(255,40,30,.9),0 3px 0 #2a0000; }
     .pop.big{ font-size:52px; }
     /* full-screen red slam when a gate blocks you — the damage has to be impossible to miss */
@@ -888,7 +899,7 @@
   <div id="vignette"></div>
   <div id="flash"></div>
   <div id="impact-burst"></div>
-  <div id="vignette"></div>
+  <div id="state-glow"></div>
   <div id="speedlines"></div>
   <div id="popups"></div>
 
@@ -2419,7 +2430,7 @@
       if(building.gate && !powerMul && g.combo.onEpic()){
         g.score.tally('gates');
         this._clearGrid(building);
-        g.city.breakApart(building,'nova',new THREE.Color(g.combo.onEthereal()?0xff5ce0:0xffb13b));
+        g.city.breakApart(building,'nova',new THREE.Color(g.combo.onEthereal()?AURA_UI.eth:AURA_UI.epic));
         g.effects.flash(0.34); g.camera.shake(0.7);
         powerMul=1.8;                                  // still worth more than an ordinary tower
       }
@@ -2867,6 +2878,7 @@
     }
     // switch the active playable character (from the Skins menu): reload the model live
     setCharacter(key){
+      applyAuraUI(key);          // the whole UI's heat colours follow the villain
       if(!CHARACTERS[key]) return; this._char=CHARACTERS[key];
       try{ localStorage.setItem('invrun_char',key); }catch(e){}
       this._loadVillainModel(this._char);
@@ -5343,7 +5355,7 @@
         score:document.getElementById('score'), sub:document.getElementById('score-sub'),
         combo:document.getElementById('combo'), comboNum:document.getElementById('combo-num'),
         warn:document.getElementById('warning'), state:document.getElementById('state-tag'),
-        speed:document.getElementById('speed-tag'), vig:document.getElementById('vignette'),
+        speed:document.getElementById('speed-tag'), vig:document.getElementById('state-glow'),
         surge:document.getElementById('surge-tag'), boostBtn:document.getElementById('btn-boost'),
         powerBtn:document.getElementById('btn-power'), powerFill:document.getElementById('power-fill'),
         powerLab:document.getElementById('power-label'),
@@ -5376,7 +5388,7 @@
         const fire=this.game.combo.onFire(), epic=this.game.combo.onEpic(), eth=this.game.combo.onEthereal();
         this.el.comboNum.textContent='x'+n;
         this.el.combo.querySelector('small').textContent=eth?'ETHEREAL':epic?'EPIC':fire?'ON FIRE':'COMBO';
-        this.el.combo.style.color=eth?'#b06bff':epic?'#f2b23c':fire?'#e0653b':'var(--warn)';
+        this.el.combo.style.color=eth?'var(--aura-eth)':epic?'var(--aura-epic)':fire?'var(--aura-epic)':'var(--warn)';
         this.el.combo.style.opacity='1';
         this.el.combo.style.transform='translate(-50%,-50%) scale('+(eth?1.8:epic?1.6:1.35)+')';
         requestAnimationFrame(()=>this.el.combo.style.transform='translate(-50%,-50%) scale(1)');
@@ -5402,9 +5414,9 @@
       if(this._hintT>0){ this._hintT-=0.016; if(this._hintT<=0) this.el.warn.textContent=this._warnTxt||'LOW MOMENTUM — SMASH SOMETHING!'; }
       // screen edge glow: red when low momentum, fiery orange when ON FIRE, else none
       if(low) this.el.vig.style.boxShadow='inset 0 0 200px 50px rgba(160,0,0,.5)';
-      else if(g.combo.onEthereal()) this.el.vig.style.boxShadow='inset 0 0 300px 100px rgba(155,60,255,.55)';
-      else if(g.combo.onEpic()) this.el.vig.style.boxShadow='inset 0 0 260px 80px rgba(255,140,20,.5)';
-      else if(g.combo.onFire()) this.el.vig.style.boxShadow='inset 0 0 220px 60px rgba(255,90,0,.35)';
+      else if(g.combo.onEthereal()) this.el.vig.style.boxShadow='inset 0 0 300px 100px rgba(var(--aura-eth-rgb),.55)';
+      else if(g.combo.onEpic()) this.el.vig.style.boxShadow='inset 0 0 260px 80px rgba(var(--aura-epic-rgb),.5)';
+      else if(g.combo.onFire()) this.el.vig.style.boxShadow='inset 0 0 220px 60px rgba(var(--aura-epic-rgb),.35)';
       else this.el.vig.style.boxShadow='inset 0 0 200px 40px rgba(120,0,0,0)';
       // surge indicator: SURGING / READY / cooldown countdown
       const p=g.player;
@@ -5678,6 +5690,27 @@
     countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.28,to:0.98,box:{y:[-0.06,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
+  // The aura is the villain's identity, so EVERY state colour on screen should come from it —
+  // the screen-edge glow, the combo readout, the score pops, the teardown flash. Previously those
+  // were hardcoded gold/purple, so Voidstrike's violet aura sat inside an orange screen. This
+  // publishes the equipped villain's two colours as CSS variables and as THREE colours, lifted
+  // through auraCol so a near-black aura (Knight, Dominus) still reads.
+  const AURA_UI={ epic:0xffb13b, eth:0xff5ce0, epicHex:'#ffb13b', ethHex:'#ff5ce0' };
+  function applyAuraUI(key){
+    const C=(typeof CHARACTERS!=='undefined' && CHARACTERS[key]) || null;
+    const A=(C&&C.aura)||{epic:0xffb13b, eth:0xff5ce0};
+    // 0.46 keeps a dark aura legible as a screen tint; the model uses a lower floor of its own.
+    const e=auraCol(A.epic,0.46).clone(), t=auraCol(A.eth,0.52).clone();
+    AURA_UI.epic=e.getHex(); AURA_UI.eth=t.getHex();
+    AURA_UI.epicHex='#'+e.getHexString(); AURA_UI.ethHex='#'+t.getHexString();
+    const rgb=(c)=>Math.round(c.r*255)+','+Math.round(c.g*255)+','+Math.round(c.b*255);
+    try{ const r=document.documentElement.style;
+      r.setProperty('--aura-epic', AURA_UI.epicHex);
+      r.setProperty('--aura-eth',  AURA_UI.ethHex);
+      r.setProperty('--aura-epic-rgb', rgb(e));
+      r.setProperty('--aura-eth-rgb',  rgb(t));
+    }catch(err){}
+  }
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
 
   // ===================================================================================
@@ -5882,6 +5915,7 @@
       this.run=new RunStateManager(this);
       this.maps=new MapSystem(this);
 
+      applyAuraUI(currentCharKey());           // seed the UI aura colours before anything draws
       document.body.classList.add('at-menu');   // the game opens on the menu
       try{ document.fonts.ready.then(()=>this.fitMenuText()); }catch(e){ this.fitMenuText(); }
       addEventListener('resize',()=>this.fitMenuText());
@@ -5978,7 +6012,13 @@
       document.getElementById('skins-btn').onclick=()=>openM('skins-modal');
       document.getElementById('maps-btn').onclick=()=>openM('maps-modal');
       document.querySelectorAll('.modal').forEach(m=>{
-        m.addEventListener('click',e=>{ if(e.target===m||e.target.hasAttribute('data-close')) closeAll(); });
+        // closest(), not hasAttribute(): the ✕ carries an invisible switch control for the iOS
+        // haptic, so the tap's target is that INPUT, not the button. Checking the target directly
+        // meant the ✕ silently did nothing and only tapping outside the sheet closed it.
+        m.addEventListener('click',e=>{
+          const t=e.target;
+          if(t===m || (t.closest && t.closest('[data-close]'))) closeAll();
+        });
       });
       // map selection: tap a map card -> swap the whole theme (look + hit sound) live
       const mapCards=document.querySelectorAll('#maps-modal .card.map');
@@ -6234,7 +6274,12 @@
       this.fitText(document.querySelector('.tagline'));
       this.fitText(document.querySelector('#start-overlay .best-cap'));
     }
-    snapMenuBg(){
+    // Retired: the menu shows the LIVE scene now, so grabbing a JPEG of the canvas every time the
+    // menu appeared was a full render plus a readback plus a base64 encode, for a layer that is no
+    // longer drawn — and a stale grab was the background glitch. Kept as a no-op because several
+    // places still call it.
+    snapMenuBg(){ return; }
+    _snapMenuBgLegacy(){
       const el=document.getElementById('menu-bg'); if(!el) return;
       clearTimeout(this._snapT);
       this._snapT=setTimeout(()=>{ try{
