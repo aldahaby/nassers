@@ -967,10 +967,10 @@
       <div class="opt"><span><svg class="svgi si"><use href="#i-phone"/></svg>Vibration <small id="haptic-note"></small></span><button id="haptic-btn" class="toggle on">ON</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-stick"/></svg>Controls</span><button id="scheme-btn" class="toggle on">JOYSTICK</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-tilt"/></svg>Gyro Aim <small>(tilt to steer)</small></span><button id="gyro-btn" class="toggle">OFF</button></div>
-      <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-stick"/></svg>Move Sensitivity</span><span class="val" id="movesens-val">1.0×</span></div>
-        <input type="range" class="slider" id="movesens" min="50" max="180" value="100"></div>
-      <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-phone"/></svg>Gyro Sensitivity</span><span class="val" id="gyrosens-val">1.0×</span></div>
-        <input type="range" class="slider" id="gyrosens" min="50" max="200" value="100"></div>
+      <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-stick"/></svg><span id="movesens-name">Steer Speed</span></span><span class="val" id="movesens-val">1.0× normal</span></div>
+        <input type="range" class="slider" id="movesens" min="60" max="220" step="5" value="100"></div>
+      <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-phone"/></svg>Gyro Sensitivity</span><span class="val" id="gyrosens-val">1.0× normal</span></div>
+        <input type="range" class="slider" id="gyrosens" min="50" max="200" step="5" value="100"></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-doc"/></svg>Legal &amp; Privacy</span><button id="legal-btn" class="toggle">OPEN</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-warn"/></svg>Health &amp; Safety</span><button id="health-btn" class="toggle">OPEN</button></div>
       <div class="sheet-note" style="margin:6px 2px 0">CITYBREAKER v1.0 · no account needed to play · optional in-app purchases · contains ads.</div>
@@ -1219,7 +1219,7 @@
         <div class="card char" data-char="entity"><img class="previmg" src="./assets/prev_entity.png" alt="">The Entity<small>Tap to play</small></div>
         <div class="card char" data-char="countess"><img class="previmg" src="./assets/prev_countess.png" alt="">Violet Voidstrike<small>Tap to play</small></div>
         <div class="card char" data-char="shrike"><img class="previmg" src="./assets/prev_shrike.png" alt="">Silver Shrike<small>Tap to play</small></div>
-        <div class="card char" data-char="tyrant"><img class="previmg" src="./assets/prev_tyrant.png" alt="">Scarlet Tyrant<small>Tap to play</small></div>
+        <div class="card char" data-char="tyrant"><img class="previmg" src="./assets/prev_tyrant.png" alt="">The Red Jester<small>Tap to play</small></div>
         <div class="card char" data-char="nocturne"><img class="previmg" src="./assets/prev_nocturne.png" alt="">Nocturne<small>Tap to play</small></div>
         <div class="card char" data-char="forged"><img class="previmg" src="./assets/prev_forged.png" alt="">The Forged<small>Tap to play</small></div>
       </div>
@@ -1423,10 +1423,13 @@
       // 'stick' = the on-screen joystick. 'drag' = put a finger anywhere on the screen and the
       // villain follows it left/right — no control to find, no thumb parked in one corner.
       this.scheme=(localStorage.getItem('invrun_scheme')||'stick');
-      this.drag=0; this._dragId=null; }
+      // DRAG is POSITIONAL, not a joystick: dragPx is how far the finger has travelled from where
+      // it landed, and the villain is placed that far across the road. dragSeq ticks once per new
+      // touch so the player knows to re-anchor.
+      this.drag=0; this._dragId=null; this.dragPx=0; this.dragSeq=0; this.dragActive=false; }
     setScheme(v){ this.scheme=(v==='drag')?'drag':'stick';
       try{ localStorage.setItem('invrun_scheme',this.scheme); }catch(e){}
-      this.joy=0; this.drag=0; this._dragId=null;
+      this.joy=0; this.drag=0; this._dragId=null; this.dragPx=0; this.dragActive=false; this.dragSeq++;
       const base=document.getElementById('joy-base');
       if(base) base.style.display=(this.scheme==='drag')?'none':'';
       const knob=document.getElementById('joy-knob');
@@ -1448,7 +1451,10 @@
       let x=0;
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
-      x += (this.scheme==='drag') ? this.drag : this.joy;   // analog either way: partial = partial steer
+      // The joystick is a VELOCITY control — hold it over and he keeps sliding. Drag is a POSITION
+      // control and is applied by the player instead, so it must not also push this channel or
+      // the two would fight and he would drift after the finger stopped.
+      if(this.scheme!=='drag') x += this.joy;
       if(this.gyroOn) x+=this.gyro;                   // TILT the phone side to side to steer
       this.steer.x=clamp(x,-1,1); this.steer.y=0;     // no vertical, ever
     }
@@ -1458,33 +1464,34 @@
     _bindDrag(){
       const CTRL='#btn-power,#btn-boost,#joy-base,#pause-btn,.modal,.overlay,button,input';
       const isCtrl=(t)=>!!(t && t.closest && t.closest(CTRL));
-      const FULL=()=>Math.max(90, innerWidth*0.30);   // finger travel for full lock, scaled to the screen
+      const begin=(id,x)=>{ this._dragId=id; this._dragX=x; this.dragPx=0;
+                            this.dragActive=true; this.dragSeq++; };
+      const move=(x)=>{ this.dragPx=x-this._dragX; };
+      // Lifting the finger LEAVES HIM WHERE HE IS. A drag control that recentres on release is
+      // the single worst thing this can do — every tap to fire a power would yank him back.
+      const end=()=>{ this._dragId=null; this.dragActive=false; };
       addEventListener('touchstart',e=>{
         if(this.scheme!=='drag' || this._dragId!==null) return;
         const t=e.changedTouches[0]; if(!t || isCtrl(e.target)) return;
-        this._dragId=t.identifier; this._dragX=t.clientX; this.drag=0;
+        begin(t.identifier, t.clientX);
       },{passive:true});
       addEventListener('touchmove',e=>{
         if(this.scheme!=='drag' || this._dragId===null) return;
-        for(const t of e.changedTouches){
-          if(t.identifier!==this._dragId) continue;
-          this.drag=clamp((t.clientX-this._dragX)/FULL()*this.moveSens,-1,1);
-          // let the anchor trail the finger, so a long swipe can still be pushed further
-          const over=(t.clientX-this._dragX)-clamp(t.clientX-this._dragX,-FULL(),FULL());
-          if(over) this._dragX+=over;
-        }
+        for(const t of e.changedTouches) if(t.identifier===this._dragId) move(t.clientX);
       },{passive:true});
-      const end=(e)=>{ if(this._dragId===null) return;
-        for(const t of e.changedTouches) if(t.identifier===this._dragId){ this._dragId=null; this.drag=0; } };
-      addEventListener('touchend',end,{passive:true});
-      addEventListener('touchcancel',end,{passive:true});
+      const lift=(e)=>{ if(this._dragId===null) return;
+        for(const t of e.changedTouches) if(t.identifier===this._dragId) end(); };
+      addEventListener('touchend',lift,{passive:true});
+      addEventListener('touchcancel',lift,{passive:true});
       // mouse equivalent, so the scheme is testable on a desktop too
-      addEventListener('mousedown',e=>{ if(this.scheme!=='drag'||isCtrl(e.target)) return;
-        this._dragId='m'; this._dragX=e.clientX; this.drag=0; });
-      addEventListener('mousemove',e=>{ if(this._dragId!=='m') return;
-        this.drag=clamp((e.clientX-this._dragX)/FULL()*this.moveSens,-1,1); });
-      addEventListener('mouseup',()=>{ if(this._dragId==='m'){ this._dragId=null; this.drag=0; } });
+      addEventListener('mousedown',e=>{ if(this.scheme!=='drag'||isCtrl(e.target)) return; begin('m',e.clientX); });
+      addEventListener('mousemove',e=>{ if(this._dragId==='m') move(e.clientX); });
+      addEventListener('mouseup',()=>{ if(this._dragId==='m') end(); });
     }
+    // How far across the road one pixel of finger travel moves him. Calibrated so that a swipe of
+    // 60% of the screen width crosses the whole playable width at 1.0×, which is about one
+    // comfortable thumb sweep on a phone.
+    dragWorldPerPx(){ return (2*PLAY.xBox)/(Math.max(240,innerWidth)*0.60) * (this.moveSens||1); }
     // GYRO AIMING: tilt the phone left/right (portrait roll = gamma) to steer the villain.
     _bindGyro(){
       this._onOrient=(e)=>{
@@ -1718,20 +1725,60 @@
   // PICKUPS — gold COINS (score) lining the road + ENERGY DRINKS (momentum + adrenaline).
   // Collected by threading the road, so good driving is rewarded.
   // ===================================================================================
+  // A minimal geometry concatenator, for baking a fixed cluster of small meshes into one. Every
+  // caller here uses the same handful of shared primitives with position/normal/uv, so this does
+  // not need the general-purpose merger and its 40KB.
+  function concatGeo(list){
+    if(!list.length) return null;
+    if(list.length===1) return list[0];
+    const flat=list.map(g=>g.index? g.toNonIndexed() : g);
+    let n=0; for(const g of flat) n+=g.attributes.position.count;
+    const pos=new Float32Array(n*3), nor=new Float32Array(n*3), uv=new Float32Array(n*2);
+    let o3=0, o2=0;
+    for(const g of flat){
+      const P=g.attributes.position, N=g.attributes.normal, U=g.attributes.uv;
+      for(let i=0;i<P.count;i++){
+        pos[o3]=P.getX(i); pos[o3+1]=P.getY(i); pos[o3+2]=P.getZ(i);
+        if(N){ nor[o3]=N.getX(i); nor[o3+1]=N.getY(i); nor[o3+2]=N.getZ(i); }
+        if(U){ uv[o2]=U.getX(i); uv[o2+1]=U.getY(i); }
+        o3+=3; o2+=2;
+      }
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    g.setAttribute('normal',  new THREE.BufferAttribute(nor,3));
+    g.setAttribute('uv',      new THREE.BufferAttribute(uv,2));
+    g.computeBoundingSphere();
+    return g;
+  }
+
   class PickupSystem {
     constructor(game){
       this.game=game; this.coins=[]; this.drinks=[]; this.spin=0;
       this.coinNextZ=40; this.drinkNextZ=160; this.coinGap=13;
+      // 130 pooled shards, each with a glow shell, used to be TWO draw calls apiece — around 90 of
+      // the frame's calls for the cheapest object in the game, and 260 material objects. They are
+      // all the same shard with the same material, so the whole field goes through one
+      // InstancedMesh (plus one for the glow) and costs two calls no matter how many are on screen.
       const cgeo=new THREE.OctahedronGeometry(1.25,0);          // faceted crystal shard
+      const coinMat=new THREE.MeshStandardMaterial({color:0x22e08a,emissive:0x0c7a48,
+                 emissiveIntensity:1.15, metalness:.35, roughness:.12, flatShading:true});
+      const haloMat=new THREE.MeshBasicMaterial({color:0x9dffd0,transparent:true,opacity:0.28,
+                   blending:THREE.AdditiveBlending,depthWrite:false});
+      this.coinIM=new THREE.InstancedMesh(cgeo, coinMat, 130);
+      this.haloIM=new THREE.InstancedMesh(cgeo, haloMat, 130);
+      for(const im of [this.coinIM,this.haloIM]){
+        im.frustumCulled=false;        // the pool spans the whole road ahead; culling it as one box
+        im.count=0; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); game.scene.add(im);
+      }
+      this._haloScale=new THREE.Vector3(1.5,1.5,1.5);
+      this._imM=new THREE.Matrix4();
       for(let i=0;i<130;i++){
-        const m=new THREE.Mesh(cgeo,new THREE.MeshStandardMaterial({color:0x22e08a,emissive:0x0c7a48,
-                 emissiveIntensity:1.15, metalness:.35, roughness:.12, flatShading:true}));
+        // A plain Object3D stands in for the old mesh: same position/rotation/visible API the rest
+        // of the pickup code already uses, and its matrix is what feeds the instance buffer.
+        const m=new THREE.Object3D();
         m.scale.set(0.85,1.5,0.85);                              // elongated gem
-        const halo=new THREE.Mesh(new THREE.OctahedronGeometry(1.25,0),
-                 new THREE.MeshBasicMaterial({color:0x9dffd0,transparent:true,opacity:0.28,
-                   blending:THREE.AdditiveBlending,depthWrite:false}));
-        halo.scale.setScalar(1.5); m.add(halo);
-        m.visible=false; game.scene.add(m);
+        m.visible=false;
         this.coins.push({mesh:m,active:false,x:0,z:0});
       }
       // ENERGY DRINK — a proper branded can so it reads instantly at speed: chrome ribs top and
@@ -1746,16 +1793,25 @@
       // metalness would render the lid pure black.
       const chrome =new THREE.MeshStandardMaterial({color:0xe4edf3,metalness:0.30,roughness:0.30,
                         emissive:0x2c3a42, emissiveIntensity:0.7});
+      const chromeGeo=(()=>{ const parts=[], M4=new THREE.Matrix4(), E=new THREE.Euler(), Q=new THREE.Quaternion(),
+                             P=new THREE.Vector3(), S=new THREE.Vector3(1,1,1);
+        const put=(geo,x,y,z,rx)=>{ const g=geo.clone();
+          Q.setFromEuler(E.set(rx||0,0,0)); g.applyMatrix4(M4.compose(P.set(x,y,z),Q,S)); parts.push(g); };
+        put(ribGeo, 0, 1.42, 0, Math.PI);
+        put(ribGeo, 0,-1.42, 0, 0);
+        put(lidGeo, 0, 1.62, 0, 0);
+        put(tabGeo, 0.16, 1.70, 0, Math.PI/2);
+        return concatGeo(parts); })();
       for(let i=0;i<12;i++){
         const grp=new THREE.Group();
         const body=new THREE.Mesh(bodyGeo,new THREE.MeshStandardMaterial({map:canTex,
                      emissive:0x0f8a45, emissiveMap:canTex, emissiveIntensity:0.55,
                      metalness:0.55, roughness:0.28, side:THREE.DoubleSide}));
         grp.add(body);
-        const top=new THREE.Mesh(ribGeo,chrome);    top.position.y= 1.42; top.rotation.x=Math.PI; grp.add(top);
-        const bot=new THREE.Mesh(ribGeo,chrome);    bot.position.y=-1.42;                          grp.add(bot);
-        const lid=new THREE.Mesh(lidGeo,chrome);    lid.position.y= 1.62;                          grp.add(lid);
-        const tab=new THREE.Mesh(tabGeo,chrome);    tab.position.set(0.16,1.70,0); tab.rotation.x=Math.PI/2; grp.add(tab);
+        // Both ribs, the lid and the pull tab are the same brushed aluminium and never move
+        // relative to the can, so they are baked into ONE mesh — four draw calls per can saved,
+        // and there can be a dozen cans on the road.
+        grp.add(new THREE.Mesh(chromeGeo, chrome));
         const halo=new THREE.Mesh(haloGeo,new THREE.MeshBasicMaterial({color:0x5cff9e,transparent:true,
                      opacity:0.16, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
         grp.add(halo);
@@ -1817,6 +1873,22 @@
         if(d.z<=sweptHi && d.z>=sweptLo && Math.abs((d.x-this._path(d.z))-pOff)<5.2){ d.active=false; d.mesh.visible=false; this._drink(d); continue; }
         if(d.z < Math.min(pz,sweptLo)-30){ d.active=false; d.mesh.visible=false; }
       }
+      this._flushCoins();
+    }
+    // Push the live shards into the instance buffers. Only the visible ones are written, and
+    // `count` is set to how many were written, so inactive pool entries cost nothing at all.
+    _flushCoins(){
+      let n=0;
+      for(const c of this.coins){
+        if(!c.active || !c.mesh.visible) continue;
+        c.mesh.updateMatrix();
+        this.coinIM.setMatrixAt(n, c.mesh.matrix);
+        this.haloIM.setMatrixAt(n, this._imM.copy(c.mesh.matrix).scale(this._haloScale));
+        n++;
+      }
+      this.coinIM.count=n; this.haloIM.count=n;
+      this.coinIM.instanceMatrix.needsUpdate=true;
+      this.haloIM.instanceMatrix.needsUpdate=true;
     }
     // credit FIRST, then the cosmetics — a hiccup in audio/DOM can never cost you a shard
     _coin(c){ const g=this.game; g.score.coins++; g.score.total+=60;
@@ -1829,6 +1901,7 @@
       g.score.total+=160; g.audio.drink(); g.effects.flash(0.16);
       g.effects.burst(new THREE.Vector3(d.x,(g.player.cruiseY||16)-0.4,d.z),new THREE.Color(0x2bd66e),16,12); }
     reset(){ for(const c of this.coins){c.active=false;c.mesh.visible=false;} for(const d of this.drinks){d.active=false;d.mesh.visible=false;}
+             this.coinIM.count=0; this.haloIM.count=0;
              this._pickPrevZ=undefined;
              this.coinNextZ=this.game.player.pos.z+30; this.drinkNextZ=this.game.player.pos.z+150; }
   }
@@ -2783,8 +2856,13 @@
             mat.needsUpdate=true;
           } } } });
         this._rigSway=null;
+        // Authored-orientation correction, innermost first: roll the model level about its own
+        // forward axis, then yaw it to face down the street, then pitch it into the flight arch.
+        // Meshy exports arrive in a pose of their own, so a single yaw is not always enough —
+        // Silver Shrike is authored mid-lunge and Nocturne is authored leaning.
         let posed=model;
-        if(cfg.yaw){ const yg=new THREE.Group(); yg.rotation.y=cfg.yaw; yg.add(model); posed=yg; }
+        { const rg=new THREE.Group(); rg.rotation.z=cfg.roll||0; rg.add(posed); posed=rg; this._rollGroup=rg; }
+        { const yg=new THREE.Group(); yg.rotation.y=cfg.yaw||0; yg.add(posed); posed=yg; this._yawGroup=yg; }
         const holder=new THREE.Group(); holder.add(posed);
         this._mRotX=cfg.rotX; this._mBaseY=cfg.baseY;                  // per-character flight pose + height
         holder.rotation.set(this._mRotX,0,0);
@@ -2968,7 +3046,11 @@
     reset(){ const T=this.game.theme; const cy=T&&T.backrooms?4.2:(T&&T.station?7.5:16); this.cruiseY=cy;  // METRO flies LOW in the tunnel
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
-             this._lastSmashZ=undefined; }
+             this._lastSmashZ=undefined;
+             // Re-anchor the drag control, or a finger left where it was at the end of the last
+             // run would slide him straight back across the road on the first frame of this one.
+             this._dragBase=0; this._dragSeq=-1;
+             const I=this.game.input; if(I){ I.dragPx=0; I.dragActive=false; I.dragSeq++; } }
     // each smash injects speed (more for bigger hits) -> the run accelerates as you chain.
     // also an INSTANT forward lurch so it feels like bursting THROUGH the building.
     onSmash(tier){ this._smashPulse=Math.min(1.6,this._smashPulse+0.5+tier.mom*0.012);
@@ -3015,20 +3097,47 @@
 
       // Strafe scales PROPORTIONALLY with speed (no cap) so no matter how fast you get, a skilled
       // player can still reach the next tower — the wall is your REACTION time, not a hard limit.
-      const STRAFE=(28 + this.fwdNow*0.72) * (g.input.moveSens||1);   // steering sensitivity setting
-      const sx=-steer.x;
-      this.vel.x=damp(this.vel.x,sx*STRAFE,12,dt);         // weightier response
+      // Strafe scale. On the joystick this is the TOP SPEED sideways; in drag mode it is the speed
+      // cap on catching up to the finger, and sensitivity lives in the pixels->world mapping
+      // instead, so it is never applied twice.
+      const drag = (g.input.scheme==='drag');
+      const STRAFE=(28 + this.fwdNow*0.72) * (drag ? 1.55 : (g.input.moveSens||1));
+      const lim=PLAY.xBox;
+      const rc0=this.game.city? this.game.city._pathX(this.pos.z) : 0;         // road centre at our z
+      let sx=-steer.x;
+
+      if(drag){
+        // POSITION control. The villain is placed where the finger has dragged to, not pushed in
+        // that direction — hold the finger still and he stops, exactly like Subway Surfers. The
+        // old version fed the finger offset into the velocity channel, so he kept sliding as long
+        // as the thumb was off-centre, which is what made it feel like ice.
+        if(g.input.dragSeq!==this._dragSeq){        // new touch: anchor to where he is NOW
+          this._dragSeq=g.input.dragSeq;
+          this._dragBase=this.pos.x - rc0;
+        }
+        if(this._dragBase===undefined) this._dragBase=this.pos.x - rc0;
+        const want=clamp(this._dragBase + g.input.dragPx*g.input.dragWorldPerPx(), -lim, lim);
+        // Keys and gyro still nudge, so the scheme never leaves anyone without a control.
+        this._dragBase=clamp(this._dragBase + sx*STRAFE*0.35*dt, -lim, lim);
+        // Critically-damped follow with a hard speed cap: instant enough to feel 1:1, capped so a
+        // flick across the glass cannot teleport him through a tower.
+        const target=rc0+want;
+        const step=clamp((target-this.pos.x)*Math.min(1,18*dt), -STRAFE*dt, STRAFE*dt);
+        this.pos.x+=step;
+        this.vel.x=step/Math.max(dt,1e-4);
+        sx=clamp(this.vel.x/STRAFE,-1,1);           // bank/cape read the motion, not the finger
+      } else {
+        this.vel.x=damp(this.vel.x,sx*STRAFE,12,dt);         // weightier response
+        this.pos.x+=this.vel.x*dt;
+      }
       this.vel.y=0;
       this.vel.z=this.fwdNow;
-      this.pos.x+=this.vel.x*dt;
       this.pos.z+=this.vel.z*dt;
-      { const city=this.game.city, st=this.game.theme&&this.game.theme.station;
+      { const city=this.game.city;
         const rc=city? city._pathX(this.pos.z) : 0;                            // road centre at our z
-        const bk=this.game.theme&&this.game.theme.backrooms;
         // must always exceed PLAY.laneHi so every target is reachable on every map
         // ONE box on every map (PLAY.xBox). Tokyo's block wall sits at roadHalf+5 = 27 and the
         // metro arch is 23.9 wide at cruise height, so 22 clears scenery everywhere.
-        const lim=PLAY.xBox;
         this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
       // pos.y stays constant -> the villain flies dead level
 
@@ -3449,9 +3558,13 @@
     _skinProps(t,night){
       if(!this.props) return;
       const G=this._propGeo, M=(c,o)=>this._M(c,o), style=t.building.style;
+      // Only the TALL props cast. Benches, bins, crates, cones and signage were each costing a
+      // draw call in the shadow pass to lay down a smudge two texels wide at the foot of something
+      // the player passes at 200 km/h. Trees, poles and lamps still cast, which is where the
+      // shadows actually read on the road.
       const add=(grp,geo,mat,x,y,z,sx,sy,sz,rx,ry)=>{ const m=new THREE.Mesh(geo,mat);
         m.position.set(x,y,z); m.scale.set(sx,sy,sz); if(rx)m.rotation.x=rx; if(ry)m.rotation.y=ry;
-        m.castShadow=true; grp.add(m); return m; };
+        m.castShadow=(y + Math.abs(sy)*0.5) > 2.6; grp.add(m); return m; };
       const glow=night?0.9:0.0;
       this.props.forEach((p,i)=>{
         while(p.grp.children.length){ p.grp.remove(p.grp.children[0]); }
@@ -3759,6 +3872,48 @@
           add(p.grp,G.box,M(0x8a8f96),0,0.3,0,3.0,0.6,4.0);
         }
       });
+      this._mergeProps();
+    }
+    // ---- PROP BATCHING -------------------------------------------------------------------
+    // A prop group is built as ~30 little meshes — a trunk, a canopy, a kerb, five lanterns, a
+    // wire — and nothing inside it ever moves on its own; the whole group is slid along the road
+    // as one rigid object. Every one of those meshes was still a separate draw call, twice over
+    // once the shadow pass ran. Bake each group down to ONE mesh per distinct look.
+    //
+    // Bucketing is by the material's VALUES, not its identity: _M() mints a fresh material for
+    // every call, so two kerbstones of the same grey are different objects and would never batch
+    // on identity alone.
+    _mergeProps(){
+      if(!this.props) return;
+      const key=(mat,cast)=>[mat.type, mat.color?mat.color.getHex():-1,
+          mat.emissive?mat.emissive.getHex():-1, mat.emissiveIntensity, mat.roughness, mat.metalness,
+          mat.transparent?mat.opacity:'x', mat.flatShading, mat.side, mat.depthWrite, cast?1:0].join('|');
+      const mA=new THREE.Matrix4(), mB=new THREE.Matrix4();
+      for(const pr of this.props){
+        const grp=pr.grp;
+        grp.updateMatrixWorld(true);
+        mA.copy(grp.matrixWorld).invert();
+        const kids=[]; grp.traverse(o=>{ if(o.isMesh) kids.push(o); });
+        if(kids.length<2) continue;
+        const buckets=new Map();
+        for(const m of kids){
+          const k=key(m.material, m.castShadow);
+          let b=buckets.get(k);
+          if(!b){ b={mat:m.material, cast:!!m.castShadow, geos:[]}; buckets.set(k,b); }
+          const g=m.geometry.clone();
+          g.applyMatrix4(mB.multiplyMatrices(mA, m.matrixWorld));   // into the group's own space
+          b.geos.push(g);
+        }
+        if(buckets.size>=kids.length) continue;                    // nothing to gain
+        while(grp.children.length) grp.remove(grp.children[0]);
+        for(const b of buckets.values()){
+          const merged=concatGeo(b.geos);
+          if(!merged) continue;
+          const mesh=new THREE.Mesh(merged, b.mat);
+          mesh.castShadow=b.cast; mesh.receiveShadow=true;
+          grp.add(mesh);
+        }
+      }
     }
     _buildEnv(){
       const g=this.game;
@@ -5980,13 +6135,16 @@
     // ---- three new villains. All three are authored upright with Y up and their cape on -Z,
     // so they take the same flight pose as Dominus and the Patriot. Cape regions were set by
     // rendering the flow weights (see ASSETS_HOWTO "Capes and wings").
-    shrike:   { name:'Silver Shrike', url:'./assets/char_a.glb', aura:{epic:0x8fa8c4, eth:0xf2f8ff}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+    // Authored ALREADY flying prone — arms forward, cape trailing, like Voidstrike. Pitching him
+    // another 66° on top of that stood him on his head, and the 0.27 yaw skewed him off the street.
+    shrike:   { name:'Silver Shrike', url:'./assets/char_a.glb', aura:{epic:0x8fa8c4, eth:0xf2f8ff}, rotX:0.20, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
                 flow:[{a:'z',d:-1,from:0.20,to:0.98,box:{y:[-0.50,1]}},{a:'y',d:-1,from:-0.15,to:0.86,box:{z:[-1,-0.22],y:[-0.64,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    tyrant:   { name:'Scarlet Tyrant', url:'./assets/char_b.glb', aura:{epic:0x8a0f18, eth:0xff2a3c}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+    // Upright standing export, so the full flight pitch applies — but square to the street.
+    tyrant:   { name:'The Red Jester', url:'./assets/char_b.glb', aura:{epic:0x8a0f18, eth:0xff2a3c}, rotX:1.15, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
                 flow:[{a:'z',d:-1,from:0.22,to:0.98,box:{y:[-0.55,1]}},{a:'y',d:-1,from:-0.20,to:0.86,box:{z:[-1,-0.26],y:[-0.66,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    nocturne: { name:'Nocturne', url:'./assets/char_c.glb', aura:{epic:0x2a1030, eth:0xd81028}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+    nocturne: { name:'Nocturne', url:'./assets/char_c.glb', aura:{epic:0x2a1030, eth:0xd81028}, rotX:1.15, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
                 // a long coat rather than a cape: the skirt hangs lower, so the downward ramp
                 // starts higher up and reaches further down than a shoulder-hung cape would
                 flow:[{a:'z',d:-1,from:0.18,to:0.98,box:{y:[-0.62,1]}},{a:'y',d:-1,from:0.02,to:0.90,box:{z:[-1,-0.10],y:[-0.74,1]}}], aim:false,
@@ -6051,6 +6209,14 @@
       g.computeVertexNormals();
       return new THREE.Mesh(g, mat);
     };
+    // Same, but only a slice of the revolution — for armour that sits on the FRONT of the chest
+    // instead of wrapping all the way round like a barrel.
+    const shell=(profile, mat, seg, phiStart, phiLen)=>{
+      const pts=profile.map(([r,y])=>new THREE.Vector2(Math.max(0.0006,r), y));
+      const g=new THREE.LatheGeometry(pts, seg||20, phiStart, phiLen);
+      g.computeVertexNormals();
+      const m=new THREE.Mesh(g, mat); m.material.side=THREE.DoubleSide; return m;
+    };
     const put=(m,x,y,z,rx,ry,rz)=>{ m.position.set(x,y,z);
       if(rx)m.rotation.x=rx; if(ry)m.rotation.y=ry; if(rz)m.rotation.z=rz;
       m.castShadow=true; root.add(m); return m; };
@@ -6068,40 +6234,66 @@
     torso.scale.z=0.62;                                 // chest depth < chest width
     put(torso, 0, 0, 0);
 
-    // chest plate + belt, so the suit reads as armour rather than paint
-    const plate=limb([[0.00,-0.05*HEAD],[0.80*HEAD,0.02*HEAD],[0.86*HEAD,0.55*HEAD],[0.52*HEAD,0.92*HEAD],[0.00,1.00*HEAD]], matTrim, 22);
-    plate.scale.set(1.02,1,0.66); put(plate, 0, 0.18*HEAD, 0.02*HEAD);
+    // Chest armour. The first version was a full lathe in the trim colour: a red dome, widest at
+    // the chest and narrowing to the shoulders, which is the silhouette of a bust — he read as a
+    // woman in a breastplate. It is now a metal shell over the FRONT 210° only, cut away at the
+    // sternum, with a small red chevron for the villain read.
+    const plate=shell([[0.00,-0.02*HEAD],[0.82*HEAD,0.06*HEAD],[0.88*HEAD,0.52*HEAD],
+                       [0.80*HEAD,0.84*HEAD],[0.50*HEAD,1.02*HEAD]], matMetal, 20,
+                      -1.83, 3.66);
+    plate.scale.set(1.02,1,0.645); put(plate, 0, 0.20*HEAD, 0);
+    for(const sx of [-1,1]){          // the chevron, two bars meeting at the sternum
+      const bar=new THREE.Mesh(new THREE.BoxGeometry(0.52*HEAD,0.11*HEAD,0.07*HEAD), matTrim);
+      bar.position.set(sx*0.24*HEAD, 0.86*HEAD, 0.50*HEAD);
+      bar.rotation.set(-0.18,0,sx*0.62); root.add(bar);
+    }
     const belt=limb([[0.00,-0.10*HEAD],[0.74*HEAD,-0.08*HEAD],[0.78*HEAD,0.08*HEAD],[0.00,0.10*HEAD]], matMetal, 22);
     belt.scale.z=0.64; put(belt, 0, -0.72*HEAD, 0);
 
-    // ---- NECK + HEAD. A real skull is an egg: taller than wide, widest above the ears, with a
-    // jaw that narrows to the chin. Sphere-scaling alone gives a beach ball, so the profile does
-    // the work and the jaw is a separate taper.
-    put(limb([[0.00,0],[0.20*HEAD,0.02*HEAD],[0.22*HEAD,0.30*HEAD],[0.00,0.32*HEAD]], matSkin,16), 0, 1.42*HEAD, 0);
-    const skull=limb([
-      [0.00, 0.00],[0.26*HEAD,0.06*HEAD],[0.40*HEAD,0.22*HEAD],           // jaw, narrow at the chin
-      [0.46*HEAD,0.44*HEAD],[0.48*HEAD,0.66*HEAD],                         // cheekbone / temple, the widest
-      [0.44*HEAD,0.86*HEAD],[0.30*HEAD,1.00*HEAD],[0.00,1.04*HEAD]         // cranium closing over
-    ], matSkin, 24);
-    skull.scale.z=0.92;                                  // heads are slightly deeper than wide
-    put(skull, 0, 1.70*HEAD, 0);
-    // mask across the eyes — reads as a villain without needing a face
-    const mask=limb([[0.00,0],[0.47*HEAD,0.02*HEAD],[0.49*HEAD,0.20*HEAD],[0.00,0.22*HEAD]], matTrim, 24);
-    mask.scale.z=0.94; put(mask, 0, 2.14*HEAD, 0.01*HEAD);
-    // FACE STRUCTURE. A featureless ovoid reads as a shop dummy from any angle, and these are the
-    // three planes the eye actually looks for: the brow ridge, the nose, and the line of the jaw.
-    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.62*HEAD,0.09*HEAD,0.10*HEAD), matTrim);
-    brow.position.set(0,2.28*HEAD,0.34*HEAD); brow.rotation.x=-0.16; root.add(brow);
-    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.085*HEAD,0.26*HEAD,4), matSkin);
-    nose.position.set(0,2.08*HEAD,0.38*HEAD); nose.rotation.set(1.35,Math.PI/4,0); root.add(nose);
-    for(const sx of [-1,1]){                                      // cheekbones catching the light
+    // ---- NECK + HEAD. Three tries to get this right, and the failures are worth naming:
+    // a bare skin ovoid reads as a shop dummy; an open-arc cowl standing off the skull shows its
+    // cut edges as sharp panels beside the ears; and a face lathe pushed forward through a closed
+    // helmet turns into a MUZZLE, because a lathe protrudes as a cone, not as a plane.
+    //
+    // What works: a full skin head, with the cowl as a thin shell of the SAME profile 0.02 heads
+    // larger, wrapped around everything but the face. The two surfaces are nearly coincident, so
+    // the cowl reads as a cover on the head instead of a helmet floating around it, and its open
+    // edge lands flush on skin, which is what the edge of a real cowl does.
+    put(limb([[0.00,0],[0.235*HEAD,0.02*HEAD],[0.245*HEAD,0.22*HEAD],[0.00,0.24*HEAD]], matSkin,16), 0, 1.44*HEAD, 0);
+    const HP=[
+      [0.00, 0.00],[0.28*HEAD,0.06*HEAD],[0.44*HEAD,0.26*HEAD],            // jaw, narrow at the chin
+      [0.495*HEAD,0.50*HEAD],[0.505*HEAD,0.74*HEAD],                       // cheekbone / temple, widest
+      [0.45*HEAD,0.92*HEAD],[0.31*HEAD,1.06*HEAD],[0.00,1.11*HEAD]         // cranium closing over
+    ];
+    const skull=limb(HP, matSkin, 26);
+    skull.scale.z=0.94;                                  // heads are slightly deeper than wide
+    put(skull, 0, 1.66*HEAD, 0);
+    const cowl=shell(HP.map(([r,y])=>[r>0.001? r+0.020*HEAD : r, y]), matSuit, 26, 0.88, Math.PI*2-1.76);
+    cowl.scale.z=0.94; put(cowl, 0, 1.66*HEAD, 0);
+    // FACE STRUCTURE. Featureless is the failure mode, and these are the planes the eye actually
+    // looks for: the brow ridge, the nose, the cheekbones and the line of the jaw.
+    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.56*HEAD,0.10*HEAD,0.12*HEAD), matSkin);
+    brow.position.set(0,2.38*HEAD,0.38*HEAD); brow.rotation.x=-0.20; root.add(brow);
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.095*HEAD,0.30*HEAD,4), matSkin);
+    nose.position.set(0,2.12*HEAD,0.42*HEAD); nose.rotation.set(1.42,Math.PI/4,0); root.add(nose);
+    for(const sx of [-1,1]){
       const ch=limb([[0.00,0],[0.13*HEAD,0.02*HEAD],[0.10*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matSkin,12);
-      ch.position.set(sx*0.26*HEAD,2.02*HEAD,0.26*HEAD); ch.scale.z=0.8; root.add(ch);
-      const ear=limb([[0.00,0],[0.07*HEAD,0.02*HEAD],[0.075*HEAD,0.16*HEAD],[0.00,0.20*HEAD]], matSkin,10);
-      ear.position.set(sx*0.42*HEAD,2.06*HEAD,-0.02*HEAD); ear.scale.z=1.5; root.add(ear);
+      ch.position.set(sx*0.23*HEAD,2.02*HEAD,0.34*HEAD); ch.scale.z=0.8; root.add(ch);
+      // swept-back horns off the temples: a silhouette you can name at a hundred metres, which a
+      // smooth head does not have
+      const horn=limb([[0.00,0],[0.075*HEAD,0.03*HEAD],[0.055*HEAD,0.32*HEAD],[0.00,0.50*HEAD]], matTrim,10);
+      horn.position.set(sx*0.33*HEAD,2.42*HEAD,-0.10*HEAD);
+      horn.rotation.set(-0.55,0,sx*0.42); root.add(horn);
     }
-    const jaw=limb([[0.00,0],[0.30*HEAD,0.03*HEAD],[0.33*HEAD,0.20*HEAD],[0.00,0.24*HEAD]], matSkin,18);
-    jaw.scale.set(1,1,0.86); put(jaw, 0, 1.74*HEAD, 0.03*HEAD);
+    const jaw=limb([[0.00,0],[0.26*HEAD,0.03*HEAD],[0.29*HEAD,0.18*HEAD],[0.00,0.22*HEAD]], matSkin,18);
+    jaw.scale.set(1,1,0.90); put(jaw, 0, 1.76*HEAD, 0.16*HEAD);
+    // The visor: a band across the eyes only. Trimming a full head-shell down to a band by
+    // shrinking the vertices outside it does NOT work — a shell 0.038 heads proud of the skull is
+    // still proud of it after a 6% shrink, so the whole face came out red. Lathe the band itself.
+    const mask=shell([[0.00,0.56*HEAD],[0.44*HEAD,0.60*HEAD],[0.545*HEAD,0.66*HEAD],
+                      [0.545*HEAD,0.76*HEAD],[0.44*HEAD,0.80*HEAD],[0.00,0.83*HEAD]], matTrim, 26,
+                     -1.36, 2.72);
+    mask.scale.z=0.94; put(mask, 0, 1.66*HEAD, 0);
 
     // ---- ARMS. Deltoid swell, taper into the elbow, forearm belly, wrist pinch. Built pointing
     // DOWN the -Y axis then rotated out, so the shoulder is the pivot and the pose is one number.
@@ -6127,13 +6319,20 @@
       const cuff=limb([[0.00,-0.04*HEAD],[0.205*HEAD,0],[0.215*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matMetal,16);
       cuff.position.y=-2.34*HEAD; cuff.rotation.x=0.26; g.add(cuff);
       // Hand: a palm block plus a thumb, because a lathe alone gives a mitten.
+      // Hand: a lathe palm squashed flat, so the edges are rounded the way a fist is, plus a
+      // knuckle row and a thumb. Three stacked boxes read as a mitten made of Lego.
       const hg=new THREE.Group(); hg.position.set(0,-2.48*HEAD,0.13*HEAD); hg.rotation.x=0.26;
-      const palm=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.36*HEAD,0.15*HEAD), matSkin);
-      palm.position.y=-0.16*HEAD; hg.add(palm);
-      const fingers=new THREE.Mesh(new THREE.BoxGeometry(0.28*HEAD,0.22*HEAD,0.13*HEAD), matSkin);
-      fingers.position.set(0,-0.42*HEAD,0.01*HEAD); fingers.rotation.x=0.30; hg.add(fingers);
-      const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.10*HEAD,0.18*HEAD,0.11*HEAD), matSkin);
-      thumb.position.set(side*-0.16*HEAD,-0.20*HEAD,0.04*HEAD); thumb.rotation.z=side*0.5; hg.add(thumb);
+      const palm=limb([[0.00,0.04*HEAD],[0.15*HEAD,-0.02*HEAD],[0.175*HEAD,-0.22*HEAD],
+                       [0.155*HEAD,-0.38*HEAD],[0.00,-0.44*HEAD]], matSkin, 14);
+      palm.scale.set(1,1,0.62); hg.add(palm);
+      for(let k=0;k<3;k++){                       // knuckles, so the fist has a top edge
+        const kn=limb([[0.00,0],[0.048*HEAD,0.01*HEAD],[0.05*HEAD,0.10*HEAD],[0.00,0.12*HEAD]], matSkin, 8);
+        kn.rotation.x=Math.PI*0.52;
+        kn.position.set((k-1)*0.095*HEAD, -0.38*HEAD, 0.02*HEAD); hg.add(kn);
+      }
+      const thumb=limb([[0.00,0],[0.048*HEAD,0.01*HEAD],[0.045*HEAD,0.15*HEAD],[0.00,0.17*HEAD]], matSkin, 8);
+      thumb.position.set(side*-0.15*HEAD,-0.26*HEAD,0.05*HEAD);
+      thumb.rotation.set(0.3,0,side*0.9); hg.add(thumb);
       g.add(hg);
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
       g.position.set(side*0.86*HEAD, 1.14*HEAD, 0);
@@ -6156,10 +6355,18 @@
         [0.18*HEAD,-0.96*HEAD],[0.14*HEAD,-1.24*HEAD],[0.00,-1.26*HEAD]   // ankle
       ], matSuit, 18);
       shin.position.y=-1.32*HEAD; g.add(shin);
-      const boot=limb([[0.00,0],[0.20*HEAD,-0.03*HEAD],[0.22*HEAD,-0.22*HEAD],[0.00,-0.26*HEAD]], matTrim,16);
+      // Boot: an ankle cuff, a heel block, and a toe that TAPERS. A single deep box is a plank,
+      // which is what it looked like — the toe has to come to a point or the foot reads as a slab.
+      const boot=limb([[0.00,0.06*HEAD],[0.205*HEAD,0],[0.225*HEAD,-0.20*HEAD],
+                       [0.20*HEAD,-0.30*HEAD],[0.00,-0.34*HEAD]], matTrim,16);
       boot.position.y=-2.52*HEAD; g.add(boot);
-      const foot=new THREE.Mesh(new THREE.BoxGeometry(0.32*HEAD,0.16*HEAD,0.66*HEAD), matTrim);
-      foot.position.set(0,-2.72*HEAD,0.17*HEAD); g.add(foot);             // heel behind, toe ahead
+      const heel=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.15*HEAD,0.30*HEAD), matTrim);
+      heel.position.set(0,-2.76*HEAD,-0.03*HEAD); g.add(heel);
+      const toe=new THREE.Mesh(new THREE.CylinderGeometry(0.155*HEAD,0.105*HEAD,0.44*HEAD,10), matTrim);
+      toe.rotation.set(Math.PI*0.5,0,0); toe.scale.y=1; toe.scale.x=1;
+      toe.position.set(0,-2.775*HEAD,0.28*HEAD); g.add(toe);
+      const sole=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.05*HEAD,0.62*HEAD), matMetal);
+      sole.position.set(0,-2.845*HEAD,0.14*HEAD); g.add(sole);
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
       g.position.set(side*0.34*HEAD, -1.36*HEAD, 0);
       g.rotation.x=0.12; g.rotation.z=side*0.05;
@@ -6168,39 +6375,45 @@
     const legL=leg(-1), legR=leg(1);
     legL.rotation.x=0.34; legR.rotation.x=-0.10;         // a stride, so he is not stood to attention
 
-    // ---- CAPE. The hard part. A cone or a flat plane both read instantly as a prop, because
-    // real cloth has three things at once: it WRAPS the shoulders (so it is deeply curved near the
-    // top), it FLARES as it falls, and it gathers into VERTICAL FOLDS that get deeper toward the
-    // free hem. All three are displaced per-vertex below. The fold count is deliberately odd so
-    // the drape is never mirror-symmetric, which is the other giveaway.
-    const CW=2.15*HEAD, CL=4.05*HEAD, SEGX=30, SEGY=32;
-    const cg=new THREE.PlaneGeometry(CW, CL, SEGX, SEGY);
+    // ---- CAPE. The hard part, and the first attempt got it wrong in the way that matters: it was
+    // built as a FLAT PLANE bent backwards, so its side edges stayed at z≈0 and punched out
+    // through the ribs, and it was long enough to rise past his ears. From the front he was
+    // wearing two red panels.
+    //
+    // A cape is not a plane. It is a CONICAL SHELL hanging off the shoulders: every point sits at
+    // some radius R from the body axis, swept through an arc that only covers the BACK. Build it
+    // in polar coordinates and the body can never poke through, because the cloth is always
+    // outside R.
+    const CTOP=1.28*HEAD, CLEN=3.55*HEAD;               // collar at the shoulder shelf, hem mid-shin
+    const R0=0.62*HEAD, R1=1.52*HEAD;                   // radius at the collar, and at the hem
+    const A0=1.10, A1=1.44;                             // half-arc: 126° across the back, 165° at the hem
+    const SEGX=34, SEGY=30;
+    const cg=new THREE.PlaneGeometry(2, 2, SEGX, SEGY);
     { const pos=cg.attributes.position;
       for(let i2=0;i2<pos.count;i2++){
-        const x0=pos.getX(i2), y0=pos.getY(i2);
-        const t=clamp(0.5 - y0/CL, 0, 1);               // 0 at the collar, 1 at the hem
-        const u=clamp(x0/(CW*0.5), -1, 1);              // -1..1 across the width
-        // 1) FLARE — narrow at the shoulders, wide at the hem
-        const flare=0.62 + t*1.15;
-        // 2) FOLDS — 7 of them, shallow at the collar and deep at the hem, so the hem scallops
-        // amplitude matters more than count: at 6% of the width the folds vanished into the
-        // smooth shading and the cape read as one bent sheet of plastic.
-        const fold=Math.sin(u*Math.PI*3.5)*0.44*HEAD*Math.pow(t,1.15);
-        // 3) WRAP — the sheet curls around the back near the shoulders and opens out below
-        const wrap=-(0.95*HEAD)*(1-u*u)*(0.85-0.55*t) - 0.30*HEAD*t*t;
-        pos.setX(i2, x0*flare - u*Math.abs(fold)*0.55);   // folds pull the cloth inward as they deepen
-        pos.setZ(i2, wrap + fold);
-        // hem hangs, and the corners lift slightly as if caught by the air
-        pos.setY(i2, y0 - t*t*0.35*HEAD + Math.abs(u)*t*t*0.30*HEAD);
+        const t=clamp(0.5 - pos.getY(i2)/2, 0, 1);      // 0 at the collar, 1 at the hem
+        const u=clamp(pos.getX(i2)/1, -1, 1);           // -1..1 around the arc
+        const half=A0 + (A1-A0)*t;
+        const th=u*half;
+        // FOLDS as a radial ripple: the cloth gathers in and out around the arc, shallow at the
+        // collar and deep at the hem. An odd count so the drape is never mirror-symmetric.
+        const fold=Math.sin(u*Math.PI*3.5)*0.115*HEAD*Math.pow(t,1.25);
+        const R=R0 + (R1-R0)*Math.pow(t,0.88) + fold;
+        pos.setX(i2, R*Math.sin(th));
+        pos.setZ(i2, -R*Math.cos(th) - 0.05*HEAD);      // the arc lives behind the spine
+        // the hem hangs lowest down the centre of his back and lifts at the tips, and the folds
+        // scallop it so it is not a clean circle
+        pos.setY(i2, CTOP - t*CLEN
+                     + Math.pow(Math.abs(u),1.7)*0.42*HEAD*t*t
+                     - Math.cos(u*Math.PI*3.5)*0.07*HEAD*t*t);
       }
       cg.computeVertexNormals();
     }
     cg.name='cape';
     const cape=new THREE.Mesh(cg, new THREE.MeshStandardMaterial({color:O.trim,roughness:.74,
                  side:THREE.DoubleSide,metalness:.04,flatShading:false}));
-    cape.position.set(0, 0.42*HEAD, -0.30*HEAD);
-    cape.rotation.x=-0.10;                              // trailing back off the shoulders
     cape.name='cape';                                   // the cloth shader keys off this name
+    // The geometry is already in body space — no offset, or the collar leaves his shoulders.
     cape.castShadow=true; root.add(cape);
     // the collar it hangs from, so it does not appear to float off his back
     const collar=limb([[0.00,-0.06*HEAD],[0.66*HEAD,-0.02*HEAD],[0.70*HEAD,0.16*HEAD],[0.00,0.20*HEAD]], matMetal, 20);
@@ -6394,8 +6607,13 @@
       // ----- lights: bright daytime (colours retuned per map) -----
       this.hemi=new THREE.HemisphereLight(0xcfe6ff,0x6b7a55,1.0); this.scene.add(this.hemi);   // sky / ground bounce
       const sun=new THREE.DirectionalLight(0xfff2d6,1.5); sun.position.set(60,90,-20); sun.castShadow=true;
-      sun.shadow.mapSize.set(LOOK.richerSun?2048:1024,LOOK.richerSun?2048:1024); const c=sun.shadow.camera;
-      c.left=-100;c.right=100;c.top=100;c.bottom=-100;c.near=1;c.far=320; sun.shadow.bias=-0.0004;
+      // The shadow frustum was 200 units across for a road 44 wide. Everything inside it has to be
+      // re-rendered into the depth map every frame, and at 200/2048 each texel covered 10cm, so it
+      // was paying for hundreds of extra draw calls AND looking soft. 124 units across at 1536 is
+      // 8cm per texel: sharper shadows, ~40% fewer casters in the pass.
+      const SM=LOOK.richerSun?1536:1024;
+      sun.shadow.mapSize.set(SM,SM); const c=sun.shadow.camera;
+      c.left=-62;c.right=62;c.top=62;c.bottom=-62;c.near=1;c.far=260; sun.shadow.bias=-0.0004;
       this.scene.add(sun); this.scene.add(sun.target); this.sun=sun;
 
       // systems
@@ -6466,7 +6684,8 @@
 
       // ADAPTIVE QUALITY: if the frame rate sags for a while, step the render resolution down
       // (2 -> 1.6 -> 1.3 -> 1). Downward-only, so it never oscillates.
-      this._perfAcc=0; this._perfN=0; this._prSteps=[Math.min(2,devicePixelRatio),1.6,1.3,1]; this._prIdx=0;
+      this._perfAcc=0; this._perfN=0; this._prSteps=[Math.min(2,devicePixelRatio),1.7,1.45,1.2,1]; this._prIdx=0;
+      this._prGood=0;   // consecutive comfortable windows, for stepping the resolution back UP
 
       // ----- classic menu: settings / skins / maps sheets -----
       // OPEN / SHUT. Hiding a sheet outright would cut its exit animation off, so shutM plays
@@ -6557,8 +6776,12 @@
       // CONTROLS: the on-screen stick, or drag anywhere on the playfield. Persisted, and applied
       // immediately so the joystick appears/disappears without leaving Settings.
       { const cb=document.getElementById('scheme-btn');
+        const nameEl=document.getElementById('movesens-name');
         const applyC=()=>{ const drag=this.input.scheme==='drag';
-          cb.textContent=drag?'DRAG':'JOYSTICK'; cb.classList.toggle('on',!drag); };
+          cb.textContent=drag?'DRAG':'JOYSTICK'; cb.classList.toggle('on',!drag);
+          // the slider means two different things, so it says which: on the stick it is how fast
+          // he strafes, on drag it is how far he travels per swipe.
+          if(nameEl) nameEl.textContent=drag?'Swipe Distance':'Steer Speed'; };
         cb.onclick=()=>{ this.input.setScheme(this.input.scheme==='drag'?'stick':'drag');
           applyC(); this.audio.uiClick&&this.audio.uiClick(); };
         this.haptics.attachSwitch(cb);
@@ -6589,8 +6812,11 @@
       nightBtn.onclick=()=>setNight(!this.maps.night);
       nightBtn.textContent=this.maps.night?'ON':'OFF'; nightBtn.classList.toggle('on',this.maps.night);
       // SENSITIVITY sliders (movement + gyro), persisted
+      // A bare multiplier tells nobody anything, so each stop is named as well as numbered.
+      const sensWord=(m)=> m<0.85?'slow' : m<1.15?'normal' : m<1.55?'fast' : m<1.9?'very fast' : 'twitchy';
       const bindSlider=(id,valId,key,setFn)=>{ const s=document.getElementById(id),v=document.getElementById(valId);
-        const upd=()=>{ const m=s.value/100; v.textContent=m.toFixed(1)+'×'; setFn(m); try{localStorage.setItem(key,m);}catch(e){} };
+        const upd=()=>{ const m=s.value/100; v.textContent=m.toFixed(2).replace(/0$/,'')+'× '+sensWord(m);
+          setFn(m); try{localStorage.setItem(key,m);}catch(e){} };
         s.value=Math.round((+(localStorage.getItem(key)||1))*100); s.oninput=upd; upd(); };
       bindSlider('movesens','movesens-val','invrun_movesens',m=>this.input.moveSens=m);
       bindSlider('gyrosens','gyrosens-val','invrun_gyrosens',m=>this.input.gyroSens=m);
@@ -6810,12 +7036,22 @@
       const realDt=Math.min(0.05,this._clock.getDelta());
       if(this.input.consumeRestart()) this.run.startRun();
 
-      // adaptive quality: average the real frame time over ~2s windows; sagging -> drop resolution a step
+      // ADAPTIVE RESOLUTION. It used to wait for a 2-second average under 27fps before doing
+      // anything, and it could only ever go down — one bad moment on a loading hitch and the game
+      // stayed soft for the rest of the session. Now it reacts inside a second, at a threshold
+      // that means "not holding 48fps" rather than "already unplayable", and it climbs back once
+      // the frame time has been comfortable for a few windows running.
       this._perfAcc+=realDt; this._perfN++;
-      if(this._perfN>=120){ const avg=this._perfAcc/this._perfN; this._perfAcc=0; this._perfN=0;
-        if(avg>0.037 && this._prIdx<this._prSteps.length-1){
-          this._prIdx++; this.renderer.setPixelRatio(this._prSteps[this._prIdx]);
-          this.renderer.setSize(innerWidth,innerHeight); } }
+      if(this._perfN>=60){
+        const avg=this._perfAcc/this._perfN; this._perfAcc=0; this._perfN=0;
+        const applyPR=()=>{ this.renderer.setPixelRatio(this._prSteps[this._prIdx]);
+                            this.renderer.setSize(innerWidth,innerHeight); };
+        if(avg>0.0208 && this._prIdx<this._prSteps.length-1){        // below ~48fps: drop a step now
+          this._prIdx++; this._prGood=0; applyPR();
+        } else if(avg<0.0145 && this._prIdx>0){                      // above ~69fps: earn it back
+          if(++this._prGood>=3){ this._prIdx--; this._prGood=0; applyPR(); }
+        } else this._prGood=0;
+      }
 
       const running=this.run.state!=='READY'&&this.run.state!=='GameOver'&&this.run.state!=='Paused';
       const dt=this.time.update(realDt);
