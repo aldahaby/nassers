@@ -203,13 +203,20 @@ const PWR = {
   leadSec:3.0,     // SECONDS of window, before the per-kind multiplier
   minRange:150,    // never a shorter reach than this at low speed
   maxRange:560,    // never past the spawn horizon (city.aheadDist is 620)
-  blastAfter:2,    // how many towers BEHIND the gate also go down (never another gate)
+  blastAfter:1,    // how many towers BEHIND the gate also go down (never another gate)
   blastRange:150,  // how far past the gate that follow-through reaches
   gateScore:3.0,   // score multiplier for clearing a gate with a power
   slamCost:62,     // momentum lost for body-slamming a gate instead
   kindRange:{ laser:0.85, split:0.95, nova:1.10, storm:1.25 },
 };
 ```
+
+**A power takes two buildings: the gate, and one tower behind it.** `blastAfter` was 2, and a
+single shot cleared most of a street — the run stopped being about flying and became about waiting
+for the meter. At 1 the follow-through still reads as a power (the beam visibly does not stop at
+the gate) without erasing the road ahead. A gate can be several blocks wide; every block sharing
+its `gid` goes together and counts as the one gate. The beam never swallows the *next* gate, at any
+setting.
 
 **Reach is measured in seconds, not metres.** A fixed distance is a shrinking window — 210 m is
 four seconds early in a run and barely one and a half at top speed, which is how a gate could
@@ -322,6 +329,34 @@ flew toward them.
 Guarded by **`scripts/world-integrity.mjs`** — 240s of play per map, asserting that no normal tower
 ever wears the gate texture, no gate ever wears a facade, the tiling never changes, there is
 exactly one normal colour and one gate colour, and no drone arrives before its gates.
+
+## Two ways to steer
+
+**Settings → Controls** flips between them, and the choice is persisted in `invrun_scheme`.
+
+| | |
+|---|---|
+| **JOYSTICK** (default) | the on-screen stick in the bottom-left. Familiar, and your thumb has a home. |
+| **DRAG** | put a finger anywhere on the playfield and the villain follows it left and right. `#joy-base` disappears entirely. |
+
+Drag is **relative, not absolute**. The anchor is wherever your finger first lands, so the villain
+never teleports under your thumb — you push away from where you started. A full lock is
+`max(90px, 30% of the screen width)` of travel, scaled by the existing move-sensitivity slider, and
+the anchor trails the finger once you hit the end so a long sweep can still be pushed further.
+Lifting the finger recentres.
+
+The two schemes share one steering channel and whichever is off contributes **nothing**:
+
+```js
+x += (this.scheme==='drag') ? this.drag : this.joy;
+```
+
+That matters more than it looks — a stale joystick value left at 1 would otherwise steer forever
+after a switch. `setScheme` zeroes both channels and drops any live touch id every time it runs.
+Drag ignores anything inside `#btn-power, #btn-boost, #joy-base, #pause-btn, .modal, .overlay,
+button, input`, so pressing FIRE is never also a swipe.
+
+Guarded by **`scripts/controls.mjs`**, which also holds the blast radius to one extra tower.
 
 ## Vibration (haptics)
 
@@ -545,6 +580,23 @@ Measured effect under software GL: **36 frames in the same window where the blur
 
 Guarded by **`scripts/menu-and-aura.mjs`**, which also asserts every sheet's ✕ actually closes it.
 
+### Nobody is home
+
+The menu shows the city streaming past exactly as it does in play — same speed, same camera, same
+lighting — but **with no villain in it**. He arrives when you press PLAY. `FlightPlayer.setMenuMode(on)`
+does it, and it has to hide more than the model: the rig, the contact shadow, the fire aura, the
+cape, every speed streak and every live ember. Miss one and a disembodied shadow or a trail of
+sparks flies down an empty street.
+
+```js
+player.setMenuMode(true);    // init, and every toMenu()
+player.setMenuMode(false);   // startRun()
+```
+
+Nothing else changes — the world, the difficulty ramp and the camera all keep running, which is why
+pressing PLAY reads as joining a shot already in progress rather than starting one.
+`scripts/characters.mjs` asserts this for all ten villains: invisible at the menu, visible in play.
+
 ## Testing it on a phone
 
 Open **`haptics-test.html`** on the device — deployed alongside the game, so on a phone it is
@@ -687,7 +739,9 @@ downward ramp is what keeps a trailing **boot** out of it.
 Current regions: Dominus and The Patriot — cape behind and below. Frutiger Villain — trailing
 ribbons. Evil Knight — both wings (symmetric on `x`) plus the robe hem. The Entity — tattered
 shreds trailing on `z`. Violet Voidstrike — hair and ribbons on the upper trailing half, with a `y`
-floor separating them from her boots.
+floor separating them from her boots. Silver Shrike, Scarlet Tyrant and Nocturne — cape behind and
+below, same two-ramp shape as Dominus. The Forged is the exception: it is built in code, so its
+cape is a named mesh and `flowMesh:'cape'` tags the whole thing instead of guessing at a box.
 
 ## Checking a change
 
@@ -699,3 +753,83 @@ model is ever replaced.
 The wind itself is applied along the model's own local axes, derived by carrying world "behind /
 up / sideways" back through each character's `rotX` and `yaw`. Phase advances with **flight
 speed**, so the faster you go the harder the air pushes and the tighter the ripple.
+
+---
+
+# PART 7 — The roster
+
+Ten villains. Nine are GLB models; one is built from code.
+
+| Key | Name | Source |
+|---|---|---|
+| `dominus` | Dominus | GLB |
+| `frutiger` | Frutiger Villain | GLB |
+| `knight` | Evil Knight | GLB |
+| `patriot` | The Patriot | GLB |
+| `entity` | The Entity | GLB |
+| `countess` | Violet Voidstrike | GLB |
+| `shrike` | Silver Shrike | `assets/char_a.glb` |
+| `tyrant` | Scarlet Tyrant | `assets/char_b.glb` |
+| `nocturne` | Nocturne | `assets/char_c.glb` |
+| `forged` | The Forged | **code geometry** |
+
+Every one of them must be upright, Y-up, facing `+Z`, with the cape on `-Z`; `rotX` and `yaw` in
+`CHARACTERS` correct anything that is not. Each also carries an `aura:{epic,eth}` pair, which is
+what colours the whole screen at Epic and Ethereal — see *The villain's aura colours the whole
+screen*.
+
+## Adding a GLB
+
+Raw exports are enormous — the three most recent were **76 MB together**, which on a phone is a
+loading screen you cannot hide. Compress before committing:
+
+```bash
+npx @gltf-transform/cli optimize in.glb out.glb \
+  --compress meshopt --texture-compress webp --texture-size 1024
+```
+
+That took them to **10 MB together** with no visible difference at gameplay distance.
+
+⚠️ **Meshopt output uses interleaved attributes.** `geometry.attributes.position.array[i*3]` reads
+whatever attribute happens to sit next to it in the buffer and returns garbage — which is how a
+cape mask once came out as random speckle across the whole model. Always use `getX/getY/getZ`.
+
+Then add the entry to `CHARACTERS`, give it a `flow` region (PART 6), and render a portrait to
+`assets/prev_<key>.png`.
+
+## The Forged — built from code
+
+`buildProceduralVillain()` builds a villain out of geometry alone: **37 meshes, 3,872 vertices,
+6.91 heads tall.** Everything derives from one constant, `HEAD = 0.115`, so the proportions stay
+human no matter what it is scaled to.
+
+The thing that keeps it from reading as a toy is that **almost nothing is a box or a sphere**.
+Limbs and torso are `LatheGeometry` silhouettes — a profile of radii swept around the axis — so the
+deltoid swells, the elbow tapers, the calf bulges and the ankle pinches, the way an actual arm and
+leg do. The face is built rather than painted: brow ridge, nose bridge, cheekbones, jaw and ears.
+
+The cape is a subdivided `PlaneGeometry` displaced three ways at once, which is what gives it depth
+instead of the flat card the first attempt produced:
+
+```js
+const flare = 0.62 + t*1.15;                                   // widens toward the hem
+const fold  = Math.sin(u*Math.PI*3.5)*0.44*HEAD*Math.pow(t,1.15); // vertical folds, deepening down
+const wrap  = -(0.95*HEAD)*(1-u*u)*(0.85-0.55*t) - 0.30*HEAD*t*t; // wraps the shoulders, falls away
+```
+
+Two things went wrong on the first pass and are worth not repeating: the arms ended at the hip
+(anatomically the elbow sits at the navel and the wrist at the crotch), and the cape folds at
+`0.155*HEAD` were too shallow to catch a highlight, so it read as cardboard.
+
+Because it is code, its cloth is tagged by mesh name — `flowMesh:'cape'` — rather than by a
+bounding box, which is exact.
+
+## Checking the roster
+
+```bash
+node scripts/characters.mjs
+```
+
+Loads all ten and asserts, for each: the model exists, the cloth mask covers a plausible slice of
+it (a mask over ~60% means it caught a limb), the portrait decodes, the villain is hidden at the
+menu and visible in play, all four powers are wired, and the page threw nothing.

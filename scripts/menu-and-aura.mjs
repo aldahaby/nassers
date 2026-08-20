@@ -84,16 +84,21 @@ for(const ch of ['dominus','knight','countess','frutiger','patriot','entity']){
     G.player.setCharacter(c);
     const rs=getComputedStyle(document.documentElement);
     const epic=rs.getPropertyValue('--aura-epic').trim(), eth=rs.getPropertyValue('--aura-eth').trim();
-    // and the vignette must actually paint with it
+    // and the vignette must actually paint with it.
     // The rAF loop rewrites the glow every frame, so hold the combo state and read AFTER a real
-    // frame rather than racing it with a manual update() call.
-    // under software GL a frame can take ~700ms, so wait in wall-clock, not rAF counts
-    const frame=()=>new Promise(r=>setTimeout(r,1100));
+    // frame. Do NOT wait a fixed number of milliseconds for it: under software GL one frame with a
+    // 100k-vertex villain on screen can outlast any wall-clock guess, and the read then lands on
+    // the transparent default. Poll until the glow has actually changed instead.
+    const glow=()=>getComputedStyle(document.getElementById('state-glow')).boxShadow;
+    const painted=v=>/rgba?\(/.test(v) && !/, 0\)/.test(v);
+    const settle=async(prev)=>{ let v=glow();
+      for(let i=0;i<200 && !(painted(v) && v!==prev); i++){
+        await new Promise(r=>setTimeout(r,100)); v=glow(); }
+      return v; };
     G.run.startRun(); G.combo.count=40; G.combo.epicTime=99; G.combo.etherealTime=99;
-    await frame();
-    const vigEth=getComputedStyle(document.getElementById('state-glow')).boxShadow;
-    G.combo.etherealTime=0; await frame();
-    const vigEpic=getComputedStyle(document.getElementById('state-glow')).boxShadow;
+    const vigEth=await settle(null);
+    G.combo.etherealTime=0;
+    const vigEpic=await settle(vigEth);
     G.combo.count=0; G.combo.epicTime=0;
     const cfg=window.__cb.CHARACTERS[c].aura;
     return { epic, eth, cfgEpic:'#'+cfg.epic.toString(16).padStart(6,'0'),
