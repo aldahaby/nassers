@@ -965,6 +965,7 @@
       <div class="opt"><span><svg class="svgi si"><use href="#i-note"/></svg>Music</span><button id="music-btn" class="toggle on">ON</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-moon"/></svg>Night Mode</span><button id="night-btn" class="toggle">OFF</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-phone"/></svg>Vibration <small id="haptic-note"></small></span><button id="haptic-btn" class="toggle on">ON</button></div>
+      <div class="opt"><span><svg class="svgi si"><use href="#i-stick"/></svg>Controls</span><button id="scheme-btn" class="toggle on">JOYSTICK</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-tilt"/></svg>Gyro Aim <small>(tilt to steer)</small></span><button id="gyro-btn" class="toggle">OFF</button></div>
       <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-stick"/></svg>Move Sensitivity</span><span class="val" id="movesens-val">1.0×</span></div>
         <input type="range" class="slider" id="movesens" min="50" max="180" value="100"></div>
@@ -1217,6 +1218,10 @@
         <div class="card char" data-char="patriot"><img class="previmg" src="./assets/prev_patriot.png" alt="">The Patriot<small>Tap to play</small></div>
         <div class="card char" data-char="entity"><img class="previmg" src="./assets/prev_entity.png" alt="">The Entity<small>Tap to play</small></div>
         <div class="card char" data-char="countess"><img class="previmg" src="./assets/prev_countess.png" alt="">Violet Voidstrike<small>Tap to play</small></div>
+        <div class="card char" data-char="shrike"><img class="previmg" src="./assets/prev_shrike.png" alt="">Silver Shrike<small>Tap to play</small></div>
+        <div class="card char" data-char="tyrant"><img class="previmg" src="./assets/prev_tyrant.png" alt="">Scarlet Tyrant<small>Tap to play</small></div>
+        <div class="card char" data-char="nocturne"><img class="previmg" src="./assets/prev_nocturne.png" alt="">Nocturne<small>Tap to play</small></div>
+        <div class="card char" data-char="forged"><img class="previmg" src="./assets/prev_forged.png" alt="">The Forged<small>Tap to play</small></div>
       </div>
     </div>
   </div>
@@ -1414,7 +1419,18 @@
   class InputSystem {
     constructor(){ this.steer={x:0,y:0}; this.keys=new Set(); this._surge=false; this._power=false; this._restart=false; this.joy=0;
       this.gyro=0; this.gyroOn=false; this.gyroBase=null;
-      this.moveSens=+(localStorage.getItem('invrun_movesens')||1); this.gyroSens=+(localStorage.getItem('invrun_gyrosens')||1); }
+      this.moveSens=+(localStorage.getItem('invrun_movesens')||1); this.gyroSens=+(localStorage.getItem('invrun_gyrosens')||1);
+      // 'stick' = the on-screen joystick. 'drag' = put a finger anywhere on the screen and the
+      // villain follows it left/right — no control to find, no thumb parked in one corner.
+      this.scheme=(localStorage.getItem('invrun_scheme')||'stick');
+      this.drag=0; this._dragId=null; }
+    setScheme(v){ this.scheme=(v==='drag')?'drag':'stick';
+      try{ localStorage.setItem('invrun_scheme',this.scheme); }catch(e){}
+      this.joy=0; this.drag=0; this._dragId=null;
+      const base=document.getElementById('joy-base');
+      if(base) base.style.display=(this.scheme==='drag')?'none':'';
+      const knob=document.getElementById('joy-knob');
+      if(knob) knob.style.transform='translateX(0px)'; }
     init(){
       addEventListener('keydown',e=>{
         if(e.repeat) return; this.keys.add(e.code);
@@ -1424,15 +1440,50 @@
       });
       addEventListener('keyup',e=>this.keys.delete(e.code));
       this._bindTouch();
+      this._bindDrag();
       this._bindGyro();
+      this.setScheme(this.scheme);
     }
     sample(){
       let x=0;
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
-      x+=this.joy;                                    // ANALOG joystick (partial = partial steer)
+      x += (this.scheme==='drag') ? this.drag : this.joy;   // analog either way: partial = partial steer
       if(this.gyroOn) x+=this.gyro;                   // TILT the phone side to side to steer
       this.steer.x=clamp(x,-1,1); this.steer.y=0;     // no vertical, ever
+    }
+    // DIRECT DRAG: touch anywhere on the playfield and the villain tracks your finger. Steering
+    // is RELATIVE to where you first touched, so grabbing the screen never snaps him sideways —
+    // he only moves as far as your finger travels from that point.
+    _bindDrag(){
+      const CTRL='#btn-power,#btn-boost,#joy-base,#pause-btn,.modal,.overlay,button,input';
+      const isCtrl=(t)=>!!(t && t.closest && t.closest(CTRL));
+      const FULL=()=>Math.max(90, innerWidth*0.30);   // finger travel for full lock, scaled to the screen
+      addEventListener('touchstart',e=>{
+        if(this.scheme!=='drag' || this._dragId!==null) return;
+        const t=e.changedTouches[0]; if(!t || isCtrl(e.target)) return;
+        this._dragId=t.identifier; this._dragX=t.clientX; this.drag=0;
+      },{passive:true});
+      addEventListener('touchmove',e=>{
+        if(this.scheme!=='drag' || this._dragId===null) return;
+        for(const t of e.changedTouches){
+          if(t.identifier!==this._dragId) continue;
+          this.drag=clamp((t.clientX-this._dragX)/FULL()*this.moveSens,-1,1);
+          // let the anchor trail the finger, so a long swipe can still be pushed further
+          const over=(t.clientX-this._dragX)-clamp(t.clientX-this._dragX,-FULL(),FULL());
+          if(over) this._dragX+=over;
+        }
+      },{passive:true});
+      const end=(e)=>{ if(this._dragId===null) return;
+        for(const t of e.changedTouches) if(t.identifier===this._dragId){ this._dragId=null; this.drag=0; } };
+      addEventListener('touchend',end,{passive:true});
+      addEventListener('touchcancel',end,{passive:true});
+      // mouse equivalent, so the scheme is testable on a desktop too
+      addEventListener('mousedown',e=>{ if(this.scheme!=='drag'||isCtrl(e.target)) return;
+        this._dragId='m'; this._dragX=e.clientX; this.drag=0; });
+      addEventListener('mousemove',e=>{ if(this._dragId!=='m') return;
+        this.drag=clamp((e.clientX-this._dragX)/FULL()*this.moveSens,-1,1); });
+      addEventListener('mouseup',()=>{ if(this._dragId==='m'){ this._dragId=null; this.drag=0; } });
     }
     // GYRO AIMING: tilt the phone left/right (portrait roll = gamma) to steer the villain.
     _bindGyro(){
@@ -2089,6 +2140,24 @@
       {id:'nova',  n:'NIGHT BLOOM',  kind:'nova',  c:0xff5ce0, c2:0x9b3bff},
     ],
   };
+  POWERS.shrike=[ {id:'talon', n:'TALON DIVE',   kind:'laser', c:0xf2f8ff, c2:0x8fa8c4},
+                  {id:'gale',  n:'SILVER GALE',  kind:'nova',  c:0xffffff, c2:0xa8c0d8},
+                  {id:'rend',  n:'WING REND',    kind:'split', c:0xeaf4ff, c2:0x7f96b0},
+                  {id:'stoop', n:'STOOPING SKY', kind:'storm', c:0xffffff, c2:0xbfd4e8} ];
+  POWERS.tyrant=[ {id:'decree',n:'BLOOD DECREE', kind:'laser', c:0xff5060, c2:0x8a0f18},
+                  {id:'purge', n:'PURGE',        kind:'nova',  c:0xff2a3c, c2:0x6a0a12},
+                  {id:'sever', n:'SEVERANCE',    kind:'split', c:0xff8090, c2:0xa0121e},
+                  {id:'reign', n:'SCARLET REIGN',kind:'storm', c:0xff2a3c, c2:0xffb0b8} ];
+  POWERS.nocturne=[{id:'vigil',n:'LAST VIGIL',   kind:'laser', c:0xd81028, c2:0x2a1030},
+                  {id:'toll',  n:'MIDNIGHT TOLL',kind:'nova',  c:0xff2a48, c2:0x1a0a20},
+                  {id:'verdict',n:'VERDICT',     kind:'split', c:0xff5a6a, c2:0x3a1040},
+                  {id:'requiem',n:'REQUIEM',     kind:'storm', c:0xd81028, c2:0x7a2050} ];
+
+  POWERS.forged=[ {id:'anvil', n:'ANVIL FALL',  kind:'nova',  c:0xff6a5a, c2:0x9b1d2a},
+                  {id:'forge', n:'FORGE LIGHT', kind:'laser', c:0xffd08a, c2:0xff4a2a},
+                  {id:'cleave',n:'COLD CLEAVE', kind:'split', c:0xffe8d0, c2:0x8e94a2},
+                  {id:'temper',n:'TEMPERING',   kind:'storm', c:0xffb060, c2:0x9b1d2a} ];
+
   function powerFor(charKey){
     const list=POWERS[charKey]||POWERS.dominus;
     let id=null; try{ id=localStorage.getItem('invrun_pw_'+charKey); }catch(e){}
@@ -2380,7 +2449,7 @@
     minRange:150,     // ...but never a shorter reach than this at low speed
     maxRange:560,     // ...and never past the spawn horizon (city.aheadDist is 620)
     range:210,        // legacy distance, kept only as the fallback if speed is unavailable
-    blastAfter:2,     // a power is STRONG: it also takes the next few towers behind the gate
+    blastAfter:1,     // the gate, and ONE tower behind it. Two made a shot clear half a street.
     blastRange:150,   // how far past the gate that follow-through reaches
     gateScore:3.0,    // score multiplier for clearing a gate with a power
     slamCost:62,      // momentum lost for body-slamming a gate — a gate is meant to nearly kill you
@@ -2680,7 +2749,11 @@
           // weight is 0 where the cape meets the shoulders and 1 at the free trailing edge, so
           // NOTHING solid can move, by construction, on any model.
           const mat=o.material;
-          if(FlightPlayer.flowMask(o.geometry, cfg.flow)){
+          // flowMesh limits the cloth to one named mesh. The GLB villains are a single mesh, so
+          // their regions have to exclude limbs geometrically; a procedural model has the cape as
+          // its own object and can just say so.
+          const clothOK = !cfg.flowMesh || o.name===cfg.flowMesh || (o.geometry&&o.geometry.name===cfg.flowMesh);
+          if(clothOK && FlightPlayer.flowMask(o.geometry, cfg.flow)){
             mat.onBeforeCompile=(sh)=>{ sh.uniforms.uWind=this._windU;
               sh.vertexShader='uniform float uWind;\nattribute float aFlow;\nattribute float aFlowD;\n'
                 +sh.vertexShader.replace('#include <begin_vertex>',
@@ -2762,6 +2835,9 @@
         if(window.__hideLoader) window.__hideLoader();                            // the villain is on screen: NOW the loader may go
         if(!this._prefetched){ this._prefetched=true; this.prefetchAll(); }
       };
+      // A procedural villain has nothing to download: hand `build` a scene it can treat exactly
+      // like a parsed GLB, so every downstream step (pose, fit, cloth, aura) is shared.
+      if(cfg.procedural){ build({scene: buildProceduralVillain(cfg.palette)}); return; }
       if(C.has(cfg.url)){ build(C.get(cfg.url)); return; }                        // already parsed -> instant
       // A dropped request on a phone network is common and recoverable. Retry with a short backoff
       // rather than dropping the player straight to the placeholder.
@@ -2899,6 +2975,19 @@
                    this.rush=Math.min(this.RUSH_MAX,this.rush+3); }
     // a short, sharp recoil the camera reads off — this is what makes a hit feel like contact
     punch(amount){ this._punch=Math.min(1.8,(this._punch||0)+amount); }
+    // MENU MODE: the city still streams past exactly as it does in play — same camera, same
+    // speed, same road — but the villain is not in the shot yet. He arrives when you press PLAY,
+    // which is what makes the menu read as the world waiting for you rather than a paused game.
+    setMenuMode(on){
+      this._menuMode=!!on;
+      this.rig.visible=!on;
+      if(this.contactShadow) this.contactShadow.visible=!on;   // his ground shadow goes with him
+      if(this.fireAura) this.fireAura.visible=false;
+      if(this.cape) this.cape.visible=false;
+      if(on){                                          // and nothing of his may linger in the air
+        for(const st of (this.streaks||[])) if(st.mesh) st.mesh.visible=false;
+        for(const e of (this.embers||[])){ e.life=0; if(e.mesh) e.mesh.visible=false; } }
+    }
     // Hitting a gate is a WALL. Everything that makes you fast is taken away at once: the rush is
     // gone, the surge is cancelled, and forward speed is knocked well under the floor so the
     // recovery ramp is something you can actually feel before the run picks up again.
@@ -5691,6 +5780,7 @@
       { const ov=document.getElementById('start-overlay');
         ov.classList.add('hidden'); ov.classList.remove('leaving'); }
       document.body.classList.remove('at-menu');
+      g.player.setMenuMode(false);              // the villain drops in as the run begins
       document.getElementById('gameover-overlay').classList.add('hidden');
     }
     tick(){
@@ -5805,6 +5895,7 @@
       { const ov=document.getElementById('start-overlay');
         ov.classList.remove('leaving'); ov.classList.remove('hidden'); }
       document.body.classList.add('at-menu');
+      this.game.player.setMenuMode(true);
       this.resetAll(); this.refreshBestLine();
       if(this.game.snapMenuBg) this.game.snapMenuBg();
     }
@@ -5886,6 +5977,25 @@
                 smash:{y:-0.05,z:3.0} },
     // Voidstrike's GLB is already posed prone along +Z (head forward, back up) — no yaw, only a
     // slight nose-up so she reads as climbing into the smash like the others.
+    // ---- three new villains. All three are authored upright with Y up and their cape on -Z,
+    // so they take the same flight pose as Dominus and the Patriot. Cape regions were set by
+    // rendering the flow weights (see ASSETS_HOWTO "Capes and wings").
+    shrike:   { name:'Silver Shrike', url:'./assets/char_a.glb', aura:{epic:0x8fa8c4, eth:0xf2f8ff}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+                flow:[{a:'z',d:-1,from:0.20,to:0.98,box:{y:[-0.50,1]}},{a:'y',d:-1,from:-0.15,to:0.86,box:{z:[-1,-0.22],y:[-0.64,1]}}], aim:false,
+                smash:{y:-0.05,z:3.0} },
+    tyrant:   { name:'Scarlet Tyrant', url:'./assets/char_b.glb', aura:{epic:0x8a0f18, eth:0xff2a3c}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+                flow:[{a:'z',d:-1,from:0.22,to:0.98,box:{y:[-0.55,1]}},{a:'y',d:-1,from:-0.20,to:0.86,box:{z:[-1,-0.26],y:[-0.66,1]}}], aim:false,
+                smash:{y:-0.05,z:3.0} },
+    nocturne: { name:'Nocturne', url:'./assets/char_c.glb', aura:{epic:0x2a1030, eth:0xd81028}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+                // a long coat rather than a cape: the skirt hangs lower, so the downward ramp
+                // starts higher up and reaches further down than a shoulder-hung cape would
+                flow:[{a:'z',d:-1,from:0.18,to:0.98,box:{y:[-0.62,1]}},{a:'y',d:-1,from:0.02,to:0.90,box:{z:[-1,-0.10],y:[-0.74,1]}}], aim:false,
+                smash:{y:-0.05,z:3.0} },
+    // Built entirely from code — no GLB. See buildProceduralVillain.
+    forged:   { name:'The Forged', procedural:true, aura:{epic:0x9b1d2a, eth:0xff4a5a}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+                // only the cape may move; the limbs are solid geometry
+                flowMesh:'cape', flow:[{a:'y',d:-1,from:-0.85,to:0.98}], aim:false,
+                smash:{y:-0.05,z:3.0} },
     countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.28,to:0.98,box:{y:[-0.06,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
@@ -5910,6 +6020,196 @@
       r.setProperty('--aura-eth-rgb',  rgb(t));
     }catch(err){}
   }
+  // =====================================================================================
+  // PROCEDURAL VILLAIN — a human built entirely from code, no GLB.
+  //
+  // The whole trick to not looking like a pile of boxes is PROPORTION and TAPER. Real figure
+  // drawing measures a body in head-heights: an adult is ~7.5 heads tall, shoulders ~2 heads
+  // wide, the elbow lands at the navel, the wrist at the crotch, the knee at the halfway point
+  // of the leg. Every number below is derived from HEAD, so the figure stays correct if you
+  // scale it.
+  //
+  // Nothing here is a plain box or a plain sphere. Limbs are LatheGeometry profiles — a silhouette
+  // curve spun around its axis — which gives a real deltoid swell, a taper to the wrist, a calf
+  // that bulges and narrows to the ankle. That is the difference between "blocky/circley" and a
+  // body: a limb is not a cylinder, it is a curve.
+  // =====================================================================================
+  function buildProceduralVillain(opts){
+    const O=Object.assign({ skin:0x8a5a3c, suit:0x1b1d26, trim:0x9b1d2a, metal:0x8e94a2 }, opts||{});
+    const HEAD=0.115;                                   // one head-height; everything derives from it
+    const root=new THREE.Group();
+
+    const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.62,metalness:.06},o||{}));
+    const matSuit=M(O.suit,{roughness:.54}), matSkin=M(O.skin,{roughness:.78}),
+          matTrim=M(O.trim,{roughness:.5}), matMetal=M(O.metal,{roughness:.28,metalness:.55,emissive:0x2a2f3a,emissiveIntensity:.25});
+
+    // A limb from a silhouette: pairs of [radius, height] up the length, spun into a solid.
+    // `seg` 20 is smooth enough to read as flesh without being a sphere.
+    const limb=(profile, mat, seg)=>{
+      const pts=profile.map(([r,y])=>new THREE.Vector2(Math.max(0.0006,r), y));
+      const g=new THREE.LatheGeometry(pts, seg||20);
+      g.computeVertexNormals();
+      return new THREE.Mesh(g, mat);
+    };
+    const put=(m,x,y,z,rx,ry,rz)=>{ m.position.set(x,y,z);
+      if(rx)m.rotation.x=rx; if(ry)m.rotation.y=ry; if(rz)m.rotation.z=rz;
+      m.castShadow=true; root.add(m); return m; };
+
+    // ---- TORSO: the V. Wide at the deltoids, narrow at the waist, flaring again at the hips.
+    // A single lathe would be radially symmetric and read as a bottle, so it is squashed on Z
+    // afterwards — a human chest is far wider than it is deep.
+    const torso=limb([
+      [0.00, -1.55*HEAD],[0.62*HEAD,-1.52*HEAD],[0.70*HEAD,-1.15*HEAD],   // hips flare
+      [0.58*HEAD,-0.72*HEAD],[0.55*HEAD,-0.30*HEAD],                       // waist, the narrowest point
+      [0.72*HEAD, 0.25*HEAD],[0.86*HEAD, 0.75*HEAD],                       // ribcage opening out
+      [0.92*HEAD, 1.05*HEAD],[0.74*HEAD, 1.30*HEAD],                       // shoulder shelf
+      [0.30*HEAD, 1.42*HEAD],[0.00, 1.45*HEAD]
+    ], matSuit, 24);
+    torso.scale.z=0.62;                                 // chest depth < chest width
+    put(torso, 0, 0, 0);
+
+    // chest plate + belt, so the suit reads as armour rather than paint
+    const plate=limb([[0.00,-0.05*HEAD],[0.80*HEAD,0.02*HEAD],[0.86*HEAD,0.55*HEAD],[0.52*HEAD,0.92*HEAD],[0.00,1.00*HEAD]], matTrim, 22);
+    plate.scale.set(1.02,1,0.66); put(plate, 0, 0.18*HEAD, 0.02*HEAD);
+    const belt=limb([[0.00,-0.10*HEAD],[0.74*HEAD,-0.08*HEAD],[0.78*HEAD,0.08*HEAD],[0.00,0.10*HEAD]], matMetal, 22);
+    belt.scale.z=0.64; put(belt, 0, -0.72*HEAD, 0);
+
+    // ---- NECK + HEAD. A real skull is an egg: taller than wide, widest above the ears, with a
+    // jaw that narrows to the chin. Sphere-scaling alone gives a beach ball, so the profile does
+    // the work and the jaw is a separate taper.
+    put(limb([[0.00,0],[0.20*HEAD,0.02*HEAD],[0.22*HEAD,0.30*HEAD],[0.00,0.32*HEAD]], matSkin,16), 0, 1.42*HEAD, 0);
+    const skull=limb([
+      [0.00, 0.00],[0.26*HEAD,0.06*HEAD],[0.40*HEAD,0.22*HEAD],           // jaw, narrow at the chin
+      [0.46*HEAD,0.44*HEAD],[0.48*HEAD,0.66*HEAD],                         // cheekbone / temple, the widest
+      [0.44*HEAD,0.86*HEAD],[0.30*HEAD,1.00*HEAD],[0.00,1.04*HEAD]         // cranium closing over
+    ], matSkin, 24);
+    skull.scale.z=0.92;                                  // heads are slightly deeper than wide
+    put(skull, 0, 1.70*HEAD, 0);
+    // mask across the eyes — reads as a villain without needing a face
+    const mask=limb([[0.00,0],[0.47*HEAD,0.02*HEAD],[0.49*HEAD,0.20*HEAD],[0.00,0.22*HEAD]], matTrim, 24);
+    mask.scale.z=0.94; put(mask, 0, 2.14*HEAD, 0.01*HEAD);
+    // FACE STRUCTURE. A featureless ovoid reads as a shop dummy from any angle, and these are the
+    // three planes the eye actually looks for: the brow ridge, the nose, and the line of the jaw.
+    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.62*HEAD,0.09*HEAD,0.10*HEAD), matTrim);
+    brow.position.set(0,2.28*HEAD,0.34*HEAD); brow.rotation.x=-0.16; root.add(brow);
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.085*HEAD,0.26*HEAD,4), matSkin);
+    nose.position.set(0,2.08*HEAD,0.38*HEAD); nose.rotation.set(1.35,Math.PI/4,0); root.add(nose);
+    for(const sx of [-1,1]){                                      // cheekbones catching the light
+      const ch=limb([[0.00,0],[0.13*HEAD,0.02*HEAD],[0.10*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matSkin,12);
+      ch.position.set(sx*0.26*HEAD,2.02*HEAD,0.26*HEAD); ch.scale.z=0.8; root.add(ch);
+      const ear=limb([[0.00,0],[0.07*HEAD,0.02*HEAD],[0.075*HEAD,0.16*HEAD],[0.00,0.20*HEAD]], matSkin,10);
+      ear.position.set(sx*0.42*HEAD,2.06*HEAD,-0.02*HEAD); ear.scale.z=1.5; root.add(ear);
+    }
+    const jaw=limb([[0.00,0],[0.30*HEAD,0.03*HEAD],[0.33*HEAD,0.20*HEAD],[0.00,0.24*HEAD]], matSkin,18);
+    jaw.scale.set(1,1,0.86); put(jaw, 0, 1.74*HEAD, 0.03*HEAD);
+
+    // ---- ARMS. Deltoid swell, taper into the elbow, forearm belly, wrist pinch. Built pointing
+    // DOWN the -Y axis then rotated out, so the shoulder is the pivot and the pose is one number.
+    const arm=(side)=>{
+      const g=new THREE.Group();
+      // A pauldron over the shoulder — the single strongest "villain" read in a silhouette.
+      const pauld=limb([[0.00,0.16*HEAD],[0.30*HEAD,0.10*HEAD],[0.40*HEAD,-0.10*HEAD],
+                        [0.36*HEAD,-0.30*HEAD],[0.00,-0.34*HEAD]], matMetal, 18);
+      pauld.scale.z=0.86; pauld.position.y=0.04*HEAD; g.add(pauld);
+      // Upper arm: shoulder to elbow is ~1.35 heads, and the elbow must land level with the navel.
+      const upper=limb([
+        [0.00,0],[0.30*HEAD,-0.05*HEAD],[0.325*HEAD,-0.26*HEAD],          // deltoid swell
+        [0.27*HEAD,-0.70*HEAD],[0.225*HEAD,-1.20*HEAD],[0.21*HEAD,-1.32*HEAD],
+        [0.00,-1.35*HEAD]                                                  // elbow
+      ], matSuit, 18);
+      g.add(upper);
+      // Forearm: elbow to wrist ~1.15 heads, wrist level with the crotch.
+      const fore=limb([
+        [0.00,0],[0.225*HEAD,-0.05*HEAD],[0.245*HEAD,-0.30*HEAD],         // forearm belly, high
+        [0.165*HEAD,-0.92*HEAD],[0.135*HEAD,-1.12*HEAD],[0.00,-1.15*HEAD] // wrist pinch
+      ], matSuit, 18);
+      fore.position.y=-1.33*HEAD; fore.rotation.x=0.26; g.add(fore);
+      const cuff=limb([[0.00,-0.04*HEAD],[0.205*HEAD,0],[0.215*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matMetal,16);
+      cuff.position.y=-2.34*HEAD; cuff.rotation.x=0.26; g.add(cuff);
+      // Hand: a palm block plus a thumb, because a lathe alone gives a mitten.
+      const hg=new THREE.Group(); hg.position.set(0,-2.48*HEAD,0.13*HEAD); hg.rotation.x=0.26;
+      const palm=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.36*HEAD,0.15*HEAD), matSkin);
+      palm.position.y=-0.16*HEAD; hg.add(palm);
+      const fingers=new THREE.Mesh(new THREE.BoxGeometry(0.28*HEAD,0.22*HEAD,0.13*HEAD), matSkin);
+      fingers.position.set(0,-0.42*HEAD,0.01*HEAD); fingers.rotation.x=0.30; hg.add(fingers);
+      const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.10*HEAD,0.18*HEAD,0.11*HEAD), matSkin);
+      thumb.position.set(side*-0.16*HEAD,-0.20*HEAD,0.04*HEAD); thumb.rotation.z=side*0.5; hg.add(thumb);
+      g.add(hg);
+      g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+      g.position.set(side*0.86*HEAD, 1.14*HEAD, 0);
+      g.rotation.z=side*0.16; g.rotation.x=-0.34;        // arms swept slightly back, flight-ready
+      root.add(g); return g;
+    };
+    const armL=arm(-1), armR=arm(1);
+
+    // ---- LEGS. Thigh mass, knee pinch, calf bulge, ankle pinch, then a foot with an actual
+    // heel and toe. A cylinder leg is the single most obvious "programmer model" tell.
+    const leg=(side)=>{
+      const g=new THREE.Group();
+      const thigh=limb([
+        [0.00,0],[0.40*HEAD,-0.06*HEAD],[0.42*HEAD,-0.30*HEAD],           // glute / quad mass
+        [0.33*HEAD,-0.90*HEAD],[0.27*HEAD,-1.32*HEAD],[0.00,-1.36*HEAD]   // narrowing into the knee
+      ], matSuit, 18);
+      g.add(thigh);
+      const shin=limb([
+        [0.00,0],[0.26*HEAD,-0.05*HEAD],[0.29*HEAD,-0.34*HEAD],           // calf belly, high and full
+        [0.18*HEAD,-0.96*HEAD],[0.14*HEAD,-1.24*HEAD],[0.00,-1.26*HEAD]   // ankle
+      ], matSuit, 18);
+      shin.position.y=-1.32*HEAD; g.add(shin);
+      const boot=limb([[0.00,0],[0.20*HEAD,-0.03*HEAD],[0.22*HEAD,-0.22*HEAD],[0.00,-0.26*HEAD]], matTrim,16);
+      boot.position.y=-2.52*HEAD; g.add(boot);
+      const foot=new THREE.Mesh(new THREE.BoxGeometry(0.32*HEAD,0.16*HEAD,0.66*HEAD), matTrim);
+      foot.position.set(0,-2.72*HEAD,0.17*HEAD); g.add(foot);             // heel behind, toe ahead
+      g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+      g.position.set(side*0.34*HEAD, -1.36*HEAD, 0);
+      g.rotation.x=0.12; g.rotation.z=side*0.05;
+      root.add(g); return g;
+    };
+    const legL=leg(-1), legR=leg(1);
+    legL.rotation.x=0.34; legR.rotation.x=-0.10;         // a stride, so he is not stood to attention
+
+    // ---- CAPE. The hard part. A cone or a flat plane both read instantly as a prop, because
+    // real cloth has three things at once: it WRAPS the shoulders (so it is deeply curved near the
+    // top), it FLARES as it falls, and it gathers into VERTICAL FOLDS that get deeper toward the
+    // free hem. All three are displaced per-vertex below. The fold count is deliberately odd so
+    // the drape is never mirror-symmetric, which is the other giveaway.
+    const CW=2.15*HEAD, CL=4.05*HEAD, SEGX=30, SEGY=32;
+    const cg=new THREE.PlaneGeometry(CW, CL, SEGX, SEGY);
+    { const pos=cg.attributes.position;
+      for(let i2=0;i2<pos.count;i2++){
+        const x0=pos.getX(i2), y0=pos.getY(i2);
+        const t=clamp(0.5 - y0/CL, 0, 1);               // 0 at the collar, 1 at the hem
+        const u=clamp(x0/(CW*0.5), -1, 1);              // -1..1 across the width
+        // 1) FLARE — narrow at the shoulders, wide at the hem
+        const flare=0.62 + t*1.15;
+        // 2) FOLDS — 7 of them, shallow at the collar and deep at the hem, so the hem scallops
+        // amplitude matters more than count: at 6% of the width the folds vanished into the
+        // smooth shading and the cape read as one bent sheet of plastic.
+        const fold=Math.sin(u*Math.PI*3.5)*0.44*HEAD*Math.pow(t,1.15);
+        // 3) WRAP — the sheet curls around the back near the shoulders and opens out below
+        const wrap=-(0.95*HEAD)*(1-u*u)*(0.85-0.55*t) - 0.30*HEAD*t*t;
+        pos.setX(i2, x0*flare - u*Math.abs(fold)*0.55);   // folds pull the cloth inward as they deepen
+        pos.setZ(i2, wrap + fold);
+        // hem hangs, and the corners lift slightly as if caught by the air
+        pos.setY(i2, y0 - t*t*0.35*HEAD + Math.abs(u)*t*t*0.30*HEAD);
+      }
+      cg.computeVertexNormals();
+    }
+    cg.name='cape';
+    const cape=new THREE.Mesh(cg, new THREE.MeshStandardMaterial({color:O.trim,roughness:.74,
+                 side:THREE.DoubleSide,metalness:.04,flatShading:false}));
+    cape.position.set(0, 0.42*HEAD, -0.30*HEAD);
+    cape.rotation.x=-0.10;                              // trailing back off the shoulders
+    cape.name='cape';                                   // the cloth shader keys off this name
+    cape.castShadow=true; root.add(cape);
+    // the collar it hangs from, so it does not appear to float off his back
+    const collar=limb([[0.00,-0.06*HEAD],[0.66*HEAD,-0.02*HEAD],[0.70*HEAD,0.16*HEAD],[0.00,0.20*HEAD]], matMetal, 20);
+    collar.scale.z=0.66; put(collar, 0, 1.26*HEAD, -0.06*HEAD);
+
+    root.userData.parts={armL,armR,legL,legR,cape,torso,skull};
+    return root;
+  }
+
   function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
 
   // ===================================================================================
@@ -6122,6 +6422,7 @@
 
       applyAuraUI(currentCharKey());           // seed the UI aura colours before anything draws
       document.body.classList.add('at-menu');   // the game opens on the menu
+      this.player.setMenuMode(true);            // camera flies the street; the villain isn't there yet
       try{ document.fonts.ready.then(()=>this.fitMenuText()); }catch(e){ this.fitMenuText(); }
       addEventListener('resize',()=>this.fitMenuText());
       addEventListener('orientationchange',()=>setTimeout(()=>this.fitMenuText(),120));
@@ -6253,6 +6554,15 @@
         musicBtn.textContent=on?'ON':'OFF'; musicBtn.classList.toggle('on',on); };
       musicBtn.onclick=()=>applyMusic(!this.audio.musicOn);
       musicBtn.textContent=this.audio.musicOn?'ON':'OFF'; musicBtn.classList.toggle('on',this.audio.musicOn);
+      // CONTROLS: the on-screen stick, or drag anywhere on the playfield. Persisted, and applied
+      // immediately so the joystick appears/disappears without leaving Settings.
+      { const cb=document.getElementById('scheme-btn');
+        const applyC=()=>{ const drag=this.input.scheme==='drag';
+          cb.textContent=drag?'DRAG':'JOYSTICK'; cb.classList.toggle('on',!drag); };
+        cb.onclick=()=>{ this.input.setScheme(this.input.scheme==='drag'?'stick':'drag');
+          applyC(); this.audio.uiClick&&this.audio.uiClick(); };
+        this.haptics.attachSwitch(cb);
+        applyC(); }
       // VIBRATION toggle (persisted). The note names the real limitation rather than blaming the
       // phone: on iOS the Taptic Engine is there, but Safari exposes only the system tap, so the
       // rhythm of a pattern survives and its strength does not. Only when there is no hook at all
@@ -6567,7 +6877,7 @@
   }
 
   // small debug handle so automated tests can drive the tuning tables
-  try { window.__cb={POWERS,PWR,PLAY,BOOST,DRONES,GATE_LOOK,STAGES,HAPTIC,CHARACTERS,THEMES,stageFor,powerFor}; }catch(e){}
+  try { window.__cb={POWERS,PWR,PLAY,BOOST,DRONES,GATE_LOOK,STAGES,HAPTIC,CHARACTERS,THEMES,stageFor,powerFor,buildProceduralVillain}; }catch(e){}
   try { window.__game=new Game(); }
   catch(err){
     document.body.innerHTML='<div style="color:#fff;padding:40px;font-family:monospace">Failed to start: '+
