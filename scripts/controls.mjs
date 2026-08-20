@@ -58,12 +58,12 @@ const ctl = await pg.evaluate(()=>{
   o.dragHidesBase = !vis();
   o.btnSaysDrag = btn.textContent.trim();
   o.persisted = localStorage.getItem('invrun_scheme');
+  btn.onclick();                              // back to stick; the drag checks re-enter below
 
   // in DRAG, the joystick channel must be ignored entirely
-  I.joy = 1; I.drag = 0; I.steer.x = 0; I.sample();
+  btn.onclick();                              // -> drag
+  I.joy = 1; I.steer.x = 0; I.sample();
   o.dragIgnoresJoy = Math.abs(I.steer.x) < 1e-6;
-  I.joy = 0; I.drag = -0.7; I.steer.x = 0; I.sample();
-  o.dragSteers = I.steer.x < -0.5;
 
   // and back in STICK, a leftover drag value must not keep steering
   btn.onclick();
@@ -74,28 +74,71 @@ const ctl = await pg.evaluate(()=>{
   o.stickSteers = I.steer.x > 0.4;
 
   // flipping schemes must zero the live input, never leave the villain drifting
-  I.joy = 1; I.drag = 1; I.setScheme('drag');
-  o.flushOnSwitch = I.joy===0 && I.drag===0 && I._dragId===null;
+  I.joy = 1; I.dragPx = 99; I.setScheme('drag');
+  o.flushOnSwitch = I.joy===0 && I.dragPx===0 && I._dragId===null;
   I.setScheme('stick');
   return o;
 });
 
-// a real finger drag on the playfield steers, and it is RELATIVE — the villain does not jump to
-// wherever the finger landed
+// DRAG is a POSITION control, and these are the properties that make it feel like a finger and
+// not like ice:
+//   - landing a finger does not move him
+//   - he tracks the finger, roughly 1:1 through dragWorldPerPx
+//   - holding the finger STILL stops him dead (the old version kept sliding)
+//   - lifting the finger leaves him exactly where he is (recentring would ruin every power tap)
+//   - the next touch re-anchors from there instead of jumping back
+//   - a flick across the whole glass cannot push him outside the playfield
 const drag = await pg.evaluate(async ()=>{
-  const G = window.__game, I = G.input;
+  const G = window.__game, I = G.input, P = G.player, XBOX = window.__cb.PLAY.xBox;
+  G._clock.getDelta = ()=>1/60;
+  G.renderer.render = ()=>{}; window.requestAnimationFrame = ()=>0;
+  G.ui.update = ()=>{}; G.snapMenuBg = ()=>{};
+  G.time.frozen = ()=>false; G.time.update = (rd)=>rd;
   I.setScheme('drag'); I.moveSens = 1;
+  G.run.startRun();
+  const step=(n)=>{ for(let i=0;i<n;i++) G._loop(); };
+  const rc =()=> G.city._pathX(P.pos.z);
+  const off=()=> P.pos.x - rc();
   const fire=(type,x)=>{ const t=new Touch({identifier:7,target:document.body,clientX:x,clientY:600});
     dispatchEvent(new TouchEvent(type,{changedTouches:[t],touches:type==='touchend'?[]:[t],
       bubbles:true,cancelable:false})); };
+
+  step(30);
+  const start=off();
   fire('touchstart', 340);                    // land far to the RIGHT of centre
-  const onLand = I.drag;                      // must still be 0 — relative, not absolute
-  fire('touchmove', 340 - 200);               // sweep left
-  const afterLeft = I.drag;
-  fire('touchend', 140);
-  const onRelease = I.drag;
+  step(12);
+  const onLand=off()-start;                   // relative anchoring: landing must not move him
+
+  const PX=-90;                               // sweep left, short of the playfield edge
+  fire('touchmove', 340+PX);
+  step(60);
+  const moved=off()-start;
+  const wantMoved=PX*I.dragWorldPerPx();
+
+  const held=off(); step(60);
+  const drift=off()-held;                     // finger still => he must be still
+
+  fire('touchend', 340+PX);
+  step(60);
+  const afterLift=off()-held;                 // lifting must not recentre him
+  // ...and whatever residual there is must be a fixed lag, not a creep. The target is anchored to
+  // the road centre one frame behind where it is sampled, so on a curving road there is a constant
+  // sub-centimetre offset; four times the wait must not give four times the number.
+  const lift1=off(); step(240);
+  const creep=Math.abs(off()-lift1);
+
+  const before2=off();
+  fire('touchstart', 100); step(6);
+  const reanchor=off()-before2;               // a new touch must not jump him
+  fire('touchend', 100);
+
+  // a flick the full width of the glass, twice over — he must stop at the edge
+  fire('touchstart', 20); fire('touchmove', 20+4000); step(90);
+  const flung=off(); fire('touchend', 4020);
   I.setScheme('stick');
-  return { onLand, afterLeft, onRelease };
+  return { onLand:+onLand.toFixed(3), moved:+moved.toFixed(2), wantMoved:+wantMoved.toFixed(2),
+           drift:+drift.toFixed(3), afterLift:+afterLift.toFixed(3), reanchor:+reanchor.toFixed(3),
+           creep:+creep.toFixed(3), flung:+flung.toFixed(2), xbox:XBOX };
 });
 
 // ---- blast radius -------------------------------------------------------------------------
@@ -151,14 +194,17 @@ const checks = [
   ['drag scheme hides #joy-base',            ctl.dragHidesBase],
   ['the choice is persisted',                ctl.persisted==='drag'],
   ['drag ignores the joystick channel',      ctl.dragIgnoresJoy],
-  ['drag actually steers',                   ctl.dragSteers],
   ['tapping again returns to joystick',      ctl.backToStick==='stick'],
   ['joystick ignores a stale drag value',    ctl.stickIgnoresDrag],
   ['joystick actually steers',               ctl.stickSteers],
   ['switching schemes flushes live input',   ctl.flushOnSwitch],
-  ['a finger landing does not jerk the run', Math.abs(drag.onLand)<1e-6],
-  ['sweeping left steers left',              drag.afterLeft < -0.4],
-  ['lifting the finger centres the villain', drag.onRelease===0],
+  ['a finger landing does not move him',     Math.abs(drag.onLand)<0.25],
+  ['he tracks the finger about 1:1',         Math.abs(drag.moved-drag.wantMoved)<1.2],
+  ['holding the finger still stops him',     Math.abs(drag.drift)<0.05],
+  ['lifting the finger does not recentre',   Math.abs(drag.afterLift)<0.25],
+  ['the hold is a fixed lag, not a creep',   drag.creep < 0.25],
+  ['a new touch re-anchors, never jumps',    Math.abs(drag.reanchor)<0.25],
+  ['a flick cannot leave the playfield',     Math.abs(drag.flung)<=drag.xbox+0.01],
   ['powers actually fired',                  blast.shots > 20],
   // never MORE than one. 0 is legitimate — sometimes nothing has spawned yet inside blastRange.
   ['a shot never takes a 2nd extra tower',   blast.extras.every(e=>e<=1)],

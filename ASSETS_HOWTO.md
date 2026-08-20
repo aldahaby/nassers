@@ -339,22 +339,46 @@ exactly one normal colour and one gate colour, and no drone arrives before its g
 | **JOYSTICK** (default) | the on-screen stick in the bottom-left. Familiar, and your thumb has a home. |
 | **DRAG** | put a finger anywhere on the playfield and the villain follows it left and right. `#joy-base` disappears entirely. |
 
-Drag is **relative, not absolute**. The anchor is wherever your finger first lands, so the villain
-never teleports under your thumb — you push away from where you started. A full lock is
-`max(90px, 30% of the screen width)` of travel, scaled by the existing move-sensitivity slider, and
-the anchor trails the finger once you hit the end so a long sweep can still be pushed further.
-Lifting the finger recentres.
+**The two schemes are different kinds of control, and that is the whole point.**
 
-The two schemes share one steering channel and whichever is off contributes **nothing**:
+The joystick is a **velocity** control: hold it over and he keeps sliding until you let go.
+
+Drag is a **position** control: he goes where your finger has dragged to, and **stops when your
+finger stops**. The first version fed the finger offset into the same velocity channel as the
+joystick, which meant an off-centre thumb kept accelerating him sideways — it felt like ice, and it
+was the single thing that made the scheme unusable.
 
 ```js
-x += (this.scheme==='drag') ? this.drag : this.joy;
+// InputSystem: the finger's travel since it landed, plus a sequence number per new touch
+dragPx, dragSeq, dragActive
+dragWorldPerPx()   // 60% of the screen width == the full playfield, times moveSens
+
+// FlightPlayer: anchor on a new touch, then follow, capped
+if(input.dragSeq!==this._dragSeq){ this._dragSeq=input.dragSeq; this._dragBase=this.pos.x-roadCentre; }
+const want=clamp(this._dragBase + input.dragPx*input.dragWorldPerPx(), -PLAY.xBox, PLAY.xBox);
+const step=clamp((roadCentre+want-this.pos.x)*Math.min(1,18*dt), -STRAFE*dt, STRAFE*dt);
 ```
 
-That matters more than it looks — a stale joystick value left at 1 would otherwise steer forever
-after a switch. `setScheme` zeroes both channels and drops any live touch id every time it runs.
+Four properties that all matter:
+
+- **Relative anchoring.** The origin is wherever the finger landed, so grabbing the screen never
+  snaps him sideways.
+- **Lifting leaves him where he is.** Recentring on release would yank him across the road every
+  time you tap FIRE.
+- **A speed cap.** `STRAFE` still bounds the step, so a flick across the glass cannot teleport him
+  through a tower.
+- **The velocity channel stays empty.** `sample()` adds `this.joy` only in stick mode, and
+  `setScheme` clears both plus any live touch id — a stale joystick value left at 1 would otherwise
+  steer forever after a switch.
+
 Drag ignores anything inside `#btn-power, #btn-boost, #joy-base, #pause-btn, .modal, .overlay,
 button, input`, so pressing FIRE is never also a swipe.
+
+**Sensitivity means two different things**, so the Settings row renames itself: **Steer Speed** on
+the joystick (how fast he strafes) and **Swipe Distance** on drag (how far he travels per swipe).
+It is applied in exactly one place per scheme — in `STRAFE` for the stick, in `dragWorldPerPx` for
+drag — never both. The slider runs 0.6×–2.2× and names each stop (*slow · normal · fast · very
+fast · twitchy*), because a bare multiplier tells nobody anything.
 
 Guarded by **`scripts/controls.mjs`**, which also holds the blast radius to one extra tower.
 
@@ -769,12 +793,31 @@ Ten villains. Nine are GLB models; one is built from code.
 | `entity` | The Entity | GLB |
 | `countess` | Violet Voidstrike | GLB |
 | `shrike` | Silver Shrike | `assets/char_a.glb` |
-| `tyrant` | Scarlet Tyrant | `assets/char_b.glb` |
+| `tyrant` | The Red Jester | `assets/char_b.glb` |
 | `nocturne` | Nocturne | `assets/char_c.glb` |
 | `forged` | The Forged | **code geometry** |
 
-Every one of them must be upright, Y-up, facing `+Z`, with the cape on `-Z`; `rotX` and `yaw` in
-`CHARACTERS` correct anything that is not. Each also carries an `aura:{epic,eth}` pair, which is
+### Orientation: check it, never assume it
+
+`rotX`, `yaw` and `roll` in `CHARACTERS` rotate the export into the flight pose. Copying another
+character's numbers is how three villains shipped crooked:
+
+- **Nocturne** and **The Red Jester** are authored standing upright, facing `+Z`. They take the
+  full `rotX: 1.15` flight pitch — but `yaw: 0`. They had inherited Dominus's `Math.PI/2-1.3`
+  (≈15.5°), which is a correction for *his* export and skewed theirs off the street.
+- **Silver Shrike** is authored **already flying prone** — arms forward, cape trailing, like
+  Voidstrike. Pitching him another 66° on top of that stood him on his head. He is `rotX: 0.20`,
+  `yaw: 0`.
+
+**`pose-sweep.html`** does exactly this. Serve the repo root and open:
+
+```
+pose-sweep.html?u=./assets/char_a.glb&p=[[0,0,0],[0,0,1.5708],[0,0,3.1416],[0,0,-1.5708]]
+```
+
+Each `p` entry is `[rotX, roll, yaw]`, rendered side by side from the game's own camera. Whichever
+panel shows his BACK is your yaw; then add pitch only if he is standing up in it. Guessing costs
+more than the two minutes that takes. Each also carries an `aura:{epic,eth}` pair, which is
 what colours the whole screen at Epic and Ethereal — see *The villain's aura colours the whole
 screen*.
 
@@ -799,8 +842,8 @@ Then add the entry to `CHARACTERS`, give it a `flow` region (PART 6), and render
 
 ## The Forged — built from code
 
-`buildProceduralVillain()` builds a villain out of geometry alone: **37 meshes, 3,872 vertices,
-6.91 heads tall.** Everything derives from one constant, `HEAD = 0.115`, so the proportions stay
+`buildProceduralVillain()` builds a villain out of geometry alone: **48 meshes, 4,770 vertices,
+7.17 heads tall.** Everything derives from one constant, `HEAD = 0.115`, so the proportions stay
 human no matter what it is scaled to.
 
 The thing that keeps it from reading as a toy is that **almost nothing is a box or a sphere**.
@@ -808,18 +851,49 @@ Limbs and torso are `LatheGeometry` silhouettes — a profile of radii swept aro
 deltoid swells, the elbow tapers, the calf bulges and the ankle pinches, the way an actual arm and
 leg do. The face is built rather than painted: brow ridge, nose bridge, cheekbones, jaw and ears.
 
-The cape is a subdivided `PlaneGeometry` displaced three ways at once, which is what gives it depth
-instead of the flat card the first attempt produced:
+### The cape is a cone, not a plane
+
+This is the one that took three goes. A cape built as a `PlaneGeometry` bent backwards keeps its
+side edges near `z≈0`, so they punch out through the ribs — from the front he was wearing two red
+panels — and a plane long enough to drape properly rises past his ears.
+
+A cape is a **conical shell**. Every point sits at a radius `R` from the body axis, swept through
+an arc that only covers the back. Build it in polar coordinates and the body can never poke
+through, because the cloth is always outside `R`:
 
 ```js
-const flare = 0.62 + t*1.15;                                   // widens toward the hem
-const fold  = Math.sin(u*Math.PI*3.5)*0.44*HEAD*Math.pow(t,1.15); // vertical folds, deepening down
-const wrap  = -(0.95*HEAD)*(1-u*u)*(0.85-0.55*t) - 0.30*HEAD*t*t; // wraps the shoulders, falls away
+const half = A0 + (A1-A0)*t;                    // 126° across the back at the collar, 165° at the hem
+const th   = u*half;
+const fold = Math.sin(u*Math.PI*3.5)*0.115*HEAD*Math.pow(t,1.25);   // a RADIAL ripple
+const R    = R0 + (R1-R0)*Math.pow(t,0.88) + fold;
+x =  R*Math.sin(th);
+z = -R*Math.cos(th) - 0.05*HEAD;
+y =  CTOP - t*CLEN + Math.pow(Math.abs(u),1.7)*0.42*HEAD*t*t;       // hangs low at the spine, lifts at the tips
 ```
 
-Two things went wrong on the first pass and are worth not repeating: the arms ended at the hip
-(anatomically the elbow sits at the navel and the wrist at the crotch), and the cape folds at
-`0.155*HEAD` were too shallow to catch a highlight, so it read as cardboard.
+### The head took three goes too
+
+Each failure is worth naming, because they are the obvious things to try:
+
+1. **A bare skin ovoid** reads as a shop dummy. There is nothing to catch the light and nothing
+   that says "costume".
+2. **An open-arc cowl standing off the skull** shows its cut edges as sharp panels beside the ears
+   — an open shell with `DoubleSide` displays its own interior at the seam.
+3. **A face lathe pushed forward through a closed helmet** turns into a **muzzle**, because a lathe
+   protrudes as a cone, not as a plane.
+
+What works: a full skin head, with the cowl as a thin shell of the **same profile** `0.02` heads
+larger, wrapped around everything but the face. The two surfaces are nearly coincident, so the cowl
+reads as a cover *on* the head rather than a helmet floating around it, and its open edge lands
+flush on skin — which is exactly what the edge of a real cowl does. The visor is its own lathed
+band across the eye line; trimming a full head-shell down to a band by shrinking the vertices
+outside it does **not** work, because a shell 0.038 heads proud of the skull is still proud of it
+after a 6% shrink, and the whole face comes out red.
+
+Two more first-pass mistakes: the arms ended at the hip (anatomically the elbow sits at the navel
+and the wrist at the crotch), and the chest plate was a full lathe in the trim colour — a red dome
+widest at the chest and narrowing to the shoulders, which is the silhouette of a bust. It is now a
+metal shell over the front 210° with a small chevron.
 
 Because it is code, its cloth is tagged by mesh name — `flowMesh:'cape'` — rather than by a
 bounding box, which is exact.
@@ -833,3 +907,57 @@ node scripts/characters.mjs
 Loads all ten and asserts, for each: the model exists, the cloth mask covers a plausible slice of
 it (a mask over ~60% means it caught a limb), the portrait decodes, the villain is hidden at the
 menu and visible in play, all four powers are wired, and the page threw nothing.
+
+---
+
+# PART 8 — Performance
+
+The game was never JS-bound — a full update pass measures **0.25 ms**. It was bound on **draw
+calls**, and there were 1,408 of them in Tokyo. Four changes took that to **917** (Metro: 577 →
+313), with no visible difference.
+
+| Change | What it was | What it is |
+|---|---|---|
+| Prop batching | ~30 meshes per roadside group | one mesh per distinct look (2–10) |
+| Coin field | 130 shards × 2 meshes, 260 materials | two `InstancedMesh`es, 2 calls total |
+| Drink cans | 6 meshes each | 3 — the ribs, lid and tab bake into one |
+| Shadow frustum | 200 units wide at 2048 | 124 wide at 1536 |
+
+## Prop batching
+
+A prop group is a trunk, a canopy, a kerb, five lanterns and a wire — and **nothing inside it ever
+moves on its own**; the whole group slides along the road as one rigid object. So `_mergeProps()`
+bakes each group down to one mesh per distinct look, after `_skinProps` has built it.
+
+Bucketing is by the material's **values**, not its identity — `_M()` mints a fresh material for
+every call, so two kerbstones of the same grey are different objects and would never batch on
+identity alone. `castShadow` is part of the key, since it decides which pass a mesh lands in.
+
+Anything else that is a fixed cluster of small meshes can use the same `concatGeo(list)` helper.
+It handles position/normal/uv on the shared primitives and skips the 40KB general-purpose merger.
+
+## Shadows
+
+The shadow frustum was 200 units across for a road 44 wide. Everything inside it is re-rendered
+into the depth map every frame, and at 200/2048 each texel covered 10 cm. **124 units at 1536 is
+8 cm per texel — sharper shadows AND fewer casters.**
+
+Only **tall** props cast (`top > 2.6`). Benches, bins, crates and cones were each costing a draw
+call to lay down a smudge two texels wide at the foot of something the player passes at 200 km/h.
+Trees, poles and lamps still cast, which is where shadows actually read on the road.
+
+## Adaptive resolution
+
+It used to wait for a two-second average under **27 fps** before doing anything, and it could only
+ever go **down** — one loading hitch and the game stayed soft for the rest of the session.
+
+It now samples every 60 frames, drops a step above 20.8 ms (below ~48 fps), and climbs back after
+three consecutive windows under 14.5 ms (~69 fps). Steps are
+`[min(2,DPR), 1.7, 1.45, 1.2, 1]`.
+
+## Measuring it
+
+`renderer.info.render.calls` is the number that matters, and it moves with where you are in the
+run — sample it a few seconds in, on the same map, before and after. Counting *visible meshes* by
+walking the scene tells you where the calls are coming from; attributing each mesh to the pool that
+owns it (`city.buildings`, `pickups.coins`, `city.props`, …) tells you what to fix.
