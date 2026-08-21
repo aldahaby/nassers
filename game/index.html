@@ -2697,6 +2697,9 @@
       const capeM=new THREE.MeshStandardMaterial({color:0xb5322a,roughness:.6,side:THREE.DoubleSide,flatShading:FS}); this.capeMat=capeM;
       this.suitMat=suit;
       this._baseGlow=[suit]; this.glowMats=[suit];   // materials that light up ON FIRE (model mats get added on load)
+      // ON FIRE overwrites every one of these materials' emissive. Remember what each one was
+      // AUTHORED with, so switching the fire off restores the material instead of leaving it lit.
+      this._glowRest=null; this._glowLit=false;
       // Procedural fallback. It starts HIDDEN and is only ever revealed if the GLB fails outright
       // (see _villainFailed) — nobody should watch a placeholder stand in for their character.
       // Local-space wind axes for the cloth shader. Created ONCE and only ever copied into, so
@@ -2807,6 +2810,7 @@
             ctr.addVectors(bmin,bmax).multiplyScalar(0.5); } }
         model.position.sub(ctr);                                  // centre the model on the origin
         this.glowMats=this._baseGlow.slice();                     // reset fire-glow list (drop any prior model's mats)
+        this._glowRest=null; this._glowLit=false;
         // WIND (cape/legs) — only for characters whose GLB matches this displacement convention.
         this._windU={value:0};
         model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; if(o.material){ this.glowMats.push(o.material);
@@ -3047,6 +3051,8 @@
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined;
+             this.unglow();
+             this._prevRc=undefined;
              // Re-anchor the drag control, or a finger left where it was at the end of the last
              // run would slide him straight back across the road on the first frame of this one.
              this._dragBase=0; this._dragSeq=-1;
@@ -3066,6 +3072,7 @@
       if(this.contactShadow) this.contactShadow.visible=!on;   // his ground shadow goes with him
       if(this.fireAura) this.fireAura.visible=false;
       if(this.cape) this.cape.visible=false;
+      this.unglow();                                   // never park him in the menu still on fire
       if(on){                                          // and nothing of his may linger in the air
         for(const st of (this.streaks||[])) if(st.mesh) st.mesh.visible=false;
         for(const e of (this.embers||[])){ e.life=0; if(e.mesh) e.mesh.visible=false; } }
@@ -3103,8 +3110,15 @@
       const drag = (g.input.scheme==='drag');
       const STRAFE=(28 + this.fwdNow*0.72) * (drag ? 1.55 : (g.input.moveSens||1));
       const lim=PLAY.xBox;
-      const rc0=this.game.city? this.game.city._pathX(this.pos.z) : 0;         // road centre at our z
       let sx=-steer.x;
+
+      // Advance along the road FIRST, then steer against the road centre where he now is. Doing it
+      // the other way round anchors the drag target one frame behind, which on a curving road is a
+      // small permanent lag that wanders as the curve changes.
+      this.vel.y=0;
+      this.vel.z=this.fwdNow;
+      this.pos.z+=this.vel.z*dt;
+      const rc=this.game.city? this.game.city._pathX(this.pos.z) : 0;
 
       if(drag){
         // POSITION control. The villain is placed where the finger has dragged to, not pushed in
@@ -3113,32 +3127,32 @@
         // as the thumb was off-centre, which is what made it feel like ice.
         if(g.input.dragSeq!==this._dragSeq){        // new touch: anchor to where he is NOW
           this._dragSeq=g.input.dragSeq;
-          this._dragBase=this.pos.x - rc0;
+          this._dragBase=this.pos.x - rc;
         }
-        if(this._dragBase===undefined) this._dragBase=this.pos.x - rc0;
-        const want=clamp(this._dragBase + g.input.dragPx*g.input.dragWorldPerPx(), -lim, lim);
+        if(this._dragBase===undefined) this._dragBase=this.pos.x - rc;
+        // The road CARRIES him. Without this the damped follow has to chase the curve as well as
+        // the finger, and it always trails it by about two frames of road movement — a lane you
+        // picked slides out from under you on every bend.
+        if(this._prevRc!==undefined) this.pos.x += rc - this._prevRc;
+        this._prevRc=rc;
         // Keys and gyro still nudge, so the scheme never leaves anyone without a control.
         this._dragBase=clamp(this._dragBase + sx*STRAFE*0.35*dt, -lim, lim);
+        const want=clamp(this._dragBase + g.input.dragPx*g.input.dragWorldPerPx(), -lim, lim);
         // Critically-damped follow with a hard speed cap: instant enough to feel 1:1, capped so a
         // flick across the glass cannot teleport him through a tower.
-        const target=rc0+want;
-        const step=clamp((target-this.pos.x)*Math.min(1,18*dt), -STRAFE*dt, STRAFE*dt);
+        const step=clamp((rc+want-this.pos.x)*Math.min(1,18*dt), -STRAFE*dt, STRAFE*dt);
         this.pos.x+=step;
         this.vel.x=step/Math.max(dt,1e-4);
         sx=clamp(this.vel.x/STRAFE,-1,1);           // bank/cape read the motion, not the finger
       } else {
         this.vel.x=damp(this.vel.x,sx*STRAFE,12,dt);         // weightier response
         this.pos.x+=this.vel.x*dt;
+        this._prevRc=undefined;                              // no stale road anchor across a scheme switch
       }
-      this.vel.y=0;
-      this.vel.z=this.fwdNow;
-      this.pos.z+=this.vel.z*dt;
-      { const city=this.game.city;
-        const rc=city? city._pathX(this.pos.z) : 0;                            // road centre at our z
-        // must always exceed PLAY.laneHi so every target is reachable on every map
-        // ONE box on every map (PLAY.xBox). Tokyo's block wall sits at roadHalf+5 = 27 and the
-        // metro arch is 23.9 wide at cruise height, so 22 clears scenery everywhere.
-        this.pos.x=clamp(this.pos.x, rc-lim, rc+lim); }
+      // must always exceed PLAY.laneHi so every target is reachable on every map
+      // ONE box on every map (PLAY.xBox). Tokyo's block wall sits at roadHalf+5 = 27 and the
+      // metro arch is 23.9 wide at cruise height, so 22 clears scenery everywhere.
+      this.pos.x=clamp(this.pos.x, rc-lim, rc+lim);
       // pos.y stays constant -> the villain flies dead level
 
       // BANK is still tracked (the cape shader reads it), but the villain no longer ROLLS.
@@ -3200,7 +3214,12 @@
       // ----- ON FIRE: streak reward — the villain ignites with a pulsing glow -----
       // ETHEREAL takes it further: a shiny PURPLE aura pouring off the player + a violet trail.
       const fire=g.combo.onFire(), epic=g.combo.onEpic(), eth=g.combo.onEthereal(), fl=g.combo.fireLevel();
-      const glow=(r,gg,bb)=>{ const f=0.16; for(const m of this.glowMats) if(m&&m.emissive) m.emissive.setRGB(Math.max(r,f*0.9),Math.max(gg,f),Math.max(bb,f*1.1)); };  // lights up the villain (model + fallback)
+      const glow=(r,gg,bb)=>{ const f=0.16;
+        if(!this._glowRest) this._glowRest=this.glowMats.filter(m=>m&&m.emissive)
+          .map(m=>({m, e:m.emissive.clone(), i:m.emissiveIntensity}));
+        this._glowLit=true;
+        for(const m of this.glowMats) if(m&&m.emissive){ m.emissiveIntensity=1;
+          m.emissive.setRGB(Math.max(r,f*0.9),Math.max(gg,f),Math.max(bb,f*1.1)); } };
       if(fire){
         const pulse=0.55+0.45*Math.sin(now*0.022);
         this.fireAura.visible=true;
@@ -3229,10 +3248,21 @@
           // trail streams from the moment you're ON FIRE (thin at first, thick through EPIC)
           g.effects.fireTrail(this.group.position, this._trailEnd, epic?(0.35+g.combo.epicLevel()*0.65):fl*0.25, dt, AU.epic);
         }
-      } else if(this.fireAura.visible){
+      } else {
         this.fireAura.visible=false;
-        glow(0,0,0);
+        // Unconditionally. This used to be gated on `fireAura.visible`, and setMenuMode hides the
+        // aura directly — so dying while ON FIRE hid the aura, the guard then read false on the
+        // next run, and the villain stayed lit in the last aura colour for the rest of the
+        // session. That is the "he turns white and stays white" bug.
+        this.unglow();
       }
+    }
+    // Put every material back to the emissive it was authored with. Not to black, and not to the
+    // 0.16 floor the glow uses — The Forged's metal is authored with a real emissive of its own.
+    unglow(){
+      if(!this._glowLit || !this._glowRest) return;
+      for(const r of this._glowRest){ r.m.emissive.copy(r.e); r.m.emissiveIntensity=r.i; }
+      this._glowLit=false;
     }
     // hit sphere: centred on the PLAYER's x (so you aim with your own position, intuitive),
     // led forward to the smash point's z. Tight radius -> precision matters. Surge widens it.
@@ -6150,7 +6180,10 @@
                 flow:[{a:'z',d:-1,from:0.18,to:0.98,box:{y:[-0.62,1]}},{a:'y',d:-1,from:0.02,to:0.90,box:{z:[-1,-0.10],y:[-0.74,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
     // Built entirely from code — no GLB. See buildProceduralVillain.
-    forged:   { name:'The Forged', procedural:true, aura:{epic:0x9b1d2a, eth:0xff4a5a}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max',
+    // Built in code, so the POSE is authored rather than corrected: he is modelled standing and
+    // pitched exactly 90° to fly dead level, with the arms already overhead and the head craned
+    // back to look where he is going.
+    forged:   { name:'The Forged', procedural:true, aura:{epic:0x9b1d2a, eth:0xff4a5a}, rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
                 // only the cape may move; the limbs are solid geometry
                 flowMesh:'cape', flow:[{a:'y',d:-1,from:-0.85,to:0.98}], aim:false,
                 smash:{y:-0.05,z:3.0} },
@@ -6193,13 +6226,16 @@
   // body: a limb is not a cylinder, it is a curve.
   // =====================================================================================
   function buildProceduralVillain(opts){
-    const O=Object.assign({ skin:0x8a5a3c, suit:0x1b1d26, trim:0x9b1d2a, metal:0x8e94a2 }, opts||{});
+    // The suit was 0x1b1d26 — so dark that every plate, rib and buckle on it disappeared into one
+    // silhouette in daylight. Lifting it two stops is what lets the armour read at all.
+    const O=Object.assign({ skin:0x8a5a3c, suit:0x2b3040, trim:0x9b1d2a, metal:0x8e94a2 }, opts||{});
     const HEAD=0.115;                                   // one head-height; everything derives from it
     const root=new THREE.Group();
 
     const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.62,metalness:.06},o||{}));
-    const matSuit=M(O.suit,{roughness:.54}), matSkin=M(O.skin,{roughness:.78}),
-          matTrim=M(O.trim,{roughness:.5}), matMetal=M(O.metal,{roughness:.28,metalness:.55,emissive:0x2a2f3a,emissiveIntensity:.25});
+    const matSuit=M(O.suit,{roughness:.46,metalness:.18}), matSkin=M(O.skin,{roughness:.78}),
+          matTrim=M(O.trim,{roughness:.5}), matMetal=M(O.metal,{roughness:.28,metalness:.55,emissive:0x2a2f3a,emissiveIntensity:.25}),
+          matEye=M(0xffe9a8,{roughness:.2,emissive:0xffb020,emissiveIntensity:2.2});
 
     // A limb from a silhouette: pairs of [radius, height] up the length, spun into a solid.
     // `seg` 20 is smooth enough to read as flesh without being a sphere.
@@ -6249,6 +6285,14 @@
     }
     const belt=limb([[0.00,-0.10*HEAD],[0.74*HEAD,-0.08*HEAD],[0.78*HEAD,0.08*HEAD],[0.00,0.10*HEAD]], matMetal, 22);
     belt.scale.z=0.64; put(belt, 0, -0.72*HEAD, 0);
+    // a buckle emblem, and two ribs across the abdomen so the midsection is not a blank tube
+    const buckle=new THREE.Mesh(new THREE.OctahedronGeometry(0.17*HEAD,0), matTrim);
+    buckle.scale.set(1,1.35,0.42); put(buckle, 0, -0.72*HEAD, 0.44*HEAD);
+    for(let k=0;k<2;k++){
+      const rib=shell([[0.00,0],[0.62*HEAD-k*0.02*HEAD,0.01*HEAD],[0.63*HEAD-k*0.02*HEAD,0.06*HEAD],[0.00,0.07*HEAD]],
+                      matMetal, 18, -1.15, 2.30);
+      rib.scale.z=0.62; put(rib, 0, -0.40*HEAD+k*0.22*HEAD, 0);
+    }
 
     // ---- NECK + HEAD. Three tries to get this right, and the failures are worth naming:
     // a bare skin ovoid reads as a shop dummy; an open-arc cowl standing off the skull shows its
@@ -6259,7 +6303,15 @@
     // larger, wrapped around everything but the face. The two surfaces are nearly coincident, so
     // the cowl reads as a cover on the head instead of a helmet floating around it, and its open
     // edge lands flush on skin, which is what the edge of a real cowl does.
-    put(limb([[0.00,0],[0.235*HEAD,0.02*HEAD],[0.245*HEAD,0.22*HEAD],[0.00,0.24*HEAD]], matSkin,16), 0, 1.44*HEAD, 0);
+    //
+    // Everything above the collarbone goes in ONE group pivoting at the base of the neck. He flies
+    // face-down, so the head has to crane back to look where he is going — a flier staring at the
+    // tarmac reads as a corpse falling, not a villain arriving.
+    const headG=new THREE.Group(); headG.position.set(0, 1.30*HEAD, 0);
+    headG.rotation.x=-0.92; root.add(headG);
+    const H=(m,x,y,z,rx)=>{ m.position.set(x, y-1.30*HEAD, z); if(rx) m.rotation.x=rx;
+                            m.castShadow=true; headG.add(m); return m; };
+    H(limb([[0.00,0],[0.235*HEAD,0.02*HEAD],[0.245*HEAD,0.22*HEAD],[0.00,0.24*HEAD]], matSkin,16), 0, 1.40*HEAD, 0);
     const HP=[
       [0.00, 0.00],[0.28*HEAD,0.06*HEAD],[0.44*HEAD,0.26*HEAD],            // jaw, narrow at the chin
       [0.495*HEAD,0.50*HEAD],[0.505*HEAD,0.74*HEAD],                       // cheekbone / temple, widest
@@ -6267,33 +6319,36 @@
     ];
     const skull=limb(HP, matSkin, 26);
     skull.scale.z=0.94;                                  // heads are slightly deeper than wide
-    put(skull, 0, 1.66*HEAD, 0);
+    H(skull, 0, 1.66*HEAD, 0);
     const cowl=shell(HP.map(([r,y])=>[r>0.001? r+0.020*HEAD : r, y]), matSuit, 26, 0.88, Math.PI*2-1.76);
-    cowl.scale.z=0.94; put(cowl, 0, 1.66*HEAD, 0);
+    cowl.scale.z=0.94; H(cowl, 0, 1.66*HEAD, 0);
     // FACE STRUCTURE. Featureless is the failure mode, and these are the planes the eye actually
     // looks for: the brow ridge, the nose, the cheekbones and the line of the jaw.
     const brow=new THREE.Mesh(new THREE.BoxGeometry(0.56*HEAD,0.10*HEAD,0.12*HEAD), matSkin);
-    brow.position.set(0,2.38*HEAD,0.38*HEAD); brow.rotation.x=-0.20; root.add(brow);
+    H(brow, 0, 2.38*HEAD, 0.38*HEAD, -0.20);
     const nose=new THREE.Mesh(new THREE.ConeGeometry(0.095*HEAD,0.30*HEAD,4), matSkin);
-    nose.position.set(0,2.12*HEAD,0.42*HEAD); nose.rotation.set(1.42,Math.PI/4,0); root.add(nose);
+    nose.rotation.set(1.42,Math.PI/4,0); H(nose, 0, 2.12*HEAD, 0.56*HEAD);
     for(const sx of [-1,1]){
       const ch=limb([[0.00,0],[0.13*HEAD,0.02*HEAD],[0.10*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matSkin,12);
-      ch.position.set(sx*0.23*HEAD,2.02*HEAD,0.34*HEAD); ch.scale.z=0.8; root.add(ch);
+      ch.scale.z=0.8; H(ch, sx*0.23*HEAD, 2.02*HEAD, 0.34*HEAD);
       // swept-back horns off the temples: a silhouette you can name at a hundred metres, which a
       // smooth head does not have
       const horn=limb([[0.00,0],[0.075*HEAD,0.03*HEAD],[0.055*HEAD,0.32*HEAD],[0.00,0.50*HEAD]], matTrim,10);
-      horn.position.set(sx*0.33*HEAD,2.42*HEAD,-0.10*HEAD);
-      horn.rotation.set(-0.55,0,sx*0.42); root.add(horn);
+      horn.rotation.set(-0.55,0,sx*0.42); H(horn, sx*0.33*HEAD, 2.42*HEAD, -0.10*HEAD);
+      // EYES set into the visor. They glow, which is the cheapest thing in the whole model and
+      // the one that makes a head look alive at speed.
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.17*HEAD,0.055*HEAD,0.05*HEAD), matEye);
+      eye.rotation.z=sx*0.16; H(eye, sx*0.175*HEAD, 2.185*HEAD, 0.50*HEAD, -0.10);
     }
     const jaw=limb([[0.00,0],[0.26*HEAD,0.03*HEAD],[0.29*HEAD,0.18*HEAD],[0.00,0.22*HEAD]], matSkin,18);
-    jaw.scale.set(1,1,0.90); put(jaw, 0, 1.76*HEAD, 0.16*HEAD);
+    jaw.scale.set(1,1,0.90); H(jaw, 0, 1.76*HEAD, 0.16*HEAD);
     // The visor: a band across the eyes only. Trimming a full head-shell down to a band by
     // shrinking the vertices outside it does NOT work — a shell 0.038 heads proud of the skull is
     // still proud of it after a 6% shrink, so the whole face came out red. Lathe the band itself.
     const mask=shell([[0.00,0.56*HEAD],[0.44*HEAD,0.60*HEAD],[0.545*HEAD,0.66*HEAD],
                       [0.545*HEAD,0.76*HEAD],[0.44*HEAD,0.80*HEAD],[0.00,0.83*HEAD]], matTrim, 26,
                      -1.36, 2.72);
-    mask.scale.z=0.94; put(mask, 0, 1.66*HEAD, 0);
+    mask.scale.z=0.94; H(mask, 0, 1.66*HEAD, 0);
 
     // ---- ARMS. Deltoid swell, taper into the elbow, forearm belly, wrist pinch. Built pointing
     // DOWN the -Y axis then rotated out, so the shoulder is the pivot and the pose is one number.
@@ -6303,6 +6358,15 @@
       const pauld=limb([[0.00,0.16*HEAD],[0.30*HEAD,0.10*HEAD],[0.40*HEAD,-0.10*HEAD],
                         [0.36*HEAD,-0.30*HEAD],[0.00,-0.34*HEAD]], matMetal, 18);
       pauld.scale.z=0.86; pauld.position.y=0.04*HEAD; g.add(pauld);
+      for(let k=0;k<2;k++){                              // two swept spikes off the pauldron
+        const sp=limb([[0.00,0],[0.055*HEAD,0.02*HEAD],[0.035*HEAD,0.20*HEAD],[0.00,0.30*HEAD]], matTrim, 8);
+        sp.position.set(side*0.26*HEAD, 0.06*HEAD, -0.10*HEAD+k*0.20*HEAD);
+        sp.rotation.set(-0.5+k*0.3, 0, side*1.05); g.add(sp);
+      }
+      // a plate down the outside of the forearm — the last thing the wall sees
+      const vamb=limb([[0.00,0.10*HEAD],[0.20*HEAD,0.02*HEAD],[0.215*HEAD,-0.55*HEAD],
+                       [0.185*HEAD,-0.92*HEAD],[0.00,-1.00*HEAD]], matMetal, 16);
+      vamb.scale.set(1.06,1,0.78);
       // Upper arm: shoulder to elbow is ~1.35 heads, and the elbow must land level with the navel.
       const upper=limb([
         [0.00,0],[0.30*HEAD,-0.05*HEAD],[0.325*HEAD,-0.26*HEAD],          // deltoid swell
@@ -6316,6 +6380,7 @@
         [0.165*HEAD,-0.92*HEAD],[0.135*HEAD,-1.12*HEAD],[0.00,-1.15*HEAD] // wrist pinch
       ], matSuit, 18);
       fore.position.y=-1.33*HEAD; fore.rotation.x=0.26; g.add(fore);
+      vamb.position.set(0,-1.39*HEAD,0.02*HEAD); vamb.rotation.x=0.26; g.add(vamb);
       const cuff=limb([[0.00,-0.04*HEAD],[0.205*HEAD,0],[0.215*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matMetal,16);
       cuff.position.y=-2.34*HEAD; cuff.rotation.x=0.26; g.add(cuff);
       // Hand: a palm block plus a thumb, because a lathe alone gives a mitten.
@@ -6335,8 +6400,11 @@
       thumb.rotation.set(0.3,0,side*0.9); hg.add(thumb);
       g.add(hg);
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
-      g.position.set(side*0.86*HEAD, 1.14*HEAD, 0);
-      g.rotation.z=side*0.16; g.rotation.x=-0.34;        // arms swept slightly back, flight-ready
+      // FISTS FIRST. He flies face-down along his own +Y, so "forward" in flight is straight up
+      // the model — both arms go overhead, not down at his sides. Keep the splay SMALL: at 0.30
+      // the arms read as a T from behind instead of a spear point going into the wall.
+      g.position.set(side*0.72*HEAD, 1.18*HEAD, 0);
+      g.rotation.set(-(Math.PI-0.16), 0, side*0.115);
       root.add(g); return g;
     };
     const armL=arm(-1), armR=arm(1);
@@ -6367,13 +6435,21 @@
       toe.position.set(0,-2.775*HEAD,0.28*HEAD); g.add(toe);
       const sole=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.05*HEAD,0.62*HEAD), matMetal);
       sole.position.set(0,-2.845*HEAD,0.14*HEAD); g.add(sole);
+      // KNEE GUARD — the joint is where a leg reads as armour instead of a tube
+      const knee=limb([[0.00,0.16*HEAD],[0.22*HEAD,0.09*HEAD],[0.27*HEAD,-0.06*HEAD],
+                       [0.23*HEAD,-0.20*HEAD],[0.00,-0.26*HEAD]], matMetal, 16);
+      knee.scale.z=0.82; knee.position.set(0,-1.33*HEAD,0.07*HEAD); g.add(knee);
+      const strap=limb([[0.00,-0.05*HEAD],[0.20*HEAD,-0.03*HEAD],[0.21*HEAD,0.05*HEAD],[0.00,0.07*HEAD]], matMetal,14);
+      strap.position.y=-2.44*HEAD; g.add(strap);            // boot strap over the ankle
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
-      g.position.set(side*0.34*HEAD, -1.36*HEAD, 0);
+      g.position.set(side*0.29*HEAD, -1.36*HEAD, 0);
       g.rotation.x=0.12; g.rotation.z=side*0.05;
       root.add(g); return g;
     };
     const legL=leg(-1), legR=leg(1);
-    legL.rotation.x=0.34; legR.rotation.x=-0.10;         // a stride, so he is not stood to attention
+    // Legs TRAIL. A walking stride is what he had, and at 300 km/h it read as somebody stepping
+    // through the air. A small stagger is all that is left, so they are not a pair of poles.
+    legL.rotation.set(0.16, 0, -0.045); legR.rotation.set(-0.07, 0, 0.075);
 
     // ---- CAPE. The hard part, and the first attempt got it wrong in the way that matters: it was
     // built as a FLAT PLANE bent backwards, so its side edges stayed at z≈0 and punched out
@@ -6384,8 +6460,8 @@
     // some radius R from the body axis, swept through an arc that only covers the BACK. Build it
     // in polar coordinates and the body can never poke through, because the cloth is always
     // outside R.
-    const CTOP=1.28*HEAD, CLEN=3.55*HEAD;               // collar at the shoulder shelf, hem mid-shin
-    const R0=0.62*HEAD, R1=1.52*HEAD;                   // radius at the collar, and at the hem
+    const CTOP=1.28*HEAD, CLEN=4.10*HEAD;               // collar at the shoulder shelf, hem past the heels
+    const R0=0.62*HEAD, R1=1.78*HEAD;                   // radius at the collar, and at the hem
     const A0=1.10, A1=1.44;                             // half-arc: 126° across the back, 165° at the hem
     const SEGX=34, SEGY=30;
     const cg=new THREE.PlaneGeometry(2, 2, SEGX, SEGY);
@@ -6418,6 +6494,10 @@
     // the collar it hangs from, so it does not appear to float off his back
     const collar=limb([[0.00,-0.06*HEAD],[0.66*HEAD,-0.02*HEAD],[0.70*HEAD,0.16*HEAD],[0.00,0.20*HEAD]], matMetal, 20);
     collar.scale.z=0.66; put(collar, 0, 1.26*HEAD, -0.06*HEAD);
+    for(const sx of [-1,1]){                             // the clasps the cape actually hangs from
+      const clasp=new THREE.Mesh(new THREE.OctahedronGeometry(0.12*HEAD,0), matTrim);
+      clasp.scale.set(1,1.2,0.6); put(clasp, sx*0.44*HEAD, 1.30*HEAD, 0.22*HEAD);
+    }
 
     root.userData.parts={armL,armR,legL,legR,cape,torso,skull};
     return root;

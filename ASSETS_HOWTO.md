@@ -348,6 +348,9 @@ finger stops**. The first version fed the finger offset into the same velocity c
 joystick, which meant an off-centre thumb kept accelerating him sideways — it felt like ice, and it
 was the single thing that made the scheme unusable.
 
+Steering also happens **after** the forward step now, against the road centre where he has just
+arrived. Doing it the other way round anchors the target one frame behind the road.
+
 ```js
 // InputSystem: the finger's travel since it landed, plus a sequence number per new touch
 dragPx, dragSeq, dragActive
@@ -367,6 +370,9 @@ Four properties that all matter:
   time you tap FIRE.
 - **A speed cap.** `STRAFE` still bounds the step, so a flick across the glass cannot teleport him
   through a tower.
+- **The road carries him.** `pos.x += rc - prevRc` before the damped step. Without it the follow has
+  to chase the curve *as well as* the finger and always trails it by about two frames of road
+  movement — the lane you picked slides out from under you on every bend.
 - **The velocity channel stays empty.** `sample()` adds `this.joy` only in stick mode, and
   `setScheme` clears both plus any live touch id — a stale joystick value left at 1 would otherwise
   steer forever after a switch.
@@ -842,8 +848,16 @@ Then add the entry to `CHARACTERS`, give it a `flow` region (PART 6), and render
 
 ## The Forged — built from code
 
-`buildProceduralVillain()` builds a villain out of geometry alone: **48 meshes, 4,770 vertices,
-7.17 heads tall.** Everything derives from one constant, `HEAD = 0.115`, so the proportions stay
+`buildProceduralVillain()` builds a villain out of geometry alone: **65 meshes, 5,646 vertices,
+8.4 heads tall in the flight pose.**
+
+Unlike the GLBs, his **pose is authored, not corrected**: he is modelled standing and then pitched
+exactly `Math.PI/2` so he flies dead level. Because "forward in flight" is the model's own `+Y`,
+fists-first means both arms go **overhead**, not out to the sides — and the splay has to stay small
+(`z: ±0.115`); at `±0.30` he read as a T from behind rather than a spear going into the wall. The
+head is its own group pivoting at the base of the neck, craned back `0.92` rad, because a flier
+staring at the tarmac reads as a corpse falling rather than a villain arriving. Legs trail with a
+small stagger; a walking stride at 300 km/h looked like somebody stepping through the air. Everything derives from one constant, `HEAD = 0.115`, so the proportions stay
 human no matter what it is scaled to.
 
 The thing that keeps it from reading as a toy is that **almost nothing is a box or a sphere**.
@@ -895,8 +909,34 @@ and the wrist at the crotch), and the chest plate was a full lathe in the trim c
 widest at the chest and narrowing to the shoulders, which is the silhouette of a bust. It is now a
 metal shell over the front 210° with a small chevron.
 
+### Detail is worthless if the value is too dark to show it
+
+The suit was `0x1b1d26`. Every plate, rib, buckle and guard on him disappeared into one silhouette
+in daylight — the model had the detail and none of it was visible. Lifting the suit two stops to
+`0x2b3040` (with a little metalness) is what made the armour read at all, and it cost nothing.
+
+The armour pass itself: pauldron spikes, forearm vambraces, abdominal ribs, a belt emblem, knee
+guards, boot straps, cape clasps, and emissive eyes set into the visor. The eyes are the cheapest
+thing in the whole model and the one that makes the head look alive at speed.
+
 Because it is code, its cloth is tagged by mesh name — `flowMesh:'cape'` — rather than by a
 bounding box, which is exact.
+
+## ON FIRE overwrites materials — put them back
+
+`glow()` writes `emissive` on every material in `player.glowMats`. Whatever you set there is
+**destructive**, so the way out of it matters:
+
+- The restore is **unconditional**, and it restores each material's **authored** emissive from a
+  snapshot — not black, and not the `0.16` floor the glow uses. The Forged's metal is authored with
+  a real emissive of its own, and his eyes with a bright one.
+- It used to be gated on `fireAura.visible`, and `setMenuMode` hides that aura directly. So dying
+  while ON FIRE hid the aura, the guard read false on the next run, and the villain **stayed lit in
+  the last aura colour for the rest of the session** — which is what "he turns white and stays
+  white" was. `unglow()` is now called from the update, from `setMenuMode`, and from `reset()`.
+
+`scripts/characters.mjs` lights every villain, drops him back to the menu mid-blaze, and asserts
+every material is exactly as authored.
 
 ## Checking the roster
 
