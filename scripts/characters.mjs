@@ -34,9 +34,16 @@ const browser = await chromium.launch({
   executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args:['--use-gl=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
 
-// CHARS=forged node scripts/characters.mjs  — to check one while iterating on it
-const CHARS = (process.env.CHARS || 'dominus,frutiger,knight,patriot,entity,countess,'
-              +'shrike,tyrant,nocturne,forged').split(',');
+// The roster is read from the page itself, so a new villain is covered the moment it is added.
+//   CHARS=forged node scripts/characters.mjs   — to check one while iterating on it
+let CHARS = (process.env.CHARS || '').split(',').filter(Boolean);
+if(!CHARS.length){
+  const p0 = await browser.newPage();
+  await p0.goto(`http://127.0.0.1:${port}/game.html`,{waitUntil:'load'});
+  await p0.waitForFunction('!!window.__cb',{timeout:200000});
+  CHARS = await p0.evaluate(()=>Object.keys(window.__cb.CHARACTERS));
+  await p0.close();
+}
 let bad = 0;
 
 for(const ch of CHARS){

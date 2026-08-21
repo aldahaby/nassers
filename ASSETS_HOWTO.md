@@ -368,8 +368,10 @@ Four properties that all matter:
   snaps him sideways.
 - **Lifting leaves him where he is.** Recentring on release would yank him across the road every
   time you tap FIRE.
-- **A speed cap.** `STRAFE` still bounds the step, so a flick across the glass cannot teleport him
-  through a tower.
+- **A speed cap, kept out of the way.** `STRAFE` bounds the step so a flick cannot teleport him
+  through a tower — but at `1.55×` a *normal* swipe was hitting it, and a clamped spring is a
+  constant-speed slide. That is the "stiff after a certain point" feel. At `2.9×` the spring stays
+  in charge of everything but a flick.
 - **The road carries him.** `pos.x += rc - prevRc` before the damped step. Without it the follow has
   to chase the curve *as well as* the finger and always trails it by about two frames of road
   movement — the lane you picked slides out from under you on every bend.
@@ -795,7 +797,7 @@ speed**, so the faster you go the harder the air pushes and the tighter the ripp
 
 # PART 7 — The roster
 
-Ten villains. Nine are GLB models; one is built from code.
+Nineteen villains. Nine are GLB models; ten are built from code.
 
 | Key | Name | Source |
 |---|---|---|
@@ -809,6 +811,7 @@ Ten villains. Nine are GLB models; one is built from code.
 | `tyrant` | The Red Jester | `assets/char_b.glb` |
 | `nocturne` | Nocturne | `assets/char_c.glb` |
 | `forged` | The Forged | **code geometry** |
+| `dominus_f` … `nocturne_f` | *· Forged* — the whole roster again, rebuilt in code | **code geometry** |
 
 ### Orientation: check it, never assume it
 
@@ -978,13 +981,65 @@ bounding box, which is exact.
 `scripts/characters.mjs` lights every villain, drops him back to the menu mid-blaze, and asserts
 every material is exactly as authored.
 
+## The Forged line — one anatomy, nine costumes
+
+Every GLB villain has a code-geometry twin. They share `buildProceduralVillain`, the rig, the cloth
+shader and the powers of the original; only the **kit** differs. A kit is a palette plus a costume
+description, and it lives in the `FORGED` table:
+
+```js
+knight_f: { from:'knight', name:'Evil Knight · Forged', flow:FLOW_TIP, kit:{
+  skin:0x6a5a52, suit:0x161418, plate:0x2a262c, metal:0x6e6a74, trim:0xb2131c,
+  sole:0x0e0d10, eye:0xff2a1a, eyeCore:0xffb08a,
+  mask:'helm', horns:2, hornStyle:'curved',
+  back:'wings', backCol:0x8e1018, backCol2:0x241f24, emblem:'none' } },
+```
+
+`from` supplies the aura and the four powers. The CHARACTERS entry and the villain card are both
+**generated from this table**, so adding a villain is a dozen lines and no download at all.
+
+| Option | Values |
+|---|---|
+| `mask` | `visor` `domino` `helm` `hood` `jester` `wrap` |
+| `back` | `cape` `coat` `wings` `energy` `shreds` `none` |
+| `emblem` | `chevron` `star` `diamond` `none` |
+| `hair` | `null` or `{col, len}` |
+| `horns` / `hornStyle` | `0`/`2`, `spike` / `curved` |
+| `armour` / `chest` / `slim` | `0`/`1` — hardware, breastplate, build |
+
+Five colours have to stay **separated** or the detail merges back into one silhouette: `suit`
+(cloth), `plate` (mid, big pieces), `metal` (bright, small hardware only), `trim` (accent), `sole`
+(near-black). Putting a large shell in `metal` is what turned the chest into a white bib twice.
+
+### `flow` differs by what is hanging off the back
+
+The cloth shader ramps its weight along one axis of each mesh's own bounding box, so the free edge
+has to be at the far end of that axis:
+
+- `FLOW_HEM` — `{a:'y', d:-1}`. A cape, coat, shreds or hair: the free edge is the **hem**, lowest y.
+- `FLOW_TIP` — `{a:'z', d:-1}`. A wing: the free edge is the **tip**, and a wing sweeps backward as
+  it extends, so its tip is the most-negative z.
+
+### Traps hit while building the back pieces
+
+- **Wing bones pointed the wrong way.** A lathe is built along `+Y`, so aiming it at `(cos a, sin a)`
+  is a rotation about Z of `a − π/2`. With the sign flipped the bones splay out through the far side
+  of the membrane. They also stop at `0.88` of the span, or they spear past the trailing edge.
+- **A helmet whose face is the trim colour is just a coloured head.** The read comes from a **dark
+  visor band**, not from the shell.
+- **Hair as a full ring of narrow strands** puts hair across the face and overlaps into one dark
+  wedge. It hangs off the back half of the crown only, and the strands are twice as wide.
+- **A near-black cape disappears** against a dark background — not a bug, but lift it off black or
+  it reads as a hole.
+
 ## Checking the roster
 
 ```bash
-node scripts/characters.mjs
+node scripts/characters.mjs           # every villain the page declares
+CHARS=knight_f node scripts/characters.mjs   # just one, while iterating
 ```
 
-Loads all ten and asserts, for each: the model exists, the cloth mask covers a plausible slice of
+The roster is read from the page, so a new villain is covered the moment its kit is added. Asserts, for each: the model exists, the cloth mask covers a plausible slice of
 it (a mask over ~60% means it caught a limb), the portrait decodes, the villain is hidden at the
 menu and visible in play, all four powers are wired, and the page threw nothing.
 
