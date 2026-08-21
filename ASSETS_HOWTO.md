@@ -1096,3 +1096,109 @@ three consecutive windows under 14.5 ms (~69 fps). Steps are
 run — sample it a few seconds in, on the same map, before and after. Counting *visible meshes* by
 walking the scene tells you where the calls are coming from; attributing each mesh to the pool that
 owns it (`city.buildings`, `pickups.coins`, `city.props`, …) tells you what to fix.
+
+---
+
+# PART 9 — Swipe mode
+
+A second way to play, picked in the menu, and a **branch through the existing systems** rather than
+a second game: every map, villain, power and mission works in both. `game.mode` is `'free'` or
+`'swipe'`, persisted in `invrun_mode`.
+
+## A flick is a step, not a push
+
+The lane is an **integer** in `[-1,1]`, and a flick changes it. He leaves for the next lane and
+arrives there; nothing done mid-flight changes where he is going. That commitment is the whole feel
+of a swipe runner — a continuous position would just be the drag control with extra steps.
+
+Flick detection lives in `InputSystem` on its own touch id, so it works whichever control scheme is
+selected, and it is **consumed** by the reader (`consumeLane()`) so a flick can never be counted
+twice or dropped between frames.
+
+## The geometry has to be built for it
+
+| | |
+|---|---|
+| `SW.laneX` | 9.2 m between lane centres |
+| Targets | sit exactly **on** a lane and **fill** it — a tower narrower than its lane means landing in the right lane and still missing |
+| Next target | at most **one lane away**, so a single flick always reaches it |
+| Armored gates | span **all three lanes** |
+
+That last one is not a detail. A gate you can dodge by changing lane makes powers optional, and the
+whole power mechanic becomes decorative.
+
+## The rail cannon
+
+Swipe mode's hazard: a city-scale weapon built into the street — two buttressed pylons, a rail slung
+between them, charge cells lighting up the count-in, then a horizontal beam fired down the road at
+flight height. It fills the width. There is no lane to dodge into; the answer is **EVADE**.
+
+```
+charge (1.85s, warning + button)  ->  fire (0.55s)  ->  idle
+```
+
+**The duck moves the actual flight height.** `pos.y = cruiseY - duck*SW.duckDrop`, and the beam test
+reads `pos.y`. An animation-only duck would look like a dodge and still take the hit.
+
+## Testing it
+
+```bash
+node scripts/swipe-mode.mjs
+```
+
+It checks both halves: that swipe behaves like a swipe runner **and** that free flight is untouched
+— a flick is never even consumed there, the stick still steers continuously, its towers are not
+lane-quantised, and no rail cannon exists.
+
+⚠️ `_pathX` scales the road's lateral swing by `difficulty.level`, so a tower placed at one
+amplitude and measured at another reads as off-lane through no fault of the placement. Freeze
+`difficulty.update` in any test that measures lane alignment.
+
+---
+
+# PART 10 — The tutorial
+
+Coached over a **live run**, not a slideshow. Each step states one thing and then waits for the
+player to actually do it: a card you dismiss teaches nothing, and a card on a timer teaches the
+timer.
+
+```js
+{ t:'ARMORED WALLS', b:'…', h:'TAP POWER WHEN IT GLOWS',
+  focus:'#btn-power', done:()=>this.count.power>=1 }
+```
+
+- Steps are built **per run**, so they name the actual control scheme and mode — swipe mode gets a
+  rail-cannon step, free flight does not, and the steer step reads "flick" or "drag" or "stick".
+- `focus` lights the control the step is about, which beats a pointing hand.
+- Progress comes from `note(kind)` calls placed at the real events — a smash, a lane change, a power
+  fired, an evade — not from polling.
+- Skippable, recorded in `invrun_tut`, never repeats, and replayable from **Settings → Tutorial**.
+
+`scripts/tutorial.mjs` proves a step waits for its event rather than for the clock, by stubbing the
+collision so the villain cannot satisfy step one on his own.
+
+---
+
+# PART 11 — Landmarks
+
+The skyline pool fills the horizon with generic silhouettes. Landmarks are the layer above it: eight
+recycled slots holding big, hand-shaped, **themed** features that say what world you are in.
+
+| Map | What stands there |
+|---|---|
+| Frutiger Aero | terraced eco-towers, wind turbines, floating islands with a still pool |
+| Medieval | a hill castle — keep, curtain wall, banners |
+| Inferno | the volcano itself, glowing at the throat, with ash plumes |
+| Neon Void | a wireframe sun and hard grid ridges |
+| Tokyo | pagodas, and a low moon behind the skyline |
+| Metro | service alcoves cut into the tunnel wall |
+| Backrooms | doorways that lead nowhere, under exit signs |
+
+**Placement is the whole trick.** Parked 150 m out to the side they are simply off-screen: at that
+angle nothing but the road is in frame. Outdoor landmarks belong **ahead**, near the vanishing
+point, 45–110 m to the side. Interior maps hang theirs on the wall a few metres out instead.
+
+The Metro tunnel also gets **ceiling strip lights** — it was lit by nothing but the emissive on its
+own walls, which is why it read as a green pipe rather than a place — and real trains: a rounded
+shell, a raked cab nose, a wrapped window band, bogies, headlights and a pantograph. A
+2.6×2.8×15 box with a stripe on it is a shipping container.

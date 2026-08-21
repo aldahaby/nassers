@@ -235,6 +235,71 @@
     #btn-power #power-label{ position:relative; z-index:1; text-shadow:0 1px 2px rgba(0,0,0,.7); }
     #btn-power.rdy{ color:#fff; box-shadow:inset 0 0 0 2px rgba(255,255,255,.85), 0 0 22px rgba(190,110,255,.85), 0 3px 0 #17092a; animation:pwrPulse 1s ease-in-out infinite; }
     @keyframes pwrPulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
+    /* EVADE — the swipe-mode answer to the rail cannon. Sits under POWER, same shape, its own
+       colour so a glance tells you which of the two is live. */
+    #btn-evade{ right:20px; bottom:calc(max(26px,env(safe-area-inset-bottom)) + 196px);
+      width:68px; height:68px; overflow:hidden;
+      background:linear-gradient(180deg,#0e4a4e,#04262b); color:#7ff0dd;
+      box-shadow:inset 0 0 0 2px rgba(120,240,220,.5), inset 0 -6px 12px rgba(0,20,24,.6), 0 3px 0 #032025, 0 6px 10px rgba(0,0,0,.45);
+      font-family:var(--f-display); font-weight:900; font-size:12px; letter-spacing:1px;
+      display:flex; align-items:center; justify-content:center; }
+    #btn-evade i{ position:absolute; left:0; right:0; bottom:0; height:0%;
+      background:linear-gradient(180deg, rgba(90,255,225,.8), rgba(0,180,170,.5)); pointer-events:none; }
+    #btn-evade span{ position:relative; z-index:1; text-shadow:0 1px 2px rgba(0,0,0,.7); }
+    #btn-evade.live{ color:#fff; box-shadow:inset 0 0 0 3px #7ff0dd, 0 0 30px rgba(90,255,225,.95), 0 3px 0 #032025;
+      animation:pwrPulse .42s ease-in-out infinite; }
+    /* TUTORIAL. A card pinned near the top so it never covers the road or the controls it is
+       talking about, and it clears itself the moment the player does the thing. */
+    #tut{ position:fixed; inset:0; z-index:44; pointer-events:none; }
+    #tut.hidden{ display:none; }
+    #tut-card{ position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 150px);
+      transform:translateX(-50%); width:min(360px,86vw);
+      background:linear-gradient(180deg, rgba(14,18,28,.94), rgba(8,10,16,.94));
+      border:1px solid rgba(255,255,255,.18); border-radius:18px; padding:12px 14px 11px;
+      box-shadow:0 18px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.14);
+      animation:tutIn var(--t-open) var(--ui-in) both; }
+    /* NOT sheetIn: that animation ends on its own transform, which throws away the translateX(-50%)
+       doing the centring and parks the card off the right edge. */
+    @keyframes tutIn{ from{ opacity:0; transform:translateX(-50%) translateY(-14px) scale(.94); }
+                      to{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }
+    #tut-card.out{ animation:tutOut var(--t-shut) var(--ui-out) both; }
+    @keyframes tutOut{ from{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
+                       to{ opacity:0; transform:translateX(-50%) translateY(-10px) scale(.96); } }
+    #tut-step{ font:700 10px/1 var(--f-num); letter-spacing:2px; color:var(--aura-eth); opacity:.85; }
+    #tut-card h4{ margin:5px 0 3px; font-family:var(--f-display); font-size:19px; letter-spacing:1px; color:#fff; }
+    #tut-card p{ margin:0; font-size:13px; line-height:1.42; color:#c9d3e2; }
+    #tut-hint{ margin-top:7px; font:700 11px/1.3 var(--f-num); letter-spacing:1.2px; color:#8ff6c8; }
+    #tut-bar{ margin-top:9px; height:3px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; }
+    #tut-bar i{ display:block; height:100%; width:0%; border-radius:2px;
+      background:linear-gradient(90deg, var(--aura-epic), var(--aura-eth)); transition:width .3s var(--ui-in); }
+    #tut-skip{ position:absolute; right:14px; top:calc(env(safe-area-inset-top) + 74px);
+      pointer-events:auto; padding:7px 13px; border-radius:999px; cursor:pointer;
+      background:rgba(10,14,22,.8); border:1px solid rgba(255,255,255,.2); color:#aeb9c9;
+      font:700 11px/1 var(--f-num); letter-spacing:2px; }
+    #tut-skip:active{ transform:translateY(1px); }
+    /* the control the current step is about, lit so the eye finds it without a pointing hand */
+    .tut-focus{ animation:tutGlow .9s ease-in-out infinite; }
+    @keyframes tutGlow{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.7) drop-shadow(0 0 14px rgba(255,255,255,.7)); } }
+    #beam-warn{ position:fixed; left:0; right:0; top:38%; z-index:36; text-align:center; pointer-events:none;
+      font-family:var(--f-display); text-shadow:0 3px 0 rgba(0,0,0,.55); }
+    #beam-warn b{ display:block; font-size:clamp(30px,10vw,54px); letter-spacing:2px; color:#fff;
+      -webkit-text-stroke:2px rgba(255,60,60,.9); animation:warnPulse .3s steps(2) infinite; }
+    #beam-warn span{ display:block; font-size:clamp(13px,4vw,18px); letter-spacing:3px; color:#7ff0dd; }
+    @keyframes warnPulse{ 0%{ opacity:1; } 100%{ opacity:.35; } }
+    /* MODE PICKER — two big cards, because which mode you are about to play should never be a
+       guess, and it is the first real choice the menu offers. */
+    #mode-pick{ display:flex; gap:10px; width:min(420px,86vw); margin:0 auto 12px; }
+    #mode-pick .mode{ flex:1; padding:11px 8px 10px; border-radius:16px; cursor:pointer;
+      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.16); color:#cfd8e6;
+      transition:transform var(--t-shut) var(--ui-out), box-shadow var(--t-shut) var(--ui-out),
+                 background var(--t-shut) var(--ui-out), color var(--t-shut) var(--ui-out); }
+    #mode-pick .mode b{ display:block; font-family:var(--f-display); font-size:15px; letter-spacing:1px; }
+    #mode-pick .mode small{ display:block; margin-top:2px; font-size:10.5px; opacity:.72; letter-spacing:.5px; }
+    #mode-pick .mode.on{ color:#fff; background:linear-gradient(180deg, var(--aura-epic), rgba(0,0,0,.25));
+      border-color:rgba(255,255,255,.55); transform:translateY(-2px);
+      box-shadow:0 8px 20px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.25); }
+    #mode-pick .mode:active{ transform:translateY(1px) scale(.98); }
     #btn-power.tgt{ color:#fff; box-shadow:inset 0 0 0 3px #ffd23a, 0 0 30px rgba(255,190,60,.95), 0 3px 0 #17092a;
       animation:pwrPulse .55s ease-in-out infinite; }
     #btn-power.tgt #power-fill{ background:linear-gradient(180deg, rgba(255,210,58,.9), rgba(255,120,20,.7)); }
@@ -855,13 +920,37 @@
     .dr.grand .svgi{ width:34px; height:34px; color:#c08bff; }
     #dr-claim{ width:100%; margin-top:16px; }
     #dr-note{ font-family:var(--f-ui); font-size:13px; color:var(--muted); text-align:center; margin-top:10px; }
-    #daily-btn{ position:absolute; top:max(14px,env(safe-area-inset-top)); left:16px; z-index:2; pointer-events:auto;
-      display:flex; align-items:center; gap:6px; padding:6px 14px 4px; border:none; cursor:pointer;
-      font-family:var(--f-num); font-size:17px; font-weight:900; letter-spacing:1px; color:var(--text);
-      background:linear-gradient(180deg,var(--gun2),var(--navy));
-      clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
-      box-shadow:inset 0 0 0 1.5px var(--steel); }
-    #daily-btn .svgi{ width:18px; height:18px; color:var(--gold); }
+    /* TOP BAR. Currency on the left with the affordance to get more, quick actions on the right —
+       the layout every runner uses, because it is the one players already know how to read. */
+    #topbar{ position:absolute; left:0; right:0; top:0; z-index:3; pointer-events:none;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:calc(max(10px,env(safe-area-inset-top))) 14px 0; }
+    #topbar .wallet{ pointer-events:auto; display:flex; align-items:center; gap:0;
+      background:linear-gradient(180deg,rgba(58,44,12,.96),rgba(28,20,4,.96));
+      border-radius:999px; padding:3px 3px 3px 13px;
+      box-shadow:inset 0 0 0 1.5px var(--gold-d), 0 4px 14px rgba(0,0,0,.5); }
+    #topbar .w-item{ display:flex; align-items:center; gap:6px; padding-right:10px;
+      font-family:var(--f-num); font-size:17px; font-weight:900; color:var(--gold); text-shadow:0 1px 2px #000; }
+    #topbar .w-item .svgi{ width:17px; height:17px; }
+    #tb-plus{ width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
+      background:linear-gradient(180deg,#4ade7a,#1f9e4c); color:#04250f;
+      font:900 19px/1 var(--f-num); box-shadow:inset 0 -2px 0 rgba(0,0,0,.28), 0 2px 0 #0d5c2c; }
+    #tb-plus:active{ transform:translateY(1px); }
+    #topbar .topright{ pointer-events:auto; display:flex; gap:8px; }
+    .tb-ic{ position:relative; width:38px; height:38px; border-radius:12px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(180deg,rgba(30,38,54,.94),rgba(14,18,28,.94));
+      border:1px solid rgba(255,255,255,.16); color:var(--gold);
+      box-shadow:0 4px 14px rgba(0,0,0,.45); }
+    .tb-ic .svgi{ width:19px; height:19px; }
+    .tb-ic:active{ transform:translateY(1px); }
+    /* the notification dot every store-front runner uses to say "there is something here" */
+    .dot{ position:absolute; top:-4px; right:-4px; width:13px; height:13px; border-radius:50%;
+      background:#ff3b3b; border:2px solid #14181f; box-shadow:0 0 10px rgba(255,60,60,.9);
+      animation:dotPop .5s var(--ui-in) both; }
+    .dot.hidden{ display:none; }
+    @keyframes dotPop{ from{ transform:scale(0); } to{ transform:scale(1); } }
+    .chip{ position:relative; }
     #daily-btn.ready{ box-shadow:inset 0 0 0 2px var(--gold); animation:drPulse 1.6s ease-in-out infinite; }
     /* coins that fly to the counter */
     .coinfly{ position:fixed; z-index:60; width:22px; height:22px; pointer-events:none; color:var(--gold);
@@ -925,14 +1014,37 @@
     <div id="joy-base"><div id="joy-knob"></div></div>
     <div id="btn-boost" class="pad">SURGE</div>
     <div id="btn-power" class="pad"><span id="power-label">POWER</span><i id="power-fill"></i></div>
+    <div id="btn-evade" class="pad hidden"><span>EVADE</span><i id="evade-fill"></i></div>
+  </div>
+  <div id="beam-warn" class="hidden"><b>INCOMING</b><span>TAP EVADE</span></div>
+
+  <!-- TUTORIAL — coached over a live run, never a slideshow -->
+  <div id="tut" class="hidden">
+    <div id="tut-card">
+      <div id="tut-step">1 / 6</div>
+      <h4 id="tut-title">SMASH</h4>
+      <p id="tut-body">Fly straight into a tower.</p>
+      <div id="tut-hint"></div>
+      <div id="tut-bar"><i></i></div>
+    </div>
+    <button id="tut-skip">SKIP</button>
   </div>
 
   <!-- Overlays -->
   <div id="start-overlay" class="overlay menu">
     <div id="menu-bg"></div>
-    <button id="daily-btn"><svg class="svgi"><use href="#i-trophy"/></svg><span>DAILY</span></button>
+    <div id="topbar">
+      <div class="wallet">
+        <span class="w-item"><svg class="svgi"><use href="#i-coin"/></svg><b id="tb-coins">0</b></span>
+        <button id="tb-plus" title="Earn shards">+</button>
+      </div>
+      <div class="topright">
+        <button id="daily-btn" class="tb-ic" title="Daily reward"><svg class="svgi"><use href="#i-trophy"/></svg><i class="dot hidden"></i></button>
+        <button id="tb-gear" class="tb-ic" title="Settings"><svg class="svgi"><use href="#i-gear"/></svg></button>
+      </div>
+    </div>
 
-    <div id="coin-bank"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
+    <div id="coin-bank" class="hidden"><svg class="svgi"><use href="#i-coin"/></svg><span id="coin-bank-num">0</span></div>
     <div class="brand">
       <div class="logo">CITY<span>BREAKER</span></div>
       <div class="tagline">SMASH THROUGH TOKYO</div>
@@ -944,6 +1056,10 @@
     <div class="best-card">
       <div class="tro"><svg class="svgi"><use href="#i-trophy"/></svg></div>
       <div><div class="best-cap">BEST SCORE</div><div id="best-num">0</div></div>
+    </div>
+    <div id="mode-pick" role="tablist" aria-label="Game mode">
+      <button id="mode-free" class="mode on" role="tab"><b>FREE FLIGHT</b><small>Steer anywhere</small></button>
+      <button id="mode-swipe" class="mode" role="tab"><b>SWIPE</b><small>Three lanes · EVADE</small></button>
     </div>
     <button id="start-btn" class="btn-play"><svg class="svgi"><use href="#i-play"/></svg><span>PLAY</span></button>
     <div class="menu-row">
@@ -971,6 +1087,7 @@
         <input type="range" class="slider" id="movesens" min="60" max="220" step="5" value="100"></div>
       <div class="opt col"><div class="row"><span><svg class="svgi si"><use href="#i-phone"/></svg>Gyro Sensitivity</span><span class="val" id="gyrosens-val">1.0× normal</span></div>
         <input type="range" class="slider" id="gyrosens" min="50" max="200" step="5" value="100"></div>
+      <div class="opt"><span><svg class="svgi si"><use href="#i-burst"/></svg>Tutorial</span><button id="tut-btn" class="toggle">REPLAY</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-doc"/></svg>Legal &amp; Privacy</span><button id="legal-btn" class="toggle">OPEN</button></div>
       <div class="opt"><span><svg class="svgi si"><use href="#i-warn"/></svg>Health &amp; Safety</span><button id="health-btn" class="toggle">OPEN</button></div>
       <div class="sheet-note" style="margin:6px 2px 0">CITYBREAKER v1.0 · no account needed to play · optional in-app purchases · contains ads.</div>
@@ -1426,12 +1543,18 @@
       // DRAG is POSITIONAL, not a joystick: dragPx is how far the finger has travelled from where
       // it landed, and the villain is placed that far across the road. dragSeq ticks once per new
       // touch so the player knows to re-anchor.
-      this.drag=0; this._dragId=null; this.dragPx=0; this.dragSeq=0; this.dragActive=false; }
+      this.drag=0; this._dragId=null; this.dragPx=0; this.dragSeq=0; this.dragActive=false;
+      // SWIPE MODE: a queue of lane steps, and a one-shot evade flag. Both are CONSUMED by the
+      // reader, so a flick can never be counted twice or dropped between frames.
+      this.laneSteps=0; this._evade=false; }
+    consumeLane(){ const n=this.laneSteps; this.laneSteps=0; return n; }
+    consumeEvade(){ const e=this._evade; this._evade=false; return e; }
     setScheme(v){ this.scheme=(v==='drag')?'drag':'stick';
       try{ localStorage.setItem('invrun_scheme',this.scheme); }catch(e){}
       this.joy=0; this.drag=0; this._dragId=null; this.dragPx=0; this.dragActive=false; this.dragSeq++;
+      const swipeMode = !!(window.__game && window.__game.mode==='swipe');
       const base=document.getElementById('joy-base');
-      if(base) base.style.display=(this.scheme==='drag')?'none':'';
+      if(base) base.style.display=(swipeMode||this.scheme==='drag')?'none':'';
       const knob=document.getElementById('joy-knob');
       if(knob) knob.style.transform='translateX(0px)'; }
     init(){
@@ -1440,6 +1563,9 @@
         if(e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='Space') this._surge=true;
         if(e.code==='KeyE'||e.code==='KeyQ') this._power=true;
         if(e.code==='KeyR') this._restart=true;
+        // swipe mode on a desktop: arrows step a lane, down ducks
+        if(e.code==='ArrowLeft') this.laneSteps-=1;
+        if(e.code==='ArrowRight') this.laneSteps+=1;
       });
       addEventListener('keyup',e=>this.keys.delete(e.code));
       this._bindTouch();
@@ -1449,6 +1575,7 @@
     }
     sample(){
       let x=0;
+      if(this.keys.has('ArrowDown')||this.keys.has('KeyS')){ this._evade=true; this.keys.delete('ArrowDown'); this.keys.delete('KeyS'); }
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
       // The joystick is a VELOCITY control — hold it over and he keeps sliding. Drag is a POSITION
@@ -1470,6 +1597,23 @@
       // Lifting the finger LEAVES HIM WHERE HE IS. A drag control that recentres on release is
       // the single worst thing this can do — every tap to fire a power would yank him back.
       const end=()=>{ this._dragId=null; this.dragActive=false; };
+      // ---- FLICKS, for swipe mode. Tracked on their own id so they work no matter which control
+      // scheme is selected, and ignored over any button.
+      let fx=0, ft=0, fid=null;
+      addEventListener('touchstart',e=>{
+        const t=e.changedTouches[0];
+        if(t && !isCtrl(e.target)){ fid=t.identifier; fx=t.clientX; ft=performance.now(); }
+      },{passive:true});
+      addEventListener('touchend',e=>{
+        for(const t of e.changedTouches){
+          if(t.identifier!==fid) continue;
+          const dx=t.clientX-fx, dt=performance.now()-ft;
+          if(Math.abs(dx)>SW.swipePx && dt<SW.swipeMs) this.laneSteps += (dx>0?1:-1);
+          fid=null;
+        }
+      },{passive:true});
+      addEventListener('touchcancel',()=>{ fid=null; },{passive:true});
+
       addEventListener('touchstart',e=>{
         if(this.scheme!=='drag' || this._dragId!==null) return;
         const t=e.changedTouches[0]; if(!t || isCtrl(e.target)) return;
@@ -2157,6 +2301,23 @@
   // How hard the villain rolls into a turn. Both zero = he stays dead level and only slides
   // sideways, which is the only way a left turn and a right turn can look identical on a mesh
   // that is not itself symmetric. Restore {group:1, model:0.32} for the old banking flight.
+  // SWIPE MODE. A second way to play, alongside free flight — three fixed lanes, a flick to change
+  // lane, and a rail cannon you duck under. Nothing here touches free flight: the mode is a branch,
+  // never a replacement.
+  const SW={
+    laneX:9.2,          // metres between lane centres — a tower fills one lane and no more
+    snap:19.0,          // rad/s of the lane spring; high enough to feel like a step, not a slide
+    swipePx:26,         // finger travel that counts as a flick
+    swipeMs:420,        // and how long it may take
+    duckDrop:8.4,       // how far under the beam a duck takes him
+    duckTime:0.95,      // seconds of duck per press
+    cannonFirst:900,    // metres before the first rail cannon
+    cannonGap:[520,760],// metres between them after that
+    chargeSec:1.85,     // warning window: long enough to see it, short enough to be a threat
+    fireSec:0.55,
+    beamY:0,            // filled per run from the cruise height
+  };
+
   const BANK_ROLL={ group:0, model:0 };
 
   // ===================================================================================
@@ -2646,6 +2807,7 @@
       else if(snd==='metal') g.audio.trainSmash(combo);
       else g.audio.crash(tier,combo);
       g.player.onSmash(tier);
+      g.tutorial && g.tutorial.note('smash');
 
       g.city.shatter(building);   // remove + recycle the building
     }
@@ -3051,6 +3213,7 @@
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined;
+             this.lane=0; this.duck=0; this.duckT=0;
              this.unglow();
              this._prevRc=undefined;
              // Re-anchor the drag control, or a finger left where it was at the end of the last
@@ -3080,6 +3243,10 @@
     // Hitting a gate is a WALL. Everything that makes you fast is taken away at once: the rush is
     // gone, the surge is cancelled, and forward speed is knocked well under the floor so the
     // recovery ramp is something you can actually feel before the run picks up again.
+    // EVADE: a timed dive under the rail beam and back up. Pressing again mid-duck refreshes it
+    // rather than stacking, so mashing the button cannot park him underground.
+    evade(){ if(this._menuMode) return false; this.duckT=SW.duckTime;
+             this.game.tutorial && this.game.tutorial.note('evade'); return true; }
     onGateSlam(){ this.rush=0; this.surgeActive=0; this.surgeCd=Math.max(this.surgeCd,2.5);
                   this.fwdNow=Math.max(18,this.fwdNow*0.45); this._smashPulse=0; this._gateStun=1.1; }
 
@@ -3107,13 +3274,20 @@
       // Strafe scale. On the joystick this is the TOP SPEED sideways; in drag mode it is the speed
       // cap on catching up to the finger, and sensitivity lives in the pixels->world mapping
       // instead, so it is never applied twice.
-      const drag = (g.input.scheme==='drag');
+      const swipe = (g.mode==='swipe');
+      const drag = !swipe && (g.input.scheme==='drag');
       // The drag cap exists ONLY to stop a flick teleporting him through a tower. At 1.55 a normal
       // swipe was hitting it, and a clamped spring is a constant-speed slide — which is the "stiff
       // after a certain point" feel. 2.9 leaves the spring in charge for anything but a flick.
       const STRAFE=(28 + this.fwdNow*0.72) * (drag ? 2.9 : (g.input.moveSens||1));
       const lim=PLAY.xBox;
       let sx=-steer.x;
+
+      // ---- EVADE. The duck is a timed dive under the rail beam and back up again. dz ramps in
+      // and out of the window so he tucks and recovers rather than teleporting down.
+      if(this.duckT>0) this.duckT=Math.max(0,this.duckT-dt);
+      const dz=this.duckT>0 ? Math.min(1,(SW.duckTime-this.duckT)*6, this.duckT*6) : 0;
+      this.duck=damp(this.duck||0, dz, 16, dt);
 
       // Advance along the road FIRST, then steer against the road centre where he now is. Doing it
       // the other way round anchors the drag target one frame behind, which on a curving road is a
@@ -3123,7 +3297,20 @@
       this.pos.z+=this.vel.z*dt;
       const rc=this.game.city? this.game.city._pathX(this.pos.z) : 0;
 
-      if(drag){
+      if(swipe){
+        // ---- THREE LANES. A flick is a STEP, not a push: he leaves for the next lane and arrives
+        // there, and nothing done mid-flight changes where he is going. That commitment is the
+        // whole feel of a swipe runner, which is why the lane is an integer and not a position.
+        { const st=g.input.consumeLane(); const was=this.lane|0;
+          this.lane=clamp(was+st,-1,1);
+          if(this.lane!==was) g.tutorial && g.tutorial.note('lane'); }
+        const target = rc + this.lane*SW.laneX;
+        const om=SW.snap, xx=om*dt, ex=1/(1+xx+0.48*xx*xx+0.235*xx*xx*xx);
+        const ch=this.pos.x-target, tm=(this.vel.x+om*ch)*dt;
+        this.vel.x=(this.vel.x-om*tm)*ex;
+        this.pos.x=target+(ch+tm)*ex;
+        sx=clamp(this.vel.x/Math.max(1,STRAFE),-1,1);
+      } else if(drag){
         // POSITION control. The villain is placed where the finger has dragged to, not pushed in
         // that direction — hold the finger still and he stops, exactly like Subway Surfers. The
         // old version fed the finger offset into the velocity channel, so he kept sliding as long
@@ -3160,13 +3347,16 @@
       } else {
         this.vel.x=damp(this.vel.x,sx*STRAFE,12,dt);         // weightier response
         this.pos.x+=this.vel.x*dt;
+        if(Math.abs(this.vel.x)>12) g.tutorial && g.tutorial.note('lane');
         this._prevRc=undefined;                              // no stale road anchor across a scheme switch
       }
       // must always exceed PLAY.laneHi so every target is reachable on every map
       // ONE box on every map (PLAY.xBox). Tokyo's block wall sits at roadHalf+5 = 27 and the
       // metro arch is 23.9 wide at cruise height, so 22 clears scenery everywhere.
       this.pos.x=clamp(this.pos.x, rc-lim, rc+lim);
-      // pos.y stays constant -> the villain flies dead level
+      // Flight height is the cruise height MINUS the duck. The rail-beam test reads pos.y, so an
+      // animation-only duck would look like a dodge and still take the hit.
+      this.pos.y=this.cruiseY - (this.duck||0)*SW.duckDrop;
 
       // BANK is still tracked (the cape shader reads it), but the villain no longer ROLLS.
       // A roll on an asymmetric mesh can never look identical left and right, so the fix is to
@@ -3195,7 +3385,7 @@
         // No time-based wobble on ANY rotation axis. A sine on pitch means a left swing at one
         // moment and a right swing at another are read against different attitudes, which is what
         // makes the lean look uneven. Rotation is a pure function of steering; only height floats.
-        this.villainModel.rotation.x=this._mRotX;
+        this.villainModel.rotation.x=this._mRotX + (this.duck||0)*0.42;   // nose up as he slides under
         // NO idle roll term here: it would shift the neutral, so leaning left and leaning right
         // would not be mirror images of each other. Roll is purely a function of steering.
         this.villainModel.rotation.z=-this.bank*BANK_ROLL.model;
@@ -3380,6 +3570,7 @@
           this.brLights.push({mesh:m, light:gl, side:i%2?1:-1, z:0, flick:0, ph:rand(0,6.28)});
         } }
       this._buildProps();
+      this._buildLandmarks();
       this._buildEnv();
     }
     // procedural neon billboard face
@@ -3958,6 +4149,136 @@
         }
       }
     }
+    // ===================================================================================
+    // LANDMARKS — the thing each map is ABOUT, standing where you can see it.
+    //
+    // The skyline pool fills the horizon with generic silhouettes; this is the layer above it: a
+    // handful of big, hand-shaped, THEMED features that say what world you are in from a hundred
+    // metres. Eco-towers and turbines for Aero, a castle for Medieval, a volcano for Inferno, a
+    // grid sun for Neon Void, pagodas for Tokyo, service alcoves in the Metro tunnel, exit signs in
+    // the Backrooms. Eight slots, recycled down the road exactly like the props.
+    // ===================================================================================
+    _buildLandmarks(){
+      const g=this.game;
+      this.marks=[];
+      for(let i=0;i<8;i++){
+        const grp=new THREE.Group(); grp.visible=false; g.scene.add(grp);
+        this.marks.push({grp, side:i%2?1:-1, z:0, off:0, kind:i%4});
+      }
+    }
+    _skinLandmarks(t, night){
+      if(!this.marks) return;
+      const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.85,flatShading:true},o||{}));
+      const glowM=(c,i)=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:i,roughness:.4});
+      const B=new THREE.BoxGeometry(1,1,1), C=new THREE.CylinderGeometry(1,1,1,10),
+            CN=new THREE.ConeGeometry(1,1,8), SP=new THREE.SphereGeometry(1,12,9);
+      const style=t.building.style;
+      const add=(grp,geo,mat,x,y,z,sx,sy,sz,ry)=>{ const m=new THREE.Mesh(geo,mat);
+        m.position.set(x,y,z); m.scale.set(sx,sy,sz); if(ry) m.rotation.y=ry;
+        grp.add(m); return m; };
+      const gl=night?1.1:0.35;
+
+      this.marks.forEach((L,i)=>{
+        while(L.grp.children.length) L.grp.remove(L.grp.children[0]);
+        const k=i%4; L.kind=k;
+        if(style==='glass'){
+          // ---- FRUTIGER AERO: an eco-city on the horizon. Terraced towers with planted balconies,
+          // white wind turbines, and islands of rock and grass floating on nothing, because that is
+          // the entire promise of the aesthetic.
+          L.off=rand(46,96);
+          const glass=M(0xdff6ff,{roughness:.18,metalness:.25,flatShading:false});
+          const green=M(0x46c86a), white=M(0xf2fbff,{roughness:.4}), rock=M(0x7d8a92);
+          if(k===0||k===2){                                   // terraced eco-tower
+            const h=rand(52,92);
+            add(L.grp,B,glass,0,h/2,0, 15,h,15);
+            for(let j=0;j<5;j++){ const y=10+j*(h/5.5);
+              add(L.grp,B,green,0,y,0, 19-j*1.2,1.5,19-j*1.2);
+              add(L.grp,B,glowM(0x8ff2c8,gl),0,y+1.2,0, 19.4-j*1.2,0.35,19.4-j*1.2); }
+            add(L.grp,CN,green,0,h+7,0, 11,16,11);            // planted crown
+          } else if(k===1){                                   // wind turbine
+            add(L.grp,C,white,0,32,0, 1.4,64,1.4);
+            const hub=add(L.grp,SP,white,0,64,2, 2.2,2.2,2.2);
+            for(let j=0;j<3;j++){ const a=j*Math.PI*2/3;
+              const bl=add(L.grp,B,white,Math.cos(a)*16,64+Math.sin(a)*16,2.6, 3,32,0.7);
+              bl.rotation.z=-a; }
+            void hub;
+          } else {                                            // floating island
+            const y=rand(52,86);
+            add(L.grp,CN,rock,0,y-9,0, 16,20,16).rotation.z=Math.PI;
+            add(L.grp,C,green,0,y,0, 17,3.5,17);
+            add(L.grp,CN,green,4,y+7,3, 5,12,5);
+            add(L.grp,C,glowM(0x9fe8ff,gl),-5,y+3.2,-4, 4,1.2,4);   // a still pool
+          }
+        } else if(style==='stone'){
+          // ---- MEDIEVAL: a hill castle with a keep, curtain wall and banners
+          L.off=rand(50,92);
+          const stone=M(0x8d8272), roof=M(0x6b2f2a), soil=M(0x5f6b42), flag=M(0xb2131c);
+          add(L.grp,CN,soil,0,-6,0, 60,34,60);
+          if(k%2===0){
+            add(L.grp,B,stone,0,20,0, 26,40,26);
+            add(L.grp,CN,roof,0,46,0, 20,16,20);
+            for(const sx of [-1,1]) for(const sz of [-1,1]){
+              add(L.grp,C,stone,sx*15,22,sz*15, 5,44,5);
+              add(L.grp,CN,roof,sx*15,50,sz*15, 6.5,12,6.5);
+              add(L.grp,B,flag,sx*15,58,sz*15, 6,3,0.3); }
+          } else {
+            for(let j=0;j<5;j++) add(L.grp,B,stone,-24+j*12,12,0, 11,24,7);
+            for(let j=0;j<9;j++) add(L.grp,B,stone,-26+j*6.6,25,0, 3.4,4,7);   // crenellations
+            add(L.grp,C,stone,0,20,0, 7,42,7);
+          }
+        } else if(style==='basalt'){
+          // ---- INFERNO: the volcano itself, glowing at the throat, with ash plumes
+          L.off=rand(58,110);
+          const rockD=M(0x22181a), lava=glowM(0xff5a12,1.6), ash=M(0x2a2226,{transparent:true,opacity:.5});
+          add(L.grp,CN,rockD,0,26,0, 62,66,62);
+          add(L.grp,CN,lava,0,54,0, 13,16,13);
+          for(let j=0;j<3;j++) add(L.grp,SP,ash,rand(-8,8),66+j*13,rand(-8,8), 11+j*4,8+j*3,11+j*4);
+          if(k%2) for(let j=0;j<4;j++) add(L.grp,B,lava,rand(-24,24),rand(8,40),rand(-6,6), 1.4,rand(6,16),1.4);
+        } else if(style==='neon'){
+          // ---- NEON VOID: a wireframe sun on the horizon and hard grid ridges
+          L.off=rand(52,100);
+          const mag=glowM(0xff2fd0,1.5), cyn=glowM(0x2ff0ff,1.4), dark=M(0x120a22);
+          if(k%2===0){
+            for(let j=0;j<9;j++) add(L.grp,B,j%2?mag:cyn,0,26+j*5.2,0, Math.sqrt(1-Math.pow(j/9,2))*54,2.2,2.2);
+            add(L.grp,C,dark,0,26,-3, 30,0.5,30);
+          } else {
+            for(let j=0;j<5;j++) add(L.grp,CN,j%2?cyn:mag,-30+j*15,14,0, 9,30,9);
+            for(let j=0;j<6;j++) add(L.grp,B,cyn,-36+j*14,0.5,0, 1.2,1,120);
+          }
+        } else if(style==='window'){
+          // ---- TOKYO: pagodas and a big low moon behind the skyline
+          L.off=rand(44,86);
+          const wood=M(0x6d3b34), tile=M(0x2f3a44), lamp=glowM(0xffcf6a,gl+0.5);
+          if(k===3){ add(L.grp,SP,glowM(0xfff0c8,0.9),0,120,0, 26,26,2); }
+          else {
+            for(let j=0;j<4;j++){ const y=8+j*14, w=26-j*4.5;
+              add(L.grp,B,wood,0,y,0, w*0.7,11,w*0.7);
+              add(L.grp,CN,tile,0,y+7.5,0, w,7,w,0.785); }
+            add(L.grp,C,lamp,0,66,0, 1.6,10,1.6);
+          }
+        } else if(style==='metro'){
+          // ---- METRO: service alcoves cut into the tunnel wall — cable racks, a fire cabinet, a
+          // wall clock, a strip light. Small, but a bare tunnel wall is what made it read as a pipe.
+          L.off=rand(2,4);
+          const wall=M(0x1b2a2a), steel=M(0x8a969c,{roughness:.4,metalness:.5}), lit=glowM(0x9fffe6,1.4);
+          add(L.grp,B,wall,0,5,0, 1.2,10,9);
+          add(L.grp,B,lit,0,9.4,0, 0.4,0.5,7.4);
+          for(let j=0;j<3;j++) add(L.grp,C,steel,0,2.4+j*1.5,0, 0.35,8.6,0.35).rotation.x=Math.PI/2;
+          if(k%2) add(L.grp,B,M(0xb2131c),0,4.5,3, 1.0,2.6,1.6);
+          else    add(L.grp,C,lit,0,7.4,-2, 1.5,0.4,1.5).rotation.x=Math.PI/2;
+        } else if(style==='drywall'){
+          // ---- BACKROOMS: an EXIT sign and a doorway that leads nowhere, on the corridor wall
+          L.off=rand(1,3);
+          const door=M(0x6a5c3a), sign=glowM(0x39ff6a,1.6), frame=M(0xb7a875);
+          add(L.grp,B,frame,0,5.2,0, 0.6,10.4,7.4);
+          add(L.grp,B,door,0.4,4.6,0, 0.4,9.2,6.0);
+          add(L.grp,B,sign,0.9,11.2,0, 0.3,1.4,3.4);
+        } else {
+          L.off=rand(50,92);
+          add(L.grp,B,M(0x8a8f96),0,18,0, 20,36,20);
+        }
+      });
+    }
     _buildEnv(){
       const g=this.game;
       this.bubbles=[];
@@ -4017,14 +4338,64 @@
         new THREE.MeshStandardMaterial({color:0x0c2a24,emissive:0x05201a,emissiveIntensity:0.5,roughness:1,side:THREE.DoubleSide}));
       this.ceilPanel.rotation.x=Math.PI/2; this.ceilPanel.visible=false; g.scene.add(this.ceilPanel);
       // INCOMING TRAINS: long sleek cars on the side tracks that rush toward and past the player.
-      this.trains=[]; const trainBody=new THREE.BoxGeometry(2.6,2.8,15);
-      const winTex=this._trainWindows();
+      // TRAINS. A 2.6x2.8x15 box with a stripe on it is a shipping container. A train reads from
+      // four things and none of them are the box: a ROUNDED shell, a RAKED cab nose, a continuous
+      // window band, and bogies under it. Built once, shared by all five cars.
+      this.trains=[]; const winTex=this._trainWindows();
+      const shell=(w,h,l)=>{                                   // rounded-edge carriage body
+        const n=4, gm=new THREE.BoxGeometry(w,h,l,n,n,10), P=gm.attributes.position, r=Math.min(w,h)*0.34;
+        const hx=w/2-r, hy=h/2-r, V=new THREE.Vector3(), C2=new THREE.Vector3();
+        for(let i=0;i<P.count;i++){
+          V.set(P.getX(i),P.getY(i),P.getZ(i));
+          C2.set(clamp(V.x,-hx,hx), clamp(V.y,-hy,hy), V.z);
+          const d=new THREE.Vector3().subVectors(V,C2);
+          if(d.lengthSq()>1e-9){ d.setLength(r); V.copy(C2).add(d); }
+          P.setXYZ(i,V.x,V.y,V.z);
+        }
+        gm.computeVertexNormals(); return gm;
+      };
+      const bodyGeo=shell(3.0,3.2,15.5);
+      const noseGeo=shell(2.5,2.7,3.4);
       for(let i=0;i<5;i++){
-        const mat=new THREE.MeshStandardMaterial({color:0xdfeef0,roughness:0.35,metalness:0.4,map:winTex,emissive:0x0a2a2a,emissiveIntensity:0.35,flatShading:true});
-        const m=new THREE.Mesh(trainBody,mat); m.castShadow=true; m.visible=false; g.scene.add(m);
-        const stripe=new THREE.Mesh(new THREE.BoxGeometry(2.66,0.5,15.1),new THREE.MeshStandardMaterial({color:0x2fd98a,emissive:0x117a4a,emissiveIntensity:0.7}));
-        stripe.position.y=-0.4; m.add(stripe);
-        this.trains.push({mesh:m, side:i%2?1:-1, z:i*70+40, spd:rand(30,55)});
+        const grp=new THREE.Group(); grp.visible=false; g.scene.add(grp);
+        const skin=new THREE.MeshStandardMaterial({color:0xe6f2f4,roughness:0.28,metalness:0.5,flatShading:false});
+        const glass=new THREE.MeshStandardMaterial({map:winTex,color:0xffffff,roughness:0.12,metalness:0.2,
+                        emissive:0x1a5a58,emissiveIntensity:0.55});
+        const dark=new THREE.MeshStandardMaterial({color:0x1d2a2e,roughness:0.75,metalness:0.3});
+        const body=new THREE.Mesh(bodyGeo,skin); body.castShadow=true; grp.add(body);
+        const nose=new THREE.Mesh(noseGeo,skin); nose.position.set(0,-0.2,8.6); nose.rotation.x=-0.16; grp.add(nose);
+        // the window band, wrapped down both flanks and across the cab
+        for(const sx of [-1,1]){
+          const wb=new THREE.Mesh(new THREE.BoxGeometry(0.10,1.35,13.4), glass);
+          wb.position.set(sx*1.52,0.55,-0.4); grp.add(wb);
+        }
+        const cabWin=new THREE.Mesh(new THREE.BoxGeometry(2.1,1.05,0.10), glass);
+        cabWin.position.set(0,0.35,10.28); cabWin.rotation.x=-0.16; grp.add(cabWin);
+        // livery stripe, skirt, and the bogies that put it on rails
+        const stripe=new THREE.Mesh(new THREE.BoxGeometry(3.06,0.42,15.6),
+          new THREE.MeshStandardMaterial({color:0x2fd98a,emissive:0x117a4a,emissiveIntensity:0.8}));
+        stripe.position.y=-0.62; grp.add(stripe);
+        const skirt=new THREE.Mesh(new THREE.BoxGeometry(2.8,0.8,15.0), dark);
+        skirt.position.y=-1.55; grp.add(skirt);
+        for(const bz of [-5.4,5.4]){
+          const bog=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.7,3.4), dark);
+          bog.position.set(0,-2.05,bz); grp.add(bog);
+          for(const sx of [-1,1]) for(const wz of [-1.1,1.1]){
+            const wheel=new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.52,0.28,10), dark);
+            wheel.rotation.z=Math.PI/2; wheel.position.set(sx*1.18,-2.35,bz+wz); grp.add(wheel);
+          }
+        }
+        // headlights and a roof pantograph — the silhouette details that say TRAIN at a distance
+        for(const sx of [-1,1]){
+          const hl=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.14,8),
+            new THREE.MeshStandardMaterial({color:0xfff6d8,emissive:0xffe08a,emissiveIntensity:2.2}));
+          hl.rotation.x=Math.PI/2; hl.position.set(sx*0.85,-0.62,10.35); grp.add(hl);
+        }
+        const panto=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.5,0.12), dark);
+        panto.position.set(0,2.4,-3.2); panto.rotation.x=0.5; grp.add(panto);
+        const panBar=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.10,0.10), dark);
+        panBar.position.set(0,3.1,-2.5); grp.add(panBar);
+        this.trains.push({mesh:grp, side:i%2?1:-1, z:i*70+40, spd:rand(30,55)});
       }
       // STATION SUPPORT PILLARS lining the platform edges (with a lit cap) — real subway architecture
       this.pillars=[]; const colGeo=new THREE.CylinderGeometry(0.55,0.7,1,10);
@@ -4204,6 +4575,7 @@
           this.brRoof.material.needsUpdate=true; } }
       for(const cb of this.cloudBills) cb.mesh.visible=(t.clouds && !night);   // outdoor maps only; parked 130-240m up and up to 500m out, far beyond any flight path
       this._skinProps(t,night);
+      this._skinLandmarks(t,night);
       if(this.props) for(const pr of this.props) pr.grp.visible=!back;   // BACKROOMS: no roadside props at all
       { const bb=(t.building.style==='window');    // billboards: NYC only
         if(this.signs) for(const sg of this.signs){ sg.mesh.visible=bb; sg.brk.visible=bb;
@@ -4586,6 +4958,14 @@
       if(this.luckyLeft>0){ mag=rand(0.08,0.3)*reach; this.luckyLeft--; }         // rare LUCKY run -> easier
       else { mag=rand(fLo,fHi)*reach;                                            // far apart -> earned
              if(Math.random()<0.05) this.luckyLeft=2+(Math.random()*2|0); }      // ~1-in-20 lucky run, short
+      if(this.game.mode==='swipe'){
+        // SWIPE MODE: targets sit ON a lane, never between two. And the next target is at most ONE
+        // lane away, so a single flick always reaches it — a swipe runner is about reading the row
+        // early, not about out-running the geometry.
+        const step=(Math.random()<0.62) ? (Math.random()<0.5?-1:1) : 0;
+        this._swLane=clamp((this._swLane|0)+step,-1,1);
+        this.lastTowerX=this._swLane*SW.laneX;
+      } else
       this.lastTowerX=clamp(this.lastTowerX + (Math.random()<0.5?-1:1)*mag, -lane, lane);
       const med=this.game.theme.building.style==='stone';   // medieval -> narrow tall watch towers + wide keeps
       const station=!!this.game.theme.station;               // metro -> smash BIG TRAINS, no background buildings
@@ -4618,9 +4998,22 @@
           const gd = back?1.1:rand(6,9);
           for(let k=-1;k<=1;k++){
             const gb=(k===-1)?b:this._take(); if(!gb) break;
-            this._place(gb, px+this.lastTowerX+k*(sw-0.08), z, sw, H, gd, false);
+            this._place(gb, (this.game.mode==='swipe') ? px+k*(SW.laneX+0.6)
+                                                       : px+this.lastTowerX+k*(sw-0.08),
+                        z, (this.game.mode==='swipe')?SW.laneX+0.6:sw, H, gd, false);
             if(Y!==undefined) gb.mesh.position.y=Y;
             gb.gate='shield'; gb.gid=gid; this._dressGate(gb);
+          }
+        } else if(this.game.mode==='swipe'){
+          // SWIPE MODE: an armored gate spans ALL THREE LANES. There is no lane to duck into, so the
+          // answer is unambiguous — fire a power or take the wall. Lane-dodgeable gates would make
+          // powers optional and the whole mechanic decorative.
+          const gid=++this._gateId, sw2=SW.laneX+0.6;
+          for(let k=-1;k<=1;k++){
+            const gb=(k===-1)?b:this._take(); if(!gb) break;
+            this._place(gb, px+k*sw2, z, sw2, H, back?1.1:rand(6,9), false);
+            if(Y!==undefined) gb.mesh.position.y=Y;
+            gb.gate='armor'; gb.gid=gid; this._dressGate(gb);
           }
         } else {
           this._place(b, px+this.lastTowerX, z, rand(PLAY.wLo,PLAY.wHi)*1.15, H, back?1.1:rand(6,9), false);
@@ -4645,7 +5038,9 @@
         b.mesh.position.y=H/2; b.mesh.castShadow=false;
         return;                                   // rooms only: no skyline / decor rows
       }
-      const TW=rand(PLAY.wLo,PLAY.wHi);                      // shared hit width; only depth/height are cosmetic
+      // In swipe mode the target FILLS its lane: the lane is the aim, so a tower narrower than the
+      // lane would mean landing in the right lane and still missing.
+      const TW=(this.game.mode==='swipe') ? SW.laneX-0.8 : rand(PLAY.wLo,PLAY.wHi);
       if(station){ this._place(b, px+this.lastTowerX, z, TW, rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
       else if(med){ this._place(b, px+this.lastTowerX, z, TW, rand(28,52), TW, false); }
       else this._place(b, px+this.lastTowerX, z, TW, rand(22,40), rand(6,9), false);
@@ -4894,21 +5289,49 @@
           sg.brk.scale.set(0.9,0.28,0.28);
         }
       }
-      if(this.brLights){                                // BACKROOMS ceiling light panels
-        const on=!!(this.game.theme&&this.game.theme.backrooms), H=this.BR_CEIL, span=this.brLights.length*9;
+      if(this.brLights){                                // ceiling light panels: BACKROOMS and METRO
+        // The metro tunnel was lit by nothing but the emissive on its own walls, which is why it
+        // read as a green pipe rather than a place. The same pooled panels run down its ceiling,
+        // spaced wider, in service white — and they are what make the trains and ribs readable.
+        const bkr=!!(this.game.theme&&this.game.theme.backrooms);
+        const mtr=!!(this.game.theme&&this.game.theme.station);
+        const on=bkr||mtr;
+        const H=bkr?this.BR_CEIL:((this.game.player.cruiseY||16)+14.5);
+        const span=this.brLights.length*(bkr?9:16);
         let li=0;
         for(const L of this.brLights){
           const lit=(li++%3===0);                       // only every 3rd panel casts a real light
           L.mesh.visible=on; L.light.visible=on&&lit;
           if(!on){ L.light.intensity=0; continue; }
-          if(L.z===0 || L.z < pz-30){ L.z=pz+rand(20,span); L.flick=Math.random()<0.22?rand(1,4):0; }
-          const lx=this._pathX(L.z)+L.side*13;
-          L.mesh.position.set(lx, H-0.12, L.z); L.mesh.scale.set(6.2,2.6,1);
+          if(L.z===0 || L.z < pz-30){ L.z=pz+rand(20,span); L.flick=Math.random()<(bkr?0.22:0.14)?rand(1,4):0; }
+          const lx=this._pathX(L.z)+(bkr? L.side*13 : L.side*7.5);
+          L.mesh.material.color.setHex(bkr?0xfffdf0:0xdffff4);
+          L.mesh.position.set(lx, H-0.12, L.z); L.mesh.scale.set(bkr?6.2:3.4, bkr?2.6:11, 1);
           // steady hum, with a few panels stuttering like failing tubes
           let k=1; if(L.flick>0){ const t2=performance.now()*0.006+L.ph;
             k=(Math.sin(t2*L.flick)>0.72||Math.sin(t2*7.3+L.ph)>0.93)?rand(0.15,0.45):1; }
           L.mesh.material.opacity=0.55*k+0.42;
-          if(lit){ L.light.position.set(lx, H-1.2, L.z); L.light.intensity=(3.4*k)*(this.game.maps&&this.game.maps.night?1.35:1); }
+          if(lit){ L.light.position.set(lx, H-1.2, L.z);
+                   L.light.color.setHex(bkr?0xfff6d0:0xbdfff0);
+                   L.light.distance=bkr?26:42;
+                   L.light.intensity=(bkr?3.4:5.2)*k*(this.game.maps&&this.game.maps.night?1.35:1); }
+        }
+      }
+      if(this.marks){
+        // LANDMARKS. Interior maps (tunnel, corridor) hang theirs on the wall a few metres out;
+        // everything else parks them far to the side where they frame the road without crowding it.
+        const st=this.game.theme.building.style, inside=(st==='metro'||st==='drywall');
+        // Outdoors they belong AHEAD and only moderately to the side: parked 150 metres out to the
+        // left they are simply off-screen. Down the street and near the vanishing point is where a
+        // landmark actually reads.
+        const span=Math.ceil(this.marks.length/2)*(inside?62:300);
+        for(const L of this.marks){
+          if(L.z===0){ L.z=pz+(inside?40:180)+Math.random()*span; }
+          if(L.z < pz-(inside?40:100)) L.z+=span;
+          L.grp.visible=true;
+          const dist=inside ? (st==='metro'? 27.4 : 21.6) : (this.roadHalf+L.off);
+          L.grp.position.set(this._pathX(L.z)+L.side*dist, 0, L.z);
+          L.grp.rotation.y = inside ? (L.side>0? -Math.PI/2 : Math.PI/2) : (L.side>0? -0.45 : 0.45);
         }
       }
       if(this.props && !(this.game.theme&&this.game.theme.backrooms)){   // themed roadside props (recycled)
@@ -5002,7 +5425,7 @@
       }
       return null;
     }
-    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this.luckyLeft=1;
+    reset(){ for(const b of this.buildings){ b.active=false; b.mesh.visible=false; b.roof.visible=false; b.crown.visible=false; b.cap.visible=false; } this.buildings.length=0; this.nextZ=40; this.lastTowerX=0; this._swLane=0; this.luckyLeft=1;
       this._rowN=0; this._gateId=0; this._gateNext=STAGES[0].gateEvery; this._lastGateRow=-99; this._gateCount=0;
       this._resetEnv(); } // one easy tower only, then it's earned
     _resetEnv(){ const pz=this.game.player?this.game.player.pos.z:0;   // re-seed distant env near the player so a restart isn't left empty
@@ -5010,6 +5433,7 @@
       if(this.skyline) this.skyline.forEach((s,i)=>s.z=pz+(i>>1)*70+rand(-20,20));
       if(this.cloudBills) this.cloudBills.forEach(cb=>cb.z=0);
       if(this.signs) this.signs.forEach((sg,i)=>{ sg.z=0; });
+      if(this.marks) for(const L of this.marks) L.z=0;
       if(this.props){ const tky=!!(this.game.theme&&this.game.theme.tokyo);
         this.props.forEach((pr,i)=>{ pr.z=pz+40+(i>>1)*(tky?26:46); pr.off=tky?rand(1.5,4.5):rand(3,11); }); }
       if(this.brLights) this.brLights.forEach((L,i)=>{ L.z=pz+14+i*9; L.flick=Math.random()<0.22?rand(1,4):0; });
@@ -5077,6 +5501,242 @@
   // A ground marker telegraphs the drop (fair: you can dodge by strafing off that x). Touching one
   // costs you almost all your momentum + a little explosion. They fall FASTER the longer you last.
   // ===================================================================================
+  // ===================================================================================
+  // RAIL CANNON — the swipe-mode hazard. A city-scale energy weapon built INTO the street: two
+  // buttressed pylons either side, a rail slung between them, and a horizontal beam fired down
+  // the road at flight height. It is not a thing to steer around; it fills the whole width, so
+  // the only answer is to duck under it.
+  //
+  // Three states, and the timing is the whole design: CHARGE is long enough to read and short
+  // enough to threaten, FIRE is over almost before you see it, and the recovery is instant so the
+  // run never stops being about smashing buildings.
+  // ===================================================================================
+  // ===================================================================================
+  // TUTORIAL — coached over a LIVE run, not a slideshow.
+  //
+  // A new player has to learn four things before the game makes sense: towers are fuel, momentum is
+  // the health bar, armored walls need a power, and (in swipe) the rail cannon needs EVADE. Each
+  // step states one of them and then WAITS for the player to actually do it — a card you dismiss
+  // teaches nothing, and a card on a timer teaches the timer.
+  //
+  // Every step is skippable, and the whole thing is replayable from Settings.
+  // ===================================================================================
+  class Tutorial {
+    constructor(game){
+      this.game=game; this.on=false; this.i=0; this.t=0; this.steps=[];
+      this.el={ wrap:document.getElementById('tut'), card:document.getElementById('tut-card'),
+                step:document.getElementById('tut-step'), title:document.getElementById('tut-title'),
+                body:document.getElementById('tut-body'), hint:document.getElementById('tut-hint'),
+                bar:document.querySelector('#tut-bar i'), skip:document.getElementById('tut-skip') };
+      if(this.el.skip) this.el.skip.onclick=()=>this.finish(true);
+      this.count={smash:0, lane:0, power:0, evade:0, coin:0};
+    }
+    static seen(){ try{ return localStorage.getItem('invrun_tut')==='1'; }catch(e){ return true; } }
+    note(k){ if(this.on) this.count[k]=(this.count[k]||0)+1; }
+    _build(){
+      const swipe=this.game.mode==='swipe';
+      const steer = swipe ? { t:'FLICK TO SWITCH LANE',
+                              b:'Three lanes. Flick left or right anywhere on the screen and you step one lane across.',
+                              h:'SWIPE LEFT OR RIGHT', done:()=>this.count.lane>=2 }
+                          : { t:'STEER', b:(this.game.input.scheme==='drag')
+                                ? 'Hold anywhere on the screen and slide your thumb. He goes where your finger goes.'
+                                : 'Slide the stick in the bottom-left. Partway over is a partway turn.',
+                              h:'MOVE LEFT AND RIGHT', done:()=>this.count.lane>=1 };
+      this.steps=[
+        { t:'SMASH EVERYTHING', b:'You are not dodging these buildings. Fly straight through one.',
+          h:'HIT A TOWER', focus:null, done:()=>this.count.smash>=1 },
+        Object.assign({focus:swipe?null:(this.game.input.scheme==='drag'?null:'#joy-base')}, steer),
+        { t:'MOMENTUM IS YOUR LIFE', b:'The blue bar drains the whole time. Every tower you smash fills it back up — stop smashing and the run ends.',
+          h:'KEEP THE CHAIN GOING', focus:'#momentum-wrap', done:()=>this.count.smash>=4 },
+        { t:'ARMORED WALLS', b:'Black-and-yellow walls cannot be punched through. When POWER lights up, fire it — the blast takes the wall and the tower behind it.',
+          h:'TAP POWER WHEN IT GLOWS', focus:'#btn-power', done:()=>this.count.power>=1 },
+      ];
+      if(swipe) this.steps.push(
+        { t:'THE RAIL CANNON', b:'It charges across the street and fires a beam at your height. You cannot go round it — tap EVADE and slide underneath.',
+          h:'TAP EVADE ON THE WARNING', focus:'#btn-evade', done:()=>this.count.evade>=1 });
+      this.steps.push(
+        { t:'SURGE', b:'Chain six smashes without missing and SURGE arms. Fire it for a burst of speed and a huge hit radius.',
+          h:'GO GET A HIGH SCORE', focus:'#btn-boost', done:()=>this.t>4.5 });
+    }
+    start(){
+      this._build();
+      this.on=true; this.i=0; this.t=0;
+      for(const k of Object.keys(this.count)) this.count[k]=0;
+      this.el.wrap.classList.remove('hidden');
+      this._show();
+    }
+    _clearFocus(){ document.querySelectorAll('.tut-focus').forEach(e=>e.classList.remove('tut-focus')); }
+    _show(){
+      const s=this.steps[this.i]; if(!s) return this.finish(false);
+      this.t=0; this._clearFocus();
+      this.el.step.textContent=(this.i+1)+' / '+this.steps.length;
+      this.el.title.textContent=s.t; this.el.body.textContent=s.b; this.el.hint.textContent=s.h||'';
+      this.el.bar.style.width=Math.round(this.i/this.steps.length*100)+'%';
+      this.el.card.classList.remove('out'); void this.el.card.offsetWidth;
+      this.el.card.style.animation=''; 
+      if(s.focus){ const e=document.querySelector(s.focus); if(e) e.classList.add('tut-focus'); }
+    }
+    update(dt){
+      if(!this.on) return;
+      const g=this.game;
+      if(g.run.state==='READY'||g.run.state==='GameOver'){ this.finish(false); return; }
+      this.t+=dt;
+      const s=this.steps[this.i];
+      if(s && s.done()){
+        this.i++;
+        g.haptics.fire('milestone'); g.audio.uiClick&&g.audio.uiClick();
+        if(this.i>=this.steps.length) this.finish(false);
+        else this._show();
+      }
+    }
+    finish(skipped){
+      if(!this.on) return;
+      this.on=false; this._clearFocus();
+      this.el.card.classList.add('out');
+      setTimeout(()=>this.el.wrap.classList.add('hidden'), 340);
+      try{ localStorage.setItem('invrun_tut','1'); }catch(e){}
+      if(!skipped) this.game.haptics.fire('epic');
+    }
+  }
+
+  class CannonSystem {
+    constructor(game){
+      this.game=game; this.list=[]; this.nextZ=0; this.state='idle'; this.t=0; this.active=null;
+      const g=game.scene;
+      const mk=()=>{
+        const grp=new THREE.Group(); grp.visible=false; g.add(grp);
+        const dark =new THREE.MeshStandardMaterial({color:0x2b3038, roughness:.55, metalness:.55});
+        const light=new THREE.MeshStandardMaterial({color:0x9aa6b8, roughness:.35, metalness:.7});
+        const hot  =new THREE.MeshStandardMaterial({color:0x8ff6ff, emissive:0x30e0ff,
+                        emissiveIntensity:0.4, roughness:.2, metalness:.1});
+        const cells=[];
+        for(const sx of [-1,1]){
+          // the pylon: a stepped tower with a buttress, so it reads as built rather than dropped in
+          const base=new THREE.Mesh(new THREE.BoxGeometry(9,30,13), dark);
+          base.position.set(sx*30, 15, 0); grp.add(base);
+          const step=new THREE.Mesh(new THREE.BoxGeometry(11.5,7,15), light);
+          step.position.set(sx*30, 32, 0); grp.add(step);
+          const butt=new THREE.Mesh(new THREE.BoxGeometry(6,20,5), dark);
+          butt.position.set(sx*24.5, 10, 0); butt.rotation.z=sx*0.22; grp.add(butt);
+          // emitter head, angled in toward the road
+          const head=new THREE.Mesh(new THREE.CylinderGeometry(4.2,5.6,7,10), light);
+          head.rotation.z=Math.PI/2; head.position.set(sx*24.5, 0, 0); grp.add(head);
+          const throat=new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.6,3,12), hot);
+          throat.rotation.z=Math.PI/2; throat.position.set(sx*21, 0, 0); grp.add(throat); cells.push(throat);
+          // charge cells stacked up the pylon — these are what light up on the count-in
+          for(let k=0;k<4;k++){
+            const c=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.9,13.4), hot.clone());
+            c.position.set(sx*25.6, 6+k*6.5, 0); grp.add(c); cells.push(c);
+          }
+        }
+        // the rail: a spine over the street with hanging vanes, so the gap under it reads as the gap
+        const rail=new THREE.Mesh(new THREE.BoxGeometry(62,2.6,4.4), light);
+        rail.position.set(0,34,0); grp.add(rail);
+        for(let k=-4;k<=4;k++){
+          const vane=new THREE.Mesh(new THREE.BoxGeometry(1.2,7.5,3.4), dark);
+          vane.position.set(k*6.6, 29.4, 0); grp.add(vane);
+        }
+        // THE BEAM. A flat slab across the whole street plus a hotter core, hidden until it fires.
+        const beam=new THREE.Mesh(new THREE.BoxGeometry(64,7.4,7.4),
+          new THREE.MeshBasicMaterial({color:0xbdfaff, transparent:true, opacity:0.0, depthWrite:false}));
+        beam.visible=false; grp.add(beam);
+        const core=new THREE.Mesh(new THREE.BoxGeometry(64,2.8,2.8),
+          new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.0, depthWrite:false}));
+        core.visible=false; grp.add(core);
+        const halo=new THREE.Mesh(new THREE.PlaneGeometry(66,26),
+          new THREE.MeshBasicMaterial({color:0x62e8ff, transparent:true, opacity:0.0,
+            blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+        halo.visible=false; grp.add(halo);
+        return {grp, cells, beam, core, halo, z:0, live:false};
+      };
+      for(let i=0;i<2;i++) this.list.push(mk());
+      this._light=new THREE.PointLight(0x66e8ff, 0, 220, 2); this._light.visible=false; g.add(this._light);
+    }
+    reset(){
+      for(const c of this.list){ c.live=false; c.grp.visible=false;
+        c.beam.visible=false; c.core.visible=false; c.halo.visible=false; }
+      this.state='idle'; this.t=0; this.active=null; this._light.visible=false;
+      this.nextZ=(this.game.player.pos.z||0) + SW.cannonFirst;
+      this._ui(false);
+    }
+    _ui(on){
+      const b=document.getElementById('btn-evade'), w=document.getElementById('beam-warn');
+      if(b){ b.classList.toggle('hidden', !on); b.classList.toggle('live', !!on); }
+      if(w) w.classList.toggle('hidden', !on);
+    }
+    _free(){ for(const c of this.list) if(!c.live) return c; return null; }
+    update(dt){
+      const g=this.game, P=g.player, pz=P.pos.z;
+      if(g.mode!=='swipe') return;
+      SW.beamY = P.cruiseY || 16;
+      // recycle anything behind us
+      for(const c of this.list) if(c.live && c.z < pz-90){ c.live=false; c.grp.visible=false; }
+      if(!this.active && pz+520 > this.nextZ){
+        const c=this._free();
+        if(c){
+          c.live=true; c.z=this.nextZ; c.grp.visible=true;
+          c.grp.position.set(g.city._pathX(c.z), 0, c.z);
+          c.beam.position.set(0, SW.beamY, 0); c.core.position.copy(c.beam.position);
+          c.halo.position.copy(c.beam.position); c.halo.rotation.x=-Math.PI/2;
+          this.active=c; this.state='charge'; this.t=0;
+          this._ui(true);
+          g.audio.cannonCharge && g.audio.cannonCharge();
+          g.haptics.fire('gateBlock');
+        }
+        this.nextZ += rand(SW.cannonGap[0], SW.cannonGap[1]);
+      }
+      const c=this.active; if(!c) return;
+      this.t+=dt;
+      const glow=(v)=>{ for(const m of c.cells){ m.material.emissiveIntensity=v;
+                        m.material.color.setRGB(0.56+v*0.3, 0.96, 1.0); } };
+      if(this.state==='charge'){
+        const k=clamp(this.t/SW.chargeSec,0,1);
+        glow(0.4 + k*k*5.5);
+        this._light.visible=true; this._light.position.set(c.grp.position.x, SW.beamY, c.z);
+        this._light.intensity=k*k*9;
+        const f=document.getElementById('evade-fill'); if(f) f.style.height=Math.round((1-k)*100)+'%';
+        if(k>0.55 && !c._tick){ c._tick=true; g.haptics.fire('drone'); }
+        if(this.t>=SW.chargeSec){
+          this.state='fire'; this.t=0; c._tick=false;
+          c.beam.visible=c.core.visible=c.halo.visible=true;
+          g.effects.flash(0.85); g.camera.shake(1.5); g.time.hitstop(60);
+          g.audio.cannonFire && g.audio.cannonFire();
+          g.haptics.fire('powerBig');
+          this._ui(false);
+          // THE HIT. Only while the beam is actually up, and only if he is not under it.
+          const under = P.pos.y < SW.beamY-3.2;
+          if(!under && Math.abs(P.pos.z-c.z)<140){
+            c._pending=true;
+          }
+        }
+      } else if(this.state==='fire'){
+        const k=clamp(this.t/SW.fireSec,0,1), a=Math.sin(k*Math.PI);
+        c.beam.material.opacity=0.62*a; c.core.material.opacity=0.95*a;
+        c.halo.material.opacity=0.42*a;
+        c.beam.scale.y=1+0.35*Math.sin(this.t*60); c.core.scale.y=1+0.6*Math.sin(this.t*90);
+        this._light.intensity=16*a;
+        glow(6*a);
+        // charge him for it at the moment the beam crosses his z, not when it lights up
+        if(c._pending && P.pos.z> c.z-70){
+          c._pending=false;
+          if(P.pos.y > SW.beamY-3.2){
+            g.momentum.value=clamp(g.momentum.value-PWR.slamCost*0.85,0,g.momentum.MAX);
+            g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;
+            g.player.onGateSlam&&g.player.onGateSlam();
+            g.effects.flash(0.9); g.camera.shake(1.8); g.time.hitstop(150);
+            g.player.punch(1.7); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
+            g.effects.burst(new THREE.Vector3(P.pos.x,SW.beamY,P.pos.z), new THREE.Color(0x8ff6ff), 34, 40);
+          }
+        }
+        if(this.t>=SW.fireSec){
+          this.state='idle'; this.active=null;
+          c.beam.visible=c.core.visible=c.halo.visible=false;
+          c._pending=false; this._light.visible=false; glow(0.4);
+        }
+      }
+    }
+  }
+
   class DroneSystem {
     constructor(game){
       this.game=game; this.drones=[]; this.BAND=16; this.START_Y=56; this.HITR=3.0;
@@ -5381,6 +6041,7 @@
       // Take the gate out of the world OURSELVES rather than relying on the scoring path to do
       // it. Score can be skipped for any number of reasons; the gate disappearing cannot be.
       let n=0;
+      g.tutorial && g.tutorial.note('power');
       g.score.tally('powers'); g.score.tally('gates');
       for(const b of kill){
         b.gate=null;
@@ -5773,6 +6434,26 @@
       a.start(); b.start(); lfo.start(); a.stop(t+0.94); b.stop(t+0.94); lfo.stop(t+0.94); }
     comboMilestone(n){ this._tone(420+n*36,0.18,'triangle',0.4); }
     coin(){ this._tone(880,0.08,'square',0.22); this._tone(1320,0.1,'square',0.18); }
+    // RAIL CANNON. The charge is a rising sweep so the ear knows how long is left without looking,
+    // and the shot is a hard slap of noise under a falling tone.
+    cannonCharge(){ if(!this.ctx) return; try{ this._ensure(); }catch(e){ return; }
+      const C=this.ctx, t=C.currentTime, o=C.createOscillator(), g=C.createGain(), f=C.createBiquadFilter();
+      o.type='sawtooth'; f.type='bandpass'; f.frequency.value=900; f.Q.value=6;
+      o.frequency.setValueAtTime(90,t); o.frequency.exponentialRampToValueAtTime(1400,t+1.8);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.16,t+1.6);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+1.9);
+      o.connect(f); f.connect(g); g.connect(this.master); o.start(t); o.stop(t+1.95); }
+    cannonFire(){ if(!this.ctx) return; try{ this._ensure(); }catch(e){ return; }
+      const C=this.ctx, t=C.currentTime;
+      const n=C.createBufferSource(), buf=C.createBuffer(1, C.sampleRate*0.5, C.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.2);
+      n.buffer=buf;
+      const bp=C.createBiquadFilter(); bp.type='lowpass'; bp.frequency.setValueAtTime(5200,t);
+      bp.frequency.exponentialRampToValueAtTime(320,t+0.45);
+      const g=C.createGain(); g.gain.setValueAtTime(0.38,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+      n.connect(bp); bp.connect(g); g.connect(this.master); n.start(t);
+      this._tone(150,0.42,'sawtooth',0.30); this._tone(58,0.55,'sine',0.34); }
     uiClick(){ try{ this._ensure(); if(this.ctx.state==='suspended') this.ctx.resume(); }catch(e){ return; }
       this._tone(660,0.05,'square',0.16); this._tone(990,0.07,'triangle',0.12); this._fnoise(0.02,0.10,2600,'highpass',0.7); }
     // ===== METRO TRAIN AUDIO =====
@@ -5980,6 +6661,11 @@
       document.body.classList.remove('at-menu');
       g.player.setMenuMode(false);              // the villain drops in as the run begins
       document.getElementById('gameover-overlay').classList.add('hidden');
+      document.body.classList.toggle('swipe-mode', this.game.mode==='swipe');
+      this.game.input.setScheme(this.game.input.scheme);   // re-apply: swipe hides both controls
+      // A first run is a coached run. It teaches over live play and never blocks it, so a returning
+      // player who wipes their storage loses nothing but thirty seconds.
+      if(this.game.tutorial && (this._forceTut || !Tutorial.seen())){ this._forceTut=false; this.game.tutorial.start(); }
     }
     tick(){
       if(this.state==='GameOver'||this.state==='READY') return;
@@ -6078,7 +6764,20 @@
     }
     refreshBestLine(){
       const el=document.getElementById('best-num'); if(el) el.textContent = this.best().toLocaleString();
-      const cb=document.getElementById('coin-bank-num'); if(cb) cb.textContent = this.coinBank().toLocaleString();
+      const bank=this.coinBank().toLocaleString();
+      const cb=document.getElementById('coin-bank-num'); if(cb) cb.textContent = bank;
+      const tb=document.getElementById('tb-coins'); if(tb) tb.textContent = bank;
+      // NOTIFICATION DOTS. A store-front runner tells you where the unclaimed thing is; without
+      // them the menu is a wall of equal buttons and nothing invites a tap.
+      const dot=(sel,on)=>{ const e=document.querySelector(sel); if(!e) return;
+        let d=e.querySelector('.dot');
+        if(on && !d){ d=document.createElement('i'); d.className='dot'; e.appendChild(d); }
+        if(d) d.classList.toggle('hidden', !on); };
+      try{
+        dot('#daily-btn', localStorage.getItem('invrun_dm_day')!==new Date().toDateString());
+        dot('#missions-btn', !!(this.missions && this.missions.anyClaimable && this.missions.anyClaimable()));
+        dot('#skins-btn', localStorage.getItem('invrun_seen_chars')!==String(Object.keys(CHARACTERS).length));
+      }catch(e){}
     }
     togglePause(){
       if(this.state==='Paused'){ this.state=this._prePause||'Running'; document.getElementById('pause-overlay').classList.add('hidden');
@@ -6134,6 +6833,7 @@
       g.city.reset();                          // AFTER player.reset -> tunnel/room seeds at the spawn
       g.city.update(); g.pickups.reset();
       g.drones.reset();
+      g.cannon.reset();
       this._lastZ=g.player.pos.z;
     }
   }
@@ -6220,52 +6920,52 @@
     dominus_f: { from:'dominus', name:'Dominus · Forged', flow:FLOW_HEM, kit:{
       skin:0xd8a586, suit:0x59636f, plate:0x39424e, metal:0x9aa6b4, trim:0x1b2b4a,
       sole:0x121318, eye:0x9fc8ff, eyeCore:0xe8f2ff,
-      mask:'domino', horns:0, back:'cape', backCol:0x23252d, emblem:'diamond' } },
+      mask:'domino', expr:'grim', horns:0, back:'cape', backCol:0x23252d, emblem:'diamond' } },
 
     frutiger_f:{ from:'frutiger', name:'Frutiger · Forged', flow:FLOW_TIP, kit:{
       skin:0xe8c6a8, suit:0xeef4f8, plate:0xc3d6e4, metal:0xdfe9f2, trim:0x2fa8e0,
       sole:0x2a3238, eye:0x66e2ff, eyeCore:0xd8fbff,
-      mask:'helm', horns:0, back:'energy', backCol:0x35d6ff, backCol2:0x9dffe8, emblem:'none' } },
+      mask:'helm', expr:'calm', horns:0, back:'energy', backCol:0x35d6ff, backCol2:0x9dffe8, emblem:'none' } },
 
     knight_f:  { from:'knight', name:'Evil Knight · Forged', flow:FLOW_TIP, kit:{
       skin:0x6a5a52, suit:0x161418, plate:0x2a262c, metal:0x6e6a74, trim:0xb2131c,
       sole:0x0e0d10, eye:0xff2a1a, eyeCore:0xffb08a,
-      mask:'helm', horns:2, hornStyle:'curved', back:'wings',
+      mask:'helm', expr:'snarl', horns:2, hornStyle:'curved', back:'wings',
       backCol:0x8e1018, backCol2:0x241f24, emblem:'none' } },
 
     patriot_f: { from:'patriot', name:'The Patriot · Forged', flow:FLOW_HEM, kit:{
       skin:0xd9a17f, suit:0x1a3fd8, plate:0xdfe6f2, metal:0xe8eef7, trim:0xc0192c,
       sole:0x14161c, eye:0xf4f8ff, eyeCore:0xffffff,
-      mask:'domino', horns:0, back:'cape', backCol:0xc0192c, emblem:'star' } },
+      mask:'domino', expr:'grim', horns:0, back:'cape', backCol:0xc0192c, emblem:'star' } },
 
     entity_f:  { from:'entity', name:'The Entity · Forged', flow:FLOW_HEM, kit:{
       skin:0xa8b09a, suit:0xb9bfa4, plate:0x9aa189, metal:0x8f9683, trim:0xc9d117,
       sole:0x6f7360, eye:0xc9d117, eyeCore:0xf2f7c0,
-      mask:'wrap', horns:0, back:'shreds', backCol:0xb2b894,
+      mask:'wrap', expr:'calm', horns:0, back:'shreds', backCol:0xb2b894,
       emblem:'none', armour:0, chest:0 } },
 
     countess_f:{ from:'countess', name:'Voidstrike · Forged', flow:FLOW_HEM, kit:{
       skin:0xe0b7c8, suit:0x2a1038, plate:0x5a2472, metal:0xa060d0, trim:0x7b2ff7,
       sole:0x150a1c, eye:0xff5ce0, eyeCore:0xffd6f6,
-      mask:'domino', horns:0, hair:{col:0x3a1450, len:1.35},
+      mask:'domino', expr:'grim', horns:0, hair:{col:0x3a1450, len:1.35},
       back:'cape', backCol:0x4a1470, backLen:0.92, emblem:'diamond', armour:0, slim:1 } },
 
     shrike_f:  { from:'shrike', name:'Silver Shrike · Forged', flow:FLOW_HEM, kit:{
       skin:0xe2bda0, suit:0xb9c2cc, plate:0xd8dee6, metal:0xeef2f6, trim:0x8fa8c4,
       sole:0x2a2f36, eye:0xdff0ff, eyeCore:0xffffff,
-      mask:'visor', horns:0, crest:true, hair:{col:0xe8eef5, len:0.7},
+      mask:'visor', expr:'grim', horns:0, crest:true, hair:{col:0xe8eef5, len:0.7},
       back:'cape', backCol:0xdfe6ee, backWide:1.15, emblem:'chevron' } },
 
     tyrant_f:  { from:'tyrant', name:'The Red Jester · Forged', flow:FLOW_HEM, kit:{
       skin:0xc8302c, suit:0x121216, plate:0x8a0f18, metal:0xc9333a, trim:0xd11a24,
       sole:0x0d0d10, eye:0xffd24a, eyeCore:0xfff2c0,
-      mask:'jester', horns:2, hornStyle:'curved',
+      mask:'jester', expr:'snarl', horns:2, hornStyle:'curved',
       back:'cape', backCol:0xc21622, backLen:1.10, emblem:'none' } },
 
     nocturne_f:{ from:'nocturne', name:'Nocturne · Forged', flow:FLOW_HEM, kit:{
       skin:0x8a5a48, suit:0x191a20, plate:0x2d2f38, metal:0x767c88, trim:0xa8121e,
       sole:0x0e0e12, eye:0xff3a3a, eyeCore:0xffc0c0,
-      mask:'hood', horns:0, back:'coat', backCol:0x8e0f1a, backLen:0.78, emblem:'chevron' } },
+      mask:'hood', expr:'snarl', horns:0, back:'coat', backCol:0x8e0f1a, backLen:0.78, emblem:'chevron' } },
   };
   for(const k of Object.keys(FORGED)){
     const F=FORGED[k], src=CHARACTERS[F.from];
@@ -6333,6 +7033,7 @@
       skin:0x8a5a3c, suit:0x232a3a, trim:0x9b1d2a, metal:0xc2ccda,
       plate:0x4e576a, sole:0x14161c, eye:0xffb020, eyeCore:0xffe9a8,
       mask:'visor',      // visor | domino | helm | hood | jester | wrap
+      expr:'grim',       // grim | snarl | calm — brow angle and mouth shape
       horns:2, hornStyle:'spike', crest:false,
       hair:null,         // {col,len} — a mane, animated by the same cloth shader as a cape
       back:'cape',       // cape | coat | wings | energy | shreds | none
@@ -6496,8 +7197,14 @@
     if(bare || MK==='jester'){
       // FACE STRUCTURE. Featureless is the failure mode, and these are the planes the eye actually
       // looks for: the brow ridge, the nose, the cheekbones and the line of the jaw.
-      const brow=new THREE.Mesh(new THREE.BoxGeometry(0.56*HEAD,0.10*HEAD,0.12*HEAD), faceMat);
-      H(brow, 0, 2.38*HEAD, 0.38*HEAD, -0.20);
+      // BROWS. One straight bar across the forehead is a headband. Two bars ANGLED down toward the
+      // nose is a scowl — the angle is the entire expression, and it costs two meshes.
+      const ba = O.expr==='snarl' ? 0.46 : O.expr==='calm' ? 0.06 : 0.28;
+      for(const sx of [-1,1]){
+        const br=new THREE.Mesh(roundBox(0.28*HEAD,0.078*HEAD,0.11*HEAD,0.032*HEAD,3), faceMat);
+        br.rotation.set(-0.22,0,sx*ba);
+        H(br, sx*0.155*HEAD, 2.355*HEAD, 0.42*HEAD);
+      }
       const nose=new THREE.Mesh(new THREE.ConeGeometry(0.095*HEAD,0.30*HEAD,4), faceMat);
       nose.rotation.set(1.42,Math.PI/4,0); H(nose, 0, 2.12*HEAD, 0.56*HEAD);
       for(const sx of [-1,1]){
@@ -6506,6 +7213,28 @@
       }
       const jaw=limb([[0.00,0],[0.26*HEAD,0.03*HEAD],[0.29*HEAD,0.18*HEAD],[0.00,0.22*HEAD]], faceMat,18);
       jaw.scale.set(1,1,0.90); H(jaw, 0, 1.76*HEAD, 0.16*HEAD);
+      // MOUTH. A face with eyes and no mouth is a mask; with a set line under the nose it is a
+      // person deciding to do something about you.
+      const dark=M(0x2a1712,{roughness:.92});
+      const mw=(O.expr==='snarl'?0.34:O.expr==='calm'?0.24:0.28)*HEAD;
+      const mouth=new THREE.Mesh(roundBox(mw,0.052*HEAD,0.055*HEAD,0.022*HEAD,3), dark);
+      mouth.rotation.x=-0.10; H(mouth, 0, 1.905*HEAD, 0.505*HEAD);
+      if(O.expr==='snarl'){                       // bared teeth, only where they belong
+        for(let k=0;k<5;k++){
+          const th=new THREE.Mesh(roundBox(0.045*HEAD,0.05*HEAD,0.04*HEAD,0.014*HEAD,2),
+                                  M(0xf2ece0,{roughness:.5}));
+          H(th, (k-2)*0.056*HEAD, 1.918*HEAD, 0.515*HEAD);
+        }
+        for(const sx of [-1,1]){                  // and the fang at each corner
+          const fg=new THREE.Mesh(new THREE.ConeGeometry(0.026*HEAD,0.085*HEAD,5), M(0xf2ece0,{roughness:.5}));
+          fg.rotation.x=Math.PI; H(fg, sx*0.115*HEAD, 1.885*HEAD, 0.515*HEAD);
+        }
+      }
+      // the philtrum and a chin crease, so the lower face is not a blank plane
+      const phil=new THREE.Mesh(roundBox(0.05*HEAD,0.09*HEAD,0.04*HEAD,0.018*HEAD,2), faceMat);
+      H(phil, 0, 1.985*HEAD, 0.515*HEAD);
+      const chin=new THREE.Mesh(roundBox(0.17*HEAD,0.07*HEAD,0.06*HEAD,0.026*HEAD,3), faceMat);
+      H(chin, 0, 1.815*HEAD, 0.47*HEAD, 0.22);
     }
     if(MK==='helm'){
       // a sealed faceplate, and a DARK visor slot across it. A helmet whose face is the trim colour
@@ -7071,6 +7800,9 @@
       this.scene.add(sun); this.scene.add(sun.target); this.sun=sun;
 
       // systems
+      // FREE FLIGHT or SWIPE. The mode is a branch through the existing systems, never a second
+      // game — every map, villain, power and mission works in both.
+      this.mode=(()=>{ try{ return localStorage.getItem('invrun_mode')==='swipe'?'swipe':'free'; }catch(e){ return 'free'; } })();
       this.input=new InputSystem();
       this.time=new TimeSystem();
       this.difficulty=new DifficultySystem(this);
@@ -7085,6 +7817,8 @@
       this.city=new CitySystem(this);
       this.pickups=new PickupSystem(this);
       this.drones=new DroneSystem(this);
+      this.cannon=new CannonSystem(this);
+      this.tutorial=new Tutorial(this);
       this.powers=new PowerSystem(this);
       this.ui=new UISystem(this);
       this.audio=new AudioSystem();
@@ -7229,6 +7963,49 @@
       musicBtn.textContent=this.audio.musicOn?'ON':'OFF'; musicBtn.classList.toggle('on',this.audio.musicOn);
       // CONTROLS: the on-screen stick, or drag anywhere on the playfield. Persisted, and applied
       // immediately so the joystick appears/disappears without leaving Settings.
+      // ---- MODE PICKER
+      { const mf=document.getElementById('mode-free'), ms=document.getElementById('mode-swipe');
+        const apply=()=>{ const sw=this.mode==='swipe';
+          mf.classList.toggle('on',!sw); ms.classList.toggle('on',sw);
+          document.body.classList.toggle('swipe-mode', sw);
+          const tag=document.querySelector('.menu-foot');
+          if(tag) tag.textContent = sw ? 'Three lanes · flick to switch · EVADE the rail cannon'
+                                       : 'Weave the streets · smash towers · dodge the drones';
+          try{ localStorage.setItem('invrun_mode', this.mode); }catch(e){}
+          this.input.setScheme(this.input.scheme); };
+        const set=(m)=>{ this.mode=m; apply(); this.audio.uiClick&&this.audio.uiClick(); };
+        mf.onclick=()=>set('free'); ms.onclick=()=>set('swipe');
+        this.haptics.attachSwitch(mf); this.haptics.attachSwitch(ms);
+        apply(); }
+      // ---- TOP BAR: the gear opens Settings, the + opens the shard boost, and opening the villain
+      // sheet clears its "new characters" dot.
+      { const gear=document.getElementById('tb-gear');
+        if(gear){ gear.onclick=()=>{ document.getElementById('settings-btn').click(); };
+                  this.haptics.attachSwitch(gear); }
+        const plus=document.getElementById('tb-plus');
+        if(plus){ plus.onclick=()=>{ this.audio.uiClick&&this.audio.uiClick();
+            const bb=document.getElementById('boost-modal');
+            if(bb) bb.classList.remove('hidden'); };
+          this.haptics.attachSwitch(plus); }
+        const sk=document.getElementById('skins-btn');
+        if(sk) sk.addEventListener('click',()=>{ try{
+          localStorage.setItem('invrun_seen_chars', String(Object.keys(CHARACTERS).length)); }catch(e){} }); }
+      // ---- TUTORIAL: replay it from Settings, which also closes the sheet and starts a run so the
+      // coaching lands on live play rather than on a menu.
+      { const tb=document.getElementById('tut-btn');
+        tb.onclick=()=>{ try{ localStorage.removeItem('invrun_tut'); }catch(e){}
+          this.run._forceTut=true;
+          document.getElementById('settings-modal').classList.add('hidden');
+          this.audio.uiClick&&this.audio.uiClick();
+          this.run.startRun(); };
+        this.haptics.attachSwitch(tb); }
+      // ---- EVADE
+      { const eb=document.getElementById('btn-evade');
+        const go=(e)=>{ if(e&&e.cancelable) e.preventDefault();
+          if(this.player.evade()){ this.haptics.fire('closeCall'); this.audio.uiClick&&this.audio.uiClick(); } };
+        eb.addEventListener('touchstart',go,{passive:false});
+        eb.addEventListener('mousedown',go);
+        this.haptics.attachSwitch(eb); }
       { const cb=document.getElementById('scheme-btn');
         const nameEl=document.getElementById('movesens-name');
         const applyC=()=>{ const drag=this.input.scheme==='drag';
@@ -7536,6 +8313,8 @@
         this.run._closeCalls();
         this.pickups.update(dt);
         this.drones.update(dt);
+        this.cannon.update(dt);
+        this.tutorial.update(dt);
         this.run.tick();
       } else if(this.run.state==='READY'){
         // gentle idle drift so the menu scene looks alive
@@ -7567,7 +8346,7 @@
   }
 
   // small debug handle so automated tests can drive the tuning tables
-  try { window.__cb={POWERS,PWR,PLAY,BOOST,DRONES,GATE_LOOK,STAGES,HAPTIC,CHARACTERS,THEMES,stageFor,powerFor,buildProceduralVillain}; }catch(e){}
+  try { window.__cb={POWERS,PWR,PLAY,SW,BOOST,DRONES,GATE_LOOK,STAGES,HAPTIC,CHARACTERS,THEMES,stageFor,powerFor,buildProceduralVillain}; }catch(e){}
   try { window.__game=new Game(); }
   catch(err){
     document.body.innerHTML='<div style="color:#fff;padding:40px;font-family:monospace">Failed to start: '+
