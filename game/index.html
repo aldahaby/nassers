@@ -3135,14 +3135,24 @@
         // picked slides out from under you on every bend.
         if(this._prevRc!==undefined) this.pos.x += rc - this._prevRc;
         this._prevRc=rc;
+        if(this._dragSeq===undefined) this.vel.x=0;
         // Keys and gyro still nudge, so the scheme never leaves anyone without a control.
         this._dragBase=clamp(this._dragBase + sx*STRAFE*0.35*dt, -lim, lim);
-        const want=clamp(this._dragBase + g.input.dragPx*g.input.dragWorldPerPx(), -lim, lim);
-        // Critically-damped follow with a hard speed cap: instant enough to feel 1:1, capped so a
-        // flick across the glass cannot teleport him through a tower.
-        const step=clamp((rc+want-this.pos.x)*Math.min(1,18*dt), -STRAFE*dt, STRAFE*dt);
-        this.pos.x+=step;
-        this.vel.x=step/Math.max(dt,1e-4);
+        // MINUS. The camera looks down +Z, so world +X is screen LEFT — which is why the joystick
+        // path negates its steer too. Without this, dragging right sent him left.
+        const want=clamp(this._dragBase - g.input.dragPx*g.input.dragWorldPerPx(), -lim, lim);
+        // A CRITICALLY DAMPED SPRING, not a per-frame lerp toward the target. A lerp starts at full
+        // speed and decays, which is exactly the stepped, robotic feel — there is no acceleration
+        // in it at all. A spring carries velocity between frames, so he leans into the move and
+        // settles out of it, and it cannot overshoot.
+        const target=rc+want;
+        const om=13.5;                              // rad/s — about a quarter-second to settle
+        const x=om*dt, expo=1/(1+x+0.48*x*x+0.235*x*x*x);
+        const change=this.pos.x-target;
+        const tmp=(this.vel.x+om*change)*dt;
+        this.vel.x=clamp((this.vel.x-om*tmp)*expo, -STRAFE, STRAFE);
+        const nx=target+(change+tmp)*expo;
+        this.pos.x += clamp(nx-this.pos.x, -STRAFE*dt, STRAFE*dt);   // a flick still cannot teleport
         sx=clamp(this.vel.x/STRAFE,-1,1);           // bank/cape read the motion, not the finger
       } else {
         this.vel.x=damp(this.vel.x,sx*STRAFE,12,dt);         // weightier response
@@ -6228,14 +6238,16 @@
   function buildProceduralVillain(opts){
     // The suit was 0x1b1d26 — so dark that every plate, rib and buckle on it disappeared into one
     // silhouette in daylight. Lifting it two stops is what lets the armour read at all.
-    const O=Object.assign({ skin:0x8a5a3c, suit:0x2b3040, trim:0x9b1d2a, metal:0x8e94a2 }, opts||{});
+    const O=Object.assign({ skin:0x8a5a3c, suit:0x232a3a, trim:0x9b1d2a, metal:0xc2ccda }, opts||{});
     const HEAD=0.115;                                   // one head-height; everything derives from it
     const root=new THREE.Group();
 
     const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.62,metalness:.06},o||{}));
-    const matSuit=M(O.suit,{roughness:.46,metalness:.18}), matSkin=M(O.skin,{roughness:.78}),
+    const matSuit=M(O.suit,{roughness:.52,metalness:.10}), matSkin=M(O.skin,{roughness:.78}),
           matTrim=M(O.trim,{roughness:.5}), matMetal=M(O.metal,{roughness:.28,metalness:.55,emissive:0x2a2f3a,emissiveIntensity:.25}),
-          matEye=M(0xffe9a8,{roughness:.2,emissive:0xffb020,emissiveIntensity:2.2});
+          matEye=M(0xffe9a8,{roughness:.2,emissive:0xffb020,emissiveIntensity:2.2}),
+          matSole=M(0x14161c,{roughness:.92,metalness:0}),
+          matPlate=M(0x4e576a,{roughness:.40,metalness:.42});
 
     // A limb from a silhouette: pairs of [radius, height] up the length, spun into a solid.
     // `seg` 20 is smooth enough to read as flesh without being a sphere.
@@ -6244,6 +6256,21 @@
       const g=new THREE.LatheGeometry(pts, seg||20);
       g.computeVertexNormals();
       return new THREE.Mesh(g, mat);
+    };
+    // A BOX WITH ROUNDED EDGES. Nothing on a body is a sharp-cornered box, and nothing on a body
+    // is a lathe either — hands, plates and boots are blocks with radii. Each vertex is pulled onto
+    // the surface of an inner box swept by a sphere of radius r, which is exactly a rounded box.
+    const roundBox=(w,h,d,r,seg)=>{
+      const n=seg||5, g=new THREE.BoxGeometry(w,h,d,n,n,n), p=g.attributes.position;
+      const hx=Math.max(0,w/2-r), hy=Math.max(0,h/2-r), hz=Math.max(0,d/2-r);
+      const v=new THREE.Vector3(), c=new THREE.Vector3();
+      for(let i=0;i<p.count;i++){
+        v.set(p.getX(i),p.getY(i),p.getZ(i));
+        c.set(clamp(v.x,-hx,hx), clamp(v.y,-hy,hy), clamp(v.z,-hz,hz));
+        v.sub(c); if(v.lengthSq()>1e-12) v.setLength(r); v.add(c);
+        p.setXYZ(i,v.x,v.y,v.z);
+      }
+      g.computeVertexNormals(); return g;
     };
     // Same, but only a slice of the revolution — for armour that sits on the FRONT of the chest
     // instead of wrapping all the way round like a barrel.
@@ -6274,9 +6301,11 @@
     // the chest and narrowing to the shoulders, which is the silhouette of a bust — he read as a
     // woman in a breastplate. It is now a metal shell over the FRONT 210° only, cut away at the
     // sternum, with a small red chevron for the villain read.
-    const plate=shell([[0.00,-0.02*HEAD],[0.82*HEAD,0.06*HEAD],[0.88*HEAD,0.52*HEAD],
-                       [0.80*HEAD,0.84*HEAD],[0.50*HEAD,1.02*HEAD]], matMetal, 20,
-                      -1.83, 3.66);
+    // matPlate, not matMetal: in bright chrome this wide a shell became a white bib across his
+    // chest that read as a bust again, and it drowned the chevron sitting on top of it.
+    const plate=shell([[0.00,-0.02*HEAD],[0.80*HEAD,0.06*HEAD],[0.855*HEAD,0.50*HEAD],
+                       [0.74*HEAD,0.82*HEAD],[0.44*HEAD,0.98*HEAD]], matPlate, 20,
+                      -1.70, 3.40);
     plate.scale.set(1.02,1,0.645); put(plate, 0, 0.20*HEAD, 0);
     for(const sx of [-1,1]){          // the chevron, two bars meeting at the sternum
       const bar=new THREE.Mesh(new THREE.BoxGeometry(0.52*HEAD,0.11*HEAD,0.07*HEAD), matTrim);
@@ -6350,55 +6379,92 @@
                      -1.36, 2.72);
     mask.scale.z=0.94; H(mask, 0, 1.66*HEAD, 0);
 
-    // ---- ARMS. Deltoid swell, taper into the elbow, forearm belly, wrist pinch. Built pointing
-    // DOWN the -Y axis then rotated out, so the shoulder is the pivot and the pose is one number.
+    // ---- ARMS. Built pointing DOWN the -Y axis and then swung overhead, so the shoulder is the
+    // pivot and the whole pose is one rotation. Everything is mirrored exactly, and NOTHING here
+    // is allowed to differ between the two sides — an asymmetric limb makes him look like he is
+    // leaning even when he is dead level.
+    //
+    // In arm-local space after that swing: -Y is the punching direction, +Z is the BACK of the
+    // hand, -Z is the palm. The fingers curl from the knuckles round toward -Z.
     const arm=(side)=>{
       const g=new THREE.Group();
       // A pauldron over the shoulder — the single strongest "villain" read in a silhouette.
-      const pauld=limb([[0.00,0.16*HEAD],[0.30*HEAD,0.10*HEAD],[0.40*HEAD,-0.10*HEAD],
-                        [0.36*HEAD,-0.30*HEAD],[0.00,-0.34*HEAD]], matMetal, 18);
-      pauld.scale.z=0.86; pauld.position.y=0.04*HEAD; g.add(pauld);
+      // Two overlapping plates rather than one dome, so it has a lip that catches the light.
+      const pauld=limb([[0.00,0.18*HEAD],[0.26*HEAD,0.13*HEAD],[0.385*HEAD,-0.02*HEAD],
+                        [0.40*HEAD,-0.13*HEAD],[0.30*HEAD,-0.20*HEAD],[0.00,-0.23*HEAD]], matMetal, 20);
+      pauld.scale.z=0.86; pauld.position.y=0.03*HEAD; g.add(pauld);
+      const lip=shell([[0.00,-0.06*HEAD],[0.425*HEAD,-0.09*HEAD],[0.43*HEAD,-0.19*HEAD],[0.00,-0.22*HEAD]],
+                      matTrim, 18, -1.5, 3.0);
+      lip.scale.z=0.86; lip.position.y=0.03*HEAD; g.add(lip);
       for(let k=0;k<2;k++){                              // two swept spikes off the pauldron
         const sp=limb([[0.00,0],[0.055*HEAD,0.02*HEAD],[0.035*HEAD,0.20*HEAD],[0.00,0.30*HEAD]], matTrim, 8);
         sp.position.set(side*0.26*HEAD, 0.06*HEAD, -0.10*HEAD+k*0.20*HEAD);
         sp.rotation.set(-0.5+k*0.3, 0, side*1.05); g.add(sp);
       }
-      // a plate down the outside of the forearm — the last thing the wall sees
-      const vamb=limb([[0.00,0.10*HEAD],[0.20*HEAD,0.02*HEAD],[0.215*HEAD,-0.55*HEAD],
-                       [0.185*HEAD,-0.92*HEAD],[0.00,-1.00*HEAD]], matMetal, 16);
-      vamb.scale.set(1.06,1,0.78);
       // Upper arm: shoulder to elbow is ~1.35 heads, and the elbow must land level with the navel.
       const upper=limb([
         [0.00,0],[0.30*HEAD,-0.05*HEAD],[0.325*HEAD,-0.26*HEAD],          // deltoid swell
-        [0.27*HEAD,-0.70*HEAD],[0.225*HEAD,-1.20*HEAD],[0.21*HEAD,-1.32*HEAD],
-        [0.00,-1.35*HEAD]                                                  // elbow
-      ], matSuit, 18);
+        [0.30*HEAD,-0.52*HEAD],[0.255*HEAD,-0.92*HEAD],                    // bicep belly, then tricep taper
+        [0.225*HEAD,-1.20*HEAD],[0.21*HEAD,-1.32*HEAD],[0.00,-1.35*HEAD]   // elbow
+      ], matSuit, 20);
       g.add(upper);
+      // A band at the bicep and an elbow cap — the joints are where a limb stops reading as a tube.
+      const band=limb([[0.00,-0.03*HEAD],[0.285*HEAD,-0.01*HEAD],[0.29*HEAD,0.09*HEAD],[0.00,0.11*HEAD]], matMetal,18);
+      band.position.y=-0.62*HEAD; g.add(band);
+      const elbowCap=limb([[0.00,0.12*HEAD],[0.19*HEAD,0.06*HEAD],[0.235*HEAD,-0.06*HEAD],
+                           [0.20*HEAD,-0.16*HEAD],[0.00,-0.20*HEAD]], matMetal, 16);
+      elbowCap.scale.z=0.80; elbowCap.position.set(0,-1.30*HEAD,-0.08*HEAD); elbowCap.rotation.x=-0.18; g.add(elbowCap);
       // Forearm: elbow to wrist ~1.15 heads, wrist level with the crotch.
       const fore=limb([
         [0.00,0],[0.225*HEAD,-0.05*HEAD],[0.245*HEAD,-0.30*HEAD],         // forearm belly, high
         [0.165*HEAD,-0.92*HEAD],[0.135*HEAD,-1.12*HEAD],[0.00,-1.15*HEAD] // wrist pinch
-      ], matSuit, 18);
+      ], matSuit, 20);
       fore.position.y=-1.33*HEAD; fore.rotation.x=0.26; g.add(fore);
+      // a plate down the outside of the forearm — the last thing the wall sees
+      const vamb=shell([[0.00,0.10*HEAD],[0.205*HEAD,0.02*HEAD],[0.235*HEAD,-0.55*HEAD],
+                        [0.205*HEAD,-0.92*HEAD],[0.00,-1.00*HEAD]], matMetal, 18, -1.15, 2.30);
+      vamb.scale.set(1.06,1,0.86);
       vamb.position.set(0,-1.39*HEAD,0.02*HEAD); vamb.rotation.x=0.26; g.add(vamb);
-      const cuff=limb([[0.00,-0.04*HEAD],[0.205*HEAD,0],[0.215*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matMetal,16);
+      const cuff=limb([[0.00,-0.05*HEAD],[0.20*HEAD,-0.01*HEAD],[0.225*HEAD,0.12*HEAD],
+                       [0.205*HEAD,0.19*HEAD],[0.00,0.21*HEAD]], matMetal,18);
       cuff.position.y=-2.34*HEAD; cuff.rotation.x=0.26; g.add(cuff);
-      // Hand: a palm block plus a thumb, because a lathe alone gives a mitten.
-      // Hand: a lathe palm squashed flat, so the edges are rounded the way a fist is, plus a
-      // knuckle row and a thumb. Three stacked boxes read as a mitten made of Lego.
-      const hg=new THREE.Group(); hg.position.set(0,-2.48*HEAD,0.13*HEAD); hg.rotation.x=0.26;
-      const palm=limb([[0.00,0.04*HEAD],[0.15*HEAD,-0.02*HEAD],[0.175*HEAD,-0.22*HEAD],
-                       [0.155*HEAD,-0.38*HEAD],[0.00,-0.44*HEAD]], matSkin, 14);
-      palm.scale.set(1,1,0.62); hg.add(palm);
-      for(let k=0;k<3;k++){                       // knuckles, so the fist has a top edge
-        const kn=limb([[0.00,0],[0.048*HEAD,0.01*HEAD],[0.05*HEAD,0.10*HEAD],[0.00,0.12*HEAD]], matSkin, 8);
-        kn.rotation.x=Math.PI*0.52;
-        kn.position.set((k-1)*0.095*HEAD, -0.38*HEAD, 0.02*HEAD); hg.add(kn);
+
+      // ---- THE FIST. This is what leads every smash, so it is built as an actual hand: a rounded
+      // palm mass, four knuckles standing proud of the leading face, four curled fingers wrapped
+      // round onto the palm with their tips tucked under, and a thumb laid across the front.
+      //
+      // The first attempt used lathes for all of it. A lathe is a solid of revolution — the palm
+      // came out as a faceted cone and the fingers as loose cylinders floating off the end of it,
+      // which reads as a robot claw. A hand is BLOCKS WITH RADII, so it is roundBox throughout.
+      const hg=new THREE.Group(); hg.position.set(0,-2.50*HEAD,0.13*HEAD); hg.rotation.x=0.26;
+      hg.scale.setScalar(1.24);                          // a hand is ~0.75 of a head, not a knob
+      const F=(geo,x,y,z,rx,rz)=>{ const m=new THREE.Mesh(geo, matSkin);
+        m.position.set(x*HEAD,y*HEAD,z*HEAD); if(rx)m.rotation.x=rx; if(rz)m.rotation.z=rz;
+        hg.add(m); return m; };
+      // back of the hand and the palm behind it, as one mass
+      F(roundBox(0.350*HEAD,0.335*HEAD,0.260*HEAD,0.105*HEAD,6), 0,-0.135,0.015);
+      const knGeo =roundBox(0.078*HEAD,0.165*HEAD,0.210*HEAD,0.056*HEAD,4);
+      const midGeo=roundBox(0.078*HEAD,0.210*HEAD,0.135*HEAD,0.050*HEAD,4);
+      const tipGeo=roundBox(0.078*HEAD,0.100*HEAD,0.100*HEAD,0.043*HEAD,4);
+      for(let k=0;k<4;k++){
+        const fx=(k-1.5)*0.092;                          // 0.010 of clear air between fingers, so
+        const arc=Math.abs(k-1.25)*0.016;                // the grooves actually read at distance
+        // the knuckle: the leading edge of the fist, and the part that hits the wall
+        F(knGeo, fx, -0.385+arc, 0.020, -0.10);
+        // the middle phalanx, wrapped round onto the palm side
+        F(midGeo, fx, -0.360+arc, -0.150, 0.42);
+        // the fingertip, tucked back up under the fingers
+        F(tipGeo, fx, -0.235+arc, -0.200, 0.60);
       }
-      const thumb=limb([[0.00,0],[0.048*HEAD,0.01*HEAD],[0.045*HEAD,0.15*HEAD],[0.00,0.17*HEAD]], matSkin, 8);
-      thumb.position.set(side*-0.15*HEAD,-0.26*HEAD,0.05*HEAD);
-      thumb.rotation.set(0.3,0,side*0.9); hg.add(thumb);
-      g.add(hg);
+      // thumb: two segments laid ACROSS the front of the curled fingers, which is what closes a fist
+      F(roundBox(0.075*HEAD,0.170*HEAD,0.100*HEAD,0.042*HEAD,4),
+        side*-0.135, -0.150, -0.115, -0.30, side*0.95);
+      F(roundBox(0.068*HEAD,0.140*HEAD,0.090*HEAD,0.038*HEAD,4),
+        side*-0.030, -0.255, -0.160, -0.75, side*1.30);
+      // the wrist, filling the gap back to the cuff
+      F(roundBox(0.245*HEAD,0.110*HEAD,0.215*HEAD,0.070*HEAD,4), 0, 0.030, 0.020);
+      g.add(hg); g.userData.hand=hg;
+
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
       // FISTS FIRST. He flies face-down along his own +Y, so "forward" in flight is straight up
       // the model — both arms go overhead, not down at his sides. Keep the splay SMALL: at 0.30
@@ -6409,47 +6475,55 @@
     };
     const armL=arm(-1), armR=arm(1);
 
-    // ---- LEGS. Thigh mass, knee pinch, calf bulge, ankle pinch, then a foot with an actual
-    // heel and toe. A cylinder leg is the single most obvious "programmer model" tell.
+    // ---- LEGS. Thigh mass, knee pinch, calf bulge, ankle pinch, then a real boot. A cylinder leg
+    // with a stub on the end is the single most obvious "programmer model" tell, and the foot is
+    // where it shows first: a foot is nearly a head long, and it has a sole.
     const leg=(side)=>{
       const g=new THREE.Group();
       const thigh=limb([
         [0.00,0],[0.40*HEAD,-0.06*HEAD],[0.42*HEAD,-0.30*HEAD],           // glute / quad mass
         [0.33*HEAD,-0.90*HEAD],[0.27*HEAD,-1.32*HEAD],[0.00,-1.36*HEAD]   // narrowing into the knee
-      ], matSuit, 18);
+      ], matSuit, 20);
       g.add(thigh);
+      // A band round the thigh. The first version was a hip PLATE that stood proud of the thigh
+      // top and stuck up past it — from the side it read as a broken piece of armour flapping off
+      // him. The top of the thigh is inside the belt anyway; there is nothing to armour up there.
+      const tBand=limb([[0.00,-0.04*HEAD],[0.375*HEAD,-0.01*HEAD],[0.38*HEAD,0.11*HEAD],[0.00,0.14*HEAD]], matMetal,20);
+      tBand.position.y=-0.56*HEAD; g.add(tBand);
       const shin=limb([
         [0.00,0],[0.26*HEAD,-0.05*HEAD],[0.29*HEAD,-0.34*HEAD],           // calf belly, high and full
         [0.18*HEAD,-0.96*HEAD],[0.14*HEAD,-1.24*HEAD],[0.00,-1.26*HEAD]   // ankle
-      ], matSuit, 18);
+      ], matSuit, 20);
       shin.position.y=-1.32*HEAD; g.add(shin);
-      // Boot: an ankle cuff, a heel block, and a toe that TAPERS. A single deep box is a plank,
-      // which is what it looked like — the toe has to come to a point or the foot reads as a slab.
-      const boot=limb([[0.00,0.06*HEAD],[0.205*HEAD,0],[0.225*HEAD,-0.20*HEAD],
-                       [0.20*HEAD,-0.30*HEAD],[0.00,-0.34*HEAD]], matTrim,16);
-      boot.position.y=-2.52*HEAD; g.add(boot);
-      const heel=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.15*HEAD,0.30*HEAD), matTrim);
-      heel.position.set(0,-2.76*HEAD,-0.03*HEAD); g.add(heel);
-      const toe=new THREE.Mesh(new THREE.CylinderGeometry(0.155*HEAD,0.105*HEAD,0.44*HEAD,10), matTrim);
-      toe.rotation.set(Math.PI*0.5,0,0); toe.scale.y=1; toe.scale.x=1;
-      toe.position.set(0,-2.775*HEAD,0.28*HEAD); g.add(toe);
-      const sole=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.05*HEAD,0.62*HEAD), matMetal);
-      sole.position.set(0,-2.845*HEAD,0.14*HEAD); g.add(sole);
-      // KNEE GUARD — the joint is where a leg reads as armour instead of a tube
-      const knee=limb([[0.00,0.16*HEAD],[0.22*HEAD,0.09*HEAD],[0.27*HEAD,-0.06*HEAD],
-                       [0.23*HEAD,-0.20*HEAD],[0.00,-0.26*HEAD]], matMetal, 16);
-      knee.scale.z=0.82; knee.position.set(0,-1.33*HEAD,0.07*HEAD); g.add(knee);
-      const strap=limb([[0.00,-0.05*HEAD],[0.20*HEAD,-0.03*HEAD],[0.21*HEAD,0.05*HEAD],[0.00,0.07*HEAD]], matMetal,14);
-      strap.position.y=-2.44*HEAD; g.add(strap);            // boot strap over the ankle
+      // KNEE GUARD — a plate standing proud of the joint, not a band around it
+      const knee=new THREE.Mesh(roundBox(0.50*HEAD,0.52*HEAD,0.34*HEAD,0.15*HEAD,6), matMetal);
+      knee.position.set(0,-1.34*HEAD,0.10*HEAD); knee.rotation.x=0.10; g.add(knee);
+      // a shin plate down the front, and a calf band behind it
+      const shinP=shell([[0.00,0.06*HEAD],[0.235*HEAD,0.00*HEAD],[0.255*HEAD,-0.44*HEAD],
+                         [0.215*HEAD,-0.80*HEAD],[0.00,-0.88*HEAD]], matMetal, 18, -1.05, 2.10);
+      shinP.scale.set(1.05,1,0.92); shinP.position.y=-1.60*HEAD; g.add(shinP);
+
+      // ---- BOOT. Rounded blocks, because a foot is a wedge and a lathe cannot make one. The sole
+      // is DARK: it was chrome, and from behind it read as a grey block wedged into a red boot.
+      const bootG=new THREE.Group(); bootG.position.set(0,-2.56*HEAD,0); g.add(bootG);
+      const B=(geo,mat,x,y,z,rx)=>{ const m=new THREE.Mesh(geo,mat);
+        m.position.set(x*HEAD,y*HEAD,z*HEAD); if(rx)m.rotation.x=rx; bootG.add(m); return m; };
+      B(roundBox(0.375*HEAD,0.34*HEAD,0.40*HEAD,0.10*HEAD,5), matTrim, 0,-0.02,-0.01);      // ankle
+      B(roundBox(0.40*HEAD,0.30*HEAD,0.80*HEAD,0.11*HEAD,5), matTrim, 0,-0.24,0.16);        // the foot
+      B(roundBox(0.335*HEAD,0.22*HEAD,0.30*HEAD,0.09*HEAD,5), matTrim, 0,-0.27,0.50, -0.16);// tapering toe
+      B(roundBox(0.42*HEAD,0.10*HEAD,0.92*HEAD,0.045*HEAD,4), matSole, 0,-0.395,0.19);      // the sole
+      B(roundBox(0.40*HEAD,0.13*HEAD,0.26*HEAD,0.055*HEAD,4), matSole, 0,-0.345,-0.14);     // the heel
+      B(roundBox(0.415*HEAD,0.09*HEAD,0.145*HEAD,0.04*HEAD,4), matMetal, 0,0.14,0.03);      // ankle strap
+
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
       g.position.set(side*0.29*HEAD, -1.36*HEAD, 0);
-      g.rotation.x=0.12; g.rotation.z=side*0.05;
       root.add(g); return g;
     };
     const legL=leg(-1), legR=leg(1);
-    // Legs TRAIL. A walking stride is what he had, and at 300 km/h it read as somebody stepping
-    // through the air. A small stagger is all that is left, so they are not a pair of poles.
-    legL.rotation.set(0.16, 0, -0.045); legR.rotation.set(-0.07, 0, 0.075);
+    // MIRRORED EXACTLY. These used to carry a walking stride — 0.34 on one side and -0.10 on the
+    // other — which at 300 km/h did not read as a stride, it read as him leaning. Anything that
+    // differs between the two legs makes a level flight look crooked.
+    legL.rotation.set(0.10, 0, -0.055); legR.rotation.set(0.10, 0, 0.055);
 
     // ---- CAPE. The hard part, and the first attempt got it wrong in the way that matters: it was
     // built as a FLAT PLANE bent backwards, so its side edges stayed at z≈0 and punched out
@@ -6492,14 +6566,15 @@
     // The geometry is already in body space — no offset, or the collar leaves his shoulders.
     cape.castShadow=true; root.add(cape);
     // the collar it hangs from, so it does not appear to float off his back
-    const collar=limb([[0.00,-0.06*HEAD],[0.66*HEAD,-0.02*HEAD],[0.70*HEAD,0.16*HEAD],[0.00,0.20*HEAD]], matMetal, 20);
+    const collar=limb([[0.00,-0.06*HEAD],[0.60*HEAD,-0.02*HEAD],[0.64*HEAD,0.15*HEAD],[0.00,0.19*HEAD]], matPlate, 20);
     collar.scale.z=0.66; put(collar, 0, 1.26*HEAD, -0.06*HEAD);
     for(const sx of [-1,1]){                             // the clasps the cape actually hangs from
       const clasp=new THREE.Mesh(new THREE.OctahedronGeometry(0.12*HEAD,0), matTrim);
       clasp.scale.set(1,1.2,0.6); put(clasp, sx*0.44*HEAD, 1.30*HEAD, 0.22*HEAD);
     }
 
-    root.userData.parts={armL,armR,legL,legR,cape,torso,skull};
+    root.userData.parts={armL,armR,legL,legR,cape,torso,skull,
+                         handL:armL.userData.hand, handR:armR.userData.hand};
     return root;
   }
 
