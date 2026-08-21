@@ -34,8 +34,9 @@ const browser = await chromium.launch({
   executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args:['--use-gl=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
 
-const CHARS = ['dominus','frutiger','knight','patriot','entity','countess',
-               'shrike','tyrant','nocturne','forged'];
+// CHARS=forged node scripts/characters.mjs  — to check one while iterating on it
+const CHARS = (process.env.CHARS || 'dominus,frutiger,knight,patriot,entity,countess,'
+              +'shrike,tyrant,nocturne,forged').split(',');
 let bad = 0;
 
 for(const ch of CHARS){
@@ -63,18 +64,42 @@ for(const ch of CHARS){
     const hiddenAtMenu = P.rig.visible === false;      // menu = empty city
     G.run.startRun();
     const shownInPlay  = P.rig.visible === true;       // PLAY = villain arrives
+
+    // ON FIRE overwrites every material's emissive. Dying while lit used to hide the fire aura,
+    // and the reset was gated on that aura still being visible — so the villain stayed lit in the
+    // last aura colour for the rest of the session, which read as him turning white and staying
+    // white. Light him, send him back to the menu, and every material must be exactly as authored.
+    const snap = ()=> P.glowMats.filter(m=>m&&m.emissive)
+                       .map(m=>m.emissive.getHexString()+'@'+m.emissiveIntensity).join(',');
+    const authored = snap();
+    G.combo.count=40; G.combo.epicTime=99; G.combo.etherealTime=99;
+    P.update(1/60, G.input.steer);
+    const lit = snap();
+    G.combo.count=0; G.combo.epicTime=0; G.combo.etherealTime=0;
+    P.update(1/60, G.input.steer);
+    const afterFire = snap();
+    G.combo.count=40; G.combo.epicTime=99; G.combo.etherealTime=99;
+    P.update(1/60, G.input.steer);
+    G.toMenu ? G.toMenu() : P.setMenuMode(true);        // die/quit while still on fire
+    const afterMenu = snap();
+
     G.run.state = 'READY';
 
     return { meshes, totalVerts, clothVerts,
              pctCloth:+(100*clothVerts/Math.max(1,totalVerts)).toFixed(1),
              portrait: img ? (img.naturalWidth>0) : 'no card',
              hiddenAtMenu, shownInPlay,
+             glowLights: lit!==authored,
+             glowRestores: afterFire===authored,
+             glowRestoresAtMenu: afterMenu===authored,
              powers:(window.__cb.POWERS[key]||[]).length,
              name:(window.__cb.CHARACTERS[key]||{}).name };
   });
 
   const ok = r.meshes>0 && r.clothVerts>0 && r.pctCloth<60 && r.portrait===true
-             && r.hiddenAtMenu && r.shownInPlay && r.powers===4 && errs.length===0;
+             && r.hiddenAtMenu && r.shownInPlay && r.powers===4
+             && r.glowLights && r.glowRestores && r.glowRestoresAtMenu
+             && errs.length===0;
   if(!ok) bad++;
   console.log(ch.padEnd(9), ok?'ok  ':'FAIL', JSON.stringify(r), errs.slice(0,1).join(''));
   await pg.close();

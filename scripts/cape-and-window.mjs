@@ -84,7 +84,11 @@ for(const key of ['dominus','frutiger','knight','patriot','entity','countess']){
     for(let i=0;i<60*220;i++){
       G._loop();
       const t=G.powers.target();
-      if(t && !first.has(t.gid)) first.set(t.gid,{f:i, z:t.mesh.position.z});
+      // Only count gates first sighted AHEAD of him. A run can begin with a gate already level
+      // with the player left over from the previous world, and that samples as a zero-second
+      // warning for a wall he never actually approached.
+      if(t && !first.has(t.gid) && t.mesh.position.z > G.player.pos.z + 2)
+        first.set(t.gid,{f:i, z:t.mesh.position.z});
       for(const [gid,rec] of [...first]){
         if(rec.z <= G.player.pos.z){ leads.push((i-rec.f)/60); first.delete(gid); }
       }

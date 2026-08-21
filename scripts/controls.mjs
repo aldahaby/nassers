@@ -95,8 +95,24 @@ const drag = await pg.evaluate(async ()=>{
   G.ui.update = ()=>{}; G.snapMenuBg = ()=>{};
   G.time.frozen = ()=>false; G.time.update = (rd)=>rd;
   I.setScheme('drag'); I.moveSens = 1;
+  // Nobody is steering here, so he flies blind into gate after gate. Each slam bleeds momentum and
+  // speed, and a death re-anchors the whole control — either would make a position reading
+  // meaningless. This measurement is about the control, not about survival, so the collision
+  // resolution is stubbed out and the run is asserted to have stayed alive.
+  let deaths = 0, smashes = 0;
+  const oGO=G.run.toGameOver.bind(G.run), oSm=G.impact.smash.bind(G.impact),
+        oDiff=G.difficulty.update.bind(G.difficulty);
+  G.run.toGameOver = ()=>{ deaths++; };
+  G.impact.smash = ()=>{ smashes++; };
+  // _pathX scales the road's lateral swing by difficulty.level, so as a run progresses the SAME z
+  // maps to a different road centre. A villain holding his world position therefore drifts
+  // relative to the road through no fault of the control. Freeze the difficulty so the road is a
+  // pure function of z and what is left to measure is the control alone.
+  G.difficulty.update = ()=>{};
   G.run.startRun();
-  const step=(n)=>{ for(let i=0;i<n;i++) G._loop(); };
+  // Momentum is the health bar and it drains unless you are smashing things, which he is not
+  // doing here. Hold it full so the run cannot time out under the measurement.
+  const step=(n)=>{ for(let i=0;i<n;i++){ G.momentum.value=G.momentum.MAX; G._loop(); } };
   const rc =()=> G.city._pathX(P.pos.z);
   const off=()=> P.pos.x - rc();
   const fire=(type,x)=>{ const t=new Touch({identifier:7,target:document.body,clientX:x,clientY:600});
@@ -136,9 +152,10 @@ const drag = await pg.evaluate(async ()=>{
   fire('touchstart', 20); fire('touchmove', 20+4000); step(90);
   const flung=off(); fire('touchend', 4020);
   I.setScheme('stick');
+  G.run.toGameOver=oGO; G.impact.smash=oSm; G.difficulty.update=oDiff;   // the blast pass needs all three
   return { onLand:+onLand.toFixed(3), moved:+moved.toFixed(2), wantMoved:+wantMoved.toFixed(2),
            drift:+drift.toFixed(3), afterLift:+afterLift.toFixed(3), reanchor:+reanchor.toFixed(3),
-           creep:+creep.toFixed(3), flung:+flung.toFixed(2), xbox:XBOX };
+           creep:+creep.toFixed(3), flung:+flung.toFixed(2), xbox:XBOX, deaths, smashes };
 });
 
 // ---- blast radius -------------------------------------------------------------------------
@@ -198,13 +215,14 @@ const checks = [
   ['joystick ignores a stale drag value',    ctl.stickIgnoresDrag],
   ['joystick actually steers',               ctl.stickSteers],
   ['switching schemes flushes live input',   ctl.flushOnSwitch],
-  ['a finger landing does not move him',     Math.abs(drag.onLand)<0.25],
+  ['a finger landing does not move him',     Math.abs(drag.onLand)<0.08],
   ['he tracks the finger about 1:1',         Math.abs(drag.moved-drag.wantMoved)<1.2],
   ['holding the finger still stops him',     Math.abs(drag.drift)<0.05],
-  ['lifting the finger does not recentre',   Math.abs(drag.afterLift)<0.25],
-  ['the hold is a fixed lag, not a creep',   drag.creep < 0.25],
-  ['a new touch re-anchors, never jumps',    Math.abs(drag.reanchor)<0.25],
+  ['lifting the finger does not recentre',   Math.abs(drag.afterLift)<0.03],
+  ['the hold is a fixed lag, not a creep',   drag.creep < 0.03],
+  ['a new touch re-anchors, never jumps',    Math.abs(drag.reanchor)<0.08],
   ['a flick cannot leave the playfield',     Math.abs(drag.flung)<=drag.xbox+0.01],
+  ['the run never ended mid-measurement',    drag.deaths===0],
   ['powers actually fired',                  blast.shots > 20],
   // never MORE than one. 0 is legitimate — sometimes nothing has spawned yet inside blastRange.
   ['a shot never takes a 2nd extra tower',   blast.extras.every(e=>e<=1)],
