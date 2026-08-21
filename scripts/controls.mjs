@@ -129,7 +129,7 @@ const drag = await pg.evaluate(async ()=>{
   fire('touchmove', 340+PX);
   step(60);
   const moved=off()-start;
-  const wantMoved=PX*I.dragWorldPerPx();
+  const wantMoved=-PX*I.dragWorldPerPx();   // screen-left is world +X: the camera looks down +Z
 
   const held=off(); step(60);
   const drift=off()-held;                     // finger still => he must be still
@@ -148,6 +148,23 @@ const drag = await pg.evaluate(async ()=>{
   const reanchor=off()-before2;               // a new touch must not jump him
   fire('touchend', 100);
 
+  // THE ONE THAT CANNOT BE WRONG: where he is ON SCREEN. World +X is screen LEFT under this
+  // camera, so a world-space assertion happily passes on an inverted control — which is exactly
+  // how drag shipped backwards. Project him and check the pixels.
+  // The chase camera tracks his x, so once he settles he is back near the middle of the frame —
+  // read the TRANSIENT, a few frames in, while the camera is still catching up. The sign is the
+  // whole assertion; the magnitude only has to clear the noise.
+  const scr=()=>{ const c=G.camera.cam;
+                  const v=new (P.pos.constructor)(P.pos.x,P.pos.y,P.pos.z);
+                  v.project(c); return v.x; };
+  fire('touchstart', 200); step(30);
+  const sx0=scr();
+  fire('touchmove', 200+170); step(10);            // finger to the RIGHT
+  const sRight=scr()-sx0;
+  fire('touchmove', 200-170); step(20);            // finger back to the LEFT, past the start
+  const sLeft=scr()-sx0;
+  fire('touchend', 30); step(4);
+
   // a flick the full width of the glass, twice over — he must stop at the edge
   fire('touchstart', 20); fire('touchmove', 20+4000); step(90);
   const flung=off(); fire('touchend', 4020);
@@ -155,7 +172,7 @@ const drag = await pg.evaluate(async ()=>{
   G.run.toGameOver=oGO; G.impact.smash=oSm; G.difficulty.update=oDiff;   // the blast pass needs all three
   return { onLand:+onLand.toFixed(3), moved:+moved.toFixed(2), wantMoved:+wantMoved.toFixed(2),
            drift:+drift.toFixed(3), afterLift:+afterLift.toFixed(3), reanchor:+reanchor.toFixed(3),
-           creep:+creep.toFixed(3), flung:+flung.toFixed(2), xbox:XBOX, deaths, smashes };
+           creep:+creep.toFixed(3), flung:+flung.toFixed(2), xbox:XBOX, deaths, smashes, sRight:+sRight.toFixed(3), sLeft:+sLeft.toFixed(3) };
 });
 
 // ---- blast radius -------------------------------------------------------------------------
@@ -221,6 +238,8 @@ const checks = [
   ['lifting the finger does not recentre',   Math.abs(drag.afterLift)<0.03],
   ['the hold is a fixed lag, not a creep',   drag.creep < 0.03],
   ['a new touch re-anchors, never jumps',    Math.abs(drag.reanchor)<0.08],
+  ['finger right moves him right ON SCREEN', drag.sRight >  0.02],
+  ['finger left moves him left ON SCREEN',   drag.sLeft  < -0.02],
   ['a flick cannot leave the playfield',     Math.abs(drag.flung)<=drag.xbox+0.01],
   ['the run never ended mid-measurement',    drag.deaths===0],
   ['powers actually fired',                  blast.shots > 20],

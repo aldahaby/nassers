@@ -373,6 +373,13 @@ Four properties that all matter:
 - **The road carries him.** `pos.x += rc - prevRc` before the damped step. Without it the follow has
   to chase the curve *as well as* the finger and always trails it by about two frames of road
   movement — the lane you picked slides out from under you on every bend.
+- **The direction is checked in SCREEN space.** World `+X` is screen *left* under this camera, so a
+  world-space test passes happily on an inverted control — which is exactly how drag first shipped,
+  backwards. `scripts/controls.mjs` projects him through the camera and checks the pixels.
+- **The motion is a critically damped spring**, not a per-frame lerp toward the target. A lerp
+  starts at full speed and decays; there is no acceleration in it at all, which is the stepped,
+  robotic feel. A spring carries velocity between frames, so he leans into the move and settles out
+  of it, and it still cannot overshoot.
 - **The velocity channel stays empty.** `sample()` adds `this.joy` only in stick mode, and
   `setScheme` clears both plus any live touch id — a stale joystick value left at 1 would otherwise
   steer forever after a switch.
@@ -848,8 +855,8 @@ Then add the entry to `CHARACTERS`, give it a `flow` region (PART 6), and render
 
 ## The Forged — built from code
 
-`buildProceduralVillain()` builds a villain out of geometry alone: **65 meshes, 5,646 vertices,
-8.4 heads tall in the flight pose.**
+`buildProceduralVillain()` builds a villain out of geometry alone: **~110 meshes, 19k triangles,
+8.7 heads tall in the flight pose.**
 
 Unlike the GLBs, his **pose is authored, not corrected**: he is modelled standing and then pitched
 exactly `Math.PI/2` so he flies dead level. Because "forward in flight" is the model's own `+Y`,
@@ -864,6 +871,33 @@ The thing that keeps it from reading as a toy is that **almost nothing is a box 
 Limbs and torso are `LatheGeometry` silhouettes — a profile of radii swept around the axis — so the
 deltoid swells, the elbow tapers, the calf bulges and the ankle pinches, the way an actual arm and
 leg do. The face is built rather than painted: brow ridge, nose bridge, cheekbones, jaw and ears.
+
+### Lathes for limbs, rounded boxes for everything else
+
+Two primitives carry the whole model, and using the wrong one is what makes a part look wrong:
+
+- **`limb(profile)`** — a `LatheGeometry`, a solid of revolution. Right for anything radially
+  symmetric about its own axis: upper arms, forearms, thighs, shins, necks, bands, spikes.
+- **`roundBox(w,h,d,r)`** — a box whose vertices are pulled onto an inner box swept by a sphere of
+  radius `r`. Right for anything that is a **block with radii**: hands, fingers, boots, knee guards.
+
+The fist was built out of lathes first. A lathe cannot make a hand: the palm came out as a faceted
+cone and the fingers as loose cylinders floating off the end of it, which reads as a robot claw.
+Rebuilt from rounded boxes it is a rounded palm mass, four knuckles standing proud of the leading
+face, four fingers curled round onto the palm with the tips tucked under, and a two-segment thumb
+laid across the front — about 0.010 heads of clear air between fingers, because the grooves are
+what say "fingers" at gameplay distance. The knuckle line is an **arc**, not a bar.
+
+Feet had the same problem, plus a scale one: a foot is nearly a **head long**. A stub on the end of
+the shin is the classic tell. The sole is its own dark material — it was chrome, and from behind it
+read as a grey block wedged into a red boot.
+
+### Nothing may differ between left and right
+
+The legs carried a walking stride, `0.34` on one side and `-0.10` on the other. At 300 km/h that
+does not read as a stride, it reads as **him leaning** — and the player will report it as the model
+being crooked, not as an animation choice. Both legs and both arms are exact mirrors now
+(`side*` on the z-rotation only). `BANK_ROLL` is already `0/0`, so any apparent lean is the model.
 
 ### The cape is a cone, not a plane
 
@@ -912,8 +946,14 @@ metal shell over the front 210° with a small chevron.
 ### Detail is worthless if the value is too dark to show it
 
 The suit was `0x1b1d26`. Every plate, rib, buckle and guard on him disappeared into one silhouette
-in daylight — the model had the detail and none of it was visible. Lifting the suit two stops to
-`0x2b3040` (with a little metalness) is what made the armour read at all, and it cost nothing.
+in daylight — the model had the detail and none of it was visible. Lifting the suit to `0x232a3a`
+is what made the armour read at all, and it cost nothing.
+
+There are now **four** armour tones, and they have to stay separated or the detail merges again:
+`matSuit` (dark cloth), `matPlate` (mid, for large chest and collar pieces), `matMetal` (bright, for
+small hardware — bands, cuffs, knee guards, spikes) and `matSole` (near-black rubber). The chest
+shell was `matMetal` at first and became a white bib across his chest that read as a bust *again*,
+and it drowned the chevron sitting on it. Big pieces take the mid tone; only small ones get chrome.
 
 The armour pass itself: pauldron spikes, forearm vambraces, abdominal ribs, a belt emblem, knee
 guards, boot straps, cape clasps, and emissive eyes set into the visor. The eyes are the cheapest
