@@ -3108,7 +3108,10 @@
       // cap on catching up to the finger, and sensitivity lives in the pixels->world mapping
       // instead, so it is never applied twice.
       const drag = (g.input.scheme==='drag');
-      const STRAFE=(28 + this.fwdNow*0.72) * (drag ? 1.55 : (g.input.moveSens||1));
+      // The drag cap exists ONLY to stop a flick teleporting him through a tower. At 1.55 a normal
+      // swipe was hitting it, and a clamped spring is a constant-speed slide — which is the "stiff
+      // after a certain point" feel. 2.9 leaves the spring in charge for anything but a flick.
+      const STRAFE=(28 + this.fwdNow*0.72) * (drag ? 2.9 : (g.input.moveSens||1));
       const lim=PLAY.xBox;
       let sx=-steer.x;
 
@@ -3146,7 +3149,7 @@
         // in it at all. A spring carries velocity between frames, so he leans into the move and
         // settles out of it, and it cannot overshoot.
         const target=rc+want;
-        const om=13.5;                              // rad/s — about a quarter-second to settle
+        const om=17.0;                              // rad/s — about a fifth of a second to settle
         const x=om*dt, expo=1/(1+x+0.48*x*x+0.235*x*x*x);
         const change=this.pos.x-target;
         const tmp=(this.vel.x+om*change)*dt;
@@ -6200,6 +6203,90 @@
     countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.28,to:0.98,box:{y:[-0.06,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
+  // ===================================================================================
+  // THE FORGED LINE — every villain rebuilt in code geometry.
+  //
+  // Each entry is a KIT: a palette plus a costume description, handed straight to
+  // buildProceduralVillain. They share one anatomy, one rig and one cloth shader, so a new one
+  // costs a dozen lines and no download at all. The GLB originals stay exactly as they are —
+  // these sit alongside them.
+  //
+  // `flow` is the cloth region, and it differs by what is hanging off the back: a cape's free edge
+  // is its HEM (lowest y), a wing's is its TIP (furthest back in z as it sweeps).
+  // ===================================================================================
+  const FLOW_HEM =[{a:'y',d:-1,from:-0.85,to:0.98}];
+  const FLOW_TIP =[{a:'z',d:-1,from:-0.90,to:0.98}];
+  const FORGED={
+    dominus_f: { from:'dominus', name:'Dominus · Forged', flow:FLOW_HEM, kit:{
+      skin:0xd8a586, suit:0x59636f, plate:0x39424e, metal:0x9aa6b4, trim:0x1b2b4a,
+      sole:0x121318, eye:0x9fc8ff, eyeCore:0xe8f2ff,
+      mask:'domino', horns:0, back:'cape', backCol:0x23252d, emblem:'diamond' } },
+
+    frutiger_f:{ from:'frutiger', name:'Frutiger · Forged', flow:FLOW_TIP, kit:{
+      skin:0xe8c6a8, suit:0xeef4f8, plate:0xc3d6e4, metal:0xdfe9f2, trim:0x2fa8e0,
+      sole:0x2a3238, eye:0x66e2ff, eyeCore:0xd8fbff,
+      mask:'helm', horns:0, back:'energy', backCol:0x35d6ff, backCol2:0x9dffe8, emblem:'none' } },
+
+    knight_f:  { from:'knight', name:'Evil Knight · Forged', flow:FLOW_TIP, kit:{
+      skin:0x6a5a52, suit:0x161418, plate:0x2a262c, metal:0x6e6a74, trim:0xb2131c,
+      sole:0x0e0d10, eye:0xff2a1a, eyeCore:0xffb08a,
+      mask:'helm', horns:2, hornStyle:'curved', back:'wings',
+      backCol:0x8e1018, backCol2:0x241f24, emblem:'none' } },
+
+    patriot_f: { from:'patriot', name:'The Patriot · Forged', flow:FLOW_HEM, kit:{
+      skin:0xd9a17f, suit:0x1a3fd8, plate:0xdfe6f2, metal:0xe8eef7, trim:0xc0192c,
+      sole:0x14161c, eye:0xf4f8ff, eyeCore:0xffffff,
+      mask:'domino', horns:0, back:'cape', backCol:0xc0192c, emblem:'star' } },
+
+    entity_f:  { from:'entity', name:'The Entity · Forged', flow:FLOW_HEM, kit:{
+      skin:0xa8b09a, suit:0xb9bfa4, plate:0x9aa189, metal:0x8f9683, trim:0xc9d117,
+      sole:0x6f7360, eye:0xc9d117, eyeCore:0xf2f7c0,
+      mask:'wrap', horns:0, back:'shreds', backCol:0xb2b894,
+      emblem:'none', armour:0, chest:0 } },
+
+    countess_f:{ from:'countess', name:'Voidstrike · Forged', flow:FLOW_HEM, kit:{
+      skin:0xe0b7c8, suit:0x2a1038, plate:0x5a2472, metal:0xa060d0, trim:0x7b2ff7,
+      sole:0x150a1c, eye:0xff5ce0, eyeCore:0xffd6f6,
+      mask:'domino', horns:0, hair:{col:0x3a1450, len:1.35},
+      back:'cape', backCol:0x4a1470, backLen:0.92, emblem:'diamond', armour:0, slim:1 } },
+
+    shrike_f:  { from:'shrike', name:'Silver Shrike · Forged', flow:FLOW_HEM, kit:{
+      skin:0xe2bda0, suit:0xb9c2cc, plate:0xd8dee6, metal:0xeef2f6, trim:0x8fa8c4,
+      sole:0x2a2f36, eye:0xdff0ff, eyeCore:0xffffff,
+      mask:'visor', horns:0, crest:true, hair:{col:0xe8eef5, len:0.7},
+      back:'cape', backCol:0xdfe6ee, backWide:1.15, emblem:'chevron' } },
+
+    tyrant_f:  { from:'tyrant', name:'The Red Jester · Forged', flow:FLOW_HEM, kit:{
+      skin:0xc8302c, suit:0x121216, plate:0x8a0f18, metal:0xc9333a, trim:0xd11a24,
+      sole:0x0d0d10, eye:0xffd24a, eyeCore:0xfff2c0,
+      mask:'jester', horns:2, hornStyle:'curved',
+      back:'cape', backCol:0xc21622, backLen:1.10, emblem:'none' } },
+
+    nocturne_f:{ from:'nocturne', name:'Nocturne · Forged', flow:FLOW_HEM, kit:{
+      skin:0x8a5a48, suit:0x191a20, plate:0x2d2f38, metal:0x767c88, trim:0xa8121e,
+      sole:0x0e0e12, eye:0xff3a3a, eyeCore:0xffc0c0,
+      mask:'hood', horns:0, back:'coat', backCol:0x8e0f1a, backLen:0.78, emblem:'chevron' } },
+  };
+  for(const k of Object.keys(FORGED)){
+    const F=FORGED[k], src=CHARACTERS[F.from];
+    CHARACTERS[k]={ name:F.name, procedural:true, palette:F.kit, aura:src.aura,
+                    rotX:Math.PI/2, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
+                    flowMesh:'cape', flow:F.flow, aim:false, smash:{y:-0.05,z:3.0} };
+    POWERS[k]=POWERS[F.from];                          // same four powers as the original
+  }
+  // the villain sheet is authored in HTML for the originals; the Forged line is appended here so
+  // adding a kit above is the only edit a new one needs
+  try{
+    const grid=document.querySelector('#skins-modal .grid');
+    if(grid) for(const k of Object.keys(FORGED)){
+      const d=document.createElement('div');
+      d.className='card char'; d.dataset.char=k;
+      d.innerHTML='<img class="previmg" src="./assets/prev_'+k+'.png" alt="">'
+                 + CHARACTERS[k].name + '<small>Tap to play</small>';
+      grid.appendChild(d);
+    }
+  }catch(e){}
+
   // The aura is the villain's identity, so EVERY state colour on screen should come from it —
   // the screen-edge glow, the combo readout, the score pops, the teardown flash. Previously those
   // were hardcoded gold/purple, so Voidstrike's violet aura sat inside an orange screen. This
@@ -6236,23 +6323,40 @@
   // body: a limb is not a cylinder, it is a curve.
   // =====================================================================================
   function buildProceduralVillain(opts){
-    // The suit was 0x1b1d26 — so dark that every plate, rib and buckle on it disappeared into one
-    // silhouette in daylight. Lifting it two stops is what lets the armour read at all.
-    const O=Object.assign({ skin:0x8a5a3c, suit:0x232a3a, trim:0x9b1d2a, metal:0xc2ccda }, opts||{});
+    // ONE anatomy, many villains. Everything below is driven by `opts`, so the whole roster shares
+    // this body and differs only in palette and costume — see FORGED for the ten kits.
+    //
+    // On colour: the suit was 0x1b1d26 to begin with, so dark that every plate, rib and buckle on
+    // it disappeared into one silhouette in daylight. Keep four SEPARATED tones — cloth, mid plate,
+    // bright hardware, near-black sole — or the detail merges back into a blob.
+    const O=Object.assign({
+      skin:0x8a5a3c, suit:0x232a3a, trim:0x9b1d2a, metal:0xc2ccda,
+      plate:0x4e576a, sole:0x14161c, eye:0xffb020, eyeCore:0xffe9a8,
+      mask:'visor',      // visor | domino | helm | hood | jester | wrap
+      horns:2, hornStyle:'spike', crest:false,
+      hair:null,         // {col,len} — a mane, animated by the same cloth shader as a cape
+      back:'cape',       // cape | coat | wings | energy | shreds | none
+      backCol:null, backCol2:null, backLen:1, backWide:1, backGlow:0,
+      emblem:'chevron',  // chevron | star | diamond | none
+      armour:1,          // 1 = full hardware, 0 = a smooth suit with almost none
+      slim:0,            // 1 = a lighter build
+      chest:1,           // 0 = no breastplate
+    }, opts||{});
     const HEAD=0.115;                                   // one head-height; everything derives from it
     const root=new THREE.Group();
 
     const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.62,metalness:.06},o||{}));
     const matSuit=M(O.suit,{roughness:.52,metalness:.10}), matSkin=M(O.skin,{roughness:.78}),
           matTrim=M(O.trim,{roughness:.5}), matMetal=M(O.metal,{roughness:.28,metalness:.55,emissive:0x2a2f3a,emissiveIntensity:.25}),
-          matEye=M(0xffe9a8,{roughness:.2,emissive:0xffb020,emissiveIntensity:2.2}),
-          matSole=M(0x14161c,{roughness:.92,metalness:0}),
-          matPlate=M(0x4e576a,{roughness:.40,metalness:.42});
+          matEye=M(O.eyeCore,{roughness:.2,emissive:O.eye,emissiveIntensity:2.2}),
+          matSole=M(O.sole,{roughness:.92,metalness:0}),
+          matPlate=M(O.plate,{roughness:.40,metalness:.42});
+    const SLIM=1-0.13*O.slim;                           // one multiplier on every limb radius
 
     // A limb from a silhouette: pairs of [radius, height] up the length, spun into a solid.
     // `seg` 20 is smooth enough to read as flesh without being a sphere.
     const limb=(profile, mat, seg)=>{
-      const pts=profile.map(([r,y])=>new THREE.Vector2(Math.max(0.0006,r), y));
+      const pts=profile.map(([r,y])=>new THREE.Vector2(Math.max(0.0006,r*SLIM), y));
       const g=new THREE.LatheGeometry(pts, seg||20);
       g.computeVertexNormals();
       return new THREE.Mesh(g, mat);
@@ -6275,7 +6379,7 @@
     // Same, but only a slice of the revolution — for armour that sits on the FRONT of the chest
     // instead of wrapping all the way round like a barrel.
     const shell=(profile, mat, seg, phiStart, phiLen)=>{
-      const pts=profile.map(([r,y])=>new THREE.Vector2(Math.max(0.0006,r), y));
+      const pts=profile.map(([r,y])=>new THREE.Vector2(Math.max(0.0006,r*SLIM), y));
       const g=new THREE.LatheGeometry(pts, seg||20, phiStart, phiLen);
       g.computeVertexNormals();
       const m=new THREE.Mesh(g, mat); m.material.side=THREE.DoubleSide; return m;
@@ -6303,21 +6407,44 @@
     // sternum, with a small red chevron for the villain read.
     // matPlate, not matMetal: in bright chrome this wide a shell became a white bib across his
     // chest that read as a bust again, and it drowned the chevron sitting on top of it.
-    const plate=shell([[0.00,-0.02*HEAD],[0.80*HEAD,0.06*HEAD],[0.855*HEAD,0.50*HEAD],
-                       [0.74*HEAD,0.82*HEAD],[0.44*HEAD,0.98*HEAD]], matPlate, 20,
-                      -1.70, 3.40);
-    plate.scale.set(1.02,1,0.645); put(plate, 0, 0.20*HEAD, 0);
-    for(const sx of [-1,1]){          // the chevron, two bars meeting at the sternum
-      const bar=new THREE.Mesh(new THREE.BoxGeometry(0.52*HEAD,0.11*HEAD,0.07*HEAD), matTrim);
-      bar.position.set(sx*0.24*HEAD, 0.86*HEAD, 0.50*HEAD);
-      bar.rotation.set(-0.18,0,sx*0.62); root.add(bar);
+    if(O.chest){
+      const plate=shell([[0.00,-0.02*HEAD],[0.80*HEAD,0.06*HEAD],[0.855*HEAD,0.50*HEAD],
+                         [0.74*HEAD,0.82*HEAD],[0.44*HEAD,0.98*HEAD]], matPlate, 20,
+                        -1.70, 3.40);
+      plate.scale.set(1.02,1,0.645); put(plate, 0, 0.20*HEAD, 0);
+    }
+    if(O.emblem==='chevron'){         // two bars meeting at the sternum
+      for(const sx of [-1,1]){
+        const bar=new THREE.Mesh(new THREE.BoxGeometry(0.52*HEAD,0.11*HEAD,0.07*HEAD), matTrim);
+        bar.position.set(sx*0.24*HEAD, 0.86*HEAD, 0.50*HEAD);
+        bar.rotation.set(-0.18,0,sx*0.62); root.add(bar);
+      }
+    } else if(O.emblem==='star'){      // five points, laid on the chest
+      for(let k=0;k<5;k++){
+        const a=k*Math.PI*2/5;
+        const arm=new THREE.Mesh(new THREE.ConeGeometry(0.10*HEAD,0.40*HEAD,3), matTrim);
+        arm.position.set(Math.sin(a)*0.20*HEAD, 0.72*HEAD+Math.cos(a)*0.20*HEAD, 0.52*HEAD);
+        arm.rotation.set(Math.PI*0.5,0,-a); arm.scale.z=0.30; root.add(arm);
+      }
+    } else if(O.emblem==='diamond'){
+      const d=new THREE.Mesh(new THREE.OctahedronGeometry(0.26*HEAD,0), matTrim);
+      d.scale.set(0.8,1.5,0.3); d.position.set(0,0.74*HEAD,0.50*HEAD); root.add(d);
     }
     const belt=limb([[0.00,-0.10*HEAD],[0.74*HEAD,-0.08*HEAD],[0.78*HEAD,0.08*HEAD],[0.00,0.10*HEAD]], matMetal, 22);
     belt.scale.z=0.64; put(belt, 0, -0.72*HEAD, 0);
     // a buckle emblem, and two ribs across the abdomen so the midsection is not a blank tube
     const buckle=new THREE.Mesh(new THREE.OctahedronGeometry(0.17*HEAD,0), matTrim);
     buckle.scale.set(1,1.35,0.42); put(buckle, 0, -0.72*HEAD, 0.44*HEAD);
-    for(let k=0;k<2;k++){
+    if(O.armour){
+      const spine=limb([[0.00,-0.02*HEAD],[0.13*HEAD,0.02*HEAD],[0.115*HEAD,1.05*HEAD],[0.00,1.12*HEAD]], matPlate, 10);
+      spine.scale.z=0.5; put(spine, 0, -0.05*HEAD, -0.50*HEAD);
+      for(const sx of [-1,1]) for(let k=0;k<3;k++){
+        const vent=new THREE.Mesh(new THREE.BoxGeometry(0.30*HEAD,0.045*HEAD,0.05*HEAD), matMetal);
+        vent.position.set(sx*0.36*HEAD, 0.72*HEAD-k*0.13*HEAD, -0.44*HEAD);
+        vent.rotation.z=sx*0.25; root.add(vent);
+      }
+    }
+    if(O.armour) for(let k=0;k<2;k++){
       const rib=shell([[0.00,0],[0.62*HEAD-k*0.02*HEAD,0.01*HEAD],[0.63*HEAD-k*0.02*HEAD,0.06*HEAD],[0.00,0.07*HEAD]],
                       matMetal, 18, -1.15, 2.30);
       rib.scale.z=0.62; put(rib, 0, -0.40*HEAD+k*0.22*HEAD, 0);
@@ -6336,48 +6463,98 @@
     // Everything above the collarbone goes in ONE group pivoting at the base of the neck. He flies
     // face-down, so the head has to crane back to look where he is going — a flier staring at the
     // tarmac reads as a corpse falling, not a villain arriving.
+    const MK=O.mask;
+    const faceMat = (MK==='wrap') ? matSuit : MK==='helm' ? matPlate : MK==='jester' ? matTrim : matSkin;
+    const bare    = (MK==='domino' || MK==='visor' || MK==='hood');
     const headG=new THREE.Group(); headG.position.set(0, 1.30*HEAD, 0);
     headG.rotation.x=-0.92; root.add(headG);
     const H=(m,x,y,z,rx)=>{ m.position.set(x, y-1.30*HEAD, z); if(rx) m.rotation.x=rx;
                             m.castShadow=true; headG.add(m); return m; };
-    H(limb([[0.00,0],[0.235*HEAD,0.02*HEAD],[0.245*HEAD,0.22*HEAD],[0.00,0.24*HEAD]], matSkin,16), 0, 1.40*HEAD, 0);
+    H(limb([[0.00,0],[0.235*HEAD,0.02*HEAD],[0.245*HEAD,0.22*HEAD],[0.00,0.24*HEAD]],
+            bare?matSkin:matSuit, 16), 0, 1.40*HEAD, 0);
     const HP=[
       [0.00, 0.00],[0.28*HEAD,0.06*HEAD],[0.44*HEAD,0.26*HEAD],            // jaw, narrow at the chin
       [0.495*HEAD,0.50*HEAD],[0.505*HEAD,0.74*HEAD],                       // cheekbone / temple, widest
       [0.45*HEAD,0.92*HEAD],[0.31*HEAD,1.06*HEAD],[0.00,1.11*HEAD]         // cranium closing over
     ];
-    const skull=limb(HP, matSkin, 26);
+    const skull=limb(HP, matSuit, 26);                   // the cranium under everything
     skull.scale.z=0.94;                                  // heads are slightly deeper than wide
     H(skull, 0, 1.66*HEAD, 0);
-    const cowl=shell(HP.map(([r,y])=>[r>0.001? r+0.020*HEAD : r, y]), matSuit, 26, 0.88, Math.PI*2-1.76);
+    const cowl=shell(HP.map(([r,y])=>[r>0.001? r+0.020*HEAD : r, y]),
+                     MK==='helm'?matPlate:matSuit, 26, 0.88, Math.PI*2-1.76);
     cowl.scale.z=0.94; H(cowl, 0, 1.66*HEAD, 0);
-    // FACE STRUCTURE. Featureless is the failure mode, and these are the planes the eye actually
-    // looks for: the brow ridge, the nose, the cheekbones and the line of the jaw.
-    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.56*HEAD,0.10*HEAD,0.12*HEAD), matSkin);
-    H(brow, 0, 2.38*HEAD, 0.38*HEAD, -0.20);
-    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.095*HEAD,0.30*HEAD,4), matSkin);
-    nose.rotation.set(1.42,Math.PI/4,0); H(nose, 0, 2.12*HEAD, 0.56*HEAD);
-    for(const sx of [-1,1]){
-      const ch=limb([[0.00,0],[0.13*HEAD,0.02*HEAD],[0.10*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], matSkin,12);
-      ch.scale.z=0.8; H(ch, sx*0.23*HEAD, 2.02*HEAD, 0.34*HEAD);
-      // swept-back horns off the temples: a silhouette you can name at a hundred metres, which a
-      // smooth head does not have
-      const horn=limb([[0.00,0],[0.075*HEAD,0.03*HEAD],[0.055*HEAD,0.32*HEAD],[0.00,0.50*HEAD]], matTrim,10);
-      horn.rotation.set(-0.55,0,sx*0.42); H(horn, sx*0.33*HEAD, 2.42*HEAD, -0.10*HEAD);
-      // EYES set into the visor. They glow, which is the cheapest thing in the whole model and
-      // the one that makes a head look alive at speed.
-      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.17*HEAD,0.055*HEAD,0.05*HEAD), matEye);
-      eye.rotation.z=sx*0.16; H(eye, sx*0.175*HEAD, 2.185*HEAD, 0.50*HEAD, -0.10);
+    // ---- MASK. One head, six faces. Which material the face wears, whether the features are
+    // modelled at all, and what sits across the eyes is the entire difference between a bare-faced
+    // strongman, a domino mask, a sealed helmet and a wrapped thing with no face.
+    if(MK!=='wrap'){
+      // the face itself, recoloured per mask style
+      const fc=limb([[0.00,0.00],[0.285*HEAD,0.06*HEAD],[0.445*HEAD,0.26*HEAD],
+                     [0.50*HEAD,0.50*HEAD],[0.51*HEAD,0.74*HEAD],
+                     [0.455*HEAD,0.92*HEAD],[0.315*HEAD,1.06*HEAD],[0.00,1.11*HEAD]], faceMat, 26);
+      fc.scale.z=0.945; H(fc, 0, 1.66*HEAD, 0);
     }
-    const jaw=limb([[0.00,0],[0.26*HEAD,0.03*HEAD],[0.29*HEAD,0.18*HEAD],[0.00,0.22*HEAD]], matSkin,18);
-    jaw.scale.set(1,1,0.90); H(jaw, 0, 1.76*HEAD, 0.16*HEAD);
-    // The visor: a band across the eyes only. Trimming a full head-shell down to a band by
-    // shrinking the vertices outside it does NOT work — a shell 0.038 heads proud of the skull is
-    // still proud of it after a 6% shrink, so the whole face came out red. Lathe the band itself.
-    const mask=shell([[0.00,0.56*HEAD],[0.44*HEAD,0.60*HEAD],[0.545*HEAD,0.66*HEAD],
-                      [0.545*HEAD,0.76*HEAD],[0.44*HEAD,0.80*HEAD],[0.00,0.83*HEAD]], matTrim, 26,
-                     -1.36, 2.72);
-    mask.scale.z=0.94; H(mask, 0, 1.66*HEAD, 0);
+    if(bare || MK==='jester'){
+      // FACE STRUCTURE. Featureless is the failure mode, and these are the planes the eye actually
+      // looks for: the brow ridge, the nose, the cheekbones and the line of the jaw.
+      const brow=new THREE.Mesh(new THREE.BoxGeometry(0.56*HEAD,0.10*HEAD,0.12*HEAD), faceMat);
+      H(brow, 0, 2.38*HEAD, 0.38*HEAD, -0.20);
+      const nose=new THREE.Mesh(new THREE.ConeGeometry(0.095*HEAD,0.30*HEAD,4), faceMat);
+      nose.rotation.set(1.42,Math.PI/4,0); H(nose, 0, 2.12*HEAD, 0.56*HEAD);
+      for(const sx of [-1,1]){
+        const ch=limb([[0.00,0],[0.13*HEAD,0.02*HEAD],[0.10*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], faceMat,12);
+        ch.scale.z=0.8; H(ch, sx*0.23*HEAD, 2.02*HEAD, 0.34*HEAD);
+      }
+      const jaw=limb([[0.00,0],[0.26*HEAD,0.03*HEAD],[0.29*HEAD,0.18*HEAD],[0.00,0.22*HEAD]], faceMat,18);
+      jaw.scale.set(1,1,0.90); H(jaw, 0, 1.76*HEAD, 0.16*HEAD);
+    }
+    if(MK==='helm'){
+      // a sealed faceplate, and a DARK visor slot across it. A helmet whose face is the trim colour
+      // is just a coloured head — the read comes from the dark band, not from the shell.
+      const fp=shell([[0.00,0.30*HEAD],[0.40*HEAD,0.34*HEAD],[0.535*HEAD,0.52*HEAD],
+                      [0.535*HEAD,0.82*HEAD],[0.40*HEAD,0.98*HEAD],[0.00,1.02*HEAD]], matPlate, 24, -1.30, 2.60);
+      fp.scale.z=0.94; H(fp, 0, 1.66*HEAD, 0);
+      const vis=shell([[0.00,0.52*HEAD],[0.44*HEAD,0.56*HEAD],[0.565*HEAD,0.64*HEAD],
+                       [0.565*HEAD,0.80*HEAD],[0.44*HEAD,0.85*HEAD],[0.00,0.88*HEAD]],
+                      M(0x1a2028,{roughness:.18,metalness:.5}), 26, -1.30, 2.60);
+      vis.scale.z=0.94; H(vis, 0, 1.66*HEAD, 0);
+    }
+    for(const sx of [-1,1]){
+      if(O.horns){
+        // a silhouette you can name at a hundred metres, which a smooth head does not have
+        const prof = O.hornStyle==='curved'
+          ? [[0.00,0],[0.085*HEAD,0.03*HEAD],[0.075*HEAD,0.26*HEAD],[0.045*HEAD,0.46*HEAD],[0.00,0.58*HEAD]]
+          : [[0.00,0],[0.075*HEAD,0.03*HEAD],[0.055*HEAD,0.32*HEAD],[0.00,0.50*HEAD]];
+        const horn=limb(prof, matTrim,10);
+        horn.rotation.set(O.hornStyle==='curved'?-0.30:-0.55, 0, sx*(O.hornStyle==='curved'?0.62:0.42));
+        H(horn, sx*0.33*HEAD, 2.42*HEAD, -0.10*HEAD);
+      }
+      // EYES. They glow, which is the cheapest thing in the whole model and the one that makes a
+      // head look alive at speed.
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.17*HEAD,0.055*HEAD,0.05*HEAD), matEye);
+      eye.rotation.z=sx*0.16; H(eye, sx*0.175*HEAD, 2.185*HEAD, (MK==='helm'?0.54:0.50)*HEAD, -0.10);
+    }
+    if(O.crest){                                       // a fin down the centre of the crown
+      for(let k=0;k<4;k++){
+        const f=new THREE.Mesh(new THREE.BoxGeometry(0.06*HEAD,0.09*HEAD+k*0.02*HEAD,0.15*HEAD), matTrim);
+        H(f, 0, 2.70*HEAD-k*0.03*HEAD, -0.02*HEAD-k*0.14*HEAD, 0.25);
+      }
+    }
+    // The band across the eyes. Trimming a full head-shell down to a band by shrinking the vertices
+    // outside it does NOT work — a shell 0.038 heads proud of the skull is still proud of it after
+    // a 6% shrink, so the whole face came out red. Lathe the band itself.
+    if(MK==='visor' || MK==='domino' || MK==='hood'){
+      const bandMat = (MK==='domino') ? matSuit : matTrim;
+      const mask=shell([[0.00,0.56*HEAD],[0.44*HEAD,0.60*HEAD],[0.545*HEAD,0.66*HEAD],
+                        [0.545*HEAD,0.78*HEAD],[0.44*HEAD,0.82*HEAD],[0.00,0.85*HEAD]], bandMat, 26,
+                       -1.36, 2.72);
+      mask.scale.z=0.94; H(mask, 0, 1.66*HEAD, 0);
+    }
+    if(MK==='hood'){
+      // the hood's leading edge, thrown forward so the face sits in shadow inside it
+      const hd=shell([[0.00,0.10*HEAD],[0.56*HEAD,0.22*HEAD],[0.60*HEAD,0.62*HEAD],
+                      [0.575*HEAD,0.95*HEAD],[0.40*HEAD,1.15*HEAD],[0.00,1.20*HEAD]], matSuit, 26, 1.05, Math.PI*2-2.10);
+      hd.scale.z=1.02; H(hd, 0, 1.62*HEAD, -0.03*HEAD);
+    }
 
     // ---- ARMS. Built pointing DOWN the -Y axis and then swung overhead, so the shoulder is the
     // pivot and the whole pose is one rotation. Everything is mirrored exactly, and NOTHING here
@@ -6396,6 +6573,11 @@
       const lip=shell([[0.00,-0.06*HEAD],[0.425*HEAD,-0.09*HEAD],[0.43*HEAD,-0.19*HEAD],[0.00,-0.22*HEAD]],
                       matTrim, 18, -1.5, 3.0);
       lip.scale.z=0.86; lip.position.y=0.03*HEAD; g.add(lip);
+      for(let k=0;k<5;k++){                              // rivets round the rim of the pauldron
+        const a=-0.9+k*0.45, rv=new THREE.Mesh(new THREE.SphereGeometry(0.030*HEAD,6,5), matMetal);
+        rv.position.set(side*Math.cos(a)*0.40*HEAD, -0.10*HEAD, Math.sin(a)*0.34*HEAD);
+        g.add(rv);
+      }
       for(let k=0;k<2;k++){                              // two swept spikes off the pauldron
         const sp=limb([[0.00,0],[0.055*HEAD,0.02*HEAD],[0.035*HEAD,0.20*HEAD],[0.00,0.30*HEAD]], matTrim, 8);
         sp.position.set(side*0.26*HEAD, 0.06*HEAD, -0.10*HEAD+k*0.20*HEAD);
@@ -6410,10 +6592,10 @@
       g.add(upper);
       // A band at the bicep and an elbow cap — the joints are where a limb stops reading as a tube.
       const band=limb([[0.00,-0.03*HEAD],[0.285*HEAD,-0.01*HEAD],[0.29*HEAD,0.09*HEAD],[0.00,0.11*HEAD]], matMetal,18);
-      band.position.y=-0.62*HEAD; g.add(band);
+      band.position.y=-0.62*HEAD; if(O.armour) g.add(band);
       const elbowCap=limb([[0.00,0.12*HEAD],[0.19*HEAD,0.06*HEAD],[0.235*HEAD,-0.06*HEAD],
                            [0.20*HEAD,-0.16*HEAD],[0.00,-0.20*HEAD]], matMetal, 16);
-      elbowCap.scale.z=0.80; elbowCap.position.set(0,-1.30*HEAD,-0.08*HEAD); elbowCap.rotation.x=-0.18; g.add(elbowCap);
+      elbowCap.scale.z=0.80; elbowCap.position.set(0,-1.30*HEAD,-0.08*HEAD); elbowCap.rotation.x=-0.18; if(O.armour) g.add(elbowCap);
       // Forearm: elbow to wrist ~1.15 heads, wrist level with the crotch.
       const fore=limb([
         [0.00,0],[0.225*HEAD,-0.05*HEAD],[0.245*HEAD,-0.30*HEAD],         // forearm belly, high
@@ -6489,7 +6671,7 @@
       // top and stuck up past it — from the side it read as a broken piece of armour flapping off
       // him. The top of the thigh is inside the belt anyway; there is nothing to armour up there.
       const tBand=limb([[0.00,-0.04*HEAD],[0.375*HEAD,-0.01*HEAD],[0.38*HEAD,0.11*HEAD],[0.00,0.14*HEAD]], matMetal,20);
-      tBand.position.y=-0.56*HEAD; g.add(tBand);
+      tBand.position.y=-0.56*HEAD; if(O.armour) g.add(tBand);
       const shin=limb([
         [0.00,0],[0.26*HEAD,-0.05*HEAD],[0.29*HEAD,-0.34*HEAD],           // calf belly, high and full
         [0.18*HEAD,-0.96*HEAD],[0.14*HEAD,-1.24*HEAD],[0.00,-1.26*HEAD]   // ankle
@@ -6501,7 +6683,7 @@
       // a shin plate down the front, and a calf band behind it
       const shinP=shell([[0.00,0.06*HEAD],[0.235*HEAD,0.00*HEAD],[0.255*HEAD,-0.44*HEAD],
                          [0.215*HEAD,-0.80*HEAD],[0.00,-0.88*HEAD]], matMetal, 18, -1.05, 2.10);
-      shinP.scale.set(1.05,1,0.92); shinP.position.y=-1.60*HEAD; g.add(shinP);
+      shinP.scale.set(1.05,1,0.92); shinP.position.y=-1.60*HEAD; if(O.armour) g.add(shinP);
 
       // ---- BOOT. Rounded blocks, because a foot is a wedge and a lathe cannot make one. The sole
       // is DARK: it was chrome, and from behind it read as a grey block wedged into a red boot.
@@ -6514,6 +6696,8 @@
       B(roundBox(0.42*HEAD,0.10*HEAD,0.92*HEAD,0.045*HEAD,4), matSole, 0,-0.395,0.19);      // the sole
       B(roundBox(0.40*HEAD,0.13*HEAD,0.26*HEAD,0.055*HEAD,4), matSole, 0,-0.345,-0.14);     // the heel
       B(roundBox(0.415*HEAD,0.09*HEAD,0.145*HEAD,0.04*HEAD,4), matMetal, 0,0.14,0.03);      // ankle strap
+      B(roundBox(0.10*HEAD,0.10*HEAD,0.06*HEAD,0.025*HEAD,3), matTrim, 0.20,0.14,0.03);     // buckle
+      B(roundBox(0.36*HEAD,0.07*HEAD,0.10*HEAD,0.03*HEAD,3), matMetal, 0,-0.13,0.36);       // toe cap band
 
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
       g.position.set(side*0.29*HEAD, -1.36*HEAD, 0);
@@ -6525,52 +6709,167 @@
     // differs between the two legs makes a level flight look crooked.
     legL.rotation.set(0.10, 0, -0.055); legR.rotation.set(0.10, 0, 0.055);
 
-    // ---- CAPE. The hard part, and the first attempt got it wrong in the way that matters: it was
-    // built as a FLAT PLANE bent backwards, so its side edges stayed at z≈0 and punched out
-    // through the ribs, and it was long enough to rise past his ears. From the front he was
-    // wearing two red panels.
-    //
-    // A cape is not a plane. It is a CONICAL SHELL hanging off the shoulders: every point sits at
-    // some radius R from the body axis, swept through an arc that only covers the BACK. Build it
-    // in polar coordinates and the body can never poke through, because the cloth is always
-    // outside R.
-    const CTOP=1.28*HEAD, CLEN=4.10*HEAD;               // collar at the shoulder shelf, hem past the heels
-    const R0=0.62*HEAD, R1=1.78*HEAD;                   // radius at the collar, and at the hem
-    const A0=1.10, A1=1.44;                             // half-arc: 126° across the back, 165° at the hem
-    const SEGX=34, SEGY=30;
-    const cg=new THREE.PlaneGeometry(2, 2, SEGX, SEGY);
-    { const pos=cg.attributes.position;
+    // ---- THE BACK PIECE. Cape, coat, bat wings, energy wings or trailing shreds — whichever it
+    // is, every flowing mesh is named 'cape' so ONE flowMesh value in CHARACTERS animates all of
+    // it through the cloth shader.
+    const backCol =(O.backCol ==null)? O.trim : O.backCol;
+    const backCol2=(O.backCol2==null)? backCol : O.backCol2;
+    const clothMat=(c,glow)=>new THREE.MeshStandardMaterial({color:c, roughness:glow?0.35:0.74,
+        side:THREE.DoubleSide, metalness:.04,
+        emissive:glow?c:0x000000, emissiveIntensity:glow||0,
+        transparent:glow>0.9, opacity:glow>0.9?0.72:1, depthWrite:!(glow>0.9)});
+    const addCloth=(geo,mat)=>{ geo.name='cape';
+      const m=new THREE.Mesh(geo,mat); m.name='cape'; m.castShadow=true; root.add(m); return m; };
+
+    // A CAPE IS A CONE, NOT A PLANE. Built as a plane bent backwards, its side edges stay near
+    // z=0 and punch out through the ribs — from the front he wore two red panels — and a plane
+    // long enough to drape rises past his ears. Every point here sits at some radius R from the
+    // body axis, swept through an arc that only covers the BACK, so the body can never poke out.
+    // `split` scallops the hem up the centre line, which is what turns a cape into a coat.
+    const mkCape=(col, lenMul, wideMul, glow, split)=>{
+      const CTOP=1.28*HEAD, CLEN=4.10*HEAD*lenMul;
+      const R0=0.62*HEAD, R1=1.78*HEAD*wideMul;
+      const A0=1.10, A1=1.44*Math.min(1.25,wideMul);
+      const cg=new THREE.PlaneGeometry(2, 2, 34, 30), pos=cg.attributes.position;
       for(let i2=0;i2<pos.count;i2++){
         const t=clamp(0.5 - pos.getY(i2)/2, 0, 1);      // 0 at the collar, 1 at the hem
         const u=clamp(pos.getX(i2)/1, -1, 1);           // -1..1 around the arc
-        const half=A0 + (A1-A0)*t;
-        const th=u*half;
-        // FOLDS as a radial ripple: the cloth gathers in and out around the arc, shallow at the
-        // collar and deep at the hem. An odd count so the drape is never mirror-symmetric.
-        const fold=Math.sin(u*Math.PI*3.5)*0.115*HEAD*Math.pow(t,1.25);
+        const half=A0 + (A1-A0)*t, th=u*half;
+        const fold=Math.sin(u*Math.PI*3.5)*0.115*HEAD*Math.pow(t,1.25);   // a RADIAL ripple
         const R=R0 + (R1-R0)*Math.pow(t,0.88) + fold;
+        // a coat is a cape with the hem cut away up the middle, leaving two tails
+        const cut = split ? (0.34 + 0.66*Math.pow(Math.abs(u),0.8)) : 1;
         pos.setX(i2, R*Math.sin(th));
         pos.setZ(i2, -R*Math.cos(th) - 0.05*HEAD);      // the arc lives behind the spine
-        // the hem hangs lowest down the centre of his back and lifts at the tips, and the folds
-        // scallop it so it is not a clean circle
-        pos.setY(i2, CTOP - t*CLEN
+        pos.setY(i2, CTOP - t*CLEN*cut
                      + Math.pow(Math.abs(u),1.7)*0.42*HEAD*t*t
                      - Math.cos(u*Math.PI*3.5)*0.07*HEAD*t*t);
       }
       cg.computeVertexNormals();
+      return addCloth(cg, clothMat(col, glow));
+    };
+
+    // BAT WING. A fan of spars with a scalloped membrane stretched between them. The membrane is
+    // laid out in polar coordinates in the wing's own frame — angle across, distance out — so the
+    // trailing edge can dip between the finger bones the way a real wing does.
+    const mkWing=(sx, colMem, colSpar)=>{
+      const SP=[[0.55,3.30],[0.02,3.05],[-0.48,2.55],[-1.00,1.95]];    // [angle, length] per spar
+      const ang=(u)=>{ const f=u*(SP.length-1), i=Math.min(SP.length-2,Math.floor(f)), k=f-i;
+                       return SP[i][0]+(SP[i+1][0]-SP[i][0])*k; };
+      const len=(u)=>{ const f=u*(SP.length-1), i=Math.min(SP.length-2,Math.floor(f)), k=f-i;
+                       const L=SP[i][1]+(SP[i+1][1]-SP[i][1])*k;
+                       return L*(1-0.20*Math.sin(k*Math.PI));           // the dip between bones
+                     };
+      const g=new THREE.PlaneGeometry(2,2,26,18), pos=g.attributes.position;
+      for(let i2=0;i2<pos.count;i2++){
+        const u=clamp(pos.getX(i2)*0.5+0.5,0,1), v=clamp(pos.getY(i2)*0.5+0.5,0,1);
+        const a=ang(u), L=len(u)*HEAD, r=v*L;
+        const rip=Math.sin(u*Math.PI*3+v*2.2)*0.06*HEAD*v;
+        pos.setX(i2, sx*(0.30*HEAD + Math.cos(a)*r));
+        pos.setY(i2, 1.05*HEAD + Math.sin(a)*r + rip);
+        pos.setZ(i2, -0.30*HEAD - 0.42*HEAD*v*v);        // sweeps back as it extends
+      }
+      g.computeVertexNormals();
+      addCloth(g, clothMat(colMem, 0));
+      // The finger bones. A lathe is built along +Y, so pointing it at (cos a, sin a) is a rotation
+      // about Z of (a - PI/2) — the sign matters, and getting it backwards splays the bones out
+      // through the far side of the membrane. They also stop at 0.88 of the span, or they spear
+      // out past the trailing edge.
+      for(const [a,L] of SP){
+        const bone=limb([[0.00,0],[0.050*HEAD,0.04*HEAD],[0.026*HEAD,L*0.66*HEAD],[0.00,L*0.88*HEAD]],
+                        M(colSpar,{roughness:.5}), 8);
+        bone.position.set(sx*0.30*HEAD, 1.05*HEAD, -0.34*HEAD);
+        bone.rotation.z = sx*(a - Math.PI*0.5);
+        bone.castShadow=true; root.add(bone);
+      }
+    };
+
+    // ENERGY WING. No membrane and no bones: a spread of tapered blades that glow. Additive-ish
+    // translucent standard material, because there is no bloom pass to lean on.
+    const mkEnergy=(sx, col, col2)=>{
+      for(let k=0;k<7;k++){
+        const f=k/6, a=0.70-1.55*f, L=(2.4-0.9*f)*HEAD, w=(0.30-0.13*f)*HEAD;
+        const g=new THREE.PlaneGeometry(2,2,3,16), pos=g.attributes.position;
+        for(let i2=0;i2<pos.count;i2++){
+          const u=pos.getX(i2)*0.5, v=clamp(pos.getY(i2)*0.5+0.5,0,1);
+          const r=v*L, taper=Math.pow(1-v,0.75);
+          const bend=Math.sin(v*2.1)*0.30;
+          pos.setX(i2, sx*(0.26*HEAD + Math.cos(a-bend)*r) + u*w*taper*0.6);
+          pos.setY(i2, 1.02*HEAD + Math.sin(a-bend)*r + u*w*taper);
+          pos.setZ(i2, -0.26*HEAD - 0.34*HEAD*v*v);
+        }
+        g.computeVertexNormals();
+        addCloth(g, clothMat(k%2?col:col2, 1.35));
+      }
+    };
+
+    // SHREDS. A wrapped, trailing thing: many long tapered ribbons off the shoulders and back,
+    // each with its own twist, so the silhouette is all motion and no limbs.
+    const mkShreds=(col)=>{
+      for(let k=0;k<26;k++){
+        const t=k/25, spread=(((k*7)%26)/25-0.5)*2;      // scattered, not stacked in a fan
+        const L=(3.4+2.8*Math.abs(Math.sin(k*2.3)))*HEAD, w=(0.16+0.08*Math.sin(k*1.7))*HEAD;
+        const g=new THREE.PlaneGeometry(2,2,2,20), pos=g.attributes.position;
+        const y0=(1.15-2.10*t)*HEAD, x0=spread*0.62*HEAD;
+        for(let i2=0;i2<pos.count;i2++){
+          const u=pos.getX(i2)*0.5, v=clamp(pos.getY(i2)*0.5+0.5,0,1);
+          const taper=Math.pow(1-v,0.55);
+          pos.setX(i2, x0 + Math.sin(v*3.1+k)*0.34*HEAD*v + u*w*taper);
+          pos.setY(i2, y0 - v*L*0.42 + Math.sin(v*2.2+k*0.8)*0.22*HEAD*v);
+          pos.setZ(i2, -0.34*HEAD - v*L*0.88);
+        }
+        g.computeVertexNormals();
+        addCloth(g, clothMat(col, 0));
+      }
+    };
+
+    // HAIR. Strands off the crown, built exactly like shreds so the same shader moves them.
+    const mkHair=(col, lenMul)=>{
+      // Hung off the BACK HALF of the crown only. A full ring of strands puts hair across the face,
+      // and narrow strands at 0.16 heads overlap into one dark wedge instead of reading as hair.
+      for(let k=0;k<18;k++){
+        const t=k/17, a=(-0.62+1.24*t)*Math.PI;          // -112° .. +112°, i.e. everything but the face
+        const sx=Math.sin(a), sz=-Math.abs(Math.cos(a))*0.55-0.35;
+        const L=(2.1+1.1*Math.abs(Math.sin(k*1.9)))*HEAD*lenMul, w=(0.30-0.10*Math.abs(sx))*HEAD;
+        const g=new THREE.PlaneGeometry(2,2,3,16), pos=g.attributes.position;
+        for(let i2=0;i2<pos.count;i2++){
+          const u=pos.getX(i2)*0.5, v=clamp(pos.getY(i2)*0.5+0.5,0,1);
+          const taper=Math.pow(1-v,0.5);
+          pos.setX(i2, sx*0.44*HEAD + Math.sin(v*2.6+k)*0.22*HEAD*v + u*w*taper);
+          pos.setY(i2, 2.60*HEAD - v*L*0.50 - Math.abs(sx)*0.30*HEAD);
+          pos.setZ(i2, sz*0.42*HEAD - v*L*0.86 + Math.cos(v*2.2+k)*0.10*HEAD*v);
+        }
+        g.computeVertexNormals();
+        addCloth(g, clothMat(col, 0));
+      }
+    };
+
+    if(O.mask==='wrap'){
+      // BANDAGE WRAPS. Without them a wrapped thing is just a pale mannequin — the rings are the
+      // whole read, so they run right down the torso and the limbs.
+      for(let k=0;k<9;k++){
+        const y=1.25*HEAD-k*0.34*HEAD, r=(0.52+0.32*Math.sin(k*0.9))*HEAD;
+        const w=shell([[0.00,-0.05*HEAD],[r,-0.03*HEAD],[r*1.02,0.07*HEAD],[0.00,0.09*HEAD]],
+                      matPlate, 20, k*1.1, Math.PI*2-0.55);
+        w.scale.z=0.66; w.rotation.x=0.05*Math.sin(k*1.7); put(w, 0, y, 0);
+      }
     }
-    cg.name='cape';
-    const cape=new THREE.Mesh(cg, new THREE.MeshStandardMaterial({color:O.trim,roughness:.74,
-                 side:THREE.DoubleSide,metalness:.04,flatShading:false}));
-    cape.name='cape';                                   // the cloth shader keys off this name
-    // The geometry is already in body space — no offset, or the collar leaves his shoulders.
-    cape.castShadow=true; root.add(cape);
-    // the collar it hangs from, so it does not appear to float off his back
-    const collar=limb([[0.00,-0.06*HEAD],[0.60*HEAD,-0.02*HEAD],[0.64*HEAD,0.15*HEAD],[0.00,0.19*HEAD]], matPlate, 20);
-    collar.scale.z=0.66; put(collar, 0, 1.26*HEAD, -0.06*HEAD);
-    for(const sx of [-1,1]){                             // the clasps the cape actually hangs from
-      const clasp=new THREE.Mesh(new THREE.OctahedronGeometry(0.12*HEAD,0), matTrim);
-      clasp.scale.set(1,1.2,0.6); put(clasp, sx*0.44*HEAD, 1.30*HEAD, 0.22*HEAD);
+    let cape=null;
+    if(O.back==='cape')       cape=mkCape(backCol, O.backLen, O.backWide, O.backGlow, false);
+    else if(O.back==='coat')  cape=mkCape(backCol, O.backLen, O.backWide, O.backGlow, true);
+    else if(O.back==='wings'){ mkWing(-1,backCol,backCol2); mkWing(1,backCol,backCol2); }
+    else if(O.back==='energy'){ mkEnergy(-1,backCol,backCol2); mkEnergy(1,backCol,backCol2); }
+    else if(O.back==='shreds') mkShreds(backCol);
+    if(O.hair) mkHair(O.hair.col, O.hair.len||1);
+
+    if(O.back==='cape' || O.back==='coat'){
+      // the collar it hangs from, so it does not appear to float off his back
+      const collar=limb([[0.00,-0.06*HEAD],[0.60*HEAD,-0.02*HEAD],[0.64*HEAD,0.15*HEAD],[0.00,0.19*HEAD]], matPlate, 20);
+      collar.scale.z=0.66; put(collar, 0, 1.26*HEAD, -0.06*HEAD);
+      for(const sx of [-1,1]){                           // the clasps the cape actually hangs from
+        const clasp=new THREE.Mesh(new THREE.OctahedronGeometry(0.12*HEAD,0), matTrim);
+        clasp.scale.set(1,1.2,0.6); put(clasp, sx*0.44*HEAD, 1.30*HEAD, 0.22*HEAD);
+      }
     }
 
     root.userData.parts={armL,armR,legL,legR,cape,torso,skull,
