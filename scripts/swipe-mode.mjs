@@ -60,10 +60,23 @@ const sw = await A.pg.evaluate(()=>{
   const off=()=>P.pos.x-G.city._pathX(P.pos.z);
 
   step(30);                     o.centre=+off().toFixed(2);
+  // laneSteps is in FINGER direction: +1 is a swipe to the right, which must take him to the
+  // right of the screen — and screen-right is world -X under this camera.
   G.input.laneSteps=1;  step(40); o.right=+off().toFixed(2); o.laneR=P.lane;
   G.input.laneSteps=-2; step(60); o.left =+off().toFixed(2); o.laneL=P.lane;
   G.input.laneSteps=-5; step(30); o.clamped=P.lane;          // cannot walk off the road
   G.input.laneSteps=9;  step(30); o.clampedHi=P.lane;
+
+  // and the assertion that cannot be vacuous: where he is ON SCREEN
+  const scr=()=>{ const v=new (P.pos.constructor)(P.pos.x,P.pos.y,P.pos.z);
+                  v.project(G.camera.cam); return v.x; };
+  // Read each direction as a fresh TRANSIENT. The chase camera tracks his x, so a few tenths after
+  // the move he is back near the middle of frame and the sign washes out.
+  G.input.laneSteps=0; P.lane=0; step(50);
+  const sA=scr(); G.input.laneSteps=1;  step(12); o.screenRight=+(scr()-sA).toFixed(3);
+  G.input.laneSteps=0; P.lane=0; step(50);
+  const sB=scr(); G.input.laneSteps=-1; step(12); o.screenLeft =+(scr()-sB).toFixed(3);
+  G.input.laneSteps=0; P.lane=0; step(30);
 
   const lanes=new Set(), gateSpans=new Set();
   for(let i=0;i<900;i++){ G.momentum.value=G.momentum.MAX; G._loop();
@@ -87,6 +100,14 @@ const sw = await A.pg.evaluate(()=>{
     if(G.cannon.state==='fire') o.duckY=Math.min(o.duckY, P.pos.y);
   }
   o.states=seen.slice(0,4); o.beamY=SW.beamY;
+  // THE DODGE ITSELF. It is a manoeuvre, not a lift shaft: down fast, a full revolution held at
+  // the low point, then back to cruise. The height is what the hit test reads; the roll is what
+  // sells it; neither may break the other.
+  { const t=[]; P.duckT=0; P.evRoll=0; step(10); P.evade();
+    for(let i=0;i<80;i++){ step(1); t.push({y:P.pos.y, r:P.evRoll||0}); }
+    o.dodgeMinY=+Math.min(...t.map(v=>v.y)).toFixed(2);
+    o.dodgeMaxRoll=Math.round(Math.max(...t.map(v=>v.r))*57.3);
+    o.dodgeRecovers=Math.abs(t[t.length-1].y-P.cruiseY)<0.6; }
   o.underBeam=o.duckY < SW.beamY-3.2;
   o.duckY=+o.duckY.toFixed(2);
   o.evadeBtn=!!document.getElementById('btn-evade');
@@ -120,7 +141,10 @@ const fr = await B.pg.evaluate(()=>{
   for(let i=0;i<400;i++){ G.momentum.value=G.momentum.MAX; G._loop();
     for(const t of G.city.buildings){ if(t.decor||t.hit||t.gate) continue;
       lanes.add(Math.round((t.mesh.position.x-G.city._pathX(t.mesh.position.z))/SW.laneX*100)/100); } }
+  // The property that matters is not "many values" — a short sample can be unlucky — it is that
+  // free flight places towers BETWEEN lanes, which swipe mode never does.
   o.distinctOffsets=lanes.size;
+  o.offLane=[...lanes].filter(v=>Math.abs(v-Math.round(v))>0.06).length;
   o.cannonIdle=(G.cannon.state==='idle' && !G.cannon.active);
   return o;
 });
@@ -128,19 +152,25 @@ await B.pg.close();
 
 const checks = [
   ['swipe: lane centres are exactly one laneX apart',
-                                    Math.abs(sw.right-sw.laneX)<0.4 && Math.abs(sw.left+sw.laneX)<0.4],
-  ['swipe: one flick is one lane',  sw.laneR===1 && sw.laneL===-1],
-  ['swipe: the lane clamps at ±1',  sw.clamped===-1 && sw.clampedHi===1],
+                                    Math.abs(sw.right+sw.laneX)<0.4 && Math.abs(sw.left-sw.laneX)<0.4],
+  ['swipe: one flick is one lane',  sw.laneR===-1 && sw.laneL===1],
+  ['swipe: the lane clamps at ±1',  sw.clamped===1 && sw.clampedHi===-1],
+  ['swipe RIGHT moves him right ON SCREEN', sw.screenRight > 0.02],
+  ['swipe LEFT moves him left ON SCREEN',   sw.screenLeft  < -0.02],
   ['swipe: towers sit ON lanes',    sw.towerLanes.length<=3 && sw.towerLanes.every(v=>v===-1||v===0||v===1)],
   ['swipe: a gate spans all three', sw.gateLanes.length===3],
   ['swipe: the joystick is hidden', sw.joyHidden],
   ['swipe: EVADE and the warning exist', sw.evadeBtn && sw.warnEl],
-  ['cannon: charge -> fire -> idle', sw.states[0]==='charge' && sw.states[1]==='fire' && sw.states[2]==='idle'],
+  // 'cool' is the iris closing again. A weapon that just stops looks broken.
+  ['cannon: charge -> fire -> cool',  sw.states[0]==='charge' && sw.states[1]==='fire' && sw.states[2]==='cool'],
   ['cannon: EVADE gets him UNDER the beam', sw.underBeam],
+  ['dodge: he goes well clear of the beam', sw.dodgeMinY < sw.beamY-6],
+  ['dodge: a FULL barrel roll',             sw.dodgeMaxRoll >= 355],
+  ['dodge: and he comes back to cruise',    sw.dodgeRecovers],
   ['free: a flick is never consumed', fr.flickUnconsumed===1 && fr.lane===0],
   ['free: a flick moves nobody',    Math.abs(fr.flickMoved)<2.0],
   ['free: the stick still steers',  Math.abs(fr.stickMoved)>4],
-  ['free: towers are NOT lane-quantised', fr.distinctOffsets>8],
+  ['free: towers are NOT lane-quantised', fr.offLane>0],
   ['free: no rail cannon at all',   fr.cannonIdle],
   ['no page errors',                A.errs.length===0 && B.errs.length===0],
 ];

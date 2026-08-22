@@ -1599,16 +1599,40 @@
       const end=()=>{ this._dragId=null; this.dragActive=false; };
       // ---- FLICKS, for swipe mode. Tracked on their own id so they work no matter which control
       // scheme is selected, and ignored over any button.
-      let fx=0, ft=0, fid=null;
+      //
+      // The step fires on touchMOVE, the instant the finger crosses the threshold — NOT on release.
+      // Waiting for the lift adds the whole duration of the gesture to the latency, which is what
+      // made this feel like mud next to a phone home screen. The anchor then re-arms where the
+      // threshold was crossed, so one long drag across the glass steps lane after lane.
+      //
+      // A short, fast flick that lifts before crossing the threshold still counts, judged on
+      // VELOCITY: that is the difference between a control that respects a quick wrist and one that
+      // demands you draw the whole distance.
+      let fx=0, ft=0, fid=null, fmoved=false;
+      const stepLane=(dir)=>{ this.laneSteps += dir; };
       addEventListener('touchstart',e=>{
         const t=e.changedTouches[0];
-        if(t && !isCtrl(e.target)){ fid=t.identifier; fx=t.clientX; ft=performance.now(); }
+        if(t && !isCtrl(e.target)){ fid=t.identifier; fx=t.clientX; ft=performance.now(); fmoved=false; }
+      },{passive:true});
+      addEventListener('touchmove',e=>{
+        if(fid===null) return;
+        for(const t of e.changedTouches){
+          if(t.identifier!==fid) continue;
+          let dx=t.clientX-fx;
+          while(Math.abs(dx)>=SW.swipePx){
+            const dir=dx>0?1:-1;
+            stepLane(dir); fmoved=true;
+            fx += dir*SW.swipePx; ft=performance.now();     // re-arm from here: drags chain
+            dx = t.clientX-fx;
+          }
+        }
       },{passive:true});
       addEventListener('touchend',e=>{
         for(const t of e.changedTouches){
           if(t.identifier!==fid) continue;
-          const dx=t.clientX-fx, dt=performance.now()-ft;
-          if(Math.abs(dx)>SW.swipePx && dt<SW.swipeMs) this.laneSteps += (dx>0?1:-1);
+          const dx=t.clientX-fx, dt=Math.max(1,performance.now()-ft);
+          // a quick wrist: short travel, high speed
+          if(!fmoved && Math.abs(dx)>SW.flickPx && Math.abs(dx)/dt > SW.flickVel) stepLane(dx>0?1:-1);
           fid=null;
         }
       },{passive:true});
@@ -2306,13 +2330,14 @@
   // never a replacement.
   const SW={
     laneX:9.2,          // metres between lane centres — a tower fills one lane and no more
-    snap:19.0,          // rad/s of the lane spring; high enough to feel like a step, not a slide
-    swipePx:26,         // finger travel that counts as a flick
-    swipeMs:420,        // and how long it may take
-    duckDrop:8.4,       // how far under the beam a duck takes him
-    duckTime:0.95,      // seconds of duck per press
-    cannonFirst:900,    // metres before the first rail cannon
-    cannonGap:[520,760],// metres between them after that
+    snap:26.0,          // rad/s of the lane spring: ~0.13s to settle, the weight of a home-screen page
+    swipePx:34,         // finger travel that commits a lane, measured DURING the drag
+    flickPx:12,         // a quick wrist that lifts early still counts...
+    flickVel:0.55,      // ...if it moved this many px per ms
+    duckDrop:9.6,       // how far under the beam the dodge takes him
+    duckTime:1.05,      // seconds of the whole evasive manoeuvre
+    cannonFirst:900,    // metres before the first laser tower
+    cannonGap:[520,760],// metres between towers after that
     chargeSec:1.85,     // warning window: long enough to see it, short enough to be a threat
     fireSec:0.55,
     beamY:0,            // filled per run from the cruise height
@@ -3213,7 +3238,7 @@
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined;
-             this.lane=0; this.duck=0; this.duckT=0;
+             this.lane=0; this.duck=0; this.duckT=0; this.evRoll=0; this.evPitch=0;
              this.unglow();
              this._prevRc=undefined;
              // Re-anchor the drag control, or a finger left where it was at the end of the last
@@ -3245,8 +3270,19 @@
     // recovery ramp is something you can actually feel before the run picks up again.
     // EVADE: a timed dive under the rail beam and back up. Pressing again mid-duck refreshes it
     // rather than stacking, so mashing the button cannot park him underground.
-    evade(){ if(this._menuMode) return false; this.duckT=SW.duckTime;
-             this.game.tutorial && this.game.tutorial.note('evade'); return true; }
+    evade(){
+      if(this._menuMode) return false;
+      if(this.duckT>SW.duckTime*0.55) return false;      // already mid-dodge: no stacking
+      this.duckT=SW.duckTime; this.evRoll=0; this.evPitch=0;
+      const g=this.game;
+      g.camera.shake(0.55); g.time.hitstop(50); this.punch(0.5);
+      g.effects.flash(0.14);
+      g.effects.burst(new THREE.Vector3(this.pos.x, this.pos.y-1.5, this.pos.z-1),
+                      new THREE.Color(0x8ff6dd), 16, 22);
+      g.audio.uiClick&&g.audio.uiClick();
+      g.tutorial && g.tutorial.note('evade');
+      return true;
+    }
     onGateSlam(){ this.rush=0; this.surgeActive=0; this.surgeCd=Math.max(this.surgeCd,2.5);
                   this.fwdNow=Math.max(18,this.fwdNow*0.45); this._smashPulse=0; this._gateStun=1.1; }
 
@@ -3283,11 +3319,24 @@
       const lim=PLAY.xBox;
       let sx=-steer.x;
 
-      // ---- EVADE. The duck is a timed dive under the rail beam and back up again. dz ramps in
-      // and out of the window so he tucks and recovers rather than teleporting down.
+      // ---- EVADE. A full evasive manoeuvre, not a lift shaft. Three phases over duckTime:
+      //   TUCK   0.00-0.20  he drops fast and pitches nose-up, like braking under the beam
+      //   ROLL   0.20-0.72  a complete barrel roll at the low point, held there
+      //   RISE   0.72-1.00  back up to cruise, roll settling out
+      // The height curve and the roll are separate on purpose: the height is what the hit test
+      // reads, the roll is what sells it, and neither should be able to break the other.
       if(this.duckT>0) this.duckT=Math.max(0,this.duckT-dt);
-      const dz=this.duckT>0 ? Math.min(1,(SW.duckTime-this.duckT)*6, this.duckT*6) : 0;
-      this.duck=damp(this.duck||0, dz, 16, dt);
+      const u = this.duckT>0 ? clamp(1-this.duckT/SW.duckTime, 0, 1) : -1;
+      let dz=0;
+      if(u>=0){
+        dz = u<0.20 ? (u/0.20)                                  // down, fast
+           : u<0.72 ? 1                                          // held under it
+           : 1-Math.pow((u-0.72)/0.28, 1.6);                     // and back up, easing
+        const r=clamp((u-0.16)/0.58,0,1);
+        this.evRoll = Math.PI*2 * (r*r*(3-2*r));                 // one clean revolution
+        this.evPitch = Math.sin(clamp(u/0.20,0,1)*Math.PI) * 0.55;
+      } else { this.evRoll=damp(this.evRoll||0,0,14,dt); this.evPitch=damp(this.evPitch||0,0,14,dt); }
+      this.duck=damp(this.duck||0, dz, 22, dt);
 
       // Advance along the road FIRST, then steer against the road centre where he now is. Doing it
       // the other way round anchors the drag target one frame behind, which on a curving road is a
@@ -3301,8 +3350,10 @@
         // ---- THREE LANES. A flick is a STEP, not a push: he leaves for the next lane and arrives
         // there, and nothing done mid-flight changes where he is going. That commitment is the
         // whole feel of a swipe runner, which is why the lane is an integer and not a position.
+        // MINUS. The camera looks down +Z, so world +X is screen LEFT — the same inversion the drag
+        // path had. Swiping right has to move him right, which means the lane index goes DOWN.
         { const st=g.input.consumeLane(); const was=this.lane|0;
-          this.lane=clamp(was+st,-1,1);
+          this.lane=clamp(was-st,-1,1);
           if(this.lane!==was) g.tutorial && g.tutorial.note('lane'); }
         const target = rc + this.lane*SW.laneX;
         const om=SW.snap, xx=om*dt, ex=1/(1+xx+0.48*xx*xx+0.235*xx*xx*xx);
@@ -3385,10 +3436,12 @@
         // No time-based wobble on ANY rotation axis. A sine on pitch means a left swing at one
         // moment and a right swing at another are read against different attitudes, which is what
         // makes the lean look uneven. Rotation is a pure function of steering; only height floats.
-        this.villainModel.rotation.x=this._mRotX + (this.duck||0)*0.42;   // nose up as he slides under
+        // The dodge overrides the flight pose while it runs: nose up into the tuck, and the whole
+        // model rolled through a full revolution about the flight axis.
+        this.villainModel.rotation.x=this._mRotX + (this.evPitch||0);
         // NO idle roll term here: it would shift the neutral, so leaning left and leaning right
         // would not be mirror images of each other. Roll is purely a function of steering.
-        this.villainModel.rotation.z=-this.bank*BANK_ROLL.model;
+        this.villainModel.rotation.z=-this.bank*BANK_ROLL.model + (this.evRoll||0);
         this.villainModel.position.y=this._mBaseY + Math.sin(now*0.003)*0.075;
         if(this._rigSway){ const t=now*0.003;                    // rigged characters: wings/cape flap gently
           for(const sB of this._rigSway){ const bn=sB.b;
@@ -4267,12 +4320,10 @@
           if(k%2) add(L.grp,B,M(0xb2131c),0,4.5,3, 1.0,2.6,1.6);
           else    add(L.grp,C,lit,0,7.4,-2, 1.5,0.4,1.5).rotation.x=Math.PI/2;
         } else if(style==='drywall'){
-          // ---- BACKROOMS: an EXIT sign and a doorway that leads nowhere, on the corridor wall
-          L.off=rand(1,3);
-          const door=M(0x6a5c3a), sign=glowM(0x39ff6a,1.6), frame=M(0xb7a875);
-          add(L.grp,B,frame,0,5.2,0, 0.6,10.4,7.4);
-          add(L.grp,B,door,0.4,4.6,0, 0.4,9.2,6.0);
-          add(L.grp,B,sign,0.9,11.2,0, 0.3,1.4,3.4);
+          // ---- BACKROOMS: NOTHING. The corridor is the whole idea, and a doorway hung on a wall
+          // that is itself a moving ribbon reads as a flat panel floating in mid-air, which is
+          // exactly what it looked like. An empty slot is the correct answer here.
+          L.off=0; L.grp.visible=false;
         } else {
           L.off=rand(50,92);
           add(L.grp,B,M(0x8a8f96),0,18,0, 20,36,20);
@@ -5328,8 +5379,9 @@
         for(const L of this.marks){
           if(L.z===0){ L.z=pz+(inside?40:180)+Math.random()*span; }
           if(L.z < pz-(inside?40:100)) L.z+=span;
+          if(st==='drywall'){ L.grp.visible=false; continue; }
           L.grp.visible=true;
-          const dist=inside ? (st==='metro'? 27.4 : 21.6) : (this.roadHalf+L.off);
+          const dist=inside ? 27.4 : (this.roadHalf+L.off);
           L.grp.position.set(this._pathX(L.z)+L.side*dist, 0, L.z);
           L.grp.rotation.y = inside ? (L.side>0? -Math.PI/2 : Math.PI/2) : (L.side>0? -0.45 : 0.45);
         }
@@ -5502,15 +5554,6 @@
   // costs you almost all your momentum + a little explosion. They fall FASTER the longer you last.
   // ===================================================================================
   // ===================================================================================
-  // RAIL CANNON — the swipe-mode hazard. A city-scale energy weapon built INTO the street: two
-  // buttressed pylons either side, a rail slung between them, and a horizontal beam fired down
-  // the road at flight height. It is not a thing to steer around; it fills the whole width, so
-  // the only answer is to duck under it.
-  //
-  // Three states, and the timing is the whole design: CHARGE is long enough to read and short
-  // enough to threaten, FIRE is over almost before you see it, and the recovery is instant so the
-  // run never stops being about smashing buildings.
-  // ===================================================================================
   // ===================================================================================
   // TUTORIAL — coached over a LIVE run, not a slideshow.
   //
@@ -5599,62 +5642,118 @@
     }
   }
 
+  // ===================================================================================
+  // THE LASER TOWER — swipe mode's hazard.
+  //
+  // It is a BUILDING, not a gantry: a black tower standing at the kerb with a huge circular
+  // aperture aimed across the street. The iris opens, the lens spins up, and it fires a beam
+  // straight across the road at flight height — through the whole corridor, into the far side,
+  // where it splashes. There is no lane to dodge into. You go under it.
+  //
+  // Everything is animated end to end: the iris blades rotate open, energy rings converge into the
+  // lens, the muzzle flares, the beam punches out and tapers, the far wall takes an impact bloom,
+  // and the whole thing shuts down and closes again. The timing is the design — CHARGE is long
+  // enough to read and short enough to threaten, and the recovery is instant.
+  // ===================================================================================
   class CannonSystem {
     constructor(game){
       this.game=game; this.list=[]; this.nextZ=0; this.state='idle'; this.t=0; this.active=null;
-      const g=game.scene;
+      const sc=game.scene;
       const mk=()=>{
-        const grp=new THREE.Group(); grp.visible=false; g.add(grp);
-        const dark =new THREE.MeshStandardMaterial({color:0x2b3038, roughness:.55, metalness:.55});
-        const light=new THREE.MeshStandardMaterial({color:0x9aa6b8, roughness:.35, metalness:.7});
-        const hot  =new THREE.MeshStandardMaterial({color:0x8ff6ff, emissive:0x30e0ff,
-                        emissiveIntensity:0.4, roughness:.2, metalness:.1});
-        const cells=[];
-        for(const sx of [-1,1]){
-          // the pylon: a stepped tower with a buttress, so it reads as built rather than dropped in
-          const base=new THREE.Mesh(new THREE.BoxGeometry(9,30,13), dark);
-          base.position.set(sx*30, 15, 0); grp.add(base);
-          const step=new THREE.Mesh(new THREE.BoxGeometry(11.5,7,15), light);
-          step.position.set(sx*30, 32, 0); grp.add(step);
-          const butt=new THREE.Mesh(new THREE.BoxGeometry(6,20,5), dark);
-          butt.position.set(sx*24.5, 10, 0); butt.rotation.z=sx*0.22; grp.add(butt);
-          // emitter head, angled in toward the road
-          const head=new THREE.Mesh(new THREE.CylinderGeometry(4.2,5.6,7,10), light);
-          head.rotation.z=Math.PI/2; head.position.set(sx*24.5, 0, 0); grp.add(head);
-          const throat=new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.6,3,12), hot);
-          throat.rotation.z=Math.PI/2; throat.position.set(sx*21, 0, 0); grp.add(throat); cells.push(throat);
-          // charge cells stacked up the pylon — these are what light up on the count-in
-          for(let k=0;k<4;k++){
-            const c=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.9,13.4), hot.clone());
-            c.position.set(sx*25.6, 6+k*6.5, 0); grp.add(c); cells.push(c);
-          }
+        const grp=new THREE.Group(); grp.visible=false; sc.add(grp);
+        const hull =new THREE.MeshStandardMaterial({color:0x191d24, roughness:.62, metalness:.45});
+        const trim =new THREE.MeshStandardMaterial({color:0x39424e, roughness:.4,  metalness:.65});
+        const warn =new THREE.MeshStandardMaterial({color:0xff5a2a, emissive:0xff3a10, emissiveIntensity:0.2, roughness:.4});
+        const lensM=new THREE.MeshStandardMaterial({color:0xff5f4a, emissive:0xff2a10, emissiveIntensity:0.15, roughness:.15});
+
+        // ---- the tower. Stepped, buttressed, with a service stack — it has to belong to the city.
+        const tower=new THREE.Group(); grp.add(tower);
+        const put=(g2,m,x,y,z,rx,ry,rz)=>{ const o=new THREE.Mesh(g2,m); o.position.set(x,y,z);
+          if(rx)o.rotation.x=rx; if(ry)o.rotation.y=ry; if(rz)o.rotation.z=rz;
+          o.castShadow=true; tower.add(o); return o; };
+        put(new THREE.BoxGeometry(14,54,18), hull, 0,27,0);
+        put(new THREE.BoxGeometry(17,5,21),  trim, 0,50,0);
+        put(new THREE.BoxGeometry(10,9,12),  hull, 0,58,0);
+        put(new THREE.BoxGeometry(2.2,16,2.2), trim, 3.2,66,3.2);
+        for(let k=0;k<4;k++) put(new THREE.BoxGeometry(15,0.9,19), trim, 0, 11+k*10, 0);
+        // lit panels up both flanks: the tower has to be legible against a dark street from 120 m
+        const panelM=new THREE.MeshStandardMaterial({color:0xff6a3a, emissive:0xff3a10,
+                        emissiveIntensity:0.9, roughness:.35});
+        for(const pz2 of [-9.2,9.2]) for(let k=0;k<6;k++){
+          const pnl=new THREE.Mesh(new THREE.BoxGeometry(9,1.6,0.5), panelM);
+          pnl.position.set(0, 8+k*8, pz2); tower.add(pnl);
         }
-        // the rail: a spine over the street with hanging vanes, so the gap under it reads as the gap
-        const rail=new THREE.Mesh(new THREE.BoxGeometry(62,2.6,4.4), light);
-        rail.position.set(0,34,0); grp.add(rail);
-        for(let k=-4;k<=4;k++){
-          const vane=new THREE.Mesh(new THREE.BoxGeometry(1.2,7.5,3.4), dark);
-          vane.position.set(k*6.6, 29.4, 0); grp.add(vane);
+        put(new THREE.BoxGeometry(6,26,8), hull, -6.5,13,0, 0,0,0.12);     // buttress toward the road
+
+        // ---- the emitter, aimed across the street (-X of the tower's own frame).
+        // It reaches OUT over the road on a cantilever. The tower body has to stand clear of the
+        // play box, and at that distance an aperture flush to its face sits outside the camera's
+        // 34-degree half-angle — you would be shot by something you never saw.
+        const arm=new THREE.Mesh(new THREE.BoxGeometry(9,3.6,5.2), trim);
+        arm.position.set(-4.5,0,0); grp.add(arm);
+        const armBrace=new THREE.Mesh(new THREE.BoxGeometry(11,1.4,2.0), hull);
+        armBrace.position.set(-4,-4.2,0); armBrace.rotation.z=0.30; grp.add(armBrace);
+        const head=new THREE.Group(); head.position.set(-9.2,0,0); grp.add(head);
+        const ring=(r0,r1,len,mat,x)=>{ const o=new THREE.Mesh(new THREE.CylinderGeometry(r0,r1,len,24,1,true),mat);
+          o.rotation.z=Math.PI/2; o.position.x=x; head.add(o); return o; };
+        ring(7.4,8.8,4.0,hull,1.4); ring(6.2,7.4,2.2,trim,-0.6);
+        const lens=new THREE.Mesh(new THREE.CircleGeometry(6.0,26), lensM);
+        lens.rotation.y=-Math.PI/2; lens.position.x=-1.3; head.add(lens);
+        // IRIS: six blades that rotate open on the charge
+        const blades=[];
+        for(let k=0;k<6;k++){
+          const b=new THREE.Mesh(new THREE.BoxGeometry(0.5,6.6,3.1), trim);
+          const piv=new THREE.Group(); piv.rotation.x=k*Math.PI/3; piv.position.x=-1.0;
+          b.position.set(0,3.2,0); piv.add(b); head.add(piv); blades.push(piv);
         }
-        // THE BEAM. A flat slab across the whole street plus a hotter core, hidden until it fires.
-        const beam=new THREE.Mesh(new THREE.BoxGeometry(64,7.4,7.4),
-          new THREE.MeshBasicMaterial({color:0xbdfaff, transparent:true, opacity:0.0, depthWrite:false}));
-        beam.visible=false; grp.add(beam);
-        const core=new THREE.Mesh(new THREE.BoxGeometry(64,2.8,2.8),
-          new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.0, depthWrite:false}));
-        core.visible=false; grp.add(core);
-        const halo=new THREE.Mesh(new THREE.PlaneGeometry(66,26),
-          new THREE.MeshBasicMaterial({color:0x62e8ff, transparent:true, opacity:0.0,
-            blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
-        halo.visible=false; grp.add(halo);
-        return {grp, cells, beam, core, halo, z:0, live:false};
+        // energy rings that converge into the lens while it charges
+        const conv=[];
+        for(let k=0;k<3;k++){
+          const c=new THREE.Mesh(new THREE.TorusGeometry(7.6,0.55,6,26),
+            new THREE.MeshBasicMaterial({color:0xff8a5a, transparent:true, opacity:0, depthWrite:false,
+              blending:THREE.AdditiveBlending}));
+          c.rotation.y=Math.PI/2; head.add(c); conv.push(c);
+        }
+        // warning strobes up the tower face
+        const strobes=[];
+        for(let k=0;k<4;k++){
+          const w=new THREE.Mesh(new THREE.BoxGeometry(0.6,1.5,3.4), warn.clone());
+          w.position.set(-7.4, 12+k*11, 0); grp.add(w); strobes.push(w);
+        }
+
+        // ---- THE BEAM. A hot white core inside a wide glow, a muzzle flare at the lens, and an
+        // impact bloom where it lands. All aligned along X, i.e. straight across the road.
+        const beamGlow=new THREE.Mesh(new THREE.CylinderGeometry(3.4,3.4,62,20,1,true),
+          new THREE.MeshBasicMaterial({color:0xff5a3a, transparent:true, opacity:0, depthWrite:false,
+            blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+        beamGlow.rotation.z=Math.PI/2; grp.add(beamGlow);
+        const beamCore=new THREE.Mesh(new THREE.CylinderGeometry(1.9,1.9,62,16),
+          new THREE.MeshBasicMaterial({color:0xfff2e8, transparent:true, opacity:0, depthWrite:false}));
+        beamCore.rotation.z=Math.PI/2; grp.add(beamCore);
+        const muzzle=new THREE.Mesh(new THREE.ConeGeometry(9.5,16,18,1,true),
+          new THREE.MeshBasicMaterial({color:0xffb08a, transparent:true, opacity:0, depthWrite:false,
+            blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+        muzzle.rotation.z=Math.PI/2; grp.add(muzzle);
+        const splash=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),
+          new THREE.MeshBasicMaterial({color:0xffd8b8, transparent:true, opacity:0, depthWrite:false,
+            blending:THREE.AdditiveBlending}));
+        grp.add(splash);
+        // A narrow upright halo hugging the beam. The first version was 84x26 and lying FLAT on the
+        // road: additive over the whole street, it washed the screen orange and read as fog, not as
+        // a laser. A beam reads from a hard edge, so the halo has to stay tight to it.
+        const sheet=new THREE.Mesh(new THREE.PlaneGeometry(64,9),
+          new THREE.MeshBasicMaterial({color:0xff6a3a, transparent:true, opacity:0, depthWrite:false,
+            blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+        grp.add(sheet);
+
+        return {grp, tower, head, arm, armBrace, lens, lensM, blades, conv, strobes,
+                beamGlow, beamCore, muzzle, splash, sheet, z:0, side:1, live:false};
       };
       for(let i=0;i<2;i++) this.list.push(mk());
-      this._light=new THREE.PointLight(0x66e8ff, 0, 220, 2); this._light.visible=false; g.add(this._light);
+      this._light=new THREE.PointLight(0xff6a3a, 0, 260, 2); this._light.visible=false; sc.add(this._light);
     }
     reset(){
-      for(const c of this.list){ c.live=false; c.grp.visible=false;
-        c.beam.visible=false; c.core.visible=false; c.halo.visible=false; }
+      for(const c of this.list){ c.live=false; c.grp.visible=false; }
       this.state='idle'; this.t=0; this.active=null; this._light.visible=false;
       this.nextZ=(this.game.player.pos.z||0) + SW.cannonFirst;
       this._ui(false);
@@ -5665,19 +5764,39 @@
       if(w) w.classList.toggle('hidden', !on);
     }
     _free(){ for(const c of this.list) if(!c.live) return c; return null; }
+    _armAt(c, y){ c.arm.position.y=y; c.armBrace.position.y=y-4.2; }
+    _beam(c, a, k){
+      // a: overall intensity 0..1   k: 0..1 through the shot, for the punch-out
+      const punch=Math.min(1, k*7);                        // the beam ARRIVES, it does not fade in
+      const w=(0.35+0.65*punch);
+      c.beamGlow.material.opacity=0.55*a; c.beamGlow.scale.set(w,1,w);
+      c.beamCore.material.opacity=0.95*a; c.beamCore.scale.set(w*(0.8+0.4*Math.sin(this.t*70)),1,w);
+      c.muzzle.material.opacity=0.8*a;    c.muzzle.scale.setScalar(0.6+0.7*punch);
+      c.splash.material.opacity=0.7*a;    c.splash.scale.setScalar(6+10*punch+2*Math.sin(this.t*50));
+      c.sheet.material.opacity=0.30*a;    c.sheet.scale.set(1,w,1);
+    }
     update(dt){
       const g=this.game, P=g.player, pz=P.pos.z;
       if(g.mode!=='swipe') return;
       SW.beamY = P.cruiseY || 16;
-      // recycle anything behind us
-      for(const c of this.list) if(c.live && c.z < pz-90){ c.live=false; c.grp.visible=false; }
-      if(!this.active && pz+520 > this.nextZ){
+      for(const c of this.list) if(c.live && c.z < pz-120){ c.live=false; c.grp.visible=false; }
+
+      if(!this.active && pz+560 > this.nextZ){
         const c=this._free();
         if(c){
-          c.live=true; c.z=this.nextZ; c.grp.visible=true;
-          c.grp.position.set(g.city._pathX(c.z), 0, c.z);
-          c.beam.position.set(0, SW.beamY, 0); c.core.position.copy(c.beam.position);
-          c.halo.position.copy(c.beam.position); c.halo.rotation.x=-Math.PI/2;
+          c.live=true; c.z=this.nextZ; c.side=(Math.random()<0.5?-1:1);
+          c.grp.visible=true;
+          const cx=g.city._pathX(c.z);
+          // Just past the kerb. In swipe mode he is confined to +/-9.2, so a tower whose inner
+          // face sits at ~21 is clear of him — and it is the only distance at which the thing
+          // shooting you is actually ON SCREEN as it fires.
+          c.grp.position.set(cx + c.side*(g.city.roadHalf+2), 0, c.z);
+          c.grp.rotation.y = c.side>0 ? 0 : Math.PI;        // the emitter always faces the road
+          const Y=SW.beamY;
+          c.head.position.y=Y; this._armAt(c,Y);
+          c.beamGlow.position.set(-40,Y,0); c.beamCore.position.copy(c.beamGlow.position);
+          c.muzzle.position.set(-14,Y,0); c.splash.position.set(-66,Y,0); c.sheet.position.set(-40,Y,0);
+          this._beam(c,0,0);
           this.active=c; this.state='charge'; this.t=0;
           this._ui(true);
           g.audio.cannonCharge && g.audio.cannonCharge();
@@ -5687,52 +5806,75 @@
       }
       const c=this.active; if(!c) return;
       this.t+=dt;
-      const glow=(v)=>{ for(const m of c.cells){ m.material.emissiveIntensity=v;
-                        m.material.color.setRGB(0.56+v*0.3, 0.96, 1.0); } };
+      const now=performance.now();
+
       if(this.state==='charge'){
-        const k=clamp(this.t/SW.chargeSec,0,1);
-        glow(0.4 + k*k*5.5);
-        this._light.visible=true; this._light.position.set(c.grp.position.x, SW.beamY, c.z);
-        this._light.intensity=k*k*9;
+        const k=clamp(this.t/SW.chargeSec,0,1), e=k*k;
+        // the iris rotates open, the lens spins up, three rings converge into it
+        for(let i=0;i<c.blades.length;i++){
+          const piv=c.blades[i];
+          piv.children[0].position.y=3.2 - 2.2*e;           // blades retract outward
+          piv.rotation.x=i*Math.PI/3 + e*0.55;
+        }
+        c.lensM.emissiveIntensity=0.15+e*7.5;
+        c.lensM.color.setRGB(1, 0.36-0.2*e, 0.28-0.2*e);
+        c.head.rotation.x=now*0.004*e;                      // the whole head spools
+        for(let i=0;i<c.conv.length;i++){
+          const f=(k*1.7+i/3)%1;
+          c.conv[i].position.x=-1.3 - (1-f)*26;             // sweeping IN toward the lens
+          c.conv[i].scale.setScalar(0.35+f*0.9);
+          c.conv[i].material.opacity=0.85*Math.pow(f,0.6)*e;
+        }
+        const strobe=(Math.sin(now*0.02*(1+e*3))>0)?1:0;
+        for(const w of c.strobes){ w.material.emissiveIntensity=0.2+strobe*e*4.5; }
+        this._light.visible=true;
+        this._light.position.set(c.grp.position.x + (c.side>0?-12:12), SW.beamY, c.z);
+        this._light.intensity=e*10;
         const f=document.getElementById('evade-fill'); if(f) f.style.height=Math.round((1-k)*100)+'%';
-        if(k>0.55 && !c._tick){ c._tick=true; g.haptics.fire('drone'); }
+        if(k>0.6 && !c._tick){ c._tick=true; g.haptics.fire('drone'); }
         if(this.t>=SW.chargeSec){
           this.state='fire'; this.t=0; c._tick=false;
-          c.beam.visible=c.core.visible=c.halo.visible=true;
-          g.effects.flash(0.85); g.camera.shake(1.5); g.time.hitstop(60);
+          g.effects.flash(0.45); g.camera.shake(2.0); g.time.hitstop(70);   // a whiteout hides the shot
           g.audio.cannonFire && g.audio.cannonFire();
           g.haptics.fire('powerBig');
           this._ui(false);
-          // THE HIT. Only while the beam is actually up, and only if he is not under it.
-          const under = P.pos.y < SW.beamY-3.2;
-          if(!under && Math.abs(P.pos.z-c.z)<140){
-            c._pending=true;
-          }
+          c._pending = Math.abs(P.pos.z-c.z)<170;
+          g.effects.burst(new THREE.Vector3(c.grp.position.x+(c.side>0?-14:14), SW.beamY, c.z),
+                          new THREE.Color(0xffb070), 22, 30);
         }
       } else if(this.state==='fire'){
-        const k=clamp(this.t/SW.fireSec,0,1), a=Math.sin(k*Math.PI);
-        c.beam.material.opacity=0.62*a; c.core.material.opacity=0.95*a;
-        c.halo.material.opacity=0.42*a;
-        c.beam.scale.y=1+0.35*Math.sin(this.t*60); c.core.scale.y=1+0.6*Math.sin(this.t*90);
-        this._light.intensity=16*a;
-        glow(6*a);
-        // charge him for it at the moment the beam crosses his z, not when it lights up
-        if(c._pending && P.pos.z> c.z-70){
+        const k=clamp(this.t/SW.fireSec,0,1), a=Math.pow(Math.sin(Math.min(1,k*1.05)*Math.PI),0.55);
+        this._beam(c,a,k);
+        c.lensM.emissiveIntensity=8*a;
+        this._light.intensity=22*a;
+        for(const w of c.strobes) w.material.emissiveIntensity=0.2+4*a;
+        // charge him for it as the beam crosses his z, not the moment it lights up
+        if(c._pending && P.pos.z > c.z-80){
           c._pending=false;
           if(P.pos.y > SW.beamY-3.2){
             g.momentum.value=clamp(g.momentum.value-PWR.slamCost*0.85,0,g.momentum.MAX);
             g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;
             g.player.onGateSlam&&g.player.onGateSlam();
-            g.effects.flash(0.9); g.camera.shake(1.8); g.time.hitstop(150);
-            g.player.punch(1.7); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
-            g.effects.burst(new THREE.Vector3(P.pos.x,SW.beamY,P.pos.z), new THREE.Color(0x8ff6ff), 34, 40);
+            g.effects.flash(0.6); g.camera.shake(2.2); g.time.hitstop(160);
+            g.player.punch(1.8); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
+            g.effects.burst(new THREE.Vector3(P.pos.x,SW.beamY,P.pos.z), new THREE.Color(0xffd0a0), 40, 46);
           }
         }
         if(this.t>=SW.fireSec){
-          this.state='idle'; this.active=null;
-          c.beam.visible=c.core.visible=c.halo.visible=false;
-          c._pending=false; this._light.visible=false; glow(0.4);
+          this.state='cool'; this.t=0; this._beam(c,0,0);
+          this._light.visible=false; c._pending=false;
         }
+      } else if(this.state==='cool'){
+        // the iris closes again and the lens goes dark — a weapon that just stops looks broken
+        const k=clamp(this.t/0.55,0,1), e=1-k;
+        for(let i=0;i<c.blades.length;i++){
+          c.blades[i].children[0].position.y=3.2-2.2*e;
+          c.blades[i].rotation.x=i*Math.PI/3 + e*0.55;
+        }
+        c.lensM.emissiveIntensity=0.15+e*3;
+        for(const w of c.strobes) w.material.emissiveIntensity=0.2+e*1.5;
+        for(const cv of c.conv) cv.material.opacity=0;
+        if(k>=1){ this.state='idle'; this.active=null; }
       }
     }
   }

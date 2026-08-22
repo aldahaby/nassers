@@ -1105,6 +1105,22 @@ A second way to play, picked in the menu, and a **branch through the existing sy
 a second game: every map, villain, power and mission works in both. `game.mode` is `'free'` or
 `'swipe'`, persisted in `invrun_mode`.
 
+## Latency is the whole feel
+
+The step fires on **touchmove**, the instant the finger crosses the threshold — **not** on release.
+Waiting for the lift adds the entire duration of the gesture to the response, which is what made
+the first version feel like mud next to a phone home screen. The anchor then re-arms where the
+threshold was crossed, so one long drag across the glass steps lane after lane.
+
+A short fast flick that lifts before crossing the threshold still counts, judged on **velocity** —
+that is the difference between a control that respects a quick wrist and one that makes you draw
+the whole distance.
+
+⚠️ **World +X is screen LEFT under this camera.** Swipe shipped inverted for exactly the same reason
+drag did. `scripts/swipe-mode.mjs` now projects him through the camera and checks the pixels, as a
+fresh transient in each direction — the chase camera tracks his x, so a few tenths later the sign
+has washed out.
+
 ## A flick is a step, not a push
 
 The lane is an **integer** in `[-1,1]`, and a flick changes it. He leaves for the next lane and
@@ -1127,18 +1143,45 @@ twice or dropped between frames.
 That last one is not a detail. A gate you can dodge by changing lane makes powers optional, and the
 whole power mechanic becomes decorative.
 
-## The rail cannon
+## The laser tower
 
-Swipe mode's hazard: a city-scale weapon built into the street — two buttressed pylons, a rail slung
-between them, charge cells lighting up the count-in, then a horizontal beam fired down the road at
-flight height. It fills the width. There is no lane to dodge into; the answer is **EVADE**.
+Swipe mode's hazard, and it is a **building** — not a gantry. A black tower at the kerb with a
+cantilevered emitter reaching out over the road: an iris of six blades that rotates open, a lens
+that spins up, three energy rings sweeping *inward* into it, warning strobes up the face, and then
+a beam straight across the street at flight height, into the far side, where it splashes.
 
 ```
-charge (1.85s, warning + button)  ->  fire (0.55s)  ->  idle
+charge (1.85s, warning + EVADE button)  ->  fire (0.55s)  ->  cool (0.55s, the iris closes)
 ```
 
-**The duck moves the actual flight height.** `pos.y = cruiseY - duck*SW.duckDrop`, and the beam test
-reads `pos.y`. An animation-only duck would look like a dodge and still take the hit.
+`cool` matters: a weapon that just stops looks broken.
+
+Three placement lessons, all learned by rendering it:
+
+- **The emitter has to reach over the road.** The tower body must stand clear of the play box, and
+  at that distance an aperture flush to its face sits outside the camera's 34° half-angle — you get
+  shot by something you never saw. Hence the cantilever arm.
+- **The tower needs lit panels.** A black slab against a dark street is invisible at 120 m, which is
+  exactly the distance at which you need to notice it.
+- **A wide additive halo washes the screen.** The first beam had an 84×26 sheet lying *flat* on the
+  road; over the whole street it read as orange fog, not as a laser. A beam reads from a hard edge,
+  so the halo stays tight and upright and the core stays bright.
+
+## EVADE is a manoeuvre, not a lift shaft
+
+Three phases over `SW.duckTime`:
+
+| | |
+|---|---|
+| **TUCK** 0.00–0.20 | drops fast, pitches nose-up, like braking under the beam |
+| **ROLL** 0.20–0.72 | a complete barrel roll, held at the low point |
+| **RISE** 0.72–1.00 | back to cruise, roll easing out |
+
+The height curve and the roll are **separate on purpose**: the height is what the hit test reads,
+the roll is what sells it, and neither should be able to break the other.
+`pos.y = cruiseY - duck*SW.duckDrop`, and the beam test reads `pos.y` — an animation-only duck would
+look like a dodge and still take the hit. Pressing again mid-dodge is ignored rather than stacked,
+so mashing cannot park him underground.
 
 ## Testing it
 
@@ -1192,7 +1235,11 @@ recycled slots holding big, hand-shaped, **themed** features that say what world
 | Neon Void | a wireframe sun and hard grid ridges |
 | Tokyo | pagodas, and a low moon behind the skyline |
 | Metro | service alcoves cut into the tunnel wall |
-| Backrooms | doorways that lead nowhere, under exit signs |
+| Backrooms | **nothing** — see below |
+
+The Backrooms slot is deliberately empty. The corridor is the whole idea, and a doorway hung on a
+wall that is itself a moving ribbon reads as a flat panel floating in mid-air — which is exactly
+what it looked like. An empty slot is the correct answer there.
 
 **Placement is the whole trick.** Parked 150 m out to the side they are simply off-screen: at that
 angle nothing but the road is in frame. Outdoor landmarks belong **ahead**, near the vanishing
