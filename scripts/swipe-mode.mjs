@@ -88,27 +88,42 @@ const sw = await A.pg.evaluate(()=>{
   o.towerLanes=[...lanes].sort((a,b)=>a-b);
   o.gateLanes =[...gateSpans].sort((a,b)=>a-b);
 
-  // the rail cannon, forced close so the whole sequence fits the window
-  G.cannon.nextZ=P.pos.z+120;
+  // The laser tower. The lane-sampling loop above runs 900 frames of live world, which is long
+  // enough for a whole cannon cycle to have happened already — reset it so the sequence being
+  // observed starts from the beginning.
+  G.cannon.reset();
+  G.cannon.nextZ=P.pos.z+260;
   const seen=[]; let evaded=false;
   o.duckY=9e9;
-  for(let i=0;i<60*14;i++){
+  for(let i=0;i<60*22;i++){
     G.momentum.value=Math.min(G.momentum.MAX,G.momentum.value+2);
     G._loop();
     if(G.cannon.state!==seen[seen.length-1]) seen.push(G.cannon.state);
     if(G.cannon.state==='charge' && !evaded && G.cannon.t>1.2){ evaded=true; P.evade(); }
-    if(G.cannon.state==='fire') o.duckY=Math.min(o.duckY, P.pos.y);
+    if(G.cannon.state==='fire'){
+      o.duckY=Math.min(o.duckY, P.pos.y);
+      // THE BUG THIS CATCHES: the tower used to charge on a timer from the moment it spawned, up
+      // to 560 m ahead, so it fired into an empty street long before the player arrived. Record
+      // how far away he was while the beam was actually up.
+      const d=Math.abs(P.pos.z-G.cannon.active.z);
+      o.nearest=Math.min(o.nearest===undefined?9e9:o.nearest, d);
+    }
   }
-  o.states=seen.slice(0,4); o.beamY=SW.beamY;
+  o.states=seen.filter(v=>v!=='idle').slice(0,3); o.beamY=SW.beamY;
   // THE DODGE ITSELF. It is a manoeuvre, not a lift shaft: down fast, a full revolution held at
   // the low point, then back to cruise. The height is what the hit test reads; the roll is what
   // sells it; neither may break the other.
-  { const t=[]; P.duckT=0; P.evRoll=0; step(10); P.evade();
+  // No tower in play for this one. With a beam charging or live nearby the dive is deliberately
+  // HELD until it has passed (see laser-tower.mjs), so measuring the bare manoeuvre needs a clear
+  // street or the recovery never comes.
+  { G.cannon.reset(); G.cannon.nextZ=P.pos.z+90000;
+    const t=[]; P.duckT=0; P.evRoll=0; step(10); P.evade();
     for(let i=0;i<80;i++){ step(1); t.push({y:P.pos.y, r:P.evRoll||0}); }
     o.dodgeMinY=+Math.min(...t.map(v=>v.y)).toFixed(2);
     o.dodgeMaxRoll=Math.round(Math.max(...t.map(v=>v.r))*57.3);
     o.dodgeRecovers=Math.abs(t[t.length-1].y-P.cruiseY)<0.6; }
   o.underBeam=o.duckY < SW.beamY-3.2;
+  o.nearest=+((o.nearest===undefined?9e9:o.nearest)).toFixed(1);
   o.duckY=+o.duckY.toFixed(2);
   o.evadeBtn=!!document.getElementById('btn-evade');
   o.warnEl=!!document.getElementById('beam-warn');
@@ -129,11 +144,13 @@ const fr = await B.pg.evaluate(()=>{
   const step=n=>{ for(let i=0;i<n;i++){ G.momentum.value=G.momentum.MAX; G._loop(); } };
   const off=()=>P.pos.x-G.city._pathX(P.pos.z);
   // a flick must do nothing at all here
-  // The flick queue must not even be READ here — free flight steers continuously, and a lane step
-  // leaking in would teleport the villain. (A small drift against the road centre is expected: the
-  // stick is a velocity control and does not feed the curve forward.)
+  // Free flight DRAINS the flick queue and acts on none of it. Draining matters: the listeners are
+  // global, so without it a session's worth of stale gestures would be spent in one frame the
+  // moment the player switched to swipe mode. Acting on it would teleport the villain.
+  // (A small drift against the road centre is expected — the stick is a velocity control and does
+  // not feed the road curve forward.)
   step(20); const a=off(); G.input.laneSteps=1; step(40);
-  o.flickMoved=+(off()-a).toFixed(2); o.flickUnconsumed=G.input.laneSteps; o.lane=P.lane|0;
+  o.flickMoved=+(off()-a).toFixed(2); o.queueDrained=(G.input.laneSteps===0); o.lane=P.lane|0;
   // and the stick must still steer continuously
   G.input.setScheme('stick'); G.input.sample=function(){ this.steer.x=-1; };
   const b=off(); step(30); o.stickMoved=+(off()-b).toFixed(2);
@@ -162,12 +179,14 @@ const checks = [
   ['swipe: the joystick is hidden', sw.joyHidden],
   ['swipe: EVADE and the warning exist', sw.evadeBtn && sw.warnEl],
   // 'cool' is the iris closing again. A weapon that just stops looks broken.
-  ['cannon: charge -> fire -> cool',  sw.states[0]==='charge' && sw.states[1]==='fire' && sw.states[2]==='cool'],
+  ['cannon: charge -> fire -> cool',  sw.states.join('>')==='charge>fire>cool'],
+  ['cannon: it fires WHERE HE IS, not into an empty street', sw.nearest < 30],
   ['cannon: EVADE gets him UNDER the beam', sw.underBeam],
   ['dodge: he goes well clear of the beam', sw.dodgeMinY < sw.beamY-6],
   ['dodge: a FULL barrel roll',             sw.dodgeMaxRoll >= 355],
   ['dodge: and he comes back to cruise',    sw.dodgeRecovers],
-  ['free: a flick is never consumed', fr.flickUnconsumed===1 && fr.lane===0],
+  ['free: the flick queue is drained', fr.queueDrained],
+  ['free: but no lane is ever taken',  fr.lane===0],
   ['free: a flick moves nobody',    Math.abs(fr.flickMoved)<2.0],
   ['free: the stick still steers',  Math.abs(fr.stickMoved)>4],
   ['free: towers are NOT lane-quantised', fr.offLane>0],

@@ -1105,6 +1105,49 @@ A second way to play, picked in the menu, and a **branch through the existing sy
 a second game: every map, villain, power and mission works in both. `game.mode` is `'free'` or
 `'swipe'`, persisted in `invrun_mode`.
 
+## The gesture contract
+
+One finger-down to finger-up is **exactly one command**, whatever happens in between. Both ways of
+getting this wrong shipped at least once:
+
+| Wrong | What it feels like |
+|---|---|
+| decide on `touchend` | the whole duration of your gesture is added to the response — mud |
+| re-arm the anchor on `touchmove` | one long drag becomes a stream of lane changes — a drag control wearing a swipe's clothes |
+
+What works: **decide early, on move, the instant the finger crosses the threshold — then LOCK the
+gesture until the finger lifts.** Instant response, one command per swipe. A quick wrist that lifts
+before crossing still counts, judged on velocity. The axis is whichever displacement is larger, so a
+diagonal does what you meant, and **down is EVADE** — a lane runner's dodge is a swipe, not a button.
+
+## The motion curve is the other half
+
+The gesture can be perfect and it will still feel stiff if the villain slides to the lane on rails.
+A **critically damped spring never overshoots**, and that is exactly what reads as mechanical. A
+phone home screen — and every good lane runner — uses a slightly **under-damped** spring: it
+arrives, tips a few percent past the mark, and settles.
+
+```js
+laneOmega:23.0, laneZeta:0.56    // ~8% overshoot, settled in ~0.24s
+// semi-implicit Euler: velocity first, then position. Explicit Euler on a spring this stiff drifts.
+this.vel.x += (-k*(this.pos.x-target) - 2*zeta*om*this.vel.x)*dt;
+this.pos.x += this.vel.x*dt;
+```
+
+And he **leans**: 24° of body roll driven by his own speed across the road, so it is exactly
+symmetric left and right and cannot desync from the motion. Swipe mode only — free flight
+deliberately does not roll, because an asymmetric mesh can never look identical banking left and
+right when the bank is *held*.
+
+Measured, and asserted, in `scripts/swipe-feel.mjs`:
+
+| | |
+|---|---|
+| overshoot | 8.2% right / 8.8% left |
+| settle | 14–15 frames (~0.24 s) |
+| progress at 100 ms | 100% |
+| body roll | 24° / 25°, symmetric within 1° |
+
 ## Latency is the whole feel
 
 The step fires on **touchmove**, the instant the finger crosses the threshold — **not** on release.
@@ -1151,10 +1194,38 @@ that spins up, three energy rings sweeping *inward* into it, warning strobes up 
 a beam straight across the street at flight height, into the far side, where it splashes.
 
 ```
-charge (1.85s, warning + EVADE button)  ->  fire (0.55s)  ->  cool (0.55s, the iris closes)
+parked, dormant, ~600 m out
+  -> charge (1.85s, warning + EVADE)   begun when he is ONE CHARGE away, in TIME
+  -> fire   (0.75s)                    the beam is live as he arrives at it
+  -> cool   (0.55s)                    the iris closes again
 ```
 
 `cool` matters: a weapon that just stops looks broken.
+
+### Charging is triggered by arrival TIME, not by spawn
+
+This is the bug that made the whole mechanic feel broken. The tower used to charge on a timer from
+the moment it spawned — up to 560 m ahead — so it **fired into an empty street long before the
+player got there**. From the cockpit that is "attacked by something I never saw": the beam had been
+and gone. The charge now begins when `(tower.z - player.z) / speed <= chargeSec`, so the warning is
+**the same 1.85 s at every speed** and the beam goes live exactly as he arrives.
+
+### Two fairness rules, both learned the hard way
+
+- **Score the hit on the way OUT of the slab, not on the way in.** A dive takes time to reach depth,
+  so entry is the one instant at which the answer is always "not yet" — latching there steals every
+  last-instant save. He is hit only if he was *never* under the beam while crossing it.
+- **Hold the dive while a beam is charging or live nearby.** Pressed the moment the warning
+  appeared, a 1.05 s dodge ended before the 1.85 s charge did and he stood up into the beam. Now he
+  times the climb himself. The roll runs off its own monotonic timer, or holding the dive would
+  rewind it.
+
+The dive also reaches depth in ~0.08 s (`damp` rate 34). At top speed the lethal slab takes only
+0.2 s to cross, so a press made *at* the beam still has to get him under it — otherwise evading
+quietly stops working in the fastest part of the run.
+
+`scripts/laser-tower.mjs` runs seven scenarios — two speeds × ignore / evade / last-instant, plus
+earliest-possible — and asserts that ignoring it always costs you and evading it never does.
 
 Three placement lessons, all learned by rendering it:
 

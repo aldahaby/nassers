@@ -1597,46 +1597,48 @@
       // Lifting the finger LEAVES HIM WHERE HE IS. A drag control that recentres on release is
       // the single worst thing this can do — every tap to fire a power would yank him back.
       const end=()=>{ this._dragId=null; this.dragActive=false; };
-      // ---- FLICKS, for swipe mode. Tracked on their own id so they work no matter which control
-      // scheme is selected, and ignored over any button.
+      // ---- SWIPES, for swipe mode. A swipe is a DISCRETE GESTURE, the way every lane runner does
+      // it: one finger-down to finger-up is exactly one command, whatever happens in between.
       //
-      // The step fires on touchMOVE, the instant the finger crosses the threshold — NOT on release.
-      // Waiting for the lift adds the whole duration of the gesture to the latency, which is what
-      // made this feel like mud next to a phone home screen. The anchor then re-arms where the
-      // threshold was crossed, so one long drag across the glass steps lane after lane.
+      // The two ways to get this wrong are both ways I got it wrong. Deciding on touchEND adds the
+      // whole duration of your gesture to the response, which feels like mud. Re-arming the anchor
+      // on touchMOVE turns a long drag into a stream of lane changes, which is a drag control
+      // wearing a swipe's clothes.
       //
-      // A short, fast flick that lifts before crossing the threshold still counts, judged on
-      // VELOCITY: that is the difference between a control that respects a quick wrist and one that
-      // demands you draw the whole distance.
-      let fx=0, ft=0, fid=null, fmoved=false;
-      const stepLane=(dir)=>{ this.laneSteps += dir; };
+      // What works: decide EARLY, on move, the instant the finger crosses the threshold — then
+      // LOCK the gesture until the finger lifts. Instant response, one command per swipe.
+      //
+      // Axis is decided by whichever displacement is larger, so a slightly diagonal flick still
+      // does what you meant. Down is EVADE — a lane runner's dodge is a swipe, not a button.
+      let ax=0, ay=0, at=0, aid=null, locked=false;
       addEventListener('touchstart',e=>{
         const t=e.changedTouches[0];
-        if(t && !isCtrl(e.target)){ fid=t.identifier; fx=t.clientX; ft=performance.now(); fmoved=false; }
+        if(t && !isCtrl(e.target)){ aid=t.identifier; ax=t.clientX; ay=t.clientY;
+                                    at=performance.now(); locked=false; }
       },{passive:true});
       addEventListener('touchmove',e=>{
-        if(fid===null) return;
+        if(aid===null || locked) return;
         for(const t of e.changedTouches){
-          if(t.identifier!==fid) continue;
-          let dx=t.clientX-fx;
-          while(Math.abs(dx)>=SW.swipePx){
-            const dir=dx>0?1:-1;
-            stepLane(dir); fmoved=true;
-            fx += dir*SW.swipePx; ft=performance.now();     // re-arm from here: drags chain
-            dx = t.clientX-fx;
-          }
+          if(t.identifier!==aid) continue;
+          const dx=t.clientX-ax, dy=t.clientY-ay;
+          if(Math.abs(dx)>=SW.swipePx && Math.abs(dx)>Math.abs(dy)){ this.laneSteps+=(dx>0?1:-1); locked=true; }
+          else if(dy>=SW.swipePx && Math.abs(dy)>Math.abs(dx)){ this._evade=true; locked=true; }
         }
       },{passive:true});
       addEventListener('touchend',e=>{
         for(const t of e.changedTouches){
-          if(t.identifier!==fid) continue;
-          const dx=t.clientX-fx, dt=Math.max(1,performance.now()-ft);
-          // a quick wrist: short travel, high speed
-          if(!fmoved && Math.abs(dx)>SW.flickPx && Math.abs(dx)/dt > SW.flickVel) stepLane(dx>0?1:-1);
-          fid=null;
+          if(t.identifier!==aid) continue;
+          if(!locked){
+            // a quick wrist that lifted before crossing the threshold still counts, on velocity
+            const dx=t.clientX-ax, dy=t.clientY-ay, dt=Math.max(1,performance.now()-at);
+            if(Math.abs(dx)>SW.flickPx && Math.abs(dx)>Math.abs(dy) && Math.abs(dx)/dt>SW.flickVel)
+              this.laneSteps+=(dx>0?1:-1);
+            else if(dy>SW.flickPx && dy>Math.abs(dx) && dy/dt>SW.flickVel) this._evade=true;
+          }
+          aid=null; locked=false;
         }
       },{passive:true});
-      addEventListener('touchcancel',()=>{ fid=null; },{passive:true});
+      addEventListener('touchcancel',()=>{ aid=null; locked=false; },{passive:true});
 
       addEventListener('touchstart',e=>{
         if(this.scheme!=='drag' || this._dragId!==null) return;
@@ -2330,16 +2332,26 @@
   // never a replacement.
   const SW={
     laneX:9.2,          // metres between lane centres — a tower fills one lane and no more
-    snap:26.0,          // rad/s of the lane spring: ~0.13s to settle, the weight of a home-screen page
-    swipePx:34,         // finger travel that commits a lane, measured DURING the drag
-    flickPx:12,         // a quick wrist that lifts early still counts...
-    flickVel:0.55,      // ...if it moved this many px per ms
+    // THE LANE SPRING. A critically damped spring never overshoots, and that is exactly what makes
+    // it feel mechanical — like something being slid along a rail. A phone home screen, and every
+    // good lane runner, uses a slightly UNDER-damped spring: it arrives, tips a few percent past
+    // the mark, and settles. That last few percent is the whole difference between "stiff" and
+    // "alive". zeta 0.56 lands about 4-5% past the mark; omega 23 puts the settle at ~0.2s.
+    laneOmega:23.0,
+    laneZeta:0.56,
+    laneLean:0.62,      // radians of body roll at full lane-change speed
+    snap:26.0,          // (legacy, kept so anything still reading it gets a sane number)
+    swipePx:22,         // finger travel that commits the gesture, decided DURING the move
+    flickPx:10,         // a quick wrist that lifts early still counts...
+    flickVel:0.42,      // ...if it moved this many px per ms
     duckDrop:9.6,       // how far under the beam the dodge takes him
     duckTime:1.05,      // seconds of the whole evasive manoeuvre
     cannonFirst:900,    // metres before the first laser tower
     cannonGap:[520,760],// metres between towers after that
     chargeSec:1.85,     // warning window: long enough to see it, short enough to be a threat
-    fireSec:0.55,
+    fireSec:0.75,
+    beamDepth:9.5,      // half-depth of the lethal slab: ~0.4s of pass-through at cruise
+    spawnAhead:700,     // how far out a tower is parked, dormant and visible
     beamY:0,            // filled per run from the cruise height
   };
 
@@ -3238,7 +3250,7 @@
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined;
-             this.lane=0; this.duck=0; this.duckT=0; this.evRoll=0; this.evPitch=0;
+             this.lane=0; this.duck=0; this.duckT=0; this.evT=0; this.evRoll=0; this.evPitch=0; this.laneLean=0;
              this.unglow();
              this._prevRc=undefined;
              // Re-anchor the drag control, or a finger left where it was at the end of the last
@@ -3273,7 +3285,7 @@
     evade(){
       if(this._menuMode) return false;
       if(this.duckT>SW.duckTime*0.55) return false;      // already mid-dodge: no stacking
-      this.duckT=SW.duckTime; this.evRoll=0; this.evPitch=0;
+      this.duckT=SW.duckTime; this.evT=0; this.evRoll=0; this.evPitch=0;
       const g=this.game;
       g.camera.shake(0.55); g.time.hitstop(50); this.punch(0.5);
       g.effects.flash(0.14);
@@ -3319,24 +3331,41 @@
       const lim=PLAY.xBox;
       let sx=-steer.x;
 
-      // ---- EVADE. A full evasive manoeuvre, not a lift shaft. Three phases over duckTime:
-      //   TUCK   0.00-0.20  he drops fast and pitches nose-up, like braking under the beam
-      //   ROLL   0.20-0.72  a complete barrel roll at the low point, held there
-      //   RISE   0.72-1.00  back up to cruise, roll settling out
-      // The height curve and the roll are separate on purpose: the height is what the hit test
-      // reads, the roll is what sells it, and neither should be able to break the other.
-      if(this.duckT>0) this.duckT=Math.max(0,this.duckT-dt);
+      // ---- EVADE. A full evasive manoeuvre, and a FORGIVING one. Two things a reaction move in a
+      // mobile game must never do: punish you for reacting immediately, or punish you for reacting
+      // at the last moment. Both were happening.
+      //
+      //   Pressed EARLY, the 1.05s dodge ended before the 1.85s charge did, and he stood up into
+      //   the beam. So while a beam is charging or live and close, the dive is HELD — he times the
+      //   climb himself. That is what survival instinct looks like from the outside.
+      //
+      //   The ROLL runs off its own monotonic timer, not off the remaining duck time, or holding
+      //   the dive would rewind the barrel roll.
+      if(this.duckT>0){
+        this.duckT=Math.max(0,this.duckT-dt);
+        this.evT=(this.evT||0)+dt;
+        // hold the dive while the thing that fires at flight height is about to, or already has
+        const C=g.cannon && g.cannon.active;
+        if(C && (g.cannon.state==='charge' || g.cannon.state==='fire')){
+          const dz2=C.z-this.pos.z, eta=dz2/Math.max(14,this.fwdNow||45);
+          const near = Math.abs(dz2) < SW.beamDepth+14 || (eta>0 && eta<SW.chargeSec+0.25);
+          if(near) this.duckT=Math.max(this.duckT, SW.duckTime*0.42);
+        }
+      } else this.evT=0;
       const u = this.duckT>0 ? clamp(1-this.duckT/SW.duckTime, 0, 1) : -1;
       let dz=0;
       if(u>=0){
-        dz = u<0.20 ? (u/0.20)                                  // down, fast
+        dz = u<0.14 ? (u/0.14)                                  // down, HARD — see below
            : u<0.72 ? 1                                          // held under it
            : 1-Math.pow((u-0.72)/0.28, 1.6);                     // and back up, easing
-        const r=clamp((u-0.16)/0.58,0,1);
-        this.evRoll = Math.PI*2 * (r*r*(3-2*r));                 // one clean revolution
-        this.evPitch = Math.sin(clamp(u/0.20,0,1)*Math.PI) * 0.55;
+        const r=clamp(((this.evT||0)-0.16)/0.52,0,1);
+        this.evRoll = Math.PI*2 * (r*r*(3-2*r));                 // one clean revolution, monotonic
+        this.evPitch = Math.sin(clamp((this.evT||0)/0.16,0,1)*Math.PI) * 0.55;
       } else { this.evRoll=damp(this.evRoll||0,0,14,dt); this.evPitch=damp(this.evPitch||0,0,14,dt); }
-      this.duck=damp(this.duck||0, dz, 22, dt);
+      // 34, not 22. The dive has to reach depth in about 0.08s: at top speed the lethal slab takes
+      // only 0.2s to cross, so a press made AT the beam has to still get him under it. A slower
+      // dive means the fastest part of the run is the part where evading stops working.
+      this.duck=damp(this.duck||0, dz, 34, dt);
 
       // Advance along the road FIRST, then steer against the road centre where he now is. Doing it
       // the other way round anchors the drag target one frame behind, which on a curving road is a
@@ -3352,14 +3381,21 @@
         // whole feel of a swipe runner, which is why the lane is an integer and not a position.
         // MINUS. The camera looks down +Z, so world +X is screen LEFT — the same inversion the drag
         // path had. Swiping right has to move him right, which means the lane index goes DOWN.
+        if(g.input.consumeEvade()) this.evade();     // swipe DOWN, or the down-arrow on a desktop
         { const st=g.input.consumeLane(); const was=this.lane|0;
           this.lane=clamp(was-st,-1,1);
           if(this.lane!==was) g.tutorial && g.tutorial.note('lane'); }
         const target = rc + this.lane*SW.laneX;
-        const om=SW.snap, xx=om*dt, ex=1/(1+xx+0.48*xx*xx+0.235*xx*xx*xx);
-        const ch=this.pos.x-target, tm=(this.vel.x+om*ch)*dt;
-        this.vel.x=(this.vel.x-om*tm)*ex;
-        this.pos.x=target+(ch+tm)*ex;
+        // Semi-implicit Euler on an under-damped spring: velocity first, then position. Explicit
+        // Euler on a spring this stiff drifts and eventually blows up.
+        const om=SW.laneOmega, k=om*om, cD=2*SW.laneZeta*om;
+        this.vel.x += (-k*(this.pos.x-target) - cD*this.vel.x)*dt;
+        this.pos.x += this.vel.x*dt;
+        // BODY LEAN. Sliding sideways bolt upright is the other half of feeling like a rail. He
+        // banks into the move and straightens out of it, driven by his own speed across the road,
+        // so it is exactly symmetric left and right and it cannot desync from the motion.
+        const lv=clamp(this.vel.x/(SW.laneX*SW.laneOmega*0.42), -1, 1);
+        this.laneLean=damp(this.laneLean||0, lv, 16, dt);
         sx=clamp(this.vel.x/Math.max(1,STRAFE),-1,1);
       } else if(drag){
         // POSITION control. The villain is placed where the finger has dragged to, not pushed in
@@ -3400,6 +3436,11 @@
         this.pos.x+=this.vel.x*dt;
         if(Math.abs(this.vel.x)>12) g.tutorial && g.tutorial.note('lane');
         this._prevRc=undefined;                              // no stale road anchor across a scheme switch
+        this.laneLean=0;
+        // Swipes are still DETECTED here — the listeners are global — but nothing reads them.
+        // Drain the queues, or switching to swipe mode later would spend a session's worth of
+        // stale gestures in one frame.
+        g.input.consumeLane(); g.input.consumeEvade();
       }
       // must always exceed PLAY.laneHi so every target is reachable on every map
       // ONE box on every map (PLAY.xBox). Tokyo's block wall sits at roadHalf+5 = 27 and the
@@ -3441,7 +3482,12 @@
         this.villainModel.rotation.x=this._mRotX + (this.evPitch||0);
         // NO idle roll term here: it would shift the neutral, so leaning left and leaning right
         // would not be mirror images of each other. Roll is purely a function of steering.
-        this.villainModel.rotation.z=-this.bank*BANK_ROLL.model + (this.evRoll||0);
+        // The lane lean is SWIPE ONLY. Free flight deliberately does not roll — an asymmetric mesh
+        // can never look identical banking left and right when the bank is held. Here it is a
+        // transient tied to a symmetric motion, so it reads as athleticism instead of a tilt.
+        const lean = (g.mode==='swipe') ? -(this.laneLean||0)*SW.laneLean : 0;
+        this.villainModel.rotation.z=-this.bank*BANK_ROLL.model + (this.evRoll||0) + lean;
+        this.villainModel.rotation.y = lean*0.30;      // and he turns a little into it
         this.villainModel.position.y=this._mBaseY + Math.sin(now*0.003)*0.075;
         if(this._rigSway){ const t=now*0.003;                    // rigged characters: wings/cape flap gently
           for(const sB of this._rigSway){ const bn=sB.b;
@@ -5657,7 +5703,7 @@
   // ===================================================================================
   class CannonSystem {
     constructor(game){
-      this.game=game; this.list=[]; this.nextZ=0; this.state='idle'; this.t=0; this.active=null;
+      this.game=game; this.list=[]; this.nextZ=0; this.state='idle'; this.t=0; this.active=null; this.parked=null;
       const sc=game.scene;
       const mk=()=>{
         const grp=new THREE.Group(); grp.visible=false; sc.add(grp);
@@ -5753,8 +5799,8 @@
       this._light=new THREE.PointLight(0xff6a3a, 0, 260, 2); this._light.visible=false; sc.add(this._light);
     }
     reset(){
-      for(const c of this.list){ c.live=false; c.grp.visible=false; }
-      this.state='idle'; this.t=0; this.active=null; this._light.visible=false;
+      for(const c of this.list){ c.live=false; c.armed=false; c.grp.visible=false; }
+      this.state='idle'; this.t=0; this.active=null; this.parked=null; this._light.visible=false;
       this.nextZ=(this.game.player.pos.z||0) + SW.cannonFirst;
       this._ui(false);
     }
@@ -5765,6 +5811,14 @@
     }
     _free(){ for(const c of this.list) if(!c.live) return c; return null; }
     _armAt(c, y){ c.arm.position.y=y; c.armBrace.position.y=y-4.2; }
+    // DORMANT. Lit enough to be recognised from a long way off, dark enough that arming it reads
+    // as a change of state rather than a light coming on.
+    _idle(c){
+      c.lensM.emissiveIntensity=0.25;
+      for(let i=0;i<c.blades.length;i++){ c.blades[i].children[0].position.y=3.2; c.blades[i].rotation.x=i*Math.PI/3; }
+      for(const w of c.strobes) w.material.emissiveIntensity=0.35;
+      for(const cv of c.conv) cv.material.opacity=0;
+    }
     _beam(c, a, k){
       // a: overall intensity 0..1   k: 0..1 through the shot, for the punch-out
       const punch=Math.min(1, k*7);                        // the beam ARRIVES, it does not fade in
@@ -5779,12 +5833,16 @@
       const g=this.game, P=g.player, pz=P.pos.z;
       if(g.mode!=='swipe') return;
       SW.beamY = P.cruiseY || 16;
-      for(const c of this.list) if(c.live && c.z < pz-120){ c.live=false; c.grp.visible=false; }
+      for(const c of this.list) if(c.live && c.z < pz-140){
+        c.live=false; c.grp.visible=false; if(this.parked===c) this.parked=null; }
 
-      if(!this.active && pz+560 > this.nextZ){
+      // PARK a tower far ahead, dormant, so it is on screen and recognisable long before anything
+      // happens. Charging is a separate decision, made on ARRIVAL TIME.
+      if(!this.active && pz+SW.spawnAhead > this.nextZ){
         const c=this._free();
         if(c){
           c.live=true; c.z=this.nextZ; c.side=(Math.random()<0.5?-1:1);
+          c.armed=false;
           c.grp.visible=true;
           const cx=g.city._pathX(c.z);
           // Just past the kerb. In swipe mode he is confined to +/-9.2, so a tower whose inner
@@ -5797,12 +5855,21 @@
           c.beamGlow.position.set(-40,Y,0); c.beamCore.position.copy(c.beamGlow.position);
           c.muzzle.position.set(-14,Y,0); c.splash.position.set(-66,Y,0); c.sheet.position.set(-40,Y,0);
           this._beam(c,0,0);
-          this.active=c; this.state='charge'; this.t=0;
+          this._idle(c);
+          this.parked=c;
+        }
+        this.nextZ += rand(SW.cannonGap[0], SW.cannonGap[1]);
+      }
+      // BEGIN THE CHARGE when he is exactly one charge away, measured in TIME, not distance. The
+      // beam then goes live as he arrives at it, at any speed — which is the entire point.
+      if(!this.active && this.parked && this.parked.live){
+        const c0=this.parked, eta=(c0.z-pz)/Math.max(14, P.fwdNow||45);
+        if(eta<=SW.chargeSec){
+          this.active=c0; this.parked=null; this.state='charge'; this.t=0; c0.armed=true;
           this._ui(true);
           g.audio.cannonCharge && g.audio.cannonCharge();
           g.haptics.fire('gateBlock');
         }
-        this.nextZ += rand(SW.cannonGap[0], SW.cannonGap[1]);
       }
       const c=this.active; if(!c) return;
       this.t+=dt;
@@ -5834,11 +5901,10 @@
         if(k>0.6 && !c._tick){ c._tick=true; g.haptics.fire('drone'); }
         if(this.t>=SW.chargeSec){
           this.state='fire'; this.t=0; c._tick=false;
-          g.effects.flash(0.45); g.camera.shake(2.0); g.time.hitstop(70);   // a whiteout hides the shot
+          g.effects.flash(0.26); g.camera.shake(2.0); g.time.hitstop(70);   // a whiteout hides the shot
           g.audio.cannonFire && g.audio.cannonFire();
           g.haptics.fire('powerBig');
-          this._ui(false);
-          c._pending = Math.abs(P.pos.z-c.z)<170;
+          c._hit=false; c._safe=false; c._entered=false;
           g.effects.burst(new THREE.Vector3(c.grp.position.x+(c.side>0?-14:14), SW.beamY, c.z),
                           new THREE.Color(0xffb070), 22, 30);
         }
@@ -5848,21 +5914,37 @@
         c.lensM.emissiveIntensity=8*a;
         this._light.intensity=22*a;
         for(const w of c.strobes) w.material.emissiveIntensity=0.2+4*a;
-        // charge him for it as the beam crosses his z, not the moment it lights up
-        if(c._pending && P.pos.z > c.z-80){
-          c._pending=false;
-          if(P.pos.y > SW.beamY-3.2){
+        // THE HIT RULE. He is hit only if he was NEVER under the beam while crossing it. Latching
+        // the moment he enters the slab charges him before a last-instant dive has had time to
+        // land, which is exactly what makes a save feel stolen — and a dive takes ~0.2s to reach
+        // depth, so entry is the one instant at which the answer is always "not yet".
+        const inSlab = Math.abs(P.pos.z-c.z) < SW.beamDepth;
+        if(inSlab) c._entered=true;
+        if(inSlab && P.pos.y < SW.beamY-4.0) c._safe=true;
+        if(!c._hit && !inSlab && P.pos.z > c.z && c._entered){
+          c._hit=true;
+          if(!c._safe){
             g.momentum.value=clamp(g.momentum.value-PWR.slamCost*0.85,0,g.momentum.MAX);
             g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;
             g.player.onGateSlam&&g.player.onGateSlam();
-            g.effects.flash(0.6); g.camera.shake(2.2); g.time.hitstop(160);
+            g.effects.flash(0.42); g.camera.shake(2.2); g.time.hitstop(160);
             g.player.punch(1.8); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
             g.effects.burst(new THREE.Vector3(P.pos.x,SW.beamY,P.pos.z), new THREE.Color(0xffd0a0), 40, 46);
           }
         }
         if(this.t>=SW.fireSec){
+          // If the beam expires while he is still inside the slab — possible at low speed — settle
+          // it now, or he would walk out of a beam he was standing in.
+          if(c._entered && !c._hit && !c._safe){
+            c._hit=true;
+            g.momentum.value=clamp(g.momentum.value-PWR.slamCost*0.85,0,g.momentum.MAX);
+            g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;
+            g.player.onGateSlam&&g.player.onGateSlam();
+            g.effects.flash(0.42); g.camera.shake(2.2); g.time.hitstop(160);
+            g.player.punch(1.8); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
+          }
           this.state='cool'; this.t=0; this._beam(c,0,0);
-          this._light.visible=false; c._pending=false;
+          this._light.visible=false; this._ui(false);
         }
       } else if(this.state==='cool'){
         // the iris closes again and the lens goes dark — a weapon that just stops looks broken
