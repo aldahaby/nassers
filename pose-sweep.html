@@ -1,0 +1,55 @@
+<!doctype html><meta charset=utf-8>
+<!-- CITYBREAKER — orientation finder.
+     Renders one GLB at several [rotX, roll, yaw] poses side by side, from the GAME'S camera, so a
+     new character's CHARACTERS entry can be read off a picture instead of guessed. Serve the repo
+     root and open:
+        pose-sweep.html?u=./assets/char_a.glb&p=[[0,0,0],[0,0,1.5708],[0,0,3.1416],[0,0,-1.5708]]
+     Whichever panel shows his BACK is the yaw. Add pitch only if he is standing up in it.
+     See ASSETS_HOWTO "Orientation: check it, never assume it". --><style>html,body{margin:0;background:#20242c}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { MeshoptDecoder } from './vendor/meshopt_decoder.module.js';
+
+const q=new URLSearchParams(location.search);
+const url=q.get('u')||'./assets/char_a.glb';
+const poses=JSON.parse(q.get('p')||'[[1.15,0,0.2708]]');   // [rotX, roll, yaw]
+const COLS=poses.length, W=300, H=380;
+const cv=document.createElement('canvas'); cv.width=W*COLS; cv.height=H; document.body.appendChild(cv);
+const r=new THREE.WebGLRenderer({canvas:cv,antialias:true}); r.setPixelRatio(1);
+r.setSize(W*COLS,H,false); r.setScissorTest(true); r.outputColorSpace=THREE.SRGBColorSpace;
+
+const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+const g=await loader.loadAsync(url);
+const model=g.scene;
+const box=new THREE.Box3().setFromObject(model); const size=new THREE.Vector3(); box.getSize(size);
+const ctr=new THREE.Vector3(); box.getCenter(ctr); model.position.sub(ctr);
+
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x2a2f39);
+scene.add(new THREE.HemisphereLight(0xffffff,0x404050,2.0));
+const d=new THREE.DirectionalLight(0xffffff,2.2); d.position.set(-3,6,-5); scene.add(d);
+const d2=new THREE.DirectionalLight(0xffffff,1.0); d2.position.set(4,2,6); scene.add(d2);
+
+// the game's framing: camera behind + above, looking down-forward past the villain
+const cam=new THREE.PerspectiveCamera(64,W/H,0.1,200);
+cam.position.set(0,6.9,-12.4); cam.up.set(0,1,0); cam.lookAt(0,-1.4,8);
+
+const rigs=[];
+for(let i=0;i<COLS;i++){
+  const m=model.clone(true);
+  const roll=new THREE.Group(); roll.add(m); roll.rotation.z=poses[i][1];
+  const yaw =new THREE.Group(); yaw.add(roll); yaw.rotation.y=poses[i][2];
+  const holder=new THREE.Group(); holder.add(yaw);
+  holder.rotation.x=poses[i][0];
+  holder.scale.setScalar(4.6/Math.max(size.x,size.y,size.z));
+  const grp=new THREE.Group(); grp.add(holder); grp.scale.setScalar(1.55); grp.position.y=0.12;
+  scene.add(grp); rigs.push(grp);
+}
+for(let i=0;i<COLS;i++){
+  for(let j=0;j<COLS;j++) rigs[j].visible=(i===j);
+  r.setViewport(i*W,0,W,H); r.setScissor(i*W,0,W,H);
+  r.render(scene,cam);
+}
+window.__done=true;
+</script>
