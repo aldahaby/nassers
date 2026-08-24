@@ -2349,6 +2349,11 @@
     cannonFirst:900,    // metres before the first laser tower
     cannonGap:[520,760],// metres between towers after that
     chargeSec:1.85,     // warning window: long enough to see it, short enough to be a threat
+    // The beam has to be ALREADY LYING ACROSS THE STREET when he reaches it, not switch on in his
+    // face. Firing exactly on arrival meant he entered the lethal slab at its centre, so a press
+    // made at that moment had only half a slab to get under — a coin flip at top speed. It also
+    // just looks better: you fly INTO a beam you can see.
+    fireLead:0.24,      // seconds the shot lands before he gets there
     fireSec:0.75,
     beamDepth:9.5,      // half-depth of the lethal slab: ~0.4s of pass-through at cruise
     spawnAhead:700,     // how far out a tower is parked, dormant and visible
@@ -2996,9 +3001,14 @@
       // Parsed scenes are cached and every villain is prefetched in the background, so tapping a
       // card swaps the model on the same frame instead of showing an empty rig for a few seconds.
       const C=FlightPlayer._cache||(FlightPlayer._cache=new Map());
-      const build=(gltf)=>{
+      const build=(gltf, own)=>{
         if(token!==this._loadToken) return;                   // superseded — drop this stale result
-        const model=gltf.scene.clone(true);
+        // A GLB scene is shared with the loader cache, so it has to be cloned. A PROCEDURAL villain
+        // is built fresh for this one player and must NOT be — Object3D.copy() runs userData through
+        // JSON.parse(JSON.stringify(...)), which silently deletes any function on it and turns the
+        // part references into plain objects. That is what killed the rig: `userData.pose` vanished
+        // and `userData.parts.armL` came back as `{}`, so every body animation was driving nothing.
+        const model=own ? gltf.scene : gltf.scene.clone(true);
         const box=new THREE.Box3().setFromObject(model), size=new THREE.Vector3(), ctr=new THREE.Vector3();
         box.getSize(size); box.getCenter(ctr);
         // RIGGED models: geometry lives in bind space, so Box3 lies — measure by the skeleton span instead
@@ -3059,6 +3069,8 @@
             mat.needsUpdate=true;
           } } } });
         this._rigSway=null;
+        // A procedural villain exposes a rig. Grab it — this is what stops him being a statue.
+        this._pose = (model.userData && model.userData.pose) || null;
         // Authored-orientation correction, innermost first: roll the model level about its own
         // forward axis, then yaw it to face down the street, then pitch it into the flight arch.
         // Meshy exports arrive in a pose of their own, so a single yaw is not always enough —
@@ -3118,7 +3130,7 @@
       };
       // A procedural villain has nothing to download: hand `build` a scene it can treat exactly
       // like a parsed GLB, so every downstream step (pose, fit, cloth, aura) is shared.
-      if(cfg.procedural){ build({scene: buildProceduralVillain(cfg.palette)}); return; }
+      if(cfg.procedural){ build({scene: buildProceduralVillain(cfg.palette)}, true); return; }
       if(C.has(cfg.url)){ build(C.get(cfg.url)); return; }                        // already parsed -> instant
       // A dropped request on a phone network is common and recoverable. Retry with a short backoff
       // rather than dropping the player straight to the placeholder.
@@ -3489,6 +3501,23 @@
         this.villainModel.rotation.z=-this.bank*BANK_ROLL.model + (this.evRoll||0) + lean;
         this.villainModel.rotation.y = lean*0.30;      // and he turns a little into it
         this.villainModel.position.y=this._mBaseY + Math.sin(now*0.003)*0.075;
+        // ---- DRIVE THE BODY. Translation and roll alone read as a prop being slid around; the
+        // body has to do the moving. This is the difference between "it moves" and "he moves".
+        // SQUASH, for every villain including the GLB ones. They are single skinned meshes with no
+        // rig to fold, so without this their evade is a drop and a spin with a rigid body in it.
+        // Compressing along the model's own Y — the flight axis — reads as the body tucking.
+        if(this._rollGroup){ const tk=this.duck||0;
+          this._rollGroup.scale.set(1+0.07*tk, 1-0.20*tk, 1+0.14*tk); }
+        if(this._pose){
+          // GAME time, not wall time. performance.now() keeps running while the game is paused and
+          // does not exist at all under a fixed-step test driver, so the idle motion would either
+          // animate a paused villain or be untestable.
+          this._animT=(this._animT||0)+dt;
+          this._pose({ idle: this._animT,
+                       lean: this.laneLean||0,
+                       tuck: this.duck||0,
+                       speed: clamp((this.speed?this.speed():60)/140, 0, 1) });
+        }
         if(this._rigSway){ const t=now*0.003;                    // rigged characters: wings/cape flap gently
           for(const sB of this._rigSway){ const bn=sB.b;
             if(bn.name==='Spine02') bn.rotation.x=sB.x+Math.sin(t*0.9)*0.035;
@@ -5838,7 +5867,11 @@
 
       // PARK a tower far ahead, dormant, so it is on screen and recognisable long before anything
       // happens. Charging is a separate decision, made on ARRIVAL TIME.
-      if(!this.active && pz+SW.spawnAhead > this.nextZ){
+      // ONE at a time. Without the `!this.parked` guard a second tower parks while the first is
+      // still approaching and overwrites the reference — the first never charges, never fires, and
+      // is silently skipped. With only two slots that then starves the pool as well. It is why
+      // encounter counts over an identical run varied by 4x.
+      if(!this.active && !this.parked && pz+SW.spawnAhead > this.nextZ){
         const c=this._free();
         if(c){
           c.live=true; c.z=this.nextZ; c.side=(Math.random()<0.5?-1:1);
@@ -5858,13 +5891,13 @@
           this._idle(c);
           this.parked=c;
         }
-        this.nextZ += rand(SW.cannonGap[0], SW.cannonGap[1]);
+        this.nextZ = Math.max(this.nextZ, pz) + rand(SW.cannonGap[0], SW.cannonGap[1]);
       }
       // BEGIN THE CHARGE when he is exactly one charge away, measured in TIME, not distance. The
       // beam then goes live as he arrives at it, at any speed — which is the entire point.
       if(!this.active && this.parked && this.parked.live){
         const c0=this.parked, eta=(c0.z-pz)/Math.max(14, P.fwdNow||45);
-        if(eta<=SW.chargeSec){
+        if(eta<=SW.chargeSec+SW.fireLead){
           this.active=c0; this.parked=null; this.state='charge'; this.t=0; c0.armed=true;
           this._ui(true);
           g.audio.cannonCharge && g.audio.cannonCharge();
@@ -5901,7 +5934,7 @@
         if(k>0.6 && !c._tick){ c._tick=true; g.haptics.fire('drone'); }
         if(this.t>=SW.chargeSec){
           this.state='fire'; this.t=0; c._tick=false;
-          g.effects.flash(0.26); g.camera.shake(2.0); g.time.hitstop(70);   // a whiteout hides the shot
+          g.effects.flash(0.18); g.camera.shake(2.0); g.time.hitstop(70);   // a whiteout hides the shot
           g.audio.cannonFire && g.audio.cannonFire();
           g.haptics.fire('powerBig');
           c._hit=false; c._safe=false; c._entered=false;
@@ -7825,8 +7858,50 @@
       }
     }
 
-    root.userData.parts={armL,armR,legL,legR,cape,torso,skull,
+    root.userData.parts={armL,armR,legL,legR,cape,torso,skull,headG,
                          handL:armL.userData.hand, handR:armR.userData.hand};
+
+    // ---- THE RIG ------------------------------------------------------------------------------
+    // Everything above builds a STATUE. A statue that slides sideways and rotates is the single
+    // biggest reason the movement reads as unnatural — a real runner's body does the moving, and
+    // the translation is a consequence. This is the one API the game drives it through.
+    //
+    //   idle   seconds, for the constant flight motion — he is never perfectly still
+    //   lean   -1..1, the lane change: torso twists, arms counter, legs scissor
+    //   tuck   0..1,  the evade: knees to the chest, arms in, chin down — a cannonball
+    //   speed  0..1,  how hard the air is pushing
+    const base={ aL:armL.rotation.clone(), aR:armR.rotation.clone(),
+                 lL:legL.rotation.clone(), lR:legR.rotation.clone(),
+                 hd:headG.rotation.clone() };
+    const _v=new THREE.Vector3();
+    root.userData.pose=(o)=>{
+      const tk=clamp(o.tuck||0,0,1), ln=clamp(o.lean||0,-1,1), t=o.idle||0, sp=clamp(o.speed||0,0,1);
+      // ARMS. From fists-first out in front, they fold in and down until the elbows are at the
+      // ribs. The counter-swing on a lane change is small and opposite between the two, which is
+      // what a body actually does when it throws itself sideways.
+      for(const [g,side,b] of [[armL,-1,base.aL],[armR,1,base.aR]]){
+        const wob=Math.sin(t*2.1 + (side>0?0:1.7))*0.055*(1-tk)*(0.4+sp);
+        // IN, not out. Rotating the shoulder z AWAY from the body splays the arms wide, which is
+        // the opposite of a tuck — the elbows have to come to the ribs and the fists to the chin.
+        g.rotation.x = b.x + tk*1.78 + wob;
+        g.rotation.z = b.z - side*tk*0.78 - ln*0.26*side;
+        g.rotation.y = -ln*0.34 - side*tk*0.30;
+      }
+      // LEGS. Knees come up to the chest for the tuck; otherwise they trail with a slow scissor
+      // and a small opposite splay into the turn.
+      for(const [g,side,b] of [[legL,-1,base.lL],[legR,1,base.lR]]){
+        const sc=Math.sin(t*1.7 + (side>0?0:Math.PI))*0.085*(1-tk)*(0.35+sp);
+        g.rotation.x = b.x - tk*1.95 + sc;
+        g.rotation.z = b.z + side*tk*0.26 + ln*0.10;
+        g.rotation.y = ln*0.20;
+      }
+      // HEAD. Craned back to look ahead in flight; chin driven to the chest through the tuck.
+      headG.rotation.x = base.hd.x + tk*0.86 + Math.sin(t*1.3)*0.03*(1-tk);
+      headG.rotation.z = -ln*0.22;
+      // and the whole torso twists into the turn — without this the arms look detached
+      torso.rotation.y = ln*0.16;
+      void _v;
+    };
     return root;
   }
 

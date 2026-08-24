@@ -1148,6 +1148,10 @@ Measured, and asserted, in `scripts/swipe-feel.mjs`:
 | progress at 100 ms | 100% |
 | body roll | 24° / 25°, symmetric within 1° |
 
+And `scripts/swipe-feel.mjs` also drives the evade both ways in — a swipe down and a real press on
+the on-screen button — and asserts the **body** folds: shoulder +1.8 rad, hip −1.9 rad, chin +0.9
+rad, a full 360° roll, and a return to the flight pose.
+
 ## Latency is the whole feel
 
 The step fires on **touchmove**, the instant the finger crosses the threshold — **not** on release.
@@ -1202,6 +1206,19 @@ parked, dormant, ~600 m out
 
 `cool` matters: a weapon that just stops looks broken.
 
+### One tower at a time
+
+Without a `!this.parked` guard, a second tower parks while the first is still approaching and
+**overwrites the reference** — the first never charges, never fires, and is silently skipped. With
+only two pool slots that starves the pool as well. It is why encounter counts over an identical run
+varied by four times.
+
+### The beam is already lying across the street when he arrives
+
+Firing exactly on arrival put him at the *centre* of the lethal slab the moment it went live, so a
+press made then had only half a slab to get under — a coin flip at top speed. `SW.fireLead` lands
+the shot 0.24 s early. It also simply looks better: you fly **into** a beam you can see.
+
 ### Charging is triggered by arrival TIME, not by spawn
 
 This is the bug that made the whole mechanic feel broken. The tower used to charge on a timer from
@@ -1237,6 +1254,39 @@ Three placement lessons, all learned by rendering it:
 - **A wide additive halo washes the screen.** The first beam had an 84×26 sheet lying *flat* on the
   road; over the whole street it read as orange fog, not as a laser. A beam reads from a hard edge,
   so the halo stays tight and upright and the core stays bright.
+
+## The rig — the villain is not a statue
+
+The single biggest reason movement reads as unnatural is that **nothing about the body moves**. A
+statue that slides sideways and rotates is a prop being dragged around; a real runner's body does
+the moving and the translation is a consequence.
+
+`buildProceduralVillain` exposes one API for it, and the game drives it every frame:
+
+```js
+root.userData.pose({ idle, lean, tuck, speed })
+```
+
+| | |
+|---|---|
+| `idle` | game seconds — arms and legs never stop moving |
+| `lean` | −1..1, the lane change: torso twists, arms counter-swing, legs splay |
+| `tuck` | 0..1, the evade: knees to the chest, elbows to the ribs, chin down |
+| `speed` | scales how hard the air pushes |
+
+Two things worth not repeating:
+
+- ⚠️ **`Object3D.clone()` runs `userData` through `JSON.parse(JSON.stringify(...))`.** That silently
+  deletes every function on it and turns `Object3D` references into plain `{}`. The rig existed and
+  drove *nothing*, with no error anywhere — `userData.pose` was simply gone. A procedural villain is
+  built fresh for one player and must not be cloned; only GLB scenes (shared with the loader cache)
+  need it.
+- **Idle motion runs on GAME time, not `performance.now()`.** Wall time keeps running while the game
+  is paused, and does not exist at all under a fixed-step test driver.
+
+GLB villains are single skinned meshes with no rig to fold, so they also get a **squash**: the model
+compresses along its own flight axis through the tuck. Without it their evade is a drop and a spin
+with a rigid body in the middle of it.
 
 ## EVADE is a manoeuvre, not a lift shaft
 
