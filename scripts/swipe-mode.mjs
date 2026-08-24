@@ -49,6 +49,7 @@ const open = async (mode)=>{
 const A = await open('swipe');
 const sw = await A.pg.evaluate(()=>{
   const G=window.__game, SW=window.__cb.SW, P=G.player;
+  const realRender=G.renderer.render.bind(G.renderer);   // kept: the driver stubs render below
   G._clock.getDelta=()=>1/60; G.renderer.render=()=>{}; window.requestAnimationFrame=()=>0;
   G.ui.update=()=>{}; G.snapMenuBg=()=>{}; G.time.frozen=()=>false; G.time.update=rd=>rd;
   // _pathX scales the road's swing by difficulty.level, so a tower placed at one amplitude and
@@ -137,6 +138,22 @@ const sw = await A.pg.evaluate(()=>{
   o.evadeBtn=!!document.getElementById('btn-evade');
   o.warnEl=!!document.getElementById('beam-warn');
   o.joyHidden=getComputedStyle(document.getElementById('joy-base')).display==='none';
+
+  // ---- LANE MARKINGS. Three lanes have to be VISIBLE, not inferred from where towers land. And
+  // "visible" means DRAWN: this shipped once with the ribbon's default FrontSide against a winding
+  // whose normals point down, so it was back-face culled — present, correct, and zero draw calls.
+  { const L=G.city.laneLines;
+    o.laneMeshes=L?L.length:0;
+    if(L){
+      for(const m of L) m.visible=false; realRender(G.scene,G.camera.cam);
+      const off=G.renderer.info.render.calls;
+      for(const m of L) m.visible=true;  realRender(G.scene,G.camera.cam);
+      o.laneDraws=G.renderer.info.render.calls-off;
+      const pos=L[0].geometry.attributes.position.array;
+      o.laneY=+pos[1].toFixed(2);
+      o.laneOffset=+((pos[0]+pos[3])/2 - G.city._pathX(pos[2])).toFixed(2);
+    }
+  }
   return o;
 });
 await A.pg.close();
@@ -172,9 +189,45 @@ const fr = await B.pg.evaluate(()=>{
   o.distinctOffsets=lanes.size;
   o.offLane=[...lanes].filter(v=>Math.abs(v-Math.round(v))>0.06).length;
   o.cannonIdle=(G.cannon.state==='idle' && !G.cannon.active);
+  o.laneLinesHidden = !G.city.laneLines || G.city.laneLines.every(m=>!m.visible);
   return o;
 });
 await B.pg.close();
+
+// ---- THE DIVE, ON EVERY MAP -----------------------------------------------------------------
+// Maps fly at very different heights — Tokyo 16, the Metro tunnel 7.5, the Backrooms corridor 4.2 —
+// so a dive measured in absolute metres puts him THROUGH THE FLOOR on half of them: out of frame
+// and out of the game. The dive is whatever headroom the map has, and the beam sits above his
+// cruise line so ducking under it is always possible.
+const dives = {};
+for(const map of ['nyc','metro','backrooms','aero']){
+  const pg = await browser.newPage({viewport:{width:412,height:892}});
+  const e2=[]; pg.on('pageerror', x=>e2.push(x.message));
+  await pg.addInitScript(m=>{ try{ localStorage.setItem('invrun_char','forged');
+    localStorage.setItem('invrun_map',m); localStorage.setItem('invrun_mode','swipe');
+    localStorage.setItem('invrun_tut','1'); }catch(e){} }, map);
+  await pg.goto(`http://127.0.0.1:${port}/game.html`,{waitUntil:'load'});
+  await pg.waitForFunction('!!window.__game',{timeout:200000});
+  await pg.waitForTimeout(1600);
+  dives[map] = await pg.evaluate(()=>{
+    const G=window.__game, P=G.player, SW=window.__cb.SW;
+    G._clock.getDelta=()=>1/60; G.renderer.render=()=>{}; window.requestAnimationFrame=()=>0;
+    G.ui.update=()=>{}; G.snapMenuBg=()=>{}; G.time.frozen=()=>false; G.time.update=rd=>rd;
+    G.impact.smash=()=>{}; G.run.toGameOver=()=>{};
+    G.run.startRun();
+    const step=n=>{ for(let i=0;i<n;i++){ G.momentum.value=G.momentum.MAX; G._loop(); } };
+    step(40);
+    G.cannon.reset(); G.cannon.nextZ=P.pos.z+90000;   // no beam, so nothing holds the dive
+    const beam=P.beamHeight(), cruise=P.cruiseY, drop=P.duckDrop();
+    P.evade(); let low=9e9;
+    for(let i=0;i<80;i++){ step(1); low=Math.min(low,P.pos.y); }
+    return { cruise:+cruise.toFixed(1), beam:+beam.toFixed(1), drop:+drop.toFixed(1),
+             low:+low.toFixed(2), back:+P.pos.y.toFixed(1) };
+  });
+  await pg.close();
+  if(e2.length) A.errs.push(map+': '+e2[0]);
+}
+const everyMap = f => Object.values(dives).every(f);
 
 const checks = [
   ['swipe: lane centres are exactly one laneX apart',
@@ -186,6 +239,11 @@ const checks = [
   ['swipe: towers sit ON lanes',    sw.towerLanes.length<=3 && sw.towerLanes.every(v=>v===-1||v===0||v===1)],
   ['swipe: a gate spans all three', sw.gateLanes.length===3],
   ['swipe: the joystick is hidden', sw.joyHidden],
+  ['swipe: two lane dividers exist',        sw.laneMeshes===2],
+  ['swipe: and they are actually DRAWN',    sw.laneDraws>0],
+  ['swipe: they sit ON the asphalt',        sw.laneY>0.06 && sw.laneY<0.6],
+  ['swipe: half a lane either side',        Math.abs(Math.abs(sw.laneOffset)-sw.laneX/2)<0.6],
+  ['free: no lane markings',                fr.laneLinesHidden],
   ['swipe: EVADE and the warning exist', sw.evadeBtn && sw.warnEl],
   // 'cool' is the iris closing again. A weapon that just stops looks broken.
   ['cannon: charge -> fire -> cool',  sw.states.join('>')==='charge>fire>cool'],
@@ -200,11 +258,16 @@ const checks = [
   ['free: the stick still steers',  Math.abs(fr.stickMoved)>4],
   ['free: towers are NOT lane-quantised', fr.offLane>0],
   ['free: no rail cannon at all',   fr.cannonIdle],
+  ['the dive NEVER goes through the floor', everyMap(d=>d.low>=1.9)],
+  ['and it still clears the beam',          everyMap(d=>d.low < d.beam - Math.max(2.2,d.drop*0.55))],
+  ['the beam sits above the cruise line',   everyMap(d=>d.beam>d.cruise)],
+  ['he returns to cruise afterwards',       everyMap(d=>Math.abs(d.back-d.cruise)<0.6)],
   ['no page errors',                A.errs.length===0 && B.errs.length===0],
 ];
 const failed = checks.filter(c=>!c[1]).map(c=>c[0]);
 console.log('swipe', JSON.stringify(sw));
 console.log('free ', JSON.stringify(fr));
+console.log('dives', JSON.stringify(dives));
 console.log('errs ', A.errs.slice(0,2), B.errs.slice(0,2));
 console.log('\n' + (failed.length ? 'FAIL — ' + failed.join('; ') : 'SWIPE MODE OK'));
 await browser.close(); srv.close();

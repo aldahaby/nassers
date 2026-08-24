@@ -74,7 +74,8 @@ const r = await pg.evaluate(()=>{
   const lane=()=>P.lane|0;
   const reset=()=>{ I.laneSteps=0; I._evade=false; P.lane=0; P.duckT=0; P.duck=0; step(30); };
 
-  const o={ laneX:SW.laneX, swipePx:SW.swipePx };
+  const o={ laneX:SW.laneX, swipePx:SW.swipePx,
+            cruise:P.cruiseY, duckDrop:+P.duckDrop().toFixed(2), beamRise:SW.beamRise };
 
   // 1. ONE swipe is ONE lane, and a LONG drag is still one lane
   reset(); swipe(90,0);           step(2); o.shortRight=lane();
@@ -220,7 +221,8 @@ const C=[
   ['most of the way there in 100ms',        r.curveL.at100ms>0.75 && r.curveR.at100ms>0.75],
   ['he LEANS into the change',              r.curveL.peakRoll>14 && r.curveL.peakRoll<38],
   ['the lean is symmetric left and right',  Math.abs(r.curveL.peakRoll-r.curveR.peakRoll)<=2],
-  ['and it straightens out afterwards',     r.curveL.endLean<0.03 && r.curveR.endLean<0.03],
+  // not zero: the road curves, so he keeps a sliver of lean through a bend, which is correct
+  ['and it straightens out afterwards',     r.curveL.endLean<0.10 && r.curveR.endLean<0.10],
   // every angle is measured as a DELTA from the flight pose — the rest rotations are negative, so
   // an absolute threshold means nothing
   ['a swipe DOWN folds him up',             r.bySwipe.arm-r.restArm>1.2 && r.restLeg-r.bySwipe.leg>1.2
@@ -228,7 +230,8 @@ const C=[
   ['the EVADE button does the same',        r.byButton.arm-r.restArm>1.2 && r.restLeg-r.byButton.leg>1.2
                                          && r.byButton.head-r.restHead>0.5],
   ['and both barrel-roll and go low',       r.bySwipe.rollDeg>=355 && r.byButton.rollDeg>=355
-                                         && r.bySwipe.low<9 && r.byButton.low<9],
+                                         && r.bySwipe.low < r.cruise-r.duckDrop*0.85
+                                         && r.byButton.low < r.cruise-r.duckDrop*0.85],
   ['the body returns to the flight pose',   r.rigRested],
   ['no page errors',                        errs.length===0],
 ];

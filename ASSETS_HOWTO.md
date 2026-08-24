@@ -1120,7 +1120,33 @@ gesture until the finger lifts.** Instant response, one command per swipe. A qui
 before crossing still counts, judged on velocity. The axis is whichever displacement is larger, so a
 diagonal does what you meant, and **down is EVADE** — a lane runner's dodge is a swipe, not a button.
 
-## The motion curve is the other half
+## The motion curve is the other half — and it is a TWEEN, not a spring
+
+A spring is tunable by feel and impossible to tune by number: its duration depends on how far it has
+to go *and* on whatever velocity it is carrying, so a lane change made mid-move lands at a different
+time from one made from rest. A tween gives the same curve and the same duration every time, which
+is the thing that actually reads as polish.
+
+```js
+laneDur:0.22,   laneBack:1.35        // easeOutBack: hard out, soft in, ~7% overshoot
+const x1=t-1, e = 1 + (bk+1)*x1*x1*x1 + bk*x1*x1;
+pos.x = rc + from + (to-from)*e;
+```
+
+Retargeting mid-move is the edge case a spring handles worst: `from` becomes wherever he actually is
+right now, so a re-swipe never jumps and never inherits stale velocity.
+
+**The four numbers that are the entire feel:** `laneDur` (door to door), `laneBack` (overshoot),
+`laneLean` (body roll), `swipePx` (commit threshold).
+
+| Measured | |
+|---|---|
+| duration | 11 frames, **0.18 s** |
+| overshoot | 6.6%, both directions |
+| progress at 100 ms | 102% |
+| body roll | 27° / 28°, symmetric within 1° |
+
+## The old spring, for reference
 
 The gesture can be perfect and it will still feel stiff if the villain slides to the lane on rails.
 A **critically damped spring never overshoots**, and that is exactly what reads as mechanical. A
@@ -1255,6 +1281,38 @@ Three placement lessons, all learned by rendering it:
   road; over the whole street it read as orange fog, not as a laser. A beam reads from a hard edge,
   so the halo stays tight and upright and the core stays bright.
 
+## The dive must never go through the floor
+
+Maps fly at very different heights — Tokyo 16, the Metro tunnel 7.5, the Backrooms corridor 4.2 — so
+a dive measured in absolute metres puts him **underground** on half of them: out of frame and out of
+the game. Both the dive and the beam derive from the cruise height instead:
+
+```js
+duckDrop()   = min(SW.duckMax, cruiseY - SW.floorClear)   // never within 2.2 m of the deck
+beamHeight() = cruiseY + SW.beamRise                       // the beam sits ABOVE his flight line
+```
+
+| Map | cruise | beam | dives to |
+|---|---|---|---|
+| Tokyo / Aero | 16 | 18.6 | 9.5 |
+| Metro | 7.5 | 10.1 | 2.2 |
+| Backrooms | 4.2 | 6.8 | 2.2 |
+
+Clearance is checked against `duckDrop()*0.55`, not an absolute metre count, or the threshold is
+unreachable on a low-ceilinged map.
+
+## Three lanes have to LOOK like three lanes
+
+Two dashed dividers laid on the tarmac, following the same curve as the road, swipe mode only.
+
+⚠️ This shipped once **invisible**: the ribbon winds the same way as the road ribbons, whose normals
+point *down*, and unlike them it did not set `side: DoubleSide` — so it was back-face culled. Present
+in the scene, correct geometry, `visible: true`, and **zero draw calls**. `scripts/swipe-mode.mjs`
+now counts draw calls with the markings on and off, because "visible" is not the same as "drawn".
+
+(While chasing that: a probe that stubs `renderer.render` cannot then measure `info.render.calls` —
+capture the real one first, or every count is stale.)
+
 ## The rig — the villain is not a statue
 
 The single biggest reason movement reads as unnatural is that **nothing about the body moves**. A
@@ -1272,6 +1330,7 @@ root.userData.pose({ idle, lean, tuck, speed })
 | `idle` | game seconds — arms and legs never stop moving |
 | `lean` | −1..1, the lane change: torso twists, arms counter-swing, legs splay |
 | `tuck` | 0..1, the evade: knees to the chest, elbows to the ribs, chin down |
+| `flare` | 0..1, the snap OUT of the tuck — limbs fling wide on the recovery |
 | `speed` | scales how hard the air pushes |
 
 Two things worth not repeating:
