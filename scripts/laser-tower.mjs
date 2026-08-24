@@ -107,7 +107,7 @@ const runAt = async (speed, evadeMode)=>{
       }
       last=st;
     }
-    return { spd, mode, beamY:SW.beamY, beamDepth:SW.beamDepth, chargeSec:SW.chargeSec,
+    return { spd, mode, beamY:SW.beamY, beamDepth:SW.beamDepth, chargeSec:SW.chargeSec, fireLead:SW.fireLead,
              n:enc.length, enc:enc.slice(0,6) };
   }, [speed, evadeMode]);
   await pg.close();
@@ -126,8 +126,9 @@ const ok = (R,f)=> R.out.enc.length>0 && R.out.enc.every(f);
 const checks=[
   ['encounters happened at all',            A.out.n>=3 && C2.out.n>=3],
   ['parked far out and visible first',      ok(A,e=>e.dParked>=400) && ok(C2,e=>e.dParked>=400)],
-  ['charge starts about one charge away',   ok(A,e=>Math.abs(e.chargeLead-A.out.chargeSec)<0.35)
-                                         && ok(C2,e=>Math.abs(e.chargeLead-C2.out.chargeSec)<0.35)],
+  ['charge starts about one charge away',   ok(A,e=>Math.abs(e.chargeLead-A.out.chargeSec-A.out.fireLead)<0.35)
+                                         && ok(C2,e=>Math.abs(e.chargeLead-C2.out.chargeSec-C2.out.fireLead)<0.35)],
+  ['the beam is already up when he arrives', ok(A,e=>e.dAtFire>2) && ok(C2,e=>e.dAtFire>6)],
   ['warning lead is the same at any speed', Math.abs(A.out.enc[0].chargeLead - C2.out.enc[0].chargeLead)<0.3],
   ['the beam is live AS he passes',         ok(A,e=>e.minDist<=A.out.beamDepth+6)
                                          && ok(C2,e=>e.minDist<=C2.out.beamDepth+14)],

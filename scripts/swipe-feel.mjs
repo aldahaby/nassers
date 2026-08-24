@@ -157,6 +157,30 @@ const r = await pg.evaluate(()=>{
   };
   o.curveL=curve(-1); o.curveR=curve(1);
 
+  // 10c. THE EVADE, end to end. Both ways in must reach the BODY, not just a flag: a swipe down,
+  // and a real press on the on-screen button. And it must actually fold him up — a drop with a
+  // rigid body is what "there's no animation" means.
+  const partsOf=()=>{ let m=P.villainModel; while(m && !(m.userData&&m.userData.parts)) m=m.children[0];
+                      return m?m.userData.parts:null; };
+  const PT=partsOf();
+  // seed from infinities: the rest rotations are NEGATIVE, so a zero seed silently wins every max
+  const tuckPeak=()=>{ let a=-9e9,l=9e9,h=-9e9,roll=0,low=9e9;
+    for(let i=0;i<70;i++){ step(1);
+      a=Math.max(a, PT.armL.rotation.x); l=Math.min(l, PT.legL.rotation.x);
+      h=Math.max(h, PT.headG.rotation.x); roll=Math.max(roll, P.evRoll||0); low=Math.min(low,P.pos.y); }
+    return { arm:+a.toFixed(2), leg:+l.toFixed(2), head:+h.toFixed(2),
+             rollDeg:Math.round(roll*57.3), low:+low.toFixed(1) }; };
+  I.laneSteps=0; I._evade=false; P.duckT=0; P.duck=0; step(30);
+  const restArm=PT.armL.rotation.x, restLeg=PT.legL.rotation.x, restHead=PT.headG.rotation.x;
+  swipe(0,90); o.bySwipe=tuckPeak();
+  P.duckT=0; P.duck=0; step(50);
+  { const eb=document.getElementById('btn-evade');
+    eb.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); }
+  o.byButton=tuckPeak();
+  o.restArm=+restArm.toFixed(2); o.restLeg=+restLeg.toFixed(2); o.restHead=+restHead.toFixed(2);
+  P.duckT=0; P.duck=0; step(60);
+  o.rigRested = Math.abs(PT.armL.rotation.x-restArm)<0.15 && Math.abs(PT.legL.rotation.x-restLeg)<0.15;
+
   // 11. DIRECTION, in screen pixels, as a fresh transient each way
   const scr=()=>{ const v=new (P.pos.constructor)(P.pos.x,P.pos.y,P.pos.z); v.project(G.camera.cam); return v.x; };
   reset(); const sA=scr(); swipe(90,0);  step(12); o.screenRight=+(scr()-sA).toFixed(3);
@@ -197,6 +221,15 @@ const C=[
   ['he LEANS into the change',              r.curveL.peakRoll>14 && r.curveL.peakRoll<38],
   ['the lean is symmetric left and right',  Math.abs(r.curveL.peakRoll-r.curveR.peakRoll)<=2],
   ['and it straightens out afterwards',     r.curveL.endLean<0.03 && r.curveR.endLean<0.03],
+  // every angle is measured as a DELTA from the flight pose — the rest rotations are negative, so
+  // an absolute threshold means nothing
+  ['a swipe DOWN folds him up',             r.bySwipe.arm-r.restArm>1.2 && r.restLeg-r.bySwipe.leg>1.2
+                                         && r.bySwipe.head-r.restHead>0.5],
+  ['the EVADE button does the same',        r.byButton.arm-r.restArm>1.2 && r.restLeg-r.byButton.leg>1.2
+                                         && r.byButton.head-r.restHead>0.5],
+  ['and both barrel-roll and go low',       r.bySwipe.rollDeg>=355 && r.byButton.rollDeg>=355
+                                         && r.bySwipe.low<9 && r.byButton.low<9],
+  ['the body returns to the flight pose',   r.rigRested],
   ['no page errors',                        errs.length===0],
 ];
 const bad=C.filter(c=>!c[1]).map(c=>c[0]);

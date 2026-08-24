@@ -65,6 +65,29 @@ for(const ch of CHARS){
       totalVerts += o.geometry.attributes.position.count;
       if(fa) for(let i=0;i<fa.count;i++) if(fa.array[i]>0.05) clothVerts++;
     });
+    // ---- THE RIG. A procedural villain exposes userData.pose, and the parts it drives have to be
+    // the ones actually IN THE SCENE. This exists because of a silent, catastrophic bug:
+    // Object3D.clone() runs userData through JSON.parse(JSON.stringify(...)), which deletes any
+    // function on it and turns Object3D references into plain objects — so `pose` vanished and
+    // every body animation drove nothing, with no error anywhere.
+    let rig = null;
+    if((window.__cb.CHARACTERS[localStorage.getItem('invrun_char')]||{}).procedural){
+      let m=P.villainModel; while(m && !(m.userData&&m.userData.parts)) m=m.children[0];
+      const parts=m&&m.userData.parts, pose=m&&m.userData.pose;
+      const inScene=(o)=>{ let n=o; while(n){ if(n===G.scene) return true; n=n.parent; } return false; };
+      if(typeof pose==='function' && parts && parts.armL && parts.legL){
+        // baseline with idle=0, or the constant flight wobble makes "restores" meaningless
+        pose({});
+        const a0=parts.armL.rotation.x, l0=parts.legL.rotation.x, h0=parts.headG.rotation.x;
+        pose({tuck:1}); const a1=parts.armL.rotation.x, l1=parts.legL.rotation.x, h1=parts.headG.rotation.x;
+        pose({lean:1}); const tw=parts.torso.rotation.y;
+        pose({});
+        rig={ poseIsFn:true, partsLive:inScene(parts.armL)&&inScene(parts.legL),
+              tuckArm:+(a1-a0).toFixed(2), tuckLeg:+(l1-l0).toFixed(2), tuckHead:+(h1-h0).toFixed(2),
+              leanTwist:+tw.toFixed(2), restores:Math.abs(parts.armL.rotation.x-a0)<0.01 };
+      } else rig={ poseIsFn:typeof pose==='function', partsLive:false };
+    }
+
     const key = localStorage.getItem('invrun_char');
     const img = document.querySelector(`.card.char[data-char="${key}"] .previmg`);
 
@@ -96,6 +119,7 @@ for(const ch of CHARS){
              pctCloth:+(100*clothVerts/Math.max(1,totalVerts)).toFixed(1),
              portrait: img ? (img.naturalWidth>0) : 'no card',
              hiddenAtMenu, shownInPlay,
+             rig,
              glowLights: lit!==authored,
              glowRestores: afterFire===authored,
              glowRestoresAtMenu: afterMenu===authored,
@@ -103,9 +127,14 @@ for(const ch of CHARS){
              name:(window.__cb.CHARACTERS[key]||{}).name };
   });
 
+  // A procedural villain must have a LIVE rig: the pose function survived, the parts it moves are
+  // the ones in the scene, and a full tuck really folds him up.
+  const rigOK = !r.rig || (r.rig.poseIsFn && r.rig.partsLive && r.rig.restores
+                && r.rig.tuckArm>1.2 && r.rig.tuckLeg<-1.2 && r.rig.tuckHead>0.5
+                && Math.abs(r.rig.leanTwist)>0.05);
   const ok = r.meshes>0 && r.clothVerts>0 && r.pctCloth<60 && r.portrait===true
              && r.hiddenAtMenu && r.shownInPlay && r.powers===4
-             && r.glowLights && r.glowRestores && r.glowRestoresAtMenu
+             && r.glowLights && r.glowRestores && r.glowRestoresAtMenu && rigOK
              && errs.length===0;
   if(!ok) bad++;
   console.log(ch.padEnd(9), ok?'ok  ':'FAIL', JSON.stringify(r), errs.slice(0,1).join(''));

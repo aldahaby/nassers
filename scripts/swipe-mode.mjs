@@ -54,6 +54,9 @@ const sw = await A.pg.evaluate(()=>{
   // _pathX scales the road's swing by difficulty.level, so a tower placed at one amplitude and
   // measured at another reads as off-lane through no fault of the placement. Freeze it.
   G.difficulty.update=()=>{};
+  // And take collisions out: a slam during a 12-frame direction sample knocks him about and the
+  // measurement stops being about the control at all.
+  G.impact.smash=()=>{}; G.run.toGameOver=()=>{};
   const o={mode:G.mode, laneX:SW.laneX};
   G.run.startRun();
   const step=n=>{ for(let i=0;i<n;i++){ G.momentum.value=G.momentum.MAX; G._loop(); } };
@@ -91,13 +94,18 @@ const sw = await A.pg.evaluate(()=>{
   // The laser tower. The lane-sampling loop above runs 900 frames of live world, which is long
   // enough for a whole cannon cycle to have happened already — reset it so the sequence being
   // observed starts from the beginning.
+  // Park it exactly one charge away plus a margin, so the ETA trigger fires within a few frames.
+  // At a distance chosen in metres the encounter lands wherever the run's speed happens to put it,
+  // and sometimes falls outside the sample window entirely.
   G.cannon.reset();
-  G.cannon.nextZ=P.pos.z+260;
-  const seen=[]; let evaded=false;
+  G.cannon.nextZ=P.pos.z + Math.max(14,P.fwdNow)*SW.chargeSec + 30;
+  const seen=[]; let evaded=false; const tally={idle:0,charge:0,fire:0,cool:0}; let everParked=0;
   o.duckY=9e9;
   for(let i=0;i<60*22;i++){
     G.momentum.value=Math.min(G.momentum.MAX,G.momentum.value+2);
     G._loop();
+    tally[G.cannon.state]=(tally[G.cannon.state]||0)+1;
+    if(G.cannon.parked) everParked++;
     if(G.cannon.state!==seen[seen.length-1]) seen.push(G.cannon.state);
     if(G.cannon.state==='charge' && !evaded && G.cannon.t>1.2){ evaded=true; P.evade(); }
     if(G.cannon.state==='fire'){
@@ -110,6 +118,7 @@ const sw = await A.pg.evaluate(()=>{
     }
   }
   o.states=seen.filter(v=>v!=='idle').slice(0,3); o.beamY=SW.beamY;
+  o.tally=tally; o.everParked=everParked; o.runState=G.run.state; o.spd=Math.round(P.fwdNow);
   // THE DODGE ITSELF. It is a manoeuvre, not a lift shaft: down fast, a full revolution held at
   // the low point, then back to cruise. The height is what the hit test reads; the roll is what
   // sells it; neither may break the other.
