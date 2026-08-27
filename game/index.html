@@ -235,7 +235,7 @@
     #btn-power #power-label{ position:relative; z-index:1; text-shadow:0 1px 2px rgba(0,0,0,.7); }
     #btn-power.rdy{ color:#fff; box-shadow:inset 0 0 0 2px rgba(255,255,255,.85), 0 0 22px rgba(190,110,255,.85), 0 3px 0 #17092a; animation:pwrPulse 1s ease-in-out infinite; }
     @keyframes pwrPulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
-    /* EVADE — the swipe-mode answer to the rail cannon. Sits under POWER, same shape, its own
+    /* EVADE — the on-screen answer to the rail cannon, for anyone who would rather tap than swipe. Sits under POWER, same shape, its own
        colour so a glance tells you which of the two is live. */
     #btn-evade{ right:20px; bottom:calc(max(26px,env(safe-area-inset-bottom)) + 196px);
       width:68px; height:68px; overflow:hidden;
@@ -286,20 +286,6 @@
       -webkit-text-stroke:2px rgba(255,60,60,.9); animation:warnPulse .3s steps(2) infinite; }
     #beam-warn span{ display:block; font-size:clamp(13px,4vw,18px); letter-spacing:3px; color:#7ff0dd; }
     @keyframes warnPulse{ 0%{ opacity:1; } 100%{ opacity:.35; } }
-    /* MODE PICKER — two big cards, because which mode you are about to play should never be a
-       guess, and it is the first real choice the menu offers. */
-    #mode-pick{ display:flex; gap:10px; width:min(420px,86vw); margin:0 auto 12px; }
-    #mode-pick .mode{ flex:1; padding:11px 8px 10px; border-radius:16px; cursor:pointer;
-      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
-      border:1px solid rgba(255,255,255,.16); color:#cfd8e6;
-      transition:transform var(--t-shut) var(--ui-out), box-shadow var(--t-shut) var(--ui-out),
-                 background var(--t-shut) var(--ui-out), color var(--t-shut) var(--ui-out); }
-    #mode-pick .mode b{ display:block; font-family:var(--f-display); font-size:15px; letter-spacing:1px; }
-    #mode-pick .mode small{ display:block; margin-top:2px; font-size:10.5px; opacity:.72; letter-spacing:.5px; }
-    #mode-pick .mode.on{ color:#fff; background:linear-gradient(180deg, var(--aura-epic), rgba(0,0,0,.25));
-      border-color:rgba(255,255,255,.55); transform:translateY(-2px);
-      box-shadow:0 8px 20px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.25); }
-    #mode-pick .mode:active{ transform:translateY(1px) scale(.98); }
     #btn-power.tgt{ color:#fff; box-shadow:inset 0 0 0 3px #ffd23a, 0 0 30px rgba(255,190,60,.95), 0 3px 0 #17092a;
       animation:pwrPulse .55s ease-in-out infinite; }
     #btn-power.tgt #power-fill{ background:linear-gradient(180deg, rgba(255,210,58,.9), rgba(255,120,20,.7)); }
@@ -1057,10 +1043,6 @@
       <div class="tro"><svg class="svgi"><use href="#i-trophy"/></svg></div>
       <div><div class="best-cap">BEST SCORE</div><div id="best-num">0</div></div>
     </div>
-    <div id="mode-pick" role="tablist" aria-label="Game mode">
-      <button id="mode-free" class="mode on" role="tab"><b>FREE FLIGHT</b><small>Steer anywhere</small></button>
-      <button id="mode-swipe" class="mode" role="tab"><b>SWIPE</b><small>Three lanes · EVADE</small></button>
-    </div>
     <button id="start-btn" class="btn-play"><svg class="svgi"><use href="#i-play"/></svg><span>PLAY</span></button>
     <div class="menu-row">
       <button id="settings-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-gear"/></svg></span><span>Settings</span></button>
@@ -1068,7 +1050,7 @@
       <button id="powers-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-bolt"/></svg></span><span>Powers</span></button>
       <button id="maps-btn" class="chip"><span class="ic"><svg class="svgi"><use href="#i-map"/></svg></span><span>Maps</span></button>
     </div>
-    <div class="menu-foot">Weave the streets · smash towers · dodge the drones</div>
+    <div class="menu-foot">Weave the streets · smash towers · evade the rail cannon</div>
     <div class="menu-legal">By playing you agree to the <button class="lnk" id="foot-legal">Terms &amp; Privacy</button>
       · <button class="lnk" id="foot-health">Health &amp; Safety</button></div>
   </div>
@@ -1328,8 +1310,10 @@
     <div class="sheet">
       <div class="sheet-head"><span>Villains</span><button class="x" data-close>×</button></div>
       <div class="sheet-note">Choose your villain — tap to switch who you fly.</div>
+      <div class="grid" id="char-grid"></div>
+      <div class="sheet-note" style="margin-top:12px;opacity:.7">Imported models</div>
       <div class="grid">
-        <div class="card char sel" data-char="dominus"><img class="previmg" src="./assets/prev_dominus.png" alt="">Dominus<small>Selected</small></div>
+        <div class="card char" data-char="dominus"><img class="previmg" src="./assets/prev_dominus.png" alt="">Dominus<small>Tap to play</small></div>
         <div class="card char" data-char="frutiger"><img class="previmg" src="./assets/prev_frutiger.png" alt="">Frutiger<small>Tap to play</small></div>
         <div class="card char" data-char="knight"><img class="previmg" src="./assets/prev_knight.png" alt="">Evil Knight<small>Tap to play</small></div>
         <div class="card char" data-char="patriot"><img class="previmg" src="./assets/prev_patriot.png" alt="">The Patriot<small>Tap to play</small></div>
@@ -1338,7 +1322,6 @@
         <div class="card char" data-char="shrike"><img class="previmg" src="./assets/prev_shrike.png" alt="">Silver Shrike<small>Tap to play</small></div>
         <div class="card char" data-char="tyrant"><img class="previmg" src="./assets/prev_tyrant.png" alt="">The Red Jester<small>Tap to play</small></div>
         <div class="card char" data-char="nocturne"><img class="previmg" src="./assets/prev_nocturne.png" alt="">Nocturne<small>Tap to play</small></div>
-        <div class="card char" data-char="forged"><img class="previmg" src="./assets/prev_forged.png" alt="">The Forged<small>Tap to play</small></div>
       </div>
     </div>
   </div>
@@ -1499,6 +1482,7 @@
   import { GLTFLoader } from './vendor/GLTFLoader.js';
   import { KTX2Loader } from './vendor/KTX2Loader.js';
   import { MeshoptDecoder } from './vendor/meshopt_decoder.module.js';
+  import { mergeGeometries } from './vendor/BufferGeometryUtils.js';
 
   /* =====================================================================================
    *  CITYBREAKER — Omni Flight
@@ -1546,15 +1530,15 @@
       this.drag=0; this._dragId=null; this.dragPx=0; this.dragSeq=0; this.dragActive=false;
       // SWIPE MODE: a queue of lane steps, and a one-shot evade flag. Both are CONSUMED by the
       // reader, so a flick can never be counted twice or dropped between frames.
-      this.laneSteps=0; this._evade=false; }
-    consumeLane(){ const n=this.laneSteps; this.laneSteps=0; return n; }
-    consumeEvade(){ const e=this._evade; this._evade=false; return e; }
+      this._evadeDir=0; }
+    // 0 = nothing asked for, +1 = climb, -1 = dive. Consumed by the reader so one swipe is one
+    // manoeuvre and it can never be counted twice or dropped between frames.
+    consumeEvade(){ const d=this._evadeDir; this._evadeDir=0; return d; }
     setScheme(v){ this.scheme=(v==='drag')?'drag':'stick';
       try{ localStorage.setItem('invrun_scheme',this.scheme); }catch(e){}
-      this.joy=0; this.drag=0; this._dragId=null; this.dragPx=0; this.dragActive=false; this.dragSeq++;
-      const swipeMode = !!(window.__game && window.__game.mode==='swipe');
+      this.joy=0; this.drag=0; this._dragId=null; this.dragPx=0; this.dragActive=false; this.dragSeq++; this._evadeDir=0;
       const base=document.getElementById('joy-base');
-      if(base) base.style.display=(swipeMode||this.scheme==='drag')?'none':'';
+      if(base) base.style.display=(this.scheme==='drag')?'none':'';
       const knob=document.getElementById('joy-knob');
       if(knob) knob.style.transform='translateX(0px)'; }
     init(){
@@ -1564,8 +1548,7 @@
         if(e.code==='KeyE'||e.code==='KeyQ') this._power=true;
         if(e.code==='KeyR') this._restart=true;
         // swipe mode on a desktop: arrows step a lane, down ducks
-        if(e.code==='ArrowLeft') this.laneSteps-=1;
-        if(e.code==='ArrowRight') this.laneSteps+=1;
+
       });
       addEventListener('keyup',e=>this.keys.delete(e.code));
       this._bindTouch();
@@ -1575,7 +1558,8 @@
     }
     sample(){
       let x=0;
-      if(this.keys.has('ArrowDown')||this.keys.has('KeyS')){ this._evade=true; this.keys.delete('ArrowDown'); this.keys.delete('KeyS'); }
+      if(this.keys.has('ArrowDown')||this.keys.has('KeyS')){ this._evadeDir=-1; this.keys.delete('ArrowDown'); this.keys.delete('KeyS'); }
+      if(this.keys.has('ArrowUp')||this.keys.has('KeyW')){ this._evadeDir=1; this.keys.delete('ArrowUp'); this.keys.delete('KeyW'); }
       if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))  x-=1;
       if(this.keys.has('KeyD')||this.keys.has('ArrowRight')) x+=1;
       // The joystick is a VELOCITY control — hold it over and he keeps sliding. Drag is a POSITION
@@ -1597,19 +1581,14 @@
       // Lifting the finger LEAVES HIM WHERE HE IS. A drag control that recentres on release is
       // the single worst thing this can do — every tap to fire a power would yank him back.
       const end=()=>{ this._dragId=null; this.dragActive=false; };
-      // ---- SWIPES, for swipe mode. A swipe is a DISCRETE GESTURE, the way every lane runner does
-      // it: one finger-down to finger-up is exactly one command, whatever happens in between.
+      // ---- THE EVADE SWIPE. A discrete gesture: one finger-down to finger-up is exactly one
+      // command, whatever happens in between. It commits EARLY, on move, the instant the finger
+      // crosses the threshold — deciding on release adds the whole duration of the gesture to the
+      // response, which feels like mud — and then LOCKS until the finger lifts, so a long drag is
+      // still one command and not a stream of them.
       //
-      // The two ways to get this wrong are both ways I got it wrong. Deciding on touchEND adds the
-      // whole duration of your gesture to the response, which feels like mud. Re-arming the anchor
-      // on touchMOVE turns a long drag into a stream of lane changes, which is a drag control
-      // wearing a swipe's clothes.
-      //
-      // What works: decide EARLY, on move, the instant the finger crosses the threshold — then
-      // LOCK the gesture until the finger lifts. Instant response, one command per swipe.
-      //
-      // Axis is decided by whichever displacement is larger, so a slightly diagonal flick still
-      // does what you meant. Down is EVADE — a lane runner's dodge is a swipe, not a button.
+      // Only the VERTICAL axis is a command here: up climbs over the beam, down dives under it.
+      // Horizontal belongs to the drag control, so a sideways gesture must fall straight through.
       let ax=0, ay=0, at=0, aid=null, locked=false;
       addEventListener('touchstart',e=>{
         const t=e.changedTouches[0];
@@ -1621,19 +1600,18 @@
         for(const t of e.changedTouches){
           if(t.identifier!==aid) continue;
           const dx=t.clientX-ax, dy=t.clientY-ay;
-          if(Math.abs(dx)>=SW.swipePx && Math.abs(dx)>Math.abs(dy)){ this.laneSteps+=(dx>0?1:-1); locked=true; }
-          else if(dy>=SW.swipePx && Math.abs(dy)>Math.abs(dx)){ this._evade=true; locked=true; }
+          if(Math.abs(dy)>=SW.swipePx && Math.abs(dy)>Math.abs(dx)*1.25){
+            this._evadeDir = dy<0 ? 1 : -1; locked=true; }
         }
       },{passive:true});
       addEventListener('touchend',e=>{
         for(const t of e.changedTouches){
           if(t.identifier!==aid) continue;
           if(!locked){
-            // a quick wrist that lifted before crossing the threshold still counts, on velocity
+            // a quick wrist that lifted before crossing still counts, judged on velocity
             const dx=t.clientX-ax, dy=t.clientY-ay, dt=Math.max(1,performance.now()-at);
-            if(Math.abs(dx)>SW.flickPx && Math.abs(dx)>Math.abs(dy) && Math.abs(dx)/dt>SW.flickVel)
-              this.laneSteps+=(dx>0?1:-1);
-            else if(dy>SW.flickPx && dy>Math.abs(dx) && dy/dt>SW.flickVel) this._evade=true;
+            if(Math.abs(dy)>SW.flickPx && Math.abs(dy)>Math.abs(dx)*1.25 && Math.abs(dy)/dt>SW.flickVel)
+              this._evadeDir = dy<0 ? 1 : -1;
           }
           aid=null; locked=false;
         }
@@ -2327,44 +2305,31 @@
   // How hard the villain rolls into a turn. Both zero = he stays dead level and only slides
   // sideways, which is the only way a left turn and a right turn can look identical on a mesh
   // that is not itself symmetric. Restore {group:1, model:0.32} for the old banking flight.
-  // SWIPE MODE. A second way to play, alongside free flight — three fixed lanes, a flick to change
-  // lane, and a rail cannon you duck under. Nothing here touches free flight: the mode is a branch,
-  // never a replacement.
+  // ---- THE RAIL. A tower in the city charges up and fires a beam straight across the map at the
+  // altitude the player is flying at. It spans the whole width — there is nowhere to steer to. The
+  // only answer is to leave that altitude: swipe UP to climb over it, or DOWN to dive under it.
+  //
+  // The beam locks the player's height when it starts charging, so it is always aimed exactly where
+  // he was, and both answers are always available.
   const SW={
-    laneX:9.2,          // metres between lane centres — a tower fills one lane and no more
-    // ---- THE LANE MOVE. A TWEEN, not a spring.
-    //
-    // A spring is tunable by feel and impossible to tune by number: its duration depends on how far
-    // it has to go and on whatever velocity it is carrying, so a lane change made mid-move lands at
-    // a different time from one made from rest. A tween gives the same curve and the same duration
-    // every single time, which is the thing that actually reads as polish.
-    //
-    // The curve is a back-ease: hard acceleration out of the old lane, soft deceleration into the
-    // new one, and a small overshoot that settles. Everything about the feel is these four numbers.
-    laneDur:0.22,       // seconds, door to door
-    laneBack:1.35,      // overshoot strength — ~7% past the lane, then it settles back
-    laneLean:0.62,      // radians of body roll at full lane-change speed
-    // The dive has to stay ABOVE THE FLOOR. Maps fly at very different heights (Tokyo 16, Metro
-    // 7.5, the Backrooms 4.2), so a fixed 9.6-metre drop puts him underground on half of them.
-    beamRise:2.6,       // the beam sits this far above his cruise line
-    duckMax:6.5,        // the most he will ever dive
-    floorClear:2.2,     // and he never gets closer than this to the deck
-    swipePx:22,         // finger travel that commits the gesture, decided DURING the move
+    swipePx:22,         // finger travel that commits a swipe, decided DURING the move
     flickPx:10,         // a quick wrist that lifts early still counts...
     flickVel:0.42,      // ...if it moved this many px per ms
-    duckTime:1.05,      // seconds of the whole evasive manoeuvre
-    cannonFirst:900,    // metres before the first laser tower
-    cannonGap:[520,760],// metres between towers after that
-    chargeSec:1.85,     // warning window: long enough to see it, short enough to be a threat
-    // The beam has to be ALREADY LYING ACROSS THE STREET when he reaches it, not switch on in his
-    // face. Firing exactly on arrival meant he entered the lethal slab at its centre, so a press
-    // made at that moment had only half a slab to get under — a coin flip at top speed. It also
-    // just looks better: you fly INTO a beam you can see.
-    fireLead:0.24,      // seconds the shot lands before he gets there
-    fireSec:0.75,
-    beamDepth:9.5,      // half-depth of the lethal slab: ~0.4s of pass-through at cruise
-    spawnAhead:700,     // how far out a tower is parked, dormant and visible
-    beamY:0,            // filled per run from the cruise height
+    evadeRise:11.0,     // how far a climb takes him above the beam
+    evadeDrop:9.0,      // and how far a dive takes him below it
+    floorClear:2.2,     // but never closer than this to the deck
+    evadeDur:1.15,      // seconds of the whole manoeuvre
+    beamHalf:3.6,       // half-height of the lethal band around the beam
+    beamDepth:9.5,      // half-depth of the slab, along the road
+    cannonFirst:820,    // metres before the first tower
+    cannonGap:[430,660],// metres between towers after that
+    chargeSec:1.90,     // warning window: long enough to read, short enough to threaten
+    fireLead:0.24,      // the beam lands this early, so he flies INTO a beam he can see
+    fireSec:0.80,
+    spawnAhead:760,     // how far out a tower is parked, dormant and visible
+    spawnLeadSec:4.2,   // ...but never less than this many SECONDS of approach, whatever the speed
+    spawnMin:300,       // and never less than this far, whatever the speed
+    beamY:0,            // filled per encounter from the locked altitude
   };
 
   const BANK_ROLL={ group:0, model:0 };
@@ -3269,7 +3234,7 @@
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined;
-             this.lane=0; this.duck=0; this.duckT=0; this.evT=0; this.evRoll=0; this.evPitch=0; this.laneLean=0;
+             this.evade01=0; this.evadeT=0; this.evadeDir=0; this.evT=0; this.evRoll=0; this.evPitch=0; this.evFlare=0;
              this._laneFrom=undefined; this._laneTo=undefined; this._laneT=1;
              this.unglow();
              this._prevRc=undefined;
@@ -3300,26 +3265,32 @@
     // Hitting a gate is a WALL. Everything that makes you fast is taken away at once: the rush is
     // gone, the surge is cancelled, and forward speed is knocked well under the floor so the
     // recovery ramp is something you can actually feel before the run picks up again.
-    // How far he may dive on this map, and where the beam therefore sits. Both derive from the
-    // cruise height so every map works without a per-map table.
-    duckDrop(){ return Math.min(SW.duckMax, Math.max(1.2, this.cruiseY - SW.floorClear)); }
-    beamHeight(){ return this.cruiseY + SW.beamRise; }
-    // EVADE: a timed dive under the rail beam and back up. Pressing again mid-duck refreshes it
-    // rather than stacking, so mashing the button cannot park him underground.
-    evade(){
+    // How far a climb and a dive can go on this map. Everything derives from the cruise height, so
+    // a corridor that flies at 4.2 works the same as a skyline that flies at 16 — a dive measured in
+    // absolute metres puts him through the floor on half the maps.
+    riseRoom(){ return SW.evadeRise; }
+    dropRoom(){ return Math.min(SW.evadeDrop, Math.max(1.0, this.cruiseY - SW.floorClear)); }
+
+    // EVADE. dir is +1 to climb over the beam, -1 to dive under it. Tapping the button picks the
+    // roomier side for you; a swipe says which. Pressing again mid-manoeuvre is ignored rather than
+    // stacked, so mashing cannot park him off screen.
+    evade(dir){
       if(this._menuMode) return false;
-      if(this.duckT>SW.duckTime*0.55) return false;      // already mid-dodge: no stacking
-      this.duckT=SW.duckTime; this.evT=0; this.evRoll=0; this.evPitch=0; this.evFlare=0; this._evOut=false;
+      if(this.evadeT>SW.evadeDur*0.55) return false;
+      let d = dir|0;
+      if(!d) d = (this.dropRoom() >= SW.evadeDrop*0.8) ? -1 : 1;   // whichever way has the room
+      this.evadeDir=d; this.evadeT=SW.evadeDur; this.evT=0;
+      this.evRoll=0; this.evPitch=0; this.evFlare=0; this._evOut=false;
       const g=this.game;
       g.camera.shake(0.55); g.time.hitstop(50); this.punch(0.5);
       g.effects.flash(0.14);
-      g.effects.burst(new THREE.Vector3(this.pos.x, this.pos.y-1.5, this.pos.z-1),
-                      new THREE.Color(0x8ff6dd), 16, 22);
+      g.effects.burst(new THREE.Vector3(this.pos.x, this.pos.y-d*1.6, this.pos.z-1),
+                      new THREE.Color(d>0?0xa8e0ff:0x8ff6dd), 18, 24);
       g.audio.uiClick&&g.audio.uiClick();
       g.tutorial && g.tutorial.note('evade');
       return true;
     }
-    onGateSlam(){ this.rush=0; this.surgeActive=0; this.surgeCd=Math.max(this.surgeCd,2.5);
+        onGateSlam(){ this.rush=0; this.surgeActive=0; this.surgeCd=Math.max(this.surgeCd,2.5);
                   this.fwdNow=Math.max(18,this.fwdNow*0.45); this._smashPulse=0; this._gateStun=1.1; }
 
     update(dt,steer){
@@ -3346,8 +3317,7 @@
       // Strafe scale. On the joystick this is the TOP SPEED sideways; in drag mode it is the speed
       // cap on catching up to the finger, and sensitivity lives in the pixels->world mapping
       // instead, so it is never applied twice.
-      const swipe = (g.mode==='swipe');
-      const drag = !swipe && (g.input.scheme==='drag');
+      const drag = (g.input.scheme==='drag');
       // The drag cap exists ONLY to stop a flick teleporting him through a tower. At 1.55 a normal
       // swipe was hitting it, and a clamped spring is a constant-speed slide — which is the "stiff
       // after a certain point" feel. 2.9 leaves the spring in charge for anything but a flick.
@@ -3355,48 +3325,45 @@
       const lim=PLAY.xBox;
       let sx=-steer.x;
 
-      // ---- EVADE. A full evasive manoeuvre, and a FORGIVING one. Two things a reaction move in a
-      // mobile game must never do: punish you for reacting immediately, or punish you for reacting
-      // at the last moment. Both were happening.
+      { const ed=g.input.consumeEvade(); if(ed) this.evade(ed); }   // swipe up/down, or W/S
+      // ---- THE MANOEUVRE. Four phases over evadeDur, and the height curve is what the hit test
+      // reads while the rotation is what sells it — neither may break the other.
       //
-      //   Pressed EARLY, the 1.05s dodge ended before the 1.85s charge did, and he stood up into
-      //   the beam. So while a beam is charging or live and close, the dive is HELD — he times the
-      //   climb himself. That is what survival instinct looks like from the outside.
+      //   BREAK   0.00-0.16   he snaps off the flight line, hard
+      //   CLEAR   0.16-0.66   held clear of the beam
+      //   RETURN  0.66-1.00   back to cruise, easing
       //
-      //   The ROLL runs off its own monotonic timer, not off the remaining duck time, or holding
-      //   the dive would rewind the barrel roll.
-      if(this.duckT>0){
-        this.duckT=Math.max(0,this.duckT-dt);
+      // FORGIVING at both ends: pressed the moment the warning appears, a fixed-length manoeuvre
+      // would end before the beam even fired, so it is HELD while a beam is charging or live near
+      // him. He times the return himself, which is what survival instinct looks like from outside.
+      if(this.evadeT>0){
+        this.evadeT=Math.max(0,this.evadeT-dt);
         this.evT=(this.evT||0)+dt;
-        // hold the dive while the thing that fires at flight height is about to, or already has
         const C=g.cannon && g.cannon.active;
         if(C && (g.cannon.state==='charge' || g.cannon.state==='fire')){
           const dz2=C.z-this.pos.z, eta=dz2/Math.max(14,this.fwdNow||45);
-          const near = Math.abs(dz2) < SW.beamDepth+14 || (eta>0 && eta<SW.chargeSec+0.25);
-          if(near) this.duckT=Math.max(this.duckT, SW.duckTime*0.42);
+          if(Math.abs(dz2) < SW.beamDepth+16 || (eta>0 && eta<SW.chargeSec+0.3))
+            this.evadeT=Math.max(this.evadeT, SW.evadeDur*0.40);
         }
-      } else this.evT=0;
-      const u = this.duckT>0 ? clamp(1-this.duckT/SW.duckTime, 0, 1) : -1;
-      let dz=0;
+      } else { this.evadeDir=0; this.evT=0; }
+      const u = this.evadeT>0 ? clamp(1-this.evadeT/SW.evadeDur, 0, 1) : -1;
+      let ez=0;
       if(u>=0){
-        dz = u<0.14 ? (u/0.14)                                  // down, HARD — see below
-           : u<0.72 ? 1                                          // held under it
-           : 1-Math.pow((u-0.72)/0.28, 1.6);                     // and back up, easing
-        const r=clamp(((this.evT||0)-0.14)/0.46,0,1);
-        this.evRoll = Math.PI*2 * (r*r*(3-2*r));                 // one clean revolution, monotonic
-        this.evPitch = Math.sin(clamp((this.evT||0)/0.16,0,1)*Math.PI) * 0.55;
-        // the flourish: limbs fling back out as he comes up, and a burst off the back to punctuate
-        this.evFlare = u>0.72 ? Math.sin((u-0.72)/0.28*Math.PI) : 0;
-        if(u>0.74 && !this._evOut){ this._evOut=true;
-          g.effects.burst(new THREE.Vector3(this.pos.x,this.pos.y-0.8,this.pos.z-2.2),
-                          new THREE.Color(0x9ff6e2), 12, 26);
-          g.camera.shake(0.22); }
+        ez = u<0.16 ? (u/0.16)
+           : u<0.66 ? 1
+           : 1-Math.pow((u-0.66)/0.34, 1.7);
+        const r=clamp(((this.evT||0)-0.12)/0.44,0,1);
+        this.evRoll = Math.PI*2 * (r*r*(3-2*r)) * (this.evadeDir>0?-1:1);   // he rolls INTO the move
+        this.evPitch = Math.sin(clamp((this.evT||0)/0.16,0,1)*Math.PI) * 0.62 * (this.evadeDir>0?-1:1);
+        this.evFlare = u>0.66 ? Math.sin((u-0.66)/0.34*Math.PI) : 0;
+        if(u>0.70 && !this._evOut){ this._evOut=true;
+          g.effects.burst(new THREE.Vector3(this.pos.x,this.pos.y,this.pos.z-2.4),
+                          new THREE.Color(this.evadeDir>0?0xbfe6ff:0x9ff6e2), 14, 28);
+          g.camera.shake(0.24); }
       } else { this.evRoll=damp(this.evRoll||0,0,14,dt); this.evPitch=damp(this.evPitch||0,0,14,dt);
                this.evFlare=damp(this.evFlare||0,0,14,dt); this._evOut=false; }
-      // 34, not 22. The dive has to reach depth in about 0.08s: at top speed the lethal slab takes
-      // only 0.2s to cross, so a press made AT the beam has to still get him under it. A slower
-      // dive means the fastest part of the run is the part where evading stops working.
-      this.duck=damp(this.duck||0, dz, 34, dt);
+      // one smoothed 0..1, signed by the direction he chose
+      this.evade01=damp(this.evade01||0, ez, 30, dt);
 
       // Advance along the road FIRST, then steer against the road centre where he now is. Doing it
       // the other way round anchors the drag target one frame behind, which on a curving road is a
@@ -3406,35 +3373,7 @@
       this.pos.z+=this.vel.z*dt;
       const rc=this.game.city? this.game.city._pathX(this.pos.z) : 0;
 
-      if(swipe){
-        // ---- THREE LANES. A flick is a STEP, not a push: he leaves for the next lane and arrives
-        // there, and nothing done mid-flight changes where he is going. That commitment is the
-        // whole feel of a swipe runner, which is why the lane is an integer and not a position.
-        // MINUS. The camera looks down +Z, so world +X is screen LEFT — the same inversion the drag
-        // path had. Swiping right has to move him right, which means the lane index goes DOWN.
-        if(g.input.consumeEvade()) this.evade();     // swipe DOWN, or the down-arrow on a desktop
-        { const st=g.input.consumeLane(); const was=this.lane|0;
-          this.lane=clamp(was-st,-1,1);
-          if(this.lane!==was) g.tutorial && g.tutorial.note('lane'); }
-        // Retarget the tween whenever the lane changes — including mid-move, which is the edge case
-        // a spring handles worst. `from` is wherever he actually is right now, so a re-swipe never
-        // jumps and never inherits stale velocity.
-        const want=this.lane*SW.laneX;
-        if(this._laneTo!==want){ this._laneFrom=this.pos.x-rc; this._laneTo=want; this._laneT=0; }
-        if(this._laneFrom===undefined){ this._laneFrom=this.pos.x-rc; this._laneTo=want; this._laneT=1; }
-        this._laneT=Math.min(1, this._laneT + dt/SW.laneDur);
-        const x1=this._laneT-1, bk=SW.laneBack;
-        const e=1 + (bk+1)*x1*x1*x1 + bk*x1*x1;     // easeOutBack: fast out, soft in, small overshoot
-        const px=this.pos.x;
-        this.pos.x = rc + this._laneFrom + (this._laneTo-this._laneFrom)*e;
-        this.vel.x = (this.pos.x-px)/Math.max(dt,1e-4);
-        // BODY LEAN. Sliding sideways bolt upright is the other half of feeling like a rail. He
-        // banks into the move and straightens out of it, driven by his own speed across the road,
-        // so it is exactly symmetric left and right and it cannot desync from the motion.
-        const lv=clamp(this.vel.x/(SW.laneX/SW.laneDur*0.62), -1, 1);
-        this.laneLean=damp(this.laneLean||0, lv, 16, dt);
-        sx=clamp(this.vel.x/Math.max(1,STRAFE),-1,1);
-      } else if(drag){
+      if(drag){
         // POSITION control. The villain is placed where the finger has dragged to, not pushed in
         // that direction — hold the finger still and he stops, exactly like Subway Surfers. The
         // old version fed the finger offset into the velocity channel, so he kept sliding as long
@@ -3473,11 +3412,9 @@
         this.pos.x+=this.vel.x*dt;
         if(Math.abs(this.vel.x)>12) g.tutorial && g.tutorial.note('lane');
         this._prevRc=undefined;                              // no stale road anchor across a scheme switch
-        this.laneLean=0;
         // Swipes are still DETECTED here — the listeners are global — but nothing reads them.
         // Drain the queues, or switching to swipe mode later would spend a session's worth of
         // stale gestures in one frame.
-        g.input.consumeLane(); g.input.consumeEvade();
       }
       // must always exceed PLAY.laneHi so every target is reachable on every map
       // ONE box on every map (PLAY.xBox). Tokyo's block wall sits at roadHalf+5 = 27 and the
@@ -3485,10 +3422,10 @@
       this.pos.x=clamp(this.pos.x, rc-lim, rc+lim);
       // Flight height is the cruise height MINUS the duck. The rail-beam test reads pos.y, so an
       // animation-only duck would look like a dodge and still take the hit.
-      // NEVER THROUGH THE FLOOR. Tokyo cruises at 16 but the Metro tunnel is 7.5 and the Backrooms
-      // corridor is 4.2 — a fixed 9.6-metre dive puts him underground on both, out of frame and
-      // out of the game. The dive is whatever headroom the map actually has, and no more.
-      this.pos.y=this.cruiseY - (this.duck||0)*this.duckDrop();
+      // NEVER THROUGH THE FLOOR, and never off the top of the frame. The climb is a fixed rise;
+      // the dive is whatever headroom the map actually has.
+      const room = this.evadeDir>0 ? this.riseRoom() : -this.dropRoom();
+      this.pos.y=this.cruiseY + (this.evade01||0)*room;
 
       // BANK is still tracked (the cape shader reads it), but the villain no longer ROLLS.
       // A roll on an asymmetric mesh can never look identical left and right, so the fix is to
@@ -3522,20 +3459,18 @@
         this.villainModel.rotation.x=this._mRotX + (this.evPitch||0);
         // NO idle roll term here: it would shift the neutral, so leaning left and leaning right
         // would not be mirror images of each other. Roll is purely a function of steering.
-        // The lane lean is SWIPE ONLY. Free flight deliberately does not roll — an asymmetric mesh
-        // can never look identical banking left and right when the bank is held. Here it is a
-        // transient tied to a symmetric motion, so it reads as athleticism instead of a tilt.
-        const lean = (g.mode==='swipe') ? -(this.laneLean||0)*SW.laneLean : 0;
-        this.villainModel.rotation.z=-this.bank*BANK_ROLL.model + (this.evRoll||0) + lean;
-        this.villainModel.rotation.y = lean*0.30;      // and he turns a little into it
+        this.villainModel.rotation.z=-this.bank*BANK_ROLL.model + (this.evRoll||0);
         this.villainModel.position.y=this._mBaseY + Math.sin(now*0.003)*0.075;
         // ---- DRIVE THE BODY. Translation and roll alone read as a prop being slid around; the
         // body has to do the moving. This is the difference between "it moves" and "he moves".
         // SQUASH, for every villain including the GLB ones. They are single skinned meshes with no
         // rig to fold, so without this their evade is a drop and a spin with a rigid body in it.
         // Compressing along the model's own Y — the flight axis — reads as the body tucking.
-        if(this._rollGroup){ const tk=this.duck||0;
-          this._rollGroup.scale.set(1+0.07*tk, 1-0.20*tk, 1+0.14*tk); }
+        // GLB villains are single skinned meshes with no rig to fold, so they get the shape change
+        // as a squash: a dive compresses along the flight axis, a climb stretches along it.
+        if(this._rollGroup){ const tk=this.evade01||0, dir=this.evadeDir||0;
+          const sy = dir>0 ? 1+0.16*tk : 1-0.20*tk;
+          this._rollGroup.scale.set(1+0.06*tk, sy, 1+0.12*tk); }
         if(this._pose){
           // GAME time, not wall time. performance.now() keeps running while the game is paused and
           // does not exist at all under a fixed-step test driver, so the idle motion would either
@@ -3543,7 +3478,8 @@
           this._animT=(this._animT||0)+dt;
           this._pose({ idle: this._animT,
                        lean: this.laneLean||0,
-                       tuck: this.duck||0,
+                       tuck: this.evade01||0,
+                       dir: this.evadeDir||0,
                        flare: this.evFlare||0,
                        speed: clamp((this.speed?this.speed():60)/140, 0, 1) });
         }
@@ -3727,7 +3663,6 @@
           this.brLights.push({mesh:m, light:gl, side:i%2?1:-1, z:0, flick:0, ph:rand(0,6.28)});
         } }
       this._buildProps();
-      this._buildLaneLines();
       this._buildLandmarks();
       this._buildEnv();
     }
@@ -4959,68 +4894,8 @@
         this._ribbon(this.roadHalf, this.roadHalf+sw, 0.16, this._sidewalkTexture(), 1/10),   // right pavement (raised)
       ];
     }
-    // ---- LANE MARKINGS. In swipe mode the road IS three lanes, and nothing on screen said so —
-    // the player had to infer the grid from where the towers happened to land. Two glowing dividers
-    // laid on the tarmac, following the same curve as the road, and they only exist in swipe mode.
-    _buildLaneLines(){
-      const mk=()=>{
-        const N=this.roadN;
-        const pos=new Float32Array((N+1)*2*3), uv=new Float32Array((N+1)*2*2), nrm=new Float32Array((N+1)*2*3);
-        for(let i=0;i<nrm.length;i+=3) nrm[i+1]=1;
-        const geo=new THREE.BufferGeometry();
-        geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-        geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
-        geo.setAttribute('normal',new THREE.BufferAttribute(nrm,3));
-        const idx=[]; for(let i=0;i<N;i++){ const a=i*2,b=a+1,c=a+2,d=a+3; idx.push(a,b,c, b,d,c); }
-        geo.setIndex(idx);
-        // DoubleSide. This ribbon winds the same way as the road ribbons, whose normals point DOWN,
-        // so on the default FrontSide it is back-face culled and never draws at all — visible, in
-        // the scene, with correct geometry, and zero draw calls.
-        const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map:this._laneDashTex(),
-          side:THREE.DoubleSide,
-          transparent:true, depthWrite:false, opacity:0.72,
-          polygonOffset:true, polygonOffsetFactor:-8, polygonOffsetUnits:-8 }));
-        m.frustumCulled=false; m.renderOrder=3; m.visible=false; this.game.scene.add(m); return m;
-      };
-      this.laneLines=[mk(),mk()];
-    }
-    _laneDashTex(){
-      const c=document.createElement('canvas'); c.width=8; c.height=64; const x=c.getContext('2d');
-      x.clearRect(0,0,8,64);
-      const g=x.createLinearGradient(0,0,0,64);
-      g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(0.18,'rgba(255,255,255,.95)');
-      g.addColorStop(0.62,'rgba(255,255,255,.95)'); g.addColorStop(0.8,'rgba(255,255,255,0)');
-      x.fillStyle=g; x.fillRect(0,0,8,64);
-      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
-    }
-    updateLaneLines(){
-      if(!this.laneLines) return;
-      const on=this.game.mode==='swipe';
-      for(const m of this.laneLines) m.visible=on;
-      if(!on) return;
-      const pz=this.game.player.pos.z, N=this.roadN;
-      const z0=pz-this.roadBack, seg=(this.roadAhead+this.roadBack)/N;
-      // 0.12, not 0.05: the asphalt ribbon sits at 0.06, so the markings were UNDER the road.
-      const half=SW.laneX*0.5, w=0.55, y=0.12;
-      // WHITE, always. Keyed to the map's gate colour these came out dark-on-dark asphalt and were
-      // invisible on exactly the maps that need them most. Lane markings are a readability aid, not
-      // set dressing — they do not get to be subtle.
-      this.laneLines.forEach((m,k)=>{
-        const off=(k===0?-1:1)*half;
-        const pos=m.geometry.attributes.position.array, uv=m.geometry.attributes.uv.array;
-        for(let i=0;i<=N;i++){
-          const z=z0+i*seg, x=this._pathX(z)+off, v=z*0.09;
-          pos[i*6+0]=x-w; pos[i*6+1]=y; pos[i*6+2]=z;
-          pos[i*6+3]=x+w; pos[i*6+4]=y; pos[i*6+5]=z;
-          uv[i*4+0]=0; uv[i*4+1]=v; uv[i*4+2]=1; uv[i*4+3]=v;
-        }
-        m.geometry.attributes.position.needsUpdate=true;
-        m.geometry.attributes.uv.needsUpdate=true;
-      });
-    }
     updateRoad(){
       if(!this.ribbons) return;
-      this.updateLaneLines();
       const pz=this.game.player.pos.z;
       const z0=pz-this.roadBack, seg=(this.roadAhead+this.roadBack)/this.roadN;
       for(const rib of this.ribbons){
@@ -5174,14 +5049,6 @@
       if(this.luckyLeft>0){ mag=rand(0.08,0.3)*reach; this.luckyLeft--; }         // rare LUCKY run -> easier
       else { mag=rand(fLo,fHi)*reach;                                            // far apart -> earned
              if(Math.random()<0.05) this.luckyLeft=2+(Math.random()*2|0); }      // ~1-in-20 lucky run, short
-      if(this.game.mode==='swipe'){
-        // SWIPE MODE: targets sit ON a lane, never between two. And the next target is at most ONE
-        // lane away, so a single flick always reaches it — a swipe runner is about reading the row
-        // early, not about out-running the geometry.
-        const step=(Math.random()<0.62) ? (Math.random()<0.5?-1:1) : 0;
-        this._swLane=clamp((this._swLane|0)+step,-1,1);
-        this.lastTowerX=this._swLane*SW.laneX;
-      } else
       this.lastTowerX=clamp(this.lastTowerX + (Math.random()<0.5?-1:1)*mag, -lane, lane);
       const med=this.game.theme.building.style==='stone';   // medieval -> narrow tall watch towers + wide keeps
       const station=!!this.game.theme.station;               // metro -> smash BIG TRAINS, no background buildings
@@ -5214,22 +5081,9 @@
           const gd = back?1.1:rand(6,9);
           for(let k=-1;k<=1;k++){
             const gb=(k===-1)?b:this._take(); if(!gb) break;
-            this._place(gb, (this.game.mode==='swipe') ? px+k*(SW.laneX+0.6)
-                                                       : px+this.lastTowerX+k*(sw-0.08),
-                        z, (this.game.mode==='swipe')?SW.laneX+0.6:sw, H, gd, false);
+            this._place(gb, px+this.lastTowerX+k*(sw-0.08), z, sw, H, gd, false);
             if(Y!==undefined) gb.mesh.position.y=Y;
             gb.gate='shield'; gb.gid=gid; this._dressGate(gb);
-          }
-        } else if(this.game.mode==='swipe'){
-          // SWIPE MODE: an armored gate spans ALL THREE LANES. There is no lane to duck into, so the
-          // answer is unambiguous — fire a power or take the wall. Lane-dodgeable gates would make
-          // powers optional and the whole mechanic decorative.
-          const gid=++this._gateId, sw2=SW.laneX+0.6;
-          for(let k=-1;k<=1;k++){
-            const gb=(k===-1)?b:this._take(); if(!gb) break;
-            this._place(gb, px+k*sw2, z, sw2, H, back?1.1:rand(6,9), false);
-            if(Y!==undefined) gb.mesh.position.y=Y;
-            gb.gate='armor'; gb.gid=gid; this._dressGate(gb);
           }
         } else {
           this._place(b, px+this.lastTowerX, z, rand(PLAY.wLo,PLAY.wHi)*1.15, H, back?1.1:rand(6,9), false);
@@ -5254,9 +5108,7 @@
         b.mesh.position.y=H/2; b.mesh.castShadow=false;
         return;                                   // rooms only: no skyline / decor rows
       }
-      // In swipe mode the target FILLS its lane: the lane is the aim, so a tower narrower than the
-      // lane would mean landing in the right lane and still missing.
-      const TW=(this.game.mode==='swipe') ? SW.laneX-0.8 : rand(PLAY.wLo,PLAY.wHi);
+      const TW=rand(PLAY.wLo,PLAY.wHi);              // shared hit width; only depth/height are cosmetic
       if(station){ this._place(b, px+this.lastTowerX, z, TW, rand(8,10), rand(12,16), false); b.mesh.castShadow=true; b.incoming=true; }
       else if(med){ this._place(b, px+this.lastTowerX, z, TW, rand(28,52), TW, false); }
       else this._place(b, px+this.lastTowerX, z, TW, rand(22,40), rand(6,9), false);
@@ -5742,26 +5594,22 @@
     static seen(){ try{ return localStorage.getItem('invrun_tut')==='1'; }catch(e){ return true; } }
     note(k){ if(this.on) this.count[k]=(this.count[k]||0)+1; }
     _build(){
-      const swipe=this.game.mode==='swipe';
-      const steer = swipe ? { t:'FLICK TO SWITCH LANE',
-                              b:'Three lanes. Flick left or right anywhere on the screen and you step one lane across.',
-                              h:'SWIPE LEFT OR RIGHT', done:()=>this.count.lane>=2 }
-                          : { t:'STEER', b:(this.game.input.scheme==='drag')
-                                ? 'Hold anywhere on the screen and slide your thumb. He goes where your finger goes.'
-                                : 'Slide the stick in the bottom-left. Partway over is a partway turn.',
-                              h:'MOVE LEFT AND RIGHT', done:()=>this.count.lane>=1 };
+      const steer = { t:'STEER', b:(this.game.input.scheme==='drag')
+                            ? 'Hold anywhere on the screen and slide your thumb. He goes where your finger goes.'
+                            : 'Slide the stick in the bottom-left. Partway over is a partway turn.',
+                      h:'MOVE LEFT AND RIGHT', done:()=>this.count.lane>=1 };
       this.steps=[
         { t:'SMASH EVERYTHING', b:'You are not dodging these buildings. Fly straight through one.',
           h:'HIT A TOWER', focus:null, done:()=>this.count.smash>=1 },
-        Object.assign({focus:swipe?null:(this.game.input.scheme==='drag'?null:'#joy-base')}, steer),
+        Object.assign({focus:(this.game.input.scheme==='drag'?null:'#joy-base')}, steer),
         { t:'MOMENTUM IS YOUR LIFE', b:'The blue bar drains the whole time. Every tower you smash fills it back up — stop smashing and the run ends.',
           h:'KEEP THE CHAIN GOING', focus:'#momentum-wrap', done:()=>this.count.smash>=4 },
         { t:'ARMORED WALLS', b:'Black-and-yellow walls cannot be punched through. When POWER lights up, fire it — the blast takes the wall and the tower behind it.',
           h:'TAP POWER WHEN IT GLOWS', focus:'#btn-power', done:()=>this.count.power>=1 },
       ];
-      if(swipe) this.steps.push(
-        { t:'THE RAIL CANNON', b:'It charges across the street and fires a beam at your height. You cannot go round it — tap EVADE and slide underneath.',
-          h:'TAP EVADE ON THE WARNING', focus:'#btn-evade', done:()=>this.count.evade>=1 });
+      this.steps.push(
+        { t:'THE RAIL CANNON', b:'A spire locks onto your altitude and fires a beam clean across the street. You cannot go round it — swipe UP or DOWN, or tap EVADE, to leave that height.',
+          h:'SWIPE UP OR DOWN ON THE WARNING', focus:'#btn-evade', done:()=>this.count.evade>=1 });
       this.steps.push(
         { t:'SURGE', b:'Chain six smashes without missing and SURGE arms. Fire it for a burst of speed and a huge hit radius.',
           h:'GO GET A HIGH SCORE', focus:'#btn-boost', done:()=>this.t>4.5 });
@@ -5808,114 +5656,133 @@
   }
 
   // ===================================================================================
-  // THE LASER TOWER — swipe mode's hazard.
+  // THE RAIL TOWER — a spire in the city that shoots across it.
   //
-  // It is a BUILDING, not a gantry: a black tower standing at the kerb with a huge circular
-  // aperture aimed across the street. The iris opens, the lens spins up, and it fires a beam
-  // straight across the road at flight height — through the whole corridor, into the far side,
-  // where it splashes. There is no lane to dodge into. You go under it.
+  // It stands VERTICALLY, a tall tapering mast with a huge circular emitter set into its face, and
+  // it fires a beam straight across the whole map at the altitude the player is flying at. The beam
+  // spans the entire width; there is nowhere to steer to. The only answer is to leave that altitude
+  // — climb over it or dive under it.
   //
-  // Everything is animated end to end: the iris blades rotate open, energy rings converge into the
-  // lens, the muzzle flares, the beam punches out and tapers, the far wall takes an impact bloom,
-  // and the whole thing shuts down and closes again. The timing is the design — CHARGE is long
-  // enough to read and short enough to threaten, and the recovery is instant.
+  // The height is LOCKED when the charge begins, so the shot is always aimed exactly where he was
+  // and both answers are always open.
   // ===================================================================================
   class CannonSystem {
     constructor(game){
-      this.game=game; this.list=[]; this.nextZ=0; this.state='idle'; this.t=0; this.active=null; this.parked=null;
+      this.game=game; this.list=[]; this.nextZ=0; this.state='idle'; this.t=0;
+      this.active=null; this.parked=null;
       const sc=game.scene;
       const mk=()=>{
         const grp=new THREE.Group(); grp.visible=false; sc.add(grp);
-        const hull =new THREE.MeshStandardMaterial({color:0x191d24, roughness:.62, metalness:.45});
-        const trim =new THREE.MeshStandardMaterial({color:0x39424e, roughness:.4,  metalness:.65});
-        const warn =new THREE.MeshStandardMaterial({color:0xff5a2a, emissive:0xff3a10, emissiveIntensity:0.2, roughness:.4});
-        const lensM=new THREE.MeshStandardMaterial({color:0xff5f4a, emissive:0xff2a10, emissiveIntensity:0.15, roughness:.15});
+        const hull =new THREE.MeshStandardMaterial({color:0x14171d, roughness:.58, metalness:.5});
+        const trim =new THREE.MeshStandardMaterial({color:0x39424e, roughness:.36, metalness:.68});
+        const warn =new THREE.MeshStandardMaterial({color:0xff5a2a, emissive:0xff3a10, emissiveIntensity:0.35, roughness:.4});
+        const lensM=new THREE.MeshStandardMaterial({color:0xff7a4a, emissive:0xff2a08, emissiveIntensity:0.2, roughness:.14});
 
-        // ---- the tower. Stepped, buttressed, with a service stack — it has to belong to the city.
+        // ---- THE SPIRE. Tall, tapering, ribbed, with fins at the crown — a landmark, not a box.
         const tower=new THREE.Group(); grp.add(tower);
         const put=(g2,m,x,y,z,rx,ry,rz)=>{ const o=new THREE.Mesh(g2,m); o.position.set(x,y,z);
           if(rx)o.rotation.x=rx; if(ry)o.rotation.y=ry; if(rz)o.rotation.z=rz;
           o.castShadow=true; tower.add(o); return o; };
-        put(new THREE.BoxGeometry(14,54,18), hull, 0,27,0);
-        put(new THREE.BoxGeometry(17,5,21),  trim, 0,50,0);
-        put(new THREE.BoxGeometry(10,9,12),  hull, 0,58,0);
-        put(new THREE.BoxGeometry(2.2,16,2.2), trim, 3.2,66,3.2);
-        for(let k=0;k<4;k++) put(new THREE.BoxGeometry(15,0.9,19), trim, 0, 11+k*10, 0);
-        // lit panels up both flanks: the tower has to be legible against a dark street from 120 m
-        const panelM=new THREE.MeshStandardMaterial({color:0xff6a3a, emissive:0xff3a10,
-                        emissiveIntensity:0.9, roughness:.35});
-        for(const pz2 of [-9.2,9.2]) for(let k=0;k<6;k++){
-          const pnl=new THREE.Mesh(new THREE.BoxGeometry(9,1.6,0.5), panelM);
-          pnl.position.set(0, 8+k*8, pz2); tower.add(pnl);
+        const shaft=new THREE.CylinderGeometry(7.5, 13.5, 150, 10);
+        put(shaft, hull, 0, 75, 0);
+        // ribs up the shaft, so the taper reads and the scale is legible
+        for(let k=0;k<9;k++){
+          const y=12+k*15.5, r=13.2-(y/150)*5.6;
+          put(new THREE.CylinderGeometry(r+0.9, r+0.9, 1.6, 10), trim, 0, y, 0);
         }
-        put(new THREE.BoxGeometry(6,26,8), hull, -6.5,13,0, 0,0,0.12);     // buttress toward the road
+        for(let k=0;k<6;k++){                       // vertical buttress fins
+          const a=k*Math.PI/3;
+          const fin=put(new THREE.BoxGeometry(1.8, 132, 5.6), hull, Math.sin(a)*10.5, 68, Math.cos(a)*10.5);
+          fin.rotation.y=a;
+        }
+        for(let k=0;k<5;k++){                       // the crown: splayed spikes
+          const a=k*Math.PI*2/5;
+          const sp=put(new THREE.ConeGeometry(1.7, 34, 5), trim, Math.sin(a)*5.5, 165, Math.cos(a)*5.5);
+          sp.rotation.set(Math.cos(a)*0.16, 0, -Math.sin(a)*0.16);
+        }
+        put(new THREE.ConeGeometry(3.2, 26, 6), trim, 0, 168, 0);
+        // lit window bands, so a black mast is legible against a dark street from 700 m
+        const bandM=new THREE.MeshStandardMaterial({color:0xff8a5a, emissive:0xff4a18, emissiveIntensity:0.85, roughness:.4});
+        const bands=[];
+        for(let k=0;k<12;k++){
+          const y=10+k*12, r=13.4-(y/150)*5.6;
+          bands.push(put(new THREE.CylinderGeometry(r+0.5, r+0.5, 2.4, 10, 1, true), bandM.clone(), 0, y, 0));
+        }
 
-        // ---- the emitter, aimed across the street (-X of the tower's own frame).
-        // It reaches OUT over the road on a cantilever. The tower body has to stand clear of the
-        // play box, and at that distance an aperture flush to its face sits outside the camera's
-        // 34-degree half-angle — you would be shot by something you never saw.
-        const arm=new THREE.Mesh(new THREE.BoxGeometry(9,3.6,5.2), trim);
-        arm.position.set(-4.5,0,0); grp.add(arm);
-        const armBrace=new THREE.Mesh(new THREE.BoxGeometry(11,1.4,2.0), hull);
-        armBrace.position.set(-4,-4.2,0); armBrace.rotation.z=0.30; grp.add(armBrace);
-        const head=new THREE.Group(); head.position.set(-9.2,0,0); grp.add(head);
-        const ring=(r0,r1,len,mat,x)=>{ const o=new THREE.Mesh(new THREE.CylinderGeometry(r0,r1,len,24,1,true),mat);
-          o.rotation.z=Math.PI/2; o.position.x=x; head.add(o); return o; };
-        ring(7.4,8.8,4.0,hull,1.4); ring(6.2,7.4,2.2,trim,-0.6);
-        const lens=new THREE.Mesh(new THREE.CircleGeometry(6.0,26), lensM);
-        lens.rotation.y=-Math.PI/2; lens.position.x=-1.3; head.add(lens);
-        // IRIS: six blades that rotate open on the charge
-        const blades=[];
-        for(let k=0;k<6;k++){
-          const b=new THREE.Mesh(new THREE.BoxGeometry(0.5,6.6,3.1), trim);
-          const piv=new THREE.Group(); piv.rotation.x=k*Math.PI/3; piv.position.x=-1.0;
-          b.position.set(0,3.2,0); piv.add(b); head.add(piv); blades.push(piv);
-        }
-        // energy rings that converge into the lens while it charges
-        const conv=[];
+        // ---- THE EMITTER. A big circular aperture set into the mast, facing across the map.
+        const head=new THREE.Group(); grp.add(head);
+        const ringM=trim;
         for(let k=0;k<3;k++){
-          const c=new THREE.Mesh(new THREE.TorusGeometry(7.6,0.55,6,26),
-            new THREE.MeshBasicMaterial({color:0xff8a5a, transparent:true, opacity:0, depthWrite:false,
+          const rr=new THREE.Mesh(new THREE.TorusGeometry(13-k*2.6, 1.5-k*0.25, 8, 30), ringM);
+          rr.rotation.y=Math.PI/2; rr.position.x=-9-k*1.4; head.add(rr);
+        }
+        const lens=new THREE.Mesh(new THREE.CircleGeometry(8.6,32), lensM);
+        lens.rotation.y=-Math.PI/2; lens.position.x=-12.4; head.add(lens);
+        const blades=[];
+        for(let k=0;k<8;k++){                       // the iris
+          const b=new THREE.Mesh(new THREE.BoxGeometry(0.7, 9.4, 4.0), trim);
+          const piv=new THREE.Group(); piv.rotation.x=k*Math.PI/4; piv.position.x=-11.6;
+          b.position.set(0,4.7,0); piv.add(b); head.add(piv); blades.push(piv);
+        }
+        const conv=[];
+        for(let k=0;k<3;k++){                       // rings converging into the lens on the count-in
+          const c=new THREE.Mesh(new THREE.TorusGeometry(10.5,0.7,6,28),
+            new THREE.MeshBasicMaterial({color:0xffa070, transparent:true, opacity:0, depthWrite:false,
               blending:THREE.AdditiveBlending}));
           c.rotation.y=Math.PI/2; head.add(c); conv.push(c);
         }
-        // warning strobes up the tower face
         const strobes=[];
-        for(let k=0;k<4;k++){
-          const w=new THREE.Mesh(new THREE.BoxGeometry(0.6,1.5,3.4), warn.clone());
-          w.position.set(-7.4, 12+k*11, 0); grp.add(w); strobes.push(w);
+        for(let k=0;k<5;k++){
+          const w=new THREE.Mesh(new THREE.BoxGeometry(0.8,2.0,4.4), warn.clone());
+          w.position.set(-12.6, 30+k*24, 0); grp.add(w); strobes.push(w);
         }
 
-        // ---- THE BEAM. A hot white core inside a wide glow, a muzzle flare at the lens, and an
-        // impact bloom where it lands. All aligned along X, i.e. straight across the road.
-        const beamGlow=new THREE.Mesh(new THREE.CylinderGeometry(3.4,3.4,62,20,1,true),
+        // ---- THE BEAM. It crosses the WHOLE map, so it is long: a white core inside a wide glow,
+        // a muzzle flare at the lens and a bloom where it leaves.
+        const BL=520;
+        const beamGlow=new THREE.Mesh(new THREE.CylinderGeometry(4.2,4.2,BL,20,1,true),
           new THREE.MeshBasicMaterial({color:0xff5a3a, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
         beamGlow.rotation.z=Math.PI/2; grp.add(beamGlow);
-        const beamCore=new THREE.Mesh(new THREE.CylinderGeometry(1.9,1.9,62,16),
-          new THREE.MeshBasicMaterial({color:0xfff2e8, transparent:true, opacity:0, depthWrite:false}));
+        const beamCore=new THREE.Mesh(new THREE.CylinderGeometry(2.1,2.1,BL,16),
+          new THREE.MeshBasicMaterial({color:0xfff4ea, transparent:true, opacity:0, depthWrite:false}));
         beamCore.rotation.z=Math.PI/2; grp.add(beamCore);
-        const muzzle=new THREE.Mesh(new THREE.ConeGeometry(9.5,16,18,1,true),
-          new THREE.MeshBasicMaterial({color:0xffb08a, transparent:true, opacity:0, depthWrite:false,
+        const muzzle=new THREE.Mesh(new THREE.ConeGeometry(13,24,20,1,true),
+          new THREE.MeshBasicMaterial({color:0xffc09a, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
         muzzle.rotation.z=Math.PI/2; grp.add(muzzle);
-        const splash=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),
-          new THREE.MeshBasicMaterial({color:0xffd8b8, transparent:true, opacity:0, depthWrite:false,
-            blending:THREE.AdditiveBlending}));
-        grp.add(splash);
-        // A narrow upright halo hugging the beam. The first version was 84x26 and lying FLAT on the
-        // road: additive over the whole street, it washed the screen orange and read as fog, not as
-        // a laser. A beam reads from a hard edge, so the halo has to stay tight to it.
-        const sheet=new THREE.Mesh(new THREE.PlaneGeometry(64,9),
+        const sheet=new THREE.Mesh(new THREE.PlaneGeometry(BL,10),
           new THREE.MeshBasicMaterial({color:0xff6a3a, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
         grp.add(sheet);
+        // OUTRIDERS. One clean cylinder is a laser pointer. The thing this is meant to look like
+        // throws a FAN — a few thinner rays splaying off the main one, each at its own tilt, so the
+        // shot has width and depth across the sky instead of being a single drawn line.
+        const rays=[];
+        for(let k=0;k<6;k++){
+          const r=new THREE.Mesh(new THREE.CylinderGeometry(0.85,0.85,BL,7,1,true),
+            new THREE.MeshBasicMaterial({color:k&1?0xffd7a8:0xff7a42, transparent:true, opacity:0,
+              depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+          r.rotation.z=Math.PI/2;
+          r.userData.sp=(k-2.5)*0.016;                 // the splay angle, in radians per unit length
+          r.userData.rl=(k%3-1)*0.010;
+          rays.push(r); grp.add(r);
+        }
+        // CRACKLE. Short arcs that live for a couple of frames each and jump somewhere new — the
+        // lightning that runs along the beam. Cheap, and it is what stops the shot looking static.
+        const arcs=[];
+        for(let k=0;k<10;k++){
+          const a=new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.30,42,5,1,true),
+            new THREE.MeshBasicMaterial({color:0xfff0d0, transparent:true, opacity:0,
+              depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+          arcs.push(a); grp.add(a);
+        }
 
-        return {grp, tower, head, arm, armBrace, lens, lensM, blades, conv, strobes,
-                beamGlow, beamCore, muzzle, splash, sheet, z:0, side:1, live:false};
+        return {grp, tower, head, lens, lensM, blades, conv, strobes, bands,
+                beamGlow, beamCore, muzzle, sheet, rays, arcs, BL, z:0, side:1, live:false};
       };
       for(let i=0;i<2;i++) this.list.push(mk());
-      this._light=new THREE.PointLight(0xff6a3a, 0, 260, 2); this._light.visible=false; sc.add(this._light);
+      this._light=new THREE.PointLight(0xff6a3a, 0, 320, 2); this._light.visible=false; sc.add(this._light);
     }
     reset(){
       for(const c of this.list){ c.live=false; c.armed=false; c.grp.visible=false; }
@@ -5923,72 +5790,84 @@
       this.nextZ=(this.game.player.pos.z||0) + SW.cannonFirst;
       this._ui(false);
     }
-    _ui(on){
+    _ui(on, dir){
       const b=document.getElementById('btn-evade'), w=document.getElementById('beam-warn');
       if(b){ b.classList.toggle('hidden', !on); b.classList.toggle('live', !!on); }
-      if(w) w.classList.toggle('hidden', !on);
+      if(w){ w.classList.toggle('hidden', !on);
+        const t=w.querySelector('span');
+        if(t) t.textContent = on ? 'SWIPE UP OR DOWN' : ''; }
     }
     _free(){ for(const c of this.list) if(!c.live) return c; return null; }
-    _armAt(c, y){ c.arm.position.y=y; c.armBrace.position.y=y-4.2; }
-    // DORMANT. Lit enough to be recognised from a long way off, dark enough that arming it reads
-    // as a change of state rather than a light coming on.
     _idle(c){
       c.lensM.emissiveIntensity=0.25;
-      for(let i=0;i<c.blades.length;i++){ c.blades[i].children[0].position.y=3.2; c.blades[i].rotation.x=i*Math.PI/3; }
+      for(let i=0;i<c.blades.length;i++){ c.blades[i].children[0].position.y=4.7; c.blades[i].rotation.x=i*Math.PI/4; }
       for(const w of c.strobes) w.material.emissiveIntensity=0.35;
       for(const cv of c.conv) cv.material.opacity=0;
+      for(const b of c.bands) b.material.emissiveIntensity=0.85;
     }
     _beam(c, a, k){
-      // a: overall intensity 0..1   k: 0..1 through the shot, for the punch-out
-      const punch=Math.min(1, k*7);                        // the beam ARRIVES, it does not fade in
-      const w=(0.35+0.65*punch);
+      const punch=Math.min(1, k*7), w=(0.35+0.65*punch);
       c.beamGlow.material.opacity=0.55*a; c.beamGlow.scale.set(w,1,w);
-      c.beamCore.material.opacity=0.95*a; c.beamCore.scale.set(w*(0.8+0.4*Math.sin(this.t*70)),1,w);
-      c.muzzle.material.opacity=0.8*a;    c.muzzle.scale.setScalar(0.6+0.7*punch);
-      c.splash.material.opacity=0.7*a;    c.splash.scale.setScalar(6+10*punch+2*Math.sin(this.t*50));
-      c.sheet.material.opacity=0.30*a;    c.sheet.scale.set(1,w,1);
+      c.beamCore.material.opacity=0.95*a; c.beamCore.scale.set(w*(0.82+0.36*Math.sin(this.t*70)),1,w);
+      c.muzzle.material.opacity=0.85*a;   c.muzzle.scale.setScalar(0.6+0.7*punch);
+      c.sheet.material.opacity=0.20*a;    c.sheet.scale.set(1,w,1);
+      const Y=c.beamGlow.position.y, off=c.beamGlow.position.x;
+      for(let i=0;i<c.rays.length;i++){
+        const r=c.rays[i], u=r.userData;
+        r.material.opacity = a*(0.30+0.34*punch)*(0.6+0.4*Math.sin(this.t*(34+i*9)+i));
+        r.position.set(off, Y, 0);
+        r.rotation.set(u.rl*(0.7+0.5*Math.sin(this.t*3.1+i)), 0, Math.PI/2 + u.sp*(0.8+0.4*punch));
+        r.scale.set(0.55+0.9*punch, 1, 0.55+0.9*punch);
+      }
+      // each arc re-seeds itself the moment it fades, which reads as lightning skittering along
+      for(let i=0;i<c.arcs.length;i++){
+        const q=c.arcs[i], ph=(this.t*4.6+i*0.37)%1;
+        q.material.opacity = a*Math.max(0,1-ph*ph*4)*0.85*punch;
+        if(ph<0.06 || !q.userData.set){
+          q.userData.set=1;
+          const d=-(Math.random()*c.BL*0.94)-10;
+          q.position.set(off*0.5 + d*0.5, Y+(Math.random()-0.5)*13, (Math.random()-0.5)*13);
+          q.rotation.set(Math.random()*3.1, Math.random()*3.1, Math.PI/2+(Math.random()-0.5)*1.1);
+          q.scale.setScalar(0.5+Math.random()*1.3);
+        }
+      }
     }
     update(dt){
       const g=this.game, P=g.player, pz=P.pos.z;
-      if(g.mode!=='swipe') return;
-      SW.beamY = P.beamHeight ? P.beamHeight() : (P.cruiseY||16)+SW.beamRise;
-      for(const c of this.list) if(c.live && c.z < pz-140){
+      for(const c of this.list) if(c.live && c.z < pz-160){
         c.live=false; c.grp.visible=false; if(this.parked===c) this.parked=null; }
 
-      // PARK a tower far ahead, dormant, so it is on screen and recognisable long before anything
-      // happens. Charging is a separate decision, made on ARRIVAL TIME.
-      // ONE at a time. Without the `!this.parked` guard a second tower parks while the first is
-      // still approaching and overwrites the reference — the first never charges, never fires, and
-      // is silently skipped. With only two slots that then starves the pool as well. It is why
-      // encounter counts over an identical run varied by 4x.
+      // ONE at a time. Without the guard a second tower parks while the first is still approaching
+      // and overwrites the reference — the first never charges and is silently skipped.
       if(!this.active && !this.parked && pz+SW.spawnAhead > this.nextZ){
         const c=this._free();
         if(c){
-          c.live=true; c.z=this.nextZ; c.side=(Math.random()<0.5?-1:1);
-          c.armed=false;
+          // The gap is metres, but the player eats most of it during the previous encounter, so at
+          // high speed the next tower used to pop in ~230 out and start charging almost at once.
+          // Push it to whichever is further: the scheduled slot, or a fixed number of SECONDS out.
+          const lead=Math.max(SW.spawnMin, Math.max(20,P.fwdNow||45)*SW.spawnLeadSec);
+          c.live=true; c.z=Math.max(this.nextZ, pz+lead); c.side=(Math.random()<0.5?-1:1); c.armed=false;
           c.grp.visible=true;
-          const cx=g.city._pathX(c.z);
-          // Just past the kerb. In swipe mode he is confined to +/-9.2, so a tower whose inner
-          // face sits at ~21 is clear of him — and it is the only distance at which the thing
-          // shooting you is actually ON SCREEN as it fires.
-          c.grp.position.set(cx + c.side*(g.city.roadHalf+2), 0, c.z);
-          c.grp.rotation.y = c.side>0 ? 0 : Math.PI;        // the emitter always faces the road
-          const Y=SW.beamY;
-          c.head.position.y=Y; this._armAt(c,Y);
-          c.beamGlow.position.set(-40,Y,0); c.beamCore.position.copy(c.beamGlow.position);
-          c.muzzle.position.set(-14,Y,0); c.splash.position.set(-66,Y,0); c.sheet.position.set(-40,Y,0);
-          this._beam(c,0,0);
-          this._idle(c);
+          c.grp.position.set(g.city._pathX(c.z) + c.side*(g.city.roadHalf+13), 0, c.z);
+          c.grp.rotation.y = c.side>0 ? 0 : Math.PI;   // the emitter always faces the road
+          this._beam(c,0,0); this._idle(c);
           this.parked=c;
         }
         this.nextZ = Math.max(this.nextZ, pz) + rand(SW.cannonGap[0], SW.cannonGap[1]);
+        if(c) this.nextZ = Math.max(this.nextZ, c.z + SW.cannonGap[0]);
       }
-      // BEGIN THE CHARGE when he is exactly one charge away, measured in TIME, not distance. The
-      // beam then goes live as he arrives at it, at any speed — which is the entire point.
+      // Begin the charge when he is one charge away in TIME, so the warning is the same length at
+      // any speed, and LOCK the altitude then — the shot is aimed where he is, not where he ends up.
       if(!this.active && this.parked && this.parked.live){
         const c0=this.parked, eta=(c0.z-pz)/Math.max(14, P.fwdNow||45);
         if(eta<=SW.chargeSec+SW.fireLead){
           this.active=c0; this.parked=null; this.state='charge'; this.t=0; c0.armed=true;
+          SW.beamY = P.pos.y;
+          const Y=SW.beamY, off=-(c0.BL*0.5)-12;
+          c0.head.position.y=Y;
+          c0.beamGlow.position.set(off,Y,0); c0.beamCore.position.copy(c0.beamGlow.position);
+          c0.muzzle.position.set(-22,Y,0); c0.sheet.position.set(off,Y,0);
+          for(let i=0;i<c0.strobes.length;i++) c0.strobes[i].position.y=Y-40+i*24;
           this._ui(true);
           g.audio.cannonCharge && g.audio.cannonCharge();
           g.haptics.fire('gateBlock');
@@ -6000,90 +5879,78 @@
 
       if(this.state==='charge'){
         const k=clamp(this.t/SW.chargeSec,0,1), e=k*k;
-        // the iris rotates open, the lens spins up, three rings converge into it
         for(let i=0;i<c.blades.length;i++){
-          const piv=c.blades[i];
-          piv.children[0].position.y=3.2 - 2.2*e;           // blades retract outward
-          piv.rotation.x=i*Math.PI/3 + e*0.55;
+          c.blades[i].children[0].position.y=4.7 - 3.2*e;
+          c.blades[i].rotation.x=i*Math.PI/4 + e*0.6;
         }
-        c.lensM.emissiveIntensity=0.15+e*7.5;
-        c.lensM.color.setRGB(1, 0.36-0.2*e, 0.28-0.2*e);
-        c.head.rotation.x=now*0.004*e;                      // the whole head spools
+        c.lensM.emissiveIntensity=0.2+e*9;
+        c.lensM.color.setRGB(1, 0.42-0.26*e, 0.30-0.22*e);
+        c.head.rotation.x=now*0.004*e;
         for(let i=0;i<c.conv.length;i++){
           const f=(k*1.7+i/3)%1;
-          c.conv[i].position.x=-1.3 - (1-f)*26;             // sweeping IN toward the lens
-          c.conv[i].scale.setScalar(0.35+f*0.9);
+          c.conv[i].position.x=-12.4 - (1-f)*34;
+          c.conv[i].scale.setScalar(0.35+f*0.95);
           c.conv[i].material.opacity=0.85*Math.pow(f,0.6)*e;
         }
         const strobe=(Math.sin(now*0.02*(1+e*3))>0)?1:0;
-        for(const w of c.strobes){ w.material.emissiveIntensity=0.2+strobe*e*4.5; }
+        for(const w of c.strobes) w.material.emissiveIntensity=0.35+strobe*e*5;
+        for(const b of c.bands) b.material.emissiveIntensity=0.85+e*3.2*strobe;
         this._light.visible=true;
-        this._light.position.set(c.grp.position.x + (c.side>0?-12:12), SW.beamY, c.z);
-        this._light.intensity=e*10;
+        this._light.position.set(c.grp.position.x + (c.side>0?-14:14), SW.beamY, c.z);
+        this._light.intensity=e*12;
         const f=document.getElementById('evade-fill'); if(f) f.style.height=Math.round((1-k)*100)+'%';
         if(k>0.6 && !c._tick){ c._tick=true; g.haptics.fire('drone'); }
         if(this.t>=SW.chargeSec){
           this.state='fire'; this.t=0; c._tick=false;
-          g.effects.flash(0.18); g.camera.shake(2.0); g.time.hitstop(70);   // a whiteout hides the shot
+          g.effects.flash(0.20); g.camera.shake(2.1); g.time.hitstop(70);
           g.audio.cannonFire && g.audio.cannonFire();
           g.haptics.fire('powerBig');
           c._hit=false; c._safe=false; c._entered=false;
-          g.effects.burst(new THREE.Vector3(c.grp.position.x+(c.side>0?-14:14), SW.beamY, c.z),
-                          new THREE.Color(0xffb070), 22, 30);
+          g.effects.burst(new THREE.Vector3(c.grp.position.x+(c.side>0?-16:16), SW.beamY, c.z),
+                          new THREE.Color(0xffb070), 26, 34);
         }
       } else if(this.state==='fire'){
         const k=clamp(this.t/SW.fireSec,0,1), a=Math.pow(Math.sin(Math.min(1,k*1.05)*Math.PI),0.55);
         this._beam(c,a,k);
-        c.lensM.emissiveIntensity=8*a;
-        this._light.intensity=22*a;
-        for(const w of c.strobes) w.material.emissiveIntensity=0.2+4*a;
-        // THE HIT RULE. He is hit only if he was NEVER under the beam while crossing it. Latching
-        // the moment he enters the slab charges him before a last-instant dive has had time to
-        // land, which is exactly what makes a save feel stolen — and a dive takes ~0.2s to reach
-        // depth, so entry is the one instant at which the answer is always "not yet".
+        c.lensM.emissiveIntensity=9*a;
+        this._light.intensity=26*a;
+        for(const w of c.strobes) w.material.emissiveIntensity=0.35+5*a;
+        // THE HIT. Scored on the way OUT of the slab: a manoeuvre takes time to clear the band, so
+        // entry is the one instant at which the answer is always "not yet". He is hit only if he was
+        // never clear of the beam's HEIGHT while crossing it.
         const inSlab = Math.abs(P.pos.z-c.z) < SW.beamDepth;
         if(inSlab) c._entered=true;
-        // clear by more than half the available dive — a threshold in absolute metres would be
-        // unreachable on a low-ceilinged map
-        const clear=Math.max(2.2, P.duckDrop()*0.55);
-        if(inSlab && P.pos.y < SW.beamY-clear) c._safe=true;
-        if(!c._hit && !inSlab && P.pos.z > c.z && c._entered){
+        if(inSlab && Math.abs(P.pos.y-SW.beamY) > SW.beamHalf) c._safe=true;
+        if(!c._hit && c._entered && (!inSlab && P.pos.z>c.z)){
           c._hit=true;
-          if(!c._safe){
-            g.momentum.value=clamp(g.momentum.value-PWR.slamCost*0.85,0,g.momentum.MAX);
-            g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;
-            g.player.onGateSlam&&g.player.onGateSlam();
-            g.effects.flash(0.42); g.camera.shake(2.2); g.time.hitstop(160);
-            g.player.punch(1.8); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
-            g.effects.burst(new THREE.Vector3(P.pos.x,SW.beamY,P.pos.z), new THREE.Color(0xffd0a0), 40, 46);
-          }
+          if(!c._safe) this._punish(c);
         }
         if(this.t>=SW.fireSec){
-          // If the beam expires while he is still inside the slab — possible at low speed — settle
-          // it now, or he would walk out of a beam he was standing in.
-          if(c._entered && !c._hit && !c._safe){
-            c._hit=true;
-            g.momentum.value=clamp(g.momentum.value-PWR.slamCost*0.85,0,g.momentum.MAX);
-            g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;
-            g.player.onGateSlam&&g.player.onGateSlam();
-            g.effects.flash(0.42); g.camera.shake(2.2); g.time.hitstop(160);
-            g.player.punch(1.8); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
-          }
+          if(c._entered && !c._hit && !c._safe){ c._hit=true; this._punish(c); }
           this.state='cool'; this.t=0; this._beam(c,0,0);
           this._light.visible=false; this._ui(false);
         }
       } else if(this.state==='cool'){
-        // the iris closes again and the lens goes dark — a weapon that just stops looks broken
         const k=clamp(this.t/0.55,0,1), e=1-k;
         for(let i=0;i<c.blades.length;i++){
-          c.blades[i].children[0].position.y=3.2-2.2*e;
-          c.blades[i].rotation.x=i*Math.PI/3 + e*0.55;
+          c.blades[i].children[0].position.y=4.7-3.2*e;
+          c.blades[i].rotation.x=i*Math.PI/4 + e*0.6;
         }
-        c.lensM.emissiveIntensity=0.15+e*3;
-        for(const w of c.strobes) w.material.emissiveIntensity=0.2+e*1.5;
+        c.lensM.emissiveIntensity=0.2+e*3;
+        for(const w of c.strobes) w.material.emissiveIntensity=0.35+e*1.6;
+        for(const b of c.bands) b.material.emissiveIntensity=0.85+e*1.2;
         for(const cv of c.conv) cv.material.opacity=0;
         if(k>=1){ this.state='idle'; this.active=null; }
       }
+    }
+    _punish(c){
+      const g=this.game, P=g.player;
+      g.momentum.value=clamp(g.momentum.value-PWR.slamCost*0.85,0,g.momentum.MAX);
+      g.combo.count=0; g.combo.epicTime=0; g.combo.etherealTime=0;
+      P.onGateSlam&&P.onGateSlam();
+      g.effects.flash(0.42); g.camera.shake(2.2); g.time.hitstop(160);
+      P.punch(1.8); g.haptics.fire('death'); g.ui.hurt&&g.ui.hurt();
+      g.effects.burst(new THREE.Vector3(P.pos.x,SW.beamY,P.pos.z), new THREE.Color(0xffd0a0), 40, 46);
     }
   }
 
@@ -7011,7 +6878,6 @@
       document.body.classList.remove('at-menu');
       g.player.setMenuMode(false);              // the villain drops in as the run begins
       document.getElementById('gameover-overlay').classList.add('hidden');
-      document.body.classList.toggle('swipe-mode', this.game.mode==='swipe');
       this.game.input.setScheme(this.game.input.scheme);   // re-apply: swipe hides both controls
       // A first run is a coached run. It teaches over live play and never blocks it, so a returning
       // player who wipes their storage loses nothing but thirty seconds.
@@ -7213,15 +7079,15 @@
   function nextRank(score){ for(const x of RANKS) if(score<x.min) return x; return null; }
 
   const CHARACTERS = {
-    dominus:  { name:'Dominus', url:'./assets/villain.glb', aura:{epic:0x6a7480, eth:0xe8eef5},  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.22,to:0.98,box:{y:[-0.55,1]}},{a:'y',d:-1,from:-0.20,to:0.86,box:{z:[-1,-0.26],y:[-0.66,1]}}], aim:false,
+    dominus:  { name:'Dominus · Imported', url:'./assets/villain.glb', aura:{epic:0x6a7480, eth:0xe8eef5},  rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.22,to:0.98,box:{y:[-0.55,1]}},{a:'y',d:-1,from:-0.20,to:0.86,box:{z:[-1,-0.26],y:[-0.66,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    frutiger: { name:'Frutiger Villain', url:'./assets/frutiger.glb', aura:{epic:0x1170d8, eth:0x86ee2e}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.30,to:0.98,box:{y:[-0.60,1]}},{a:'y',d:-1,from:-0.10,to:0.86,box:{z:[-1,-0.34],y:[-0.70,1]}}], aim:false,
+    frutiger: { name:'Frutiger · Imported', url:'./assets/frutiger.glb', aura:{epic:0x1170d8, eth:0x86ee2e}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.30,to:0.98,box:{y:[-0.60,1]}},{a:'y',d:-1,from:-0.10,to:0.86,box:{z:[-1,-0.34],y:[-0.70,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    knight:   { name:'Evil Knight', url:'./assets/knight.glb', aura:{epic:0x2b2228, eth:0xc4121a}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'x',d:0,from:0.34,to:0.99},{a:'y',d:-1,from:0.42,to:0.99,box:{x:[-0.34,0.34]}}], aim:false,
+    knight:   { name:'Evil Knight · Imported', url:'./assets/knight.glb', aura:{epic:0x2b2228, eth:0xc4121a}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'x',d:0,from:0.34,to:0.99},{a:'y',d:-1,from:0.42,to:0.99,box:{x:[-0.34,0.34]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    patriot:  { name:'The Patriot', url:'./assets/patriot.glb', aura:{epic:0x1a3fd8, eth:0xf4f8ff}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.30,to:0.98,box:{y:[-0.55,1]}},{a:'y',d:-1,from:-0.25,to:0.86,box:{z:[-1,-0.34],y:[-0.66,1]}}], aim:false,
+    patriot:  { name:'The Patriot · Imported', url:'./assets/patriot.glb', aura:{epic:0x1a3fd8, eth:0xf4f8ff}, rotX:1.15, yaw:Math.PI/2-1.3, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.30,to:0.98,box:{y:[-0.55,1]}},{a:'y',d:-1,from:-0.25,to:0.86,box:{z:[-1,-0.34],y:[-0.66,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    entity:   { name:'The Entity', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:0, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.25,to:0.98}], aim:false,
+    entity:   { name:'The Entity · Imported', url:'./assets/entity.glb', aura:{epic:0xc9d117, eth:0x9fb0a4}, rotX:0, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.25,to:0.98}], aim:false,
                 smash:{y:-0.05,z:3.0} },
     // Voidstrike's GLB is already posed prone along +Z (head forward, back up) — no yaw, only a
     // slight nose-up so she reads as climbing into the smash like the others.
@@ -7230,14 +7096,14 @@
     // rendering the flow weights (see ASSETS_HOWTO "Capes and wings").
     // Authored ALREADY flying prone — arms forward, cape trailing, like Voidstrike. Pitching him
     // another 66° on top of that stood him on his head, and the 0.27 yaw skewed him off the street.
-    shrike:   { name:'Silver Shrike', url:'./assets/char_a.glb', aura:{epic:0x8fa8c4, eth:0xf2f8ff}, rotX:0.20, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
+    shrike:   { name:'Silver Shrike · Imported', url:'./assets/char_a.glb', aura:{epic:0x8fa8c4, eth:0xf2f8ff}, rotX:0.20, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
                 flow:[{a:'z',d:-1,from:0.20,to:0.98,box:{y:[-0.50,1]}},{a:'y',d:-1,from:-0.15,to:0.86,box:{z:[-1,-0.22],y:[-0.64,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
     // Upright standing export, so the full flight pitch applies — but square to the street.
-    tyrant:   { name:'The Red Jester', url:'./assets/char_b.glb', aura:{epic:0x8a0f18, eth:0xff2a3c}, rotX:1.15, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
+    tyrant:   { name:'The Red Jester · Imported', url:'./assets/char_b.glb', aura:{epic:0x8a0f18, eth:0xff2a3c}, rotX:1.15, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
                 flow:[{a:'z',d:-1,from:0.22,to:0.98,box:{y:[-0.55,1]}},{a:'y',d:-1,from:-0.20,to:0.86,box:{z:[-1,-0.26],y:[-0.66,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    nocturne: { name:'Nocturne', url:'./assets/char_c.glb', aura:{epic:0x2a1030, eth:0xd81028}, rotX:1.15, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
+    nocturne: { name:'Nocturne · Imported', url:'./assets/char_c.glb', aura:{epic:0x2a1030, eth:0xd81028}, rotX:1.15, yaw:0, baseY:0.12, targetLen:4.6, fit:'max',
                 // a long coat rather than a cape: the skirt hangs lower, so the downward ramp
                 // starts higher up and reaches further down than a shoulder-hung cape would
                 flow:[{a:'z',d:-1,from:0.18,to:0.98,box:{y:[-0.62,1]}},{a:'y',d:-1,from:0.02,to:0.90,box:{z:[-1,-0.10],y:[-0.74,1]}}], aim:false,
@@ -7250,7 +7116,7 @@
                 // only the cape may move; the limbs are solid geometry
                 flowMesh:'cape', flow:[{a:'y',d:-1,from:-0.85,to:0.98}], aim:false,
                 smash:{y:-0.05,z:3.0} },
-    countess: { name:'Violet Voidstrike', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.28,to:0.98,box:{y:[-0.06,1]}}], aim:false,
+    countess: { name:'Voidstrike · Imported', url:'./assets/voidstrike.glb', aura:{epic:0x7b2ff7, eth:0xff5ce0}, rotX:-0.10, yaw:0, baseY:0.12, targetLen:4.6, fit:'max', flow:[{a:'z',d:-1,from:0.28,to:0.98,box:{y:[-0.06,1]}}], aim:false,
                 smash:{y:-0.05,z:3.0} }
   };
   // ===================================================================================
@@ -7264,10 +7130,13 @@
   // `flow` is the cloth region, and it differs by what is hanging off the back: a cape's free edge
   // is its HEM (lowest y), a wing's is its TIP (furthest back in z as it sweeps).
   // ===================================================================================
+  // The code-built line is the main roster now. The imported GLB villains are all still here and
+  // still playable — they are simply no longer the default or the first thing you see.
+  const DEFAULT_CHAR='dominus_f';
   const FLOW_HEM =[{a:'y',d:-1,from:-0.85,to:0.98}];
   const FLOW_TIP =[{a:'z',d:-1,from:-0.90,to:0.98}];
   const FORGED={
-    dominus_f: { from:'dominus', name:'Dominus · Forged', flow:FLOW_HEM, kit:{
+    dominus_f: { from:'dominus', name:'Dominus', flow:FLOW_HEM, kit:{
       skin:0xd8a586, suit:0x59636f, plate:0x39424e, metal:0x9aa6b4, trim:0x1b2b4a,
       sole:0x121318, eye:0x9fc8ff, eyeCore:0xe8f2ff,
       mask:'domino', expr:'grim', horns:0, back:'cape', backCol:0x23252d, emblem:'diamond' } },
@@ -7283,7 +7152,7 @@
       mask:'helm', expr:'snarl', horns:2, hornStyle:'curved', back:'wings',
       backCol:0x8e1018, backCol2:0x241f24, emblem:'none' } },
 
-    patriot_f: { from:'patriot', name:'The Patriot · Forged', flow:FLOW_HEM, kit:{
+    patriot_f: { from:'patriot', name:'The Patriot', flow:FLOW_HEM, kit:{
       skin:0xd9a17f, suit:0x1a3fd8, plate:0xdfe6f2, metal:0xe8eef7, trim:0xc0192c,
       sole:0x14161c, eye:0xf4f8ff, eyeCore:0xffffff,
       mask:'domino', expr:'grim', horns:0, back:'cape', backCol:0xc0192c, emblem:'star' } },
@@ -7327,12 +7196,12 @@
   // the villain sheet is authored in HTML for the originals; the Forged line is appended here so
   // adding a kit above is the only edit a new one needs
   try{
-    const grid=document.querySelector('#skins-modal .grid');
-    if(grid) for(const k of Object.keys(FORGED)){
+    const grid=document.getElementById('char-grid');
+    if(grid) for(const k of ['forged'].concat(Object.keys(FORGED))){
       const d=document.createElement('div');
-      d.className='card char'; d.dataset.char=k;
+      d.className='card char'+(k===DEFAULT_CHAR?' sel':''); d.dataset.char=k;
       d.innerHTML='<img class="previmg" src="./assets/prev_'+k+'.png" alt="">'
-                 + CHARACTERS[k].name + '<small>Tap to play</small>';
+                 + CHARACTERS[k].name + '<small>'+(k===DEFAULT_CHAR?'Selected':'Tap to play')+'</small>';
       grid.appendChild(d);
     }
   }catch(e){}
@@ -7434,6 +7303,41 @@
       const g=new THREE.LatheGeometry(pts, seg||20, phiStart, phiLen);
       g.computeVertexNormals();
       const m=new THREE.Mesh(g, mat); m.material.side=THREE.DoubleSide; return m;
+    };
+    // BAKE. Detail costs draw calls, and a villain built out of 160 little meshes is 160 of them
+    // every frame. Anything that never moves relative to its parent — every finger bone, every
+    // crease on the face — is collapsed into ONE mesh per material inside that parent. The parent
+    // group is still the thing the rig rotates, so the animation is untouched; the difference is
+    // that a hand is one draw call instead of forty, which is what pays for the fingers.
+    const bake=(grp,skip)=>{
+      grp.updateMatrixWorld(true);
+      const inv=new THREE.Matrix4().copy(grp.matrixWorld).invert();
+      const meshes=[]; const walk=(o)=>{ if(skip && skip.indexOf(o)>=0) return;
+        if(o.isMesh) meshes.push(o); for(const c of o.children) walk(c); };
+      walk(grp);
+      if(meshes.length<2) return grp;
+      // Keep the INDEX. mergeGeometries needs every input to agree, and dropping to non-indexed
+      // triples the vertex count for the same silhouette — a baked head went 15k to 53k verts
+      // for no visible gain. Only fall back to non-indexed if something in the group has no index.
+      const allIndexed=meshes.every(m=>!!m.geometry.index);
+      const byMat=new Map();
+      for(const m of meshes){
+        m.updateMatrixWorld(true);
+        const g = (m.geometry.index && !allIndexed) ? m.geometry.toNonIndexed() : m.geometry.clone();
+        g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+        for(const k of Object.keys(g.attributes))
+          if(k!=='position' && k!=='normal' && k!=='uv') g.deleteAttribute(k);
+        if(!g.attributes.uv) g.setAttribute('uv',
+          new THREE.BufferAttribute(new Float32Array(g.attributes.position.count*2), 2));
+        const a=byMat.get(m.material); if(a) a.push(g); else byMat.set(m.material,[g]);
+      }
+      for(const m of meshes) if(m.parent) m.parent.remove(m);
+      for(const [mat,gs] of byMat){
+        const g = gs.length>1 ? mergeGeometries(gs,false) : gs[0];
+        if(!g) continue;
+        const mesh=new THREE.Mesh(g,mat); mesh.castShadow=true; grp.add(mesh);
+      }
+      return grp;
     };
     const put=(m,x,y,z,rx,ry,rz)=>{ m.position.set(x,y,z);
       if(rx)m.rotation.x=rx; if(ry)m.rotation.y=ry; if(rz)m.rotation.z=rz;
@@ -7544,6 +7448,15 @@
                      [0.455*HEAD,0.92*HEAD],[0.315*HEAD,1.06*HEAD],[0.00,1.11*HEAD]], faceMat, 26);
       fc.scale.z=0.945; H(fc, 0, 1.66*HEAD, 0);
     }
+    // Everything from here down is face DETAIL: it never moves relative to the head, so it all goes
+    // into one group that gets collapsed to a handful of draw calls at the end.
+    const faceG=new THREE.Group(); headG.add(faceG);
+    const HF=(m,x,y,z,rx,ry,rz)=>{ m.position.set(x, y-1.30*HEAD, z);
+      if(rx)m.rotation.x=rx; if(ry)m.rotation.y=ry; if(rz)m.rotation.z=rz;
+      m.castShadow=true; faceG.add(m); return m; };
+    const matDark=M(0x24140f,{roughness:.94});
+    // Creases on skin are SHADED skin, not black. A matDark box on a cheek reads as a hole.
+    const matShade=M(new THREE.Color(O.skin).multiplyScalar(0.70).getHex(),{roughness:.88});
     if(bare || MK==='jester'){
       // FACE STRUCTURE. Featureless is the failure mode, and these are the planes the eye actually
       // looks for: the brow ridge, the nose, the cheekbones and the line of the jaw.
@@ -7553,38 +7466,94 @@
       for(const sx of [-1,1]){
         const br=new THREE.Mesh(roundBox(0.28*HEAD,0.078*HEAD,0.11*HEAD,0.032*HEAD,3), faceMat);
         br.rotation.set(-0.22,0,sx*ba);
-        H(br, sx*0.155*HEAD, 2.355*HEAD, 0.42*HEAD);
+        HF(br, sx*0.155*HEAD, 2.355*HEAD, 0.42*HEAD);
+        // the bony ridge ABOVE the brow. Without it the brow bar floats on a smooth forehead;
+        // with it there is a shelf the eye sits under, which is most of what "glowering" is.
+        const rg=new THREE.Mesh(roundBox(0.30*HEAD,0.055*HEAD,0.075*HEAD,0.026*HEAD,3), faceMat);
+        rg.rotation.set(-0.34,0,sx*(ba*0.72));
+        HF(rg, sx*0.150*HEAD, 2.425*HEAD, 0.385*HEAD);
       }
+      // the crease between the brows — one groove, and the whole face is thinking about something
+      { const fr=new THREE.Mesh(roundBox(0.035*HEAD,0.115*HEAD,0.030*HEAD,0.013*HEAD,2), matShade);
+        HF(fr, 0, 2.395*HEAD, 0.470*HEAD, -0.20);
+        if(O.expr==='snarl') for(const sx of [-1,1]){
+          const fr2=new THREE.Mesh(roundBox(0.026*HEAD,0.090*HEAD,0.026*HEAD,0.011*HEAD,2), matShade);
+          fr2.rotation.z=sx*0.34; HF(fr2, sx*0.052*HEAD, 2.400*HEAD, 0.455*HEAD, -0.20);
+        } }
+      // NOSE. The cone alone is a beak. A bridge running up to the brow, two flaring wings and a
+      // pair of nostril hollows is a nose.
       const nose=new THREE.Mesh(new THREE.ConeGeometry(0.095*HEAD,0.30*HEAD,4), faceMat);
-      nose.rotation.set(1.42,Math.PI/4,0); H(nose, 0, 2.12*HEAD, 0.56*HEAD);
+      nose.rotation.set(1.42,Math.PI/4,0); HF(nose, 0, 2.12*HEAD, 0.56*HEAD);
+      const bridge=new THREE.Mesh(roundBox(0.062*HEAD,0.22*HEAD,0.070*HEAD,0.028*HEAD,3), faceMat);
+      HF(bridge, 0, 2.275*HEAD, 0.492*HEAD, -0.16);
+      for(const sx of [-1,1]){
+        const wing=new THREE.Mesh(roundBox(0.070*HEAD,0.075*HEAD,0.085*HEAD,0.032*HEAD,3), faceMat);
+        HF(wing, sx*0.072*HEAD, 2.030*HEAD, 0.530*HEAD);
+        const nos=new THREE.Mesh(new THREE.SphereGeometry(0.026*HEAD,7,6), matDark);
+        nos.scale.set(1,0.6,1.0); HF(nos, sx*0.046*HEAD, 1.998*HEAD, 0.542*HEAD);
+        // and the fold running from the nose to the corner of the mouth
+        const nl=new THREE.Mesh(roundBox(0.020*HEAD,0.130*HEAD,0.022*HEAD,0.009*HEAD,2), matShade);
+        nl.rotation.z=sx*0.34; HF(nl, sx*0.132*HEAD, 1.975*HEAD, 0.482*HEAD);
+      }
       for(const sx of [-1,1]){
         const ch=limb([[0.00,0],[0.13*HEAD,0.02*HEAD],[0.10*HEAD,0.16*HEAD],[0.00,0.18*HEAD]], faceMat,12);
-        ch.scale.z=0.8; H(ch, sx*0.23*HEAD, 2.02*HEAD, 0.34*HEAD);
+        ch.scale.z=0.8; HF(ch, sx*0.23*HEAD, 2.02*HEAD, 0.34*HEAD);
+        // the hollow under the cheekbone, which is what makes a face read as gaunt rather than round
+        const hl=new THREE.Mesh(roundBox(0.090*HEAD,0.120*HEAD,0.032*HEAD,0.014*HEAD,3), matShade);
+        hl.rotation.z=sx*0.22; HF(hl, sx*0.230*HEAD, 1.910*HEAD, 0.352*HEAD);
+        // ears, tucked against the skull under the cowl edge
+        const ear=new THREE.Mesh(roundBox(0.055*HEAD,0.185*HEAD,0.115*HEAD,0.040*HEAD,3), faceMat);
+        ear.rotation.set(0.10,0,sx*-0.10); HF(ear, sx*0.470*HEAD, 2.130*HEAD, 0.010*HEAD);
+        const lobe=new THREE.Mesh(new THREE.SphereGeometry(0.038*HEAD,7,6), faceMat);
+        lobe.scale.set(0.7,1,0.9); HF(lobe, sx*0.468*HEAD, 2.038*HEAD, 0.012*HEAD);
       }
       const jaw=limb([[0.00,0],[0.26*HEAD,0.03*HEAD],[0.29*HEAD,0.18*HEAD],[0.00,0.22*HEAD]], faceMat,18);
-      jaw.scale.set(1,1,0.90); H(jaw, 0, 1.76*HEAD, 0.16*HEAD);
+      jaw.scale.set(1,1,0.90); HF(jaw, 0, 1.76*HEAD, 0.16*HEAD);
+      for(const sx of [-1,1]){        // the angle of the jaw, back under the ear
+        const jn=new THREE.Mesh(roundBox(0.085*HEAD,0.150*HEAD,0.150*HEAD,0.050*HEAD,3), faceMat);
+        jn.rotation.z=sx*0.16; HF(jn, sx*0.320*HEAD, 1.855*HEAD, 0.150*HEAD);
+      }
       // MOUTH. A face with eyes and no mouth is a mask; with a set line under the nose it is a
       // person deciding to do something about you.
-      const dark=M(0x2a1712,{roughness:.92});
+      const dark=matDark;
       const mw=(O.expr==='snarl'?0.34:O.expr==='calm'?0.24:0.28)*HEAD;
       const mouth=new THREE.Mesh(roundBox(mw,0.052*HEAD,0.055*HEAD,0.022*HEAD,3), dark);
-      mouth.rotation.x=-0.10; H(mouth, 0, 1.905*HEAD, 0.505*HEAD);
+      mouth.rotation.x=-0.10; HF(mouth, 0, 1.905*HEAD, 0.505*HEAD);
+      // LIPS. The dark line alone is a slot cut in a mask. An upper lip with a bow in it and a
+      // fuller lower lip under it is a mouth, and it is four small meshes.
+      const lipMat=M(new THREE.Color(O.skin).multiplyScalar(0.82).getHex(),{roughness:.62});
+      for(const sx of [-1,1]){
+        const up=new THREE.Mesh(roundBox(mw*0.52,0.048*HEAD,0.050*HEAD,0.020*HEAD,3), lipMat);
+        up.rotation.z=sx*0.13; HF(up, sx*mw*0.24, 1.938*HEAD, 0.512*HEAD, -0.12);
+      }
+      const low=new THREE.Mesh(roundBox(mw*0.82,0.055*HEAD,0.056*HEAD,0.024*HEAD,3), lipMat);
+      HF(low, 0, 1.848*HEAD, 0.508*HEAD, -0.06);
+      for(const sx of [-1,1]){                    // the corners, pulled down on a snarl
+        const cr=new THREE.Mesh(roundBox(0.030*HEAD,0.044*HEAD,0.030*HEAD,0.013*HEAD,2), matShade);
+        HF(cr, sx*mw*0.46, 1.898*HEAD-(O.expr==='snarl'?0.022*HEAD:0), 0.470*HEAD);
+      }
       if(O.expr==='snarl'){                       // bared teeth, only where they belong
+        const tooth=M(0xf2ece0,{roughness:.5});
         for(let k=0;k<5;k++){
-          const th=new THREE.Mesh(roundBox(0.045*HEAD,0.05*HEAD,0.04*HEAD,0.014*HEAD,2),
-                                  M(0xf2ece0,{roughness:.5}));
-          H(th, (k-2)*0.056*HEAD, 1.918*HEAD, 0.515*HEAD);
+          const th=new THREE.Mesh(roundBox(0.045*HEAD,0.05*HEAD,0.04*HEAD,0.014*HEAD,2), tooth);
+          HF(th, (k-2)*0.056*HEAD, 1.918*HEAD, 0.515*HEAD);
+        }
+        for(let k=0;k<4;k++){                     // and the lower row behind them
+          const th=new THREE.Mesh(roundBox(0.040*HEAD,0.040*HEAD,0.036*HEAD,0.012*HEAD,2), tooth);
+          HF(th, (k-1.5)*0.052*HEAD, 1.876*HEAD, 0.508*HEAD);
         }
         for(const sx of [-1,1]){                  // and the fang at each corner
-          const fg=new THREE.Mesh(new THREE.ConeGeometry(0.026*HEAD,0.085*HEAD,5), M(0xf2ece0,{roughness:.5}));
-          fg.rotation.x=Math.PI; H(fg, sx*0.115*HEAD, 1.885*HEAD, 0.515*HEAD);
+          const fg=new THREE.Mesh(new THREE.ConeGeometry(0.026*HEAD,0.085*HEAD,5), tooth);
+          fg.rotation.x=Math.PI; HF(fg, sx*0.115*HEAD, 1.885*HEAD, 0.515*HEAD);
         }
       }
       // the philtrum and a chin crease, so the lower face is not a blank plane
-      const phil=new THREE.Mesh(roundBox(0.05*HEAD,0.09*HEAD,0.04*HEAD,0.018*HEAD,2), faceMat);
-      H(phil, 0, 1.985*HEAD, 0.515*HEAD);
+      const phil=new THREE.Mesh(roundBox(0.042*HEAD,0.070*HEAD,0.034*HEAD,0.015*HEAD,2), faceMat);
+      HF(phil, 0, 1.978*HEAD, 0.512*HEAD);
       const chin=new THREE.Mesh(roundBox(0.17*HEAD,0.07*HEAD,0.06*HEAD,0.026*HEAD,3), faceMat);
-      H(chin, 0, 1.815*HEAD, 0.47*HEAD, 0.22);
+      HF(chin, 0, 1.815*HEAD, 0.47*HEAD, 0.22);
+      const clef=new THREE.Mesh(roundBox(0.028*HEAD,0.060*HEAD,0.026*HEAD,0.011*HEAD,2), matShade);
+      HF(clef, 0, 1.800*HEAD, 0.495*HEAD, 0.22);
     }
     if(MK==='helm'){
       // a sealed faceplate, and a DARK visor slot across it. A helmet whose face is the trim colour
@@ -7608,9 +7577,31 @@
         H(horn, sx*0.33*HEAD, 2.42*HEAD, -0.10*HEAD);
       }
       // EYES. They glow, which is the cheapest thing in the whole model and the one that makes a
-      // head look alive at speed.
+      // head look alive at speed. But a glowing bar on a flat cheek is a light, not an eye — it
+      // needs a SOCKET to sit in and LIDS to sit under, or the face reads as painted-on.
+      const ez=(MK==='helm'?0.54:0.50)*HEAD;
+      if(bare || MK==='jester'){
+        // the orbit: a dark recess a little larger than the eye, set slightly back
+        const orb=new THREE.Mesh(roundBox(0.215*HEAD,0.105*HEAD,0.050*HEAD,0.026*HEAD,3), matDark);
+        orb.rotation.z=sx*0.16; HF(orb, sx*0.175*HEAD, 2.185*HEAD, ez-0.055*HEAD, -0.10);
+      }
       const eye=new THREE.Mesh(new THREE.BoxGeometry(0.17*HEAD,0.055*HEAD,0.05*HEAD), matEye);
-      eye.rotation.z=sx*0.16; H(eye, sx*0.175*HEAD, 2.185*HEAD, (MK==='helm'?0.54:0.50)*HEAD, -0.10);
+      eye.rotation.z=sx*0.16; H(eye, sx*0.175*HEAD, 2.185*HEAD, ez, -0.10);
+      if(bare || MK==='jester'){
+        // a brighter core down the middle, so there is a pupil to read rather than a solid slot
+        const pup=new THREE.Mesh(new THREE.BoxGeometry(0.090*HEAD,0.030*HEAD,0.050*HEAD),
+                                 M(0xffffff,{roughness:.1,emissive:0xffffff,emissiveIntensity:3.0}));
+        pup.rotation.z=sx*0.16; HF(pup, sx*0.175*HEAD, 2.185*HEAD, ez+0.014*HEAD, -0.10);
+        // upper lid, heavy, angled down toward the nose — this is where the glare lives
+        const lidA = O.expr==='snarl' ? 0.30 : O.expr==='calm' ? 0.10 : 0.20;
+        const ul=new THREE.Mesh(roundBox(0.225*HEAD,0.055*HEAD,0.052*HEAD,0.022*HEAD,3), faceMat);
+        ul.rotation.set(-0.10,0,sx*(0.16+lidA));
+        HF(ul, sx*0.172*HEAD, 2.246*HEAD, ez-0.030*HEAD);
+        // lower lid, thinner
+        const ll=new THREE.Mesh(roundBox(0.205*HEAD,0.038*HEAD,0.048*HEAD,0.016*HEAD,3), faceMat);
+        ll.rotation.set(-0.10,0,sx*0.14);
+        HF(ll, sx*0.176*HEAD, 2.128*HEAD, ez-0.032*HEAD);
+      }
     }
     if(O.crest){                                       // a fin down the centre of the crown
       for(let k=0;k<4;k++){
@@ -7634,6 +7625,8 @@
                       [0.575*HEAD,0.95*HEAD],[0.40*HEAD,1.15*HEAD],[0.00,1.20*HEAD]], matSuit, 26, 1.05, Math.PI*2-2.10);
       hd.scale.z=1.02; H(hd, 0, 1.62*HEAD, -0.03*HEAD);
     }
+    // Every crease, lid, lip and nostril above collapses to a handful of draw calls.
+    bake(faceG);
 
     // ---- ARMS. Built pointing DOWN the -Y axis and then swung overhead, so the shoulder is the
     // pivot and the whole pose is one rotation. Everything is mirrored exactly, and NOTHING here
@@ -7699,34 +7692,62 @@
       // which reads as a robot claw. A hand is BLOCKS WITH RADII, so it is roundBox throughout.
       const hg=new THREE.Group(); hg.position.set(0,-2.50*HEAD,0.13*HEAD); hg.rotation.x=0.26;
       hg.scale.setScalar(1.24);                          // a hand is ~0.75 of a head, not a knob
-      const F=(geo,x,y,z,rx,rz)=>{ const m=new THREE.Mesh(geo, matSkin);
+      const F=(geo,x,y,z,rx,rz,mat)=>{ const m=new THREE.Mesh(geo, mat||matSkin);
         m.position.set(x*HEAD,y*HEAD,z*HEAD); if(rx)m.rotation.x=rx; if(rz)m.rotation.z=rz;
         hg.add(m); return m; };
+      const matCrease=M(new THREE.Color(O.skin).multiplyScalar(0.68).getHex(),{roughness:.9});
+      const matNail2=M(new THREE.Color(O.skin).lerp(new THREE.Color(0xffffff),0.45).getHex(),{roughness:.35});
       // back of the hand and the palm behind it, as one mass
       F(roundBox(0.350*HEAD,0.335*HEAD,0.260*HEAD,0.105*HEAD,6), 0,-0.135,0.015);
       const knGeo =roundBox(0.078*HEAD,0.165*HEAD,0.210*HEAD,0.056*HEAD,4);
       const midGeo=roundBox(0.078*HEAD,0.210*HEAD,0.135*HEAD,0.050*HEAD,4);
       const tipGeo=roundBox(0.078*HEAD,0.100*HEAD,0.100*HEAD,0.043*HEAD,4);
+      const nailGeo=roundBox(0.048*HEAD,0.020*HEAD,0.060*HEAD,0.009*HEAD,2);
+      const jntGeo=new THREE.SphereGeometry(0.040*HEAD,7,6);
+      const grvGeo=roundBox(0.010*HEAD,0.150*HEAD,0.190*HEAD,0.004*HEAD,2);
+      const tenGeo=roundBox(0.026*HEAD,0.200*HEAD,0.030*HEAD,0.011*HEAD,2);
       for(let k=0;k<4;k++){
         const fx=(k-1.5)*0.092;                          // 0.010 of clear air between fingers, so
         const arc=Math.abs(k-1.25)*0.016;                // the grooves actually read at distance
         // the knuckle: the leading edge of the fist, and the part that hits the wall
         F(knGeo, fx, -0.385+arc, 0.020, -0.10);
+        // a hard cap ON the knuckle — four of these along the front edge is what makes a closed
+        // fist read as bone rather than as a rounded block
+        F(jntGeo, fx, -0.455+arc, 0.030);
         // the middle phalanx, wrapped round onto the palm side
         F(midGeo, fx, -0.360+arc, -0.150, 0.42);
+        // the joint between the two, which is where a finger visibly bends
+        F(jntGeo, fx, -0.430+arc, -0.078);
         // the fingertip, tucked back up under the fingers
         F(tipGeo, fx, -0.235+arc, -0.200, 0.60);
+        F(jntGeo, fx, -0.300+arc, -0.205);
+        // and the nail on the back of it, facing out of the curl
+        F(nailGeo, fx, -0.208+arc, -0.248, 0.60, 0, matNail2);
+        // the groove between this finger and the next
+        if(k<3) F(grvGeo, fx+0.046, -0.375+arc, -0.055, 0.16, 0, matCrease);
+        // the tendon running back over the hand to the wrist
+        F(tenGeo, fx*0.86, -0.230, 0.115, -0.06);
       }
       // thumb: two segments laid ACROSS the front of the curled fingers, which is what closes a fist
       F(roundBox(0.075*HEAD,0.170*HEAD,0.100*HEAD,0.042*HEAD,4),
         side*-0.135, -0.150, -0.115, -0.30, side*0.95);
+      F(jntGeo, side*-0.088, -0.208, -0.142);            // the thumb knuckle
       F(roundBox(0.068*HEAD,0.140*HEAD,0.090*HEAD,0.038*HEAD,4),
         side*-0.030, -0.255, -0.160, -0.75, side*1.30);
-      // the wrist, filling the gap back to the cuff
+      F(roundBox(0.044*HEAD,0.020*HEAD,0.056*HEAD,0.009*HEAD,2),
+        side*0.012, -0.290, -0.190, -0.75, side*1.30, matNail2);
+      // the thenar pad at the base of the thumb, and the heel of the palm behind it
+      F(roundBox(0.120*HEAD,0.185*HEAD,0.130*HEAD,0.055*HEAD,4), side*-0.128, -0.055, -0.060, 0, side*0.30);
+      F(roundBox(0.230*HEAD,0.120*HEAD,0.150*HEAD,0.055*HEAD,4), 0, -0.052, -0.115);
+      // the wrist, filling the gap back to the cuff, with the styloid bump on the outside
       F(roundBox(0.245*HEAD,0.110*HEAD,0.215*HEAD,0.070*HEAD,4), 0, 0.030, 0.020);
+      F(new THREE.SphereGeometry(0.052*HEAD,8,6), side*0.108, 0.014, 0.048);
+      // ONE draw call per material for the whole hand, fingers and all.
+      bake(hg);
       g.add(hg); g.userData.hand=hg;
 
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+      bake(g,[hg]);                                      // pauldron, plates and limb: one call each
       // FISTS FIRST. He flies face-down along his own +Y, so "forward" in flight is straight up
       // the model — both arms go overhead, not down at his sides. Keep the splay SMALL: at 0.30
       // the arms read as a T from behind instead of a spear point going into the wall.
@@ -7779,6 +7800,7 @@
       B(roundBox(0.36*HEAD,0.07*HEAD,0.10*HEAD,0.03*HEAD,3), matMetal, 0,-0.13,0.36);       // toe cap band
 
       g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+      bake(g);                                           // thigh, knee, shin and the whole boot
       g.position.set(side*0.29*HEAD, -1.36*HEAD, 0);
       root.add(g); return g;
     };
@@ -7969,7 +7991,12 @@
     const _v=new THREE.Vector3();
     root.userData.pose=(o)=>{
       const tk=clamp(o.tuck||0,0,1), ln=clamp(o.lean||0,-1,1), t=o.idle||0, sp=clamp(o.speed||0,0,1);
-      const fl=clamp(o.flare||0,0,1);        // the snap OUT of the tuck, 0 -> 1 -> 0 on recovery
+      const fl=clamp(o.flare||0,0,1);        // the snap OUT of the manoeuvre, 0 -> 1 -> 0
+      // +1 he CLIMBED over the beam, -1 he DIVED under it. They are opposite shapes: a climb arches
+      // the spine back with the arms swept low behind him, a dive folds him forward into a ball.
+      // One shape used for both is what makes an evade read as generic.
+      const up=(o.dir||0)>0 ? 1 : 0, dn=(o.dir||0)<0 ? 1 : 0;
+      const tkU=tk*up, tkD=tk*dn;
       // ARMS. From fists-first out in front, they fold in and down until the elbows are at the
       // ribs. The counter-swing on a lane change is small and opposite between the two, which is
       // what a body actually does when it throws itself sideways.
@@ -7977,29 +8004,33 @@
         const wob=Math.sin(t*2.1 + (side>0?0:1.7))*0.055*(1-tk)*(0.4+sp);
         // IN, not out. Rotating the shoulder z AWAY from the body splays the arms wide, which is
         // the opposite of a tuck — the elbows have to come to the ribs and the fists to the chin.
-        g.rotation.x = b.x + tk*1.78 - fl*0.30 + wob;
-        g.rotation.z = b.z - side*tk*0.78 + side*fl*0.46 - ln*0.26*side;
-        g.rotation.y = -ln*0.34 - side*tk*0.30;
+        // climb: arms sweep DOWN and back, like pulling the air past him. dive: elbows to the ribs.
+        g.rotation.x = b.x + tkD*1.78 - tkU*0.62 - fl*0.30 + wob;
+        g.rotation.z = b.z - side*tkD*0.78 + side*tkU*0.52 + side*fl*0.46 - ln*0.26*side;
+        g.rotation.y = -ln*0.34 - side*tkD*0.30 + side*tkU*0.22;
       }
       // LEGS. Knees come up to the chest for the tuck; otherwise they trail with a slow scissor
       // and a small opposite splay into the turn.
       for(const [g,side,b] of [[legL,-1,base.lL],[legR,1,base.lR]]){
         const sc=Math.sin(t*1.7 + (side>0?0:Math.PI))*0.085*(1-tk)*(0.35+sp);
-        g.rotation.x = b.x - tk*1.95 + fl*0.34 + sc;
-        g.rotation.z = b.z + side*tk*0.26 + side*fl*0.20 + ln*0.10;
+        // climb: legs snap straight and trail hard. dive: knees to the chest.
+        g.rotation.x = b.x - tkD*1.95 + tkU*0.46 + fl*0.34 + sc;
+        g.rotation.z = b.z + side*tkD*0.26 - side*tkU*0.16 + side*fl*0.20 + ln*0.10;
         g.rotation.y = ln*0.20;
       }
       // HEAD. Craned back to look ahead in flight; chin driven to the chest through the tuck.
-      headG.rotation.x = base.hd.x + tk*0.86 - fl*0.22 + Math.sin(t*1.3)*0.03*(1-tk);
+      // he LOOKS at it: chin down through a dive, head thrown back through a climb
+      headG.rotation.x = base.hd.x + tkD*0.86 - tkU*0.44 - fl*0.22 + Math.sin(t*1.3)*0.03*(1-tk);
       headG.rotation.z = -ln*0.22;
       // and the whole torso twists into the turn — without this the arms look detached
       torso.rotation.y = ln*0.16;
+      torso.rotation.x = tkU*-0.30 + tkD*0.22;     // the spine arches back, or folds forward
       void _v;
     };
     return root;
   }
 
-  function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return 'dominus'; }
+  function currentCharKey(){ try{ const k=localStorage.getItem('invrun_char'); if(k&&CHARACTERS[k]) return k; }catch(e){} return DEFAULT_CHAR; }
 
   // ===================================================================================
   // MAPS — swappable themes. Each retunes sky/light/ground/road/buildings + the hit sound.
@@ -8193,9 +8224,6 @@
       this.scene.add(sun); this.scene.add(sun.target); this.sun=sun;
 
       // systems
-      // FREE FLIGHT or SWIPE. The mode is a branch through the existing systems, never a second
-      // game — every map, villain, power and mission works in both.
-      this.mode=(()=>{ try{ return localStorage.getItem('invrun_mode')==='swipe'?'swipe':'free'; }catch(e){ return 'free'; } })();
       this.input=new InputSystem();
       this.time=new TimeSystem();
       this.difficulty=new DifficultySystem(this);
@@ -8356,20 +8384,6 @@
       musicBtn.textContent=this.audio.musicOn?'ON':'OFF'; musicBtn.classList.toggle('on',this.audio.musicOn);
       // CONTROLS: the on-screen stick, or drag anywhere on the playfield. Persisted, and applied
       // immediately so the joystick appears/disappears without leaving Settings.
-      // ---- MODE PICKER
-      { const mf=document.getElementById('mode-free'), ms=document.getElementById('mode-swipe');
-        const apply=()=>{ const sw=this.mode==='swipe';
-          mf.classList.toggle('on',!sw); ms.classList.toggle('on',sw);
-          document.body.classList.toggle('swipe-mode', sw);
-          const tag=document.querySelector('.menu-foot');
-          if(tag) tag.textContent = sw ? 'Three lanes · flick to switch · EVADE the rail cannon'
-                                       : 'Weave the streets · smash towers · dodge the drones';
-          try{ localStorage.setItem('invrun_mode', this.mode); }catch(e){}
-          this.input.setScheme(this.input.scheme); };
-        const set=(m)=>{ this.mode=m; apply(); this.audio.uiClick&&this.audio.uiClick(); };
-        mf.onclick=()=>set('free'); ms.onclick=()=>set('swipe');
-        this.haptics.attachSwitch(mf); this.haptics.attachSwitch(ms);
-        apply(); }
       // ---- TOP BAR: the gear opens Settings, the + opens the shard boost, and opening the villain
       // sheet clears its "new characters" dot.
       { const gear=document.getElementById('tb-gear');
@@ -8395,7 +8409,7 @@
       // ---- EVADE
       { const eb=document.getElementById('btn-evade');
         const go=(e)=>{ if(e&&e.cancelable) e.preventDefault();
-          if(this.player.evade()){ this.haptics.fire('closeCall'); this.audio.uiClick&&this.audio.uiClick(); } };
+          if(this.player.evade(0)){ this.haptics.fire('closeCall'); this.audio.uiClick&&this.audio.uiClick(); } };
         eb.addEventListener('touchstart',go,{passive:false});
         eb.addEventListener('mousedown',go);
         this.haptics.attachSwitch(eb); }
