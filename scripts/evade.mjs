@@ -149,6 +149,18 @@ const runAt = async (speed, mode)=>{
         if((mode==='up'||mode==='down') && C.t>SW.chargeSec*0.7 && !cur.evaded)
           cur.evaded=P.evade(mode==='up'?1:-1);
       }
+      // CAMERA. A hard-snapped follow teleported with him on an 11 m climb and threw the whole city
+      // out of frame. Track the per-frame jump, and how much of the manoeuvre he keeps for himself.
+      const camY=G.camera.cam.position.y;
+      if(cur){ if(cur._cy!==undefined) cur.camJump=Math.max(cur.camJump||0, Math.abs(camY-cur._cy));
+               cur._cy=camY;
+               // How far he travels IN FRAME: his height relative to the camera's, over the whole
+               // encounter. Absolute distance is the wrong metric — a climb moves him toward the
+               // camera, so |p-cam| shrinks even as he visibly rises up the screen.
+               const rel=P.pos.y-camY;
+               cur.relLo=Math.min(cur.relLo===undefined?rel:cur.relLo, rel);
+               cur.relHi=Math.max(cur.relHi===undefined?rel:cur.relHi, rel);
+               cur.sep=+(cur.relHi-cur.relLo).toFixed(1); }
       if(st==='fire' && cur){
         if(mode==='late' && !cur.evaded && Math.abs(P.pos.z-C.active.z)<SW.beamDepth)
           cur.evaded=P.evade(1);
@@ -163,7 +175,14 @@ const runAt = async (speed, mode)=>{
       }
       last=st;
     }
-    return { spd, mode, n:enc.length, enc:enc.slice(0,6),
+    // GEOMETRY. The spire must straddle the road dead ahead, not be parked off to one side, and
+    // its opening must be wider than the box the player is clamped inside.
+    const anyC=G.cannon.list.find(c=>c.live) || G.cannon.list[0];
+    const geo={ offAxis:+Math.abs(anyC.grp.position.x - G.city._pathX(anyC.z)).toFixed(1),
+                leg:anyC.LEG, gunOnLeg:+Math.abs(Math.abs(anyC.gun.position.x)-anyC.LEG).toFixed(2),
+                clearW:+(anyC.LEG-9.6).toFixed(1), xBox:window.__cb.PLAY.xBox,
+                hasEye:!!anyC.eye, hasAim:!!anyC.aim };
+    return { spd, mode, n:enc.length, enc:enc.slice(0,6), geo,
              chargeSec:SW.chargeSec, fireLead:SW.fireLead, beamHalf:SW.beamHalf };
   }, [speed, mode]);
   await pg.close();
@@ -197,6 +216,15 @@ const everyMap=f=>Object.values(heights).every(f);
 const ok=(R,f)=> R.out.enc.length>0 && R.out.enc.every(f);
 
 const checks=[
+  // the camera must GLIDE, and he must visibly leave it behind — this is the whole animation
+  ['the camera never teleports',            ok(U46,e=>e.camJump<3.2) && ok(U95,e=>e.camJump<3.6)],
+  ['he visibly moves inside the frame',     ok(U46,e=>e.sep>5) && ok(D46,e=>e.sep>3.5)],
+  // the spire straddles the road ahead, and the opening clears the player's own x-box
+  ['the spire is dead ahead, not aside',    U46.out.geo.offAxis<0.5],
+  ['the gun sits on one of its legs',       U46.out.geo.gunOnLeg<0.01],
+  ['the opening clears the player box',     U46.out.geo.clearW > U46.out.geo.xBox],
+  ['it has a face and an aim line',         U46.out.geo.hasEye && U46.out.geo.hasAim],
+
   ['swipe UP asks for a climb',             ges.upDir===1],
   ['swipe DOWN asks for a dive',            ges.downDir===-1],
   ['a sideways gesture is not an evade',    ges.sidewaysDir===0],
@@ -245,6 +273,7 @@ const checks=[
 const bad=checks.filter(c=>!c[1]).map(c=>c[0]);
 console.log('gesture', JSON.stringify(ges));
 console.log('heights', JSON.stringify(heights));
+console.log('geo    ', JSON.stringify(U46.out.geo));
 for(const [n,R] of [['46 ignore',N46],['46 up',U46],['46 down',D46],['95 ignore',N95],
                     ['95 up',U95],['46 early',E46],['46 late',L46],['95 late',L95]])
   console.log(n.padEnd(10),'n='+R.out.n, JSON.stringify(R.out.enc.slice(0,2)

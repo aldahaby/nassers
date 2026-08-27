@@ -3284,8 +3284,19 @@
       const g=this.game;
       g.camera.shake(0.55); g.time.hitstop(50); this.punch(0.5);
       g.effects.flash(0.14);
+      // SLOW-MO on the break. The manoeuvre is over in 1.15 s at 95 units a second, which is not
+      // enough frames to read anything — it went past as a twitch. A short, eased stretch buys the
+      // animation the screen time it needs, and it costs nothing in fairness because the dodge is
+      // already committed by the time it starts. The camera's cinematic push-in rides on the same
+      // time scale, so the shot tightens on him for exactly as long as the dodge lasts.
+      g.time.requestSlowMo(0.42, 0.55);
       g.effects.burst(new THREE.Vector3(this.pos.x, this.pos.y-d*1.6, this.pos.z-1),
                       new THREE.Color(d>0?0xa8e0ff:0x8ff6dd), 18, 24);
+      // and a second, wider ring of sparks thrown off the way he came, so the break has a direction
+      g.effects.burst(new THREE.Vector3(this.pos.x, this.pos.y-d*3.4, this.pos.z-3),
+                      new THREE.Color(d>0?0x6fc8ff:0x50e8c0), 14, 40);
+      g.effects.ring && g.effects.ring(new THREE.Vector3(this.pos.x, this.pos.y, this.pos.z),
+                      new THREE.Color(d>0?0xa8e0ff:0x8ff6dd), 7);
       g.audio.uiClick&&g.audio.uiClick();
       g.tutorial && g.tutorial.note('evade');
       return true;
@@ -5543,7 +5554,18 @@
       const height=6.5+speedF*1.5 - cine*0.8;
       this.cam.position.z=p.pos.z-dist;
       this.cam.position.x=damp(this.cam.position.x, p.pos.x, 10, realDt);
-      this.cam.position.y=p.pos.y+height;
+      // ---- HEIGHT. This was `p.pos.y+height`, a hard snap with no damping at all, which was fine
+      // while his altitude never changed. The evade moves him 11 m in a fifth of a second, and a
+      // hard-snapped camera teleports with him — the whole city drops out of frame and it reads as
+      // the camera glitching above the map.
+      //
+      // So: follow only PART of the manoeuvre, and glide into it. He then visibly rises out of the
+      // beam or drops under it INSIDE the frame, which is the entire point of the animation, while
+      // the camera keeps the city where the eye expects it.
+      const evOff=p.pos.y-(p.cruiseY||p.pos.y);
+      const wantY=p.pos.y - evOff*(1-0.45) + height;      // 45% of the dodge, no more
+      this._camY = (this._camY===undefined) ? wantY : damp(this._camY, wantY, 7.5, realDt);
+      this.cam.position.y=this._camY;
       this.cam.up.set(0,1,0);                              // never roll
 
       // the punch kicks the FOV out and snaps back — a short widening at the moment of contact
@@ -5552,7 +5574,10 @@
       this.cam.fov=damp(this.cam.fov,fov, cine>0.02?9:(p.surgeActive>0?10:6), realDt); this.cam.updateProjectionMatrix();
 
       // look down-ahead as always; during the shot, ease the aim slightly lower/nearer (same direction)
-      this._look.set(p.pos.x, p.pos.y-1.4 - cine*0.6, p.pos.z+8 - cine*1.2);
+      // The aim carries a little more of the dodge than the camera body does, so he stays framed
+      // and the road tilts under him — you SEE him leave the beam instead of merely being told.
+      this._lookY = (this._lookY===undefined) ? p.pos.y : damp(this._lookY, p.pos.y-evOff*0.30, 9, realDt);
+      this._look.set(p.pos.x, this._lookY-1.4 - cine*0.6, p.pos.z+8 - cine*1.2);
       this.cam.lookAt(this._look);
 
       if(this.shakeAmt>0.001){
@@ -5562,7 +5587,8 @@
       }
     }
     resize(){ this.cam.aspect=innerWidth/innerHeight; this.cam.updateProjectionMatrix(); }
-    reset(){ this.shakeAmt=0; this.cam.position.set(0,20,-20); }
+    reset(){ this.shakeAmt=0; this.cam.position.set(0,20,-20);
+             this._camY=undefined; this._lookY=undefined; }
   }
 
   // ===================================================================================
@@ -5678,39 +5704,99 @@
         const warn =new THREE.MeshStandardMaterial({color:0xff5a2a, emissive:0xff3a10, emissiveIntensity:0.35, roughness:.4});
         const lensM=new THREE.MeshStandardMaterial({color:0xff7a4a, emissive:0xff2a08, emissiveIntensity:0.2, roughness:.14});
 
-        // ---- THE SPIRE. Tall, tapering, ribbed, with fins at the crown — a landmark, not a box.
+        // ---- THE GATE SPIRE. It stands DEAD AHEAD, straddling the street, and you fly through the
+        // opening at its base — it is one of the towers in front of you, not a mast parked off to
+        // one side where you never look. Two splayed legs outside the road carry a header above the
+        // flight corridor, and the supertall rises out of that. The emitter sits on the INNER face
+        // of one leg, at your altitude, and throws the beam clean across the opening.
+        //
+        // LEG at 33 with a base radius of 11 puts the inner face at ~24 at flight height. The
+        // player is hard-clamped to +/-22 (PLAY.xBox), so the opening is always flyable.
+        const LEG=33, OPEN=52, HEAD_T=70;
         const tower=new THREE.Group(); grp.add(tower);
         const put=(g2,m,x,y,z,rx,ry,rz)=>{ const o=new THREE.Mesh(g2,m); o.position.set(x,y,z);
           if(rx)o.rotation.x=rx; if(ry)o.rotation.y=ry; if(rz)o.rotation.z=rz;
           o.castShadow=true; tower.add(o); return o; };
-        const shaft=new THREE.CylinderGeometry(7.5, 13.5, 150, 10);
-        put(shaft, hull, 0, 75, 0);
-        // ribs up the shaft, so the taper reads and the scale is legible
-        for(let k=0;k<9;k++){
-          const y=12+k*15.5, r=13.2-(y/150)*5.6;
+        const bandM=new THREE.MeshStandardMaterial({color:0xff8a5a, emissive:0xff4a18, emissiveIntensity:0.85, roughness:.4});
+        const bands=[];
+        for(const sx of [-1,1]){
+          // the leg: wide at the pavement, drawn in as it rises, so the opening gets wider the
+          // higher you fly — which is also the shape that says "go up" before anything else does
+          put(new THREE.CylinderGeometry(6.0, 9.6, OPEN, 8), hull, sx*LEG, OPEN/2, 0);
+          for(let k=0;k<6;k++){                     // ribs, so the taper reads at distance
+            const y=5+k*9.5, r=9.6-(y/OPEN)*3.6;
+            put(new THREE.CylinderGeometry(r+0.7, r+0.7, 1.4, 8), trim, sx*LEG, y, 0);
+          }
+          for(let k=0;k<4;k++){                     // buttress fins down the outside of each leg
+            const a=k*Math.PI/2+Math.PI/4;
+            const fin=put(new THREE.BoxGeometry(1.5, OPEN-6, 4.4), hull,
+                          sx*LEG+Math.sin(a)*7.1, OPEN/2, Math.cos(a)*7.1);
+            fin.rotation.y=a;
+          }
+          for(let k=0;k<5;k++){                     // lit bands up the legs
+            const y=8+k*10, r=9.8-(y/OPEN)*3.6;
+            bands.push(put(new THREE.CylinderGeometry(r+0.5, r+0.5, 2.0, 8, 1, true), bandM.clone(), sx*LEG, y, 0));
+          }
+          // a raked brace from the top of the leg into the shaft — engineering, and it stops the
+          // silhouette reading as a chimney sitting on a box
+          const br=put(new THREE.BoxGeometry(1.8, LEG*1.5, 3.6), hull, sx*LEG*0.55, OPEN-11, 0);
+          br.rotation.z=sx*0.62;
+        }
+        // the header spanning the road, well above anything he can climb to
+        put(new THREE.BoxGeometry(LEG*2+20, HEAD_T-OPEN, 19), hull, 0, (OPEN+HEAD_T)/2, 0);
+        put(new THREE.BoxGeometry(LEG*2+26, 2.6, 22), trim, 0, OPEN+1.3, 0);
+        put(new THREE.BoxGeometry(LEG*2+26, 2.6, 22), trim, 0, HEAD_T-1.3, 0);
+        for(let k=0;k<7;k++)                        // a lit soffit under the span, over the road
+          bands.push(put(new THREE.BoxGeometry(6.4, 1.3, 16), bandM.clone(), (k-3)*11, OPEN-0.4, 0));
+        // ---- THE FACE. A tower that only reads once its gun lights up is a gantry. This is the eye
+        // you fly at: a big iris dead centre on the span, facing back down the street, that wakes up
+        // over the charge. It never fires — the shot comes from the leg, at your altitude — but it
+        // is what makes the thing ahead of you look alive and aimed at you from 400 m out.
+        const eyeM=new THREE.MeshStandardMaterial({color:0xff7a4a, emissive:0xff2a08, emissiveIntensity:0.2, roughness:.14});
+        const FY=(OPEN+HEAD_T)/2;
+        for(let k=0;k<3;k++){
+          const rr=new THREE.Mesh(new THREE.TorusGeometry(10.5-k*2.2, 1.3-k*0.22, 8, 26), trim);
+          rr.position.set(0, FY, -13.2-k*1.1); tower.add(rr); rr.castShadow=true;
+        }
+        const eye=new THREE.Mesh(new THREE.CircleGeometry(7.0,28), eyeM);
+        eye.rotation.y=Math.PI; eye.position.set(0, FY, -15.6); tower.add(eye);
+        for(let k=0;k<6;k++){                       // lids around it, so it is an eye and not a lamp
+          const a=k*Math.PI/3;
+          const ld=new THREE.Mesh(new THREE.BoxGeometry(0.9, 7.6, 2.2), trim);
+          ld.position.set(Math.sin(a)*8.4, FY+Math.cos(a)*8.4, -14.6);
+          ld.rotation.z=-a; tower.add(ld);
+        }
+
+        // ---- and the supertall out of the header, which is what you actually see from 700 m
+        const SH=170;
+        put(new THREE.CylinderGeometry(5.6, 12.0, SH, 10), hull, 0, HEAD_T+SH/2, 0);
+        for(let k=0;k<10;k++){
+          const y=HEAD_T+8+k*16, r=11.7-((y-HEAD_T)/SH)*6.4;
           put(new THREE.CylinderGeometry(r+0.9, r+0.9, 1.6, 10), trim, 0, y, 0);
         }
         for(let k=0;k<6;k++){                       // vertical buttress fins
           const a=k*Math.PI/3;
-          const fin=put(new THREE.BoxGeometry(1.8, 132, 5.6), hull, Math.sin(a)*10.5, 68, Math.cos(a)*10.5);
+          const fin=put(new THREE.BoxGeometry(1.7, SH-22, 5.0), hull,
+                        Math.sin(a)*8.8, HEAD_T+SH/2, Math.cos(a)*8.8);
           fin.rotation.y=a;
         }
         for(let k=0;k<5;k++){                       // the crown: splayed spikes
           const a=k*Math.PI*2/5;
-          const sp=put(new THREE.ConeGeometry(1.7, 34, 5), trim, Math.sin(a)*5.5, 165, Math.cos(a)*5.5);
+          const sp=put(new THREE.ConeGeometry(1.7, 34, 5), trim,
+                       Math.sin(a)*5.5, HEAD_T+SH+15, Math.cos(a)*5.5);
           sp.rotation.set(Math.cos(a)*0.16, 0, -Math.sin(a)*0.16);
         }
-        put(new THREE.ConeGeometry(3.2, 26, 6), trim, 0, 168, 0);
-        // lit window bands, so a black mast is legible against a dark street from 700 m
-        const bandM=new THREE.MeshStandardMaterial({color:0xff8a5a, emissive:0xff4a18, emissiveIntensity:0.85, roughness:.4});
-        const bands=[];
-        for(let k=0;k<12;k++){
-          const y=10+k*12, r=13.4-(y/150)*5.6;
+        put(new THREE.ConeGeometry(3.2, 26, 6), trim, 0, HEAD_T+SH+18, 0);
+        for(let k=0;k<12;k++){                      // lit window bands up the shaft
+          const y=HEAD_T+6+k*13.5, r=11.9-((y-HEAD_T)/SH)*6.4;
           bands.push(put(new THREE.CylinderGeometry(r+0.5, r+0.5, 2.4, 10, 1, true), bandM.clone(), 0, y, 0));
         }
 
-        // ---- THE EMITTER. A big circular aperture set into the mast, facing across the map.
-        const head=new THREE.Group(); grp.add(head);
+        // ---- THE EMITTER, and everything it throws. All of it lives in ONE group that gets parked
+        // on whichever leg is firing: authored emitting toward -X, then rotated 180 for the other
+        // side. Nothing downstream has to know which leg it is on.
+        const gun=new THREE.Group(); grp.add(gun);
+        const head=new THREE.Group(); gun.add(head);
         const ringM=trim;
         for(let k=0;k<3;k++){
           const rr=new THREE.Mesh(new THREE.TorusGeometry(13-k*2.6, 1.5-k*0.25, 8, 30), ringM);
@@ -5734,27 +5820,42 @@
         const strobes=[];
         for(let k=0;k<5;k++){
           const w=new THREE.Mesh(new THREE.BoxGeometry(0.8,2.0,4.4), warn.clone());
-          w.position.set(-12.6, 30+k*24, 0); grp.add(w); strobes.push(w);
+          w.position.set(-12.6, 30+k*24, 0); gun.add(w); strobes.push(w);
         }
 
         // ---- THE BEAM. It crosses the WHOLE map, so it is long: a white core inside a wide glow,
         // a muzzle flare at the lens and a bloom where it leaves.
         const BL=520;
-        const beamGlow=new THREE.Mesh(new THREE.CylinderGeometry(4.2,4.2,BL,20,1,true),
-          new THREE.MeshBasicMaterial({color:0xff5a3a, transparent:true, opacity:0, depthWrite:false,
+        // Three concentric layers, all ADDITIVE. The core was a plain transparent white cylinder and
+        // it read as a pale peach ribbon against a bright sky — a solid mid-tone can only ever get
+        // dimmer than what is behind it. Additive is what makes something look like it emits light.
+        const halo=new THREE.Mesh(new THREE.CylinderGeometry(5.4,5.4,BL,18,1,true),
+          new THREE.MeshBasicMaterial({color:0xff3200, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
-        beamGlow.rotation.z=Math.PI/2; grp.add(beamGlow);
-        const beamCore=new THREE.Mesh(new THREE.CylinderGeometry(2.1,2.1,BL,16),
-          new THREE.MeshBasicMaterial({color:0xfff4ea, transparent:true, opacity:0, depthWrite:false}));
-        beamCore.rotation.z=Math.PI/2; grp.add(beamCore);
-        const muzzle=new THREE.Mesh(new THREE.ConeGeometry(13,24,20,1,true),
-          new THREE.MeshBasicMaterial({color:0xffc09a, transparent:true, opacity:0, depthWrite:false,
+        halo.rotation.z=Math.PI/2; gun.add(halo);
+        const beamGlow=new THREE.Mesh(new THREE.CylinderGeometry(4.4,4.4,BL,20,1,true),
+          new THREE.MeshBasicMaterial({color:0xff6a10, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
-        muzzle.rotation.z=Math.PI/2; grp.add(muzzle);
+        beamGlow.rotation.z=Math.PI/2; gun.add(beamGlow);
+        const beamCore=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,BL,16,1,true),
+          new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0, depthWrite:false,
+            blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+        beamCore.rotation.z=Math.PI/2; gun.add(beamCore);
+        const muzzle=new THREE.Mesh(new THREE.ConeGeometry(10,22,20,1,true),
+          new THREE.MeshBasicMaterial({color:0xffd8a0, transparent:true, opacity:0, depthWrite:false,
+            blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+        muzzle.rotation.z=Math.PI/2; gun.add(muzzle);
         const sheet=new THREE.Mesh(new THREE.PlaneGeometry(BL,10),
           new THREE.MeshBasicMaterial({color:0xff6a3a, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
-        grp.add(sheet);
+        gun.add(sheet);
+        // THE AIM. The single most useful thing on screen: a thin line across the opening at exactly
+        // the height the beam is about to occupy, lit through the whole wind-up. You are not asked
+        // to guess where it will be — you are shown, and then given a charge to leave that line.
+        const aim=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,118,6,1,true),
+          new THREE.MeshBasicMaterial({color:0xff9a5a, transparent:true, opacity:0, depthWrite:false,
+            blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
+        aim.rotation.z=Math.PI/2; gun.add(aim);
         // OUTRIDERS. One clean cylinder is a laser pointer. The thing this is meant to look like
         // throws a FAN — a few thinner rays splaying off the main one, each at its own tilt, so the
         // shot has width and depth across the sky instead of being a single drawn line.
@@ -5766,7 +5867,7 @@
           r.rotation.z=Math.PI/2;
           r.userData.sp=(k-2.5)*0.016;                 // the splay angle, in radians per unit length
           r.userData.rl=(k%3-1)*0.010;
-          rays.push(r); grp.add(r);
+          rays.push(r); gun.add(r);
         }
         // CRACKLE. Short arcs that live for a couple of frames each and jump somewhere new — the
         // lightning that runs along the beam. Cheap, and it is what stops the shot looking static.
@@ -5775,11 +5876,11 @@
           const a=new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.30,42,5,1,true),
             new THREE.MeshBasicMaterial({color:0xfff0d0, transparent:true, opacity:0,
               depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
-          arcs.push(a); grp.add(a);
+          arcs.push(a); gun.add(a);
         }
 
-        return {grp, tower, head, lens, lensM, blades, conv, strobes, bands,
-                beamGlow, beamCore, muzzle, sheet, rays, arcs, BL, z:0, side:1, live:false};
+        return {grp, tower, gun, head, lens, lensM, blades, conv, strobes, bands, eye, eyeM, aim,
+                halo, beamGlow, beamCore, muzzle, sheet, rays, arcs, BL, LEG, z:0, side:1, live:false};
       };
       for(let i=0;i<2;i++) this.list.push(mk());
       this._light=new THREE.PointLight(0xff6a3a, 0, 320, 2); this._light.visible=false; sc.add(this._light);
@@ -5803,14 +5904,26 @@
       for(let i=0;i<c.blades.length;i++){ c.blades[i].children[0].position.y=4.7; c.blades[i].rotation.x=i*Math.PI/4; }
       for(const w of c.strobes) w.material.emissiveIntensity=0.35;
       for(const cv of c.conv) cv.material.opacity=0;
+      c.eyeM.emissiveIntensity=0.20; c.eyeM.color.setRGB(1,0.48,0.29);
+      c.aim.material.opacity=0;
       for(const b of c.bands) b.material.emissiveIntensity=0.85;
     }
     _beam(c, a, k){
+      // DON'T BLIND THE PLAYER. Additive layers seen from INSIDE saturate to flat white, and the
+      // camera trails him straight past the emitter — on a clean dodge the whole screen used to
+      // blow out at the exact moment he should be watching himself clear the beam. Fade the shot
+      // down as the camera closes on its plane; from any normal viewing distance nothing changes.
+      // Full blast on approach — that is the whole point of it — then ease off as the camera
+      // reaches the beam's own plane, because at point-blank the additive layers saturate to flat
+      // white and swallow the character you are supposed to be watching clear it.
+      const cam=this.game.camera.cam;
+      a *= 0.26 + 0.74*clamp(Math.abs(cam.position.z-c.z)/42, 0, 1);
       const punch=Math.min(1, k*7), w=(0.35+0.65*punch);
-      c.beamGlow.material.opacity=0.55*a; c.beamGlow.scale.set(w,1,w);
-      c.beamCore.material.opacity=0.95*a; c.beamCore.scale.set(w*(0.82+0.36*Math.sin(this.t*70)),1,w);
-      c.muzzle.material.opacity=0.85*a;   c.muzzle.scale.setScalar(0.6+0.7*punch);
-      c.sheet.material.opacity=0.20*a;    c.sheet.scale.set(1,w,1);
+      c.halo.material.opacity    =0.30*a; c.halo.scale.set(w*1.1,1,w*1.1);
+      c.beamGlow.material.opacity=0.85*a; c.beamGlow.scale.set(w,1,w);
+      c.beamCore.material.opacity=1.00*a; c.beamCore.scale.set(w*(0.82+0.36*Math.sin(this.t*70)),1,w);
+      c.muzzle.material.opacity=0.95*a;   c.muzzle.scale.setScalar(0.6+0.9*punch);
+      c.sheet.material.opacity=0.14*a;    c.sheet.scale.set(1,w,1);
       const Y=c.beamGlow.position.y, off=c.beamGlow.position.x;
       for(let i=0;i<c.rays.length;i++){
         const r=c.rays[i], u=r.userData;
@@ -5848,8 +5961,12 @@
           const lead=Math.max(SW.spawnMin, Math.max(20,P.fwdNow||45)*SW.spawnLeadSec);
           c.live=true; c.z=Math.max(this.nextZ, pz+lead); c.side=(Math.random()<0.5?-1:1); c.armed=false;
           c.grp.visible=true;
-          c.grp.position.set(g.city._pathX(c.z) + c.side*(g.city.roadHalf+13), 0, c.z);
-          c.grp.rotation.y = c.side>0 ? 0 : Math.PI;   // the emitter always faces the road
+          // DEAD AHEAD, on the road's own centreline, straddling it. You fly at it and through it.
+          c.grp.position.set(g.city._pathX(c.z), 0, c.z);
+          c.grp.rotation.y = 0;
+          // and the gun sits on one leg or the other, firing across the opening
+          c.gun.position.x = c.side*c.LEG;
+          c.gun.rotation.y = c.side>0 ? 0 : Math.PI;
           this._beam(c,0,0); this._idle(c);
           this.parked=c;
         }
@@ -5866,7 +5983,9 @@
           const Y=SW.beamY, off=-(c0.BL*0.5)-12;
           c0.head.position.y=Y;
           c0.beamGlow.position.set(off,Y,0); c0.beamCore.position.copy(c0.beamGlow.position);
-          c0.muzzle.position.set(-22,Y,0); c0.sheet.position.set(off,Y,0);
+          c0.halo.position.copy(c0.beamGlow.position);
+          c0.muzzle.position.set(-16,Y,0); c0.sheet.position.set(off,Y,0);
+          c0.aim.position.set(-12-59, Y, 0);      // exactly where the beam is going to be
           for(let i=0;i<c0.strobes.length;i++) c0.strobes[i].position.y=Y-40+i*24;
           this._ui(true);
           g.audio.cannonCharge && g.audio.cannonCharge();
@@ -5885,6 +6004,12 @@
         }
         c.lensM.emissiveIntensity=0.2+e*9;
         c.lensM.color.setRGB(1, 0.42-0.26*e, 0.30-0.22*e);
+        // the face wakes up on the same curve, and the aim line firms up as the count runs out
+        c.eyeM.emissiveIntensity=0.2+e*7.5;
+        c.eyeM.color.setRGB(1, 0.48-0.30*e, 0.29-0.21*e);
+        c.eye.scale.setScalar(1+0.10*Math.sin(now*0.012+e*6));
+        c.aim.material.opacity=(0.12+0.42*e)*(0.55+0.45*Math.sin(now*0.018*(1+e*4)));
+        c.aim.scale.set(0.6+1.5*e, 1, 0.6+1.5*e);
         c.head.rotation.x=now*0.004*e;
         for(let i=0;i<c.conv.length;i++){
           const f=(k*1.7+i/3)%1;
@@ -5896,7 +6021,7 @@
         for(const w of c.strobes) w.material.emissiveIntensity=0.35+strobe*e*5;
         for(const b of c.bands) b.material.emissiveIntensity=0.85+e*3.2*strobe;
         this._light.visible=true;
-        this._light.position.set(c.grp.position.x + (c.side>0?-14:14), SW.beamY, c.z);
+        this._light.position.set(c.grp.position.x + c.side*(c.LEG-13), SW.beamY, c.z);
         this._light.intensity=e*12;
         const f=document.getElementById('evade-fill'); if(f) f.style.height=Math.round((1-k)*100)+'%';
         if(k>0.6 && !c._tick){ c._tick=true; g.haptics.fire('drone'); }
@@ -5906,13 +6031,14 @@
           g.audio.cannonFire && g.audio.cannonFire();
           g.haptics.fire('powerBig');
           c._hit=false; c._safe=false; c._entered=false;
-          g.effects.burst(new THREE.Vector3(c.grp.position.x+(c.side>0?-16:16), SW.beamY, c.z),
+          g.effects.burst(new THREE.Vector3(c.grp.position.x + c.side*(c.LEG-15), SW.beamY, c.z),
                           new THREE.Color(0xffb070), 26, 34);
         }
       } else if(this.state==='fire'){
         const k=clamp(this.t/SW.fireSec,0,1), a=Math.pow(Math.sin(Math.min(1,k*1.05)*Math.PI),0.55);
         this._beam(c,a,k);
         c.lensM.emissiveIntensity=9*a;
+        c.eyeM.emissiveIntensity=9*a; c.aim.material.opacity=0;
         this._light.intensity=26*a;
         for(const w of c.strobes) w.material.emissiveIntensity=0.35+5*a;
         // THE HIT. Scored on the way OUT of the slab: a manoeuvre takes time to clear the band, so
@@ -5937,6 +6063,7 @@
           c.blades[i].rotation.x=i*Math.PI/4 + e*0.6;
         }
         c.lensM.emissiveIntensity=0.2+e*3;
+        c.eyeM.emissiveIntensity=0.2+e*3; c.eye.scale.setScalar(1);
         for(const w of c.strobes) w.material.emissiveIntensity=0.35+e*1.6;
         for(const b of c.bands) b.material.emissiveIntensity=0.85+e*1.2;
         for(const cv of c.conv) cv.material.opacity=0;

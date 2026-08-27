@@ -1222,6 +1222,42 @@ rather tap — it calls `player.evade(0)`, which picks whichever direction has t
 inverted for exactly this reason. Any test of a screen-space control must project through the camera
 and check pixels — a world-space assertion passes on an inverted control.
 
+## The camera must not follow him
+
+```js
+this.cam.position.y = p.pos.y + height;      // what it used to be. A hard snap, no damping.
+```
+
+That was fine while his altitude never changed. The evade moves him 11 m in a fifth of a second and
+a hard-snapped camera teleports with him — the city drops out of frame and it reads as **the camera
+glitching above the map**. It also means he never appears to move at all, because the camera is
+pinned to him.
+
+The camera now follows **45% of the manoeuvre, damped**, and the aim carries 30%:
+
+```js
+const evOff = p.pos.y - (p.cruiseY || p.pos.y);
+const wantY = p.pos.y - evOff*(1-0.45) + height;
+this._camY  = damp(this._camY, wantY, 7.5, realDt);
+```
+
+He then visibly rises out of the beam or drops under it *inside the frame*, which is the entire
+point. `scripts/evade.mjs` asserts both halves: the per-frame camera jump stays under 3.2 (it was a
+single-frame teleport of the full 11 m), and his height *relative to the camera's* travels more than
+5 over a climb.
+
+⚠️ Measure that separation as `p.y - cam.y`, never `|p.y - cam.y|`. A climb moves him **toward** the
+camera's height, so the absolute distance shrinks even as he visibly rises up the screen — the first
+version of this check failed on a camera that was working correctly.
+
+## Slow-mo, or you will not see it
+
+At 95 units a second the whole manoeuvre is over in 1.15 s, which is not enough frames to read as
+anything but a twitch. `g.time.requestSlowMo(0.42, 0.55)` on the break buys it screen time, and
+costs nothing in fairness because the dodge is already committed by the time it starts. The camera's
+cinematic push-in rides the same time scale, so the shot tightens on him for exactly as long as the
+dodge lasts.
+
 ## The animation
 
 A climb and a dive are **opposite shapes**, not one shape used twice. Signed by `dir` through the
@@ -1244,14 +1280,56 @@ joints, because a weaker copy of the dive is what "there's no animation for the 
 object, so the whole rig drove nothing — **with no error anywhere**. Procedural models are built
 per-instance through `build(gltf, own)` and are never cloned.
 
-## The tower itself
+## The tower stands DEAD AHEAD, straddling the street
 
-A 150-unit tapering shaft (`CylinderGeometry(7.5, 13.5, 150, 10)`) with nine ribs, six buttress
-fins, five splayed crown spikes and twelve lit window bands. The head carries three torus rings, a
-`CircleGeometry(8.6,32)` lens, an eight-blade iris, three converging rings and five strobes. The
-shot is a 520-long core inside a wider glow, a muzzle cone, a ground sheet, **six splayed outrider
-rays** at their own tilts, and ten short crackle arcs that re-seed themselves as they fade — one
-clean cylinder reads as a laser pointer, a fan reads as a weapon.
+The first version parked it at `_pathX(z) + side*(roadHalf+13)` — 35 m off the centreline, mixed
+into the background skyline, where it read as a mast off to one side you never look at. It is now
+**one of the towers you fly at**: a gate spire on the road's own centreline, straddling it.
+
+```
+LEG 33   the legs, one each side of the road
+OPEN 52  the underside of the span — he tops out at 27 on a climb
+HEAD_T 70 / SH 170   the span, and the supertall out of it
+```
+
+- Two tapering legs (9.6 → 6.0) outside the road with ribs, fins, lit bands and a raked brace into
+  the shaft. `LEG - 9.6 = 23.4` of clear opening against `PLAY.xBox = 22`, so it is always flyable —
+  and `scripts/evade.mjs` asserts that inequality rather than trusting it.
+- A span across the road with a lit soffit, and **a face**: a big iris dead centre, looking back
+  down the street, that wakes up over the charge. It never fires. It is what makes the thing ahead
+  of you look alive and aimed at you from 400 m out — without it the structure reads as a gantry.
+- A 170-unit supertall out of the span, with crown spikes. On a phone the camera is pitched down
+  ~23°, so the top of frame at distance *d* is roughly `camY + d*0.21`: the whole tower reads at
+  spawn, the span and eye read on approach, and you fly under it.
+- The **gun** — head, strobes, beam, rays, arcs, aim line — all live in ONE `gun` group parked on
+  `side*LEG` and rotated 180° for the other leg. It is authored emitting toward −X; nothing
+  downstream has to know which leg it is on.
+
+## The aim line
+
+A thin additive cylinder across the opening at exactly `SW.beamY`, lit through the whole wind-up
+and firming up as the count runs out. You are not asked to guess where the beam will be — you are
+shown, and then given a charge to leave that line. This is the single biggest readability win in
+the encounter.
+
+## The shot
+
+A 520-long white-hot core inside an orange glow inside a wide halo, a muzzle cone at the lens, a
+ground sheet, **six splayed outrider rays** at their own tilts, and ten short crackle arcs that
+re-seed as they fade — one clean cylinder reads as a laser pointer, a fan reads as a weapon.
+
+⚠️ **Every layer must be ADDITIVE.** The core was a plain transparent white cylinder and it read as
+a pale peach ribbon against a bright sky: a solid mid-tone can only ever be *dimmer* than what is
+behind it. Additive is what makes something look like it emits light.
+
+⚠️ **And it must fade at point-blank.** The camera trails him straight past the emitter. Seen from
+inside, additive layers saturate to flat white and swallow the character you are supposed to be
+watching clear the beam — the screen blew out at the exact moment that mattered. The shot is full
+blast on approach and eases to 26% as the camera reaches the beam's own plane:
+
+```js
+a *= 0.26 + 0.74*clamp(Math.abs(cam.position.z-c.z)/42, 0, 1);
+```
 
 ⚠️ **One tower at a time.** Without the `!this.parked` guard a second tower parks while the first is
 still approaching and overwrites the reference — the first never charges and is silently skipped,
@@ -1261,8 +1339,9 @@ which showed up as encounter counts varying 4× between runs.
 node scripts/evade.mjs
 ```
 
-31 checks: gesture semantics, eight encounter scenarios (46/95 speed × ignore/up/down/early/late),
-and the drop floor on all four maps.
+37 checks: gesture semantics, eight encounter scenarios (46/95 speed × ignore/up/down/early/late),
+the drop floor on all four maps, camera stability and in-frame separation, and the spire's geometry
+— on the centreline, gun on a leg, opening wider than the player's box.
 
 ---
 
