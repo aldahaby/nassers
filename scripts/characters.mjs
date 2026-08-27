@@ -79,11 +79,14 @@ for(const ch of CHARS){
         // baseline with idle=0, or the constant flight wobble makes "restores" meaningless
         pose({});
         const a0=parts.armL.rotation.x, l0=parts.legL.rotation.x, h0=parts.headG.rotation.x;
-        pose({tuck:1}); const a1=parts.armL.rotation.x, l1=parts.legL.rotation.x, h1=parts.headG.rotation.x;
+        // the evade is directional now: dir<0 dives (tuck), dir>0 climbs (the opposite shape)
+        pose({tuck:1,dir:-1}); const a1=parts.armL.rotation.x, l1=parts.legL.rotation.x, h1=parts.headG.rotation.x;
+        pose({tuck:1,dir:+1}); const a2=parts.armL.rotation.x, l2=parts.legL.rotation.x, h2=parts.headG.rotation.x;
         pose({lean:1}); const tw=parts.torso.rotation.y;
         pose({});
         rig={ poseIsFn:true, partsLive:inScene(parts.armL)&&inScene(parts.legL),
               tuckArm:+(a1-a0).toFixed(2), tuckLeg:+(l1-l0).toFixed(2), tuckHead:+(h1-h0).toFixed(2),
+              riseArm:+(a2-a0).toFixed(2), riseLeg:+(l2-l0).toFixed(2), riseHead:+(h2-h0).toFixed(2),
               leanTwist:+tw.toFixed(2), restores:Math.abs(parts.armL.rotation.x-a0)<0.01 };
       } else rig={ poseIsFn:typeof pose==='function', partsLive:false };
     }
@@ -131,6 +134,8 @@ for(const ch of CHARS){
   // the ones in the scene, and a full tuck really folds him up.
   const rigOK = !r.rig || (r.rig.poseIsFn && r.rig.partsLive && r.rig.restores
                 && r.rig.tuckArm>1.2 && r.rig.tuckLeg<-1.2 && r.rig.tuckHead>0.5
+                // the climb must be the OPPOSITE shape, not a weaker copy of the dive
+                && r.rig.riseArm<-0.3 && r.rig.riseLeg>0.2 && r.rig.riseHead<-0.2
                 && Math.abs(r.rig.leanTwist)>0.05);
   const ok = r.meshes>0 && r.clothVerts>0 && r.pctCloth<60 && r.portrait===true
              && r.hiddenAtMenu && r.shownInPlay && r.powers===4

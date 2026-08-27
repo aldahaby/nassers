@@ -24,14 +24,14 @@ const browser = await chromium.launch({
   executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args:['--use-gl=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
 
-const run = async (mode, seen)=>{
+const run = async (scheme, seen)=>{
   const pg = await browser.newPage({viewport:{width:412,height:892},deviceScaleFactor:1});
   const errs=[]; pg.on('pageerror', e=>errs.push(e.message));
-  await pg.addInitScript(([m,sn])=>{ try{
+  await pg.addInitScript(([sc,sn])=>{ try{
     localStorage.setItem('invrun_char','forged'); localStorage.setItem('invrun_map','nyc');
-    localStorage.setItem('invrun_mode',m);
+    localStorage.setItem('invrun_scheme',sc);
     if(sn) localStorage.setItem('invrun_tut','1'); else localStorage.removeItem('invrun_tut');
-  }catch(e){} }, [mode, seen]);
+  }catch(e){} }, [scheme, seen]);
   await pg.goto(`http://127.0.0.1:${port}/game.html`,{waitUntil:'load'});
   await pg.waitForFunction('!!window.__game',{timeout:200000});
   await pg.waitForTimeout(1800);
@@ -47,7 +47,9 @@ const run = async (mode, seen)=>{
     G.impact.smash=()=>{};
     G.run.startRun();
     o.opens=vis(); o.stepsTotal=T.steps.length; o.title0=document.getElementById('tut-title').textContent;
-    o.hasSwipeStep=T.steps.some(s=>/RAIL CANNON/.test(s.t));
+    o.hasCannonStep=T.steps.some(s=>/RAIL CANNON/.test(s.t));
+    o.steerHint=(T.steps[1]||{}).h;
+    o.steerFocus=(T.steps[1]||{}).focus||null;
 
     // step 1 waits for a smash and nothing else
     step(120); o.stuckWithoutSmash = (T.i===0);
@@ -76,9 +78,9 @@ const run = async (mode, seen)=>{
   return {r, errs};
 };
 
-const A = await run('free', false);
-const B = await run('swipe', false);
-const C = await run('free', true);
+const A = await run('stick', false);
+const B = await run('drag',  false);
+const C = await run('stick', true);
 
 const skip = await (async ()=>{
   const pg = await browser.newPage({viewport:{width:412,height:892}});
@@ -107,13 +109,14 @@ const checks = [
   ['it records that it was seen',             A.r.persisted && B.r.persisted],
   ['it never repeats on the next run',        A.r.repeats===false && B.r.repeats===false],
   ['Settings can replay it',                  A.r.replays!==false],
-  ['swipe mode adds the rail-cannon step',    B.r.hasSwipeStep && !A.r.hasSwipeStep],
+  ['the rail-cannon step is always taught',   A.r.hasCannonStep && B.r.hasCannonStep],
+  ['the steer step matches the scheme',       A.r.steerFocus==='#joy-base' && B.r.steerFocus===null],
   ['SKIP ends it and records it',             skip.before && !skip.after && skip.persisted],
   ['no page errors',                          A.errs.length===0 && B.errs.length===0 && C.errs.length===0],
 ];
 const failed = checks.filter(c=>!c[1]).map(c=>c[0]);
-console.log('free ', JSON.stringify(A.r));
-console.log('swipe', JSON.stringify(B.r));
+console.log('stick', JSON.stringify(A.r));
+console.log('drag ', JSON.stringify(B.r));
 console.log('seen ', JSON.stringify(C.r), 'skip', JSON.stringify(skip));
 console.log('\n' + (failed.length ? 'FAIL — ' + failed.join('; ') : 'TUTORIAL OK'));
 await browser.close(); srv.close();

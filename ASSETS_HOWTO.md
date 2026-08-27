@@ -799,9 +799,14 @@ speed**, so the faster you go the harder the air pushes and the tighter the ripp
 
 Nineteen villains. Nine are GLB models; ten are built from code.
 
+**The code-geometry line is the main lineup.** `DEFAULT_CHAR` is `dominus_f`, the villain sheet
+lists the procedural roster first, and the GLB imports come below it under *Imported models* with
+their names suffixed "· Imported". `DEFAULT_CHAR` is declared **above** the FORGED registration —
+it is read during registration, so a `const` declared after it is in the temporal dead zone.
+
 | Key | Name | Source |
 |---|---|---|
-| `dominus` | Dominus | GLB |
+| `dominus` | Dominus · Imported | GLB |
 | `frutiger` | Frutiger Villain | GLB |
 | `knight` | Evil Knight | GLB |
 | `patriot` | The Patriot | GLB |
@@ -1092,6 +1097,27 @@ three consecutive windows under 14.5 ms (~69 fps). Steps are
 
 ## Measuring it
 
+## Baking the procedural villains
+
+Detail costs draw calls. A villain built out of 130 little meshes is 130 of them every frame, which
+is what capped how much face and hand you could afford. `bake(group, skip)` collapses everything
+that never moves relative to its parent into **one mesh per material** inside that parent — the
+parent group is still the thing the rig rotates, so the animation is untouched.
+
+Applied to the hand group, the face-detail group, each arm (skipping the hand) and each leg. The
+result: **131 meshes → 53**, while *adding* fingers, nails, knuckle joints, tendons, eyelids, lips,
+nostrils, ears and creases.
+
+⚠️ **Keep the index.** `mergeGeometries` needs every input to agree on whether it has one. Dropping
+to non-indexed to be safe tripled the vertex count for an identical silhouette — a baked villain
+went 15k → 53k verts for no visible gain. Only fall back to non-indexed if something in the group
+genuinely has no index.
+
+⚠️ **Never bake cloth.** The cape/wing shader detects cloth from the geometry and adds `aFlow` /
+`aFlowD` attributes to it. Merge a wing into a solid and the detection stops firing — it stops
+moving, silently. The bake is scoped to groups that are unambiguously solid; `torso`, `cape` and
+anything from the `mk*` helpers stay out of it.
+
 `renderer.info.render.calls` is the number that matters, and it moves with where you are in the
 run — sample it a few seconds in, on the same map, before and after. Counting *visible meshes* by
 walking the scene tells you where the calls are coming from; attributing each mesh to the pool that
@@ -1099,283 +1125,144 @@ owns it (`city.buildings`, `pickups.coins`, `city.props`, …) tells you what to
 
 ---
 
-# PART 9 — Swipe mode
+# PART 9 — The rail cannon and the vertical evade
 
-A second way to play, picked in the menu, and a **branch through the existing systems** rather than
-a second game: every map, villain, power and mission works in both. `game.mode` is `'free'` or
-`'swipe'`, persisted in `invrun_mode`.
+There was briefly a second *mode* — three lanes, flick to switch. It is gone, and the whole of it
+went with it: `game.mode`, `invrun_mode`, the mode picker, the lane dividers, the lane runner. What
+survived is the part that was worth keeping — **the hazard** — and it is now part of the ordinary
+game, on every map, in both control schemes.
 
-## The gesture contract
+## What it is
 
-One finger-down to finger-up is **exactly one command**, whatever happens in between. Both ways of
-getting this wrong shipped at least once:
+A **vertical spire** at the kerb that locks onto your altitude and fires a beam **straight across
+the street** at exactly the height you were flying. It is not a gantry, it does not come in from the
+side, and there is nowhere lateral to go: the beam spans the whole road. The only way past it is to
+**leave that height** — climb over it or dive under it — for as long as it is lit.
 
-| Wrong | What it feels like |
-|---|---|
-| decide on `touchend` | the whole duration of your gesture is added to the response — mud |
-| re-arm the anchor on `touchmove` | one long drag becomes a stream of lane changes — a drag control wearing a swipe's clothes |
+```
+SW.chargeSec 1.90   the wind-up you get to react to
+SW.fireLead  0.24   fire this long BEFORE he arrives, never in his face
+SW.fireSec   0.80   how long the beam stays lit
+SW.beamHalf  3.6    half-height of the lethal band around the beam
+SW.beamDepth 9.5    half-depth of the slab, along the road
+SW.evadeRise 11.0 / SW.evadeDrop 9.0 / SW.floorClear 2.2
+```
 
-What works: **decide early, on move, the instant the finger crosses the threshold — then LOCK the
-gesture until the finger lifts.** Instant response, one command per swipe. A quick wrist that lifts
-before crossing still counts, judged on velocity. The axis is whichever displacement is larger, so a
-diagonal does what you meant, and **down is EVADE** — a lane runner's dodge is a swipe, not a button.
+## Charging on TIME, not on distance
 
-## The motion curve is the other half — and it is a TWEEN, not a spring
-
-A spring is tunable by feel and impossible to tune by number: its duration depends on how far it has
-to go *and* on whatever velocity it is carrying, so a lane change made mid-move lands at a different
-time from one made from rest. A tween gives the same curve and the same duration every time, which
-is the thing that actually reads as polish.
+The tower begins its charge when the player is **one charge away in seconds**, not at a fixed
+distance:
 
 ```js
-laneDur:0.22,   laneBack:1.35        // easeOutBack: hard out, soft in, ~7% overshoot
-const x1=t-1, e = 1 + (bk+1)*x1*x1*x1 + bk*x1*x1;
-pos.x = rc + from + (to-from)*e;
+const eta=(c0.z-pz)/Math.max(14, P.fwdNow||45);
+if(eta<=SW.chargeSec+SW.fireLead){ …begin the charge, and LOCK the altitude… }
 ```
 
-Retargeting mid-move is the edge case a spring handles worst: `from` becomes wherever he actually is
-right now, so a re-swipe never jumps and never inherits stale velocity.
+Charging on a timer from spawn is what produced *"I got hit by something I never saw"* — the tower
+was up to 560 m ahead and fired into an empty street. ETA makes the warning the same length at 46
+and at 95 units/second, which is the only way a reaction window can be fair at both.
 
-**The four numbers that are the entire feel:** `laneDur` (door to door), `laneBack` (overshoot),
-`laneLean` (body roll), `swipePx` (commit threshold).
+⚠️ **Spawn distance must be a time too.** The gap between towers is in metres, and the player eats
+most of it *during* the previous encounter — at high speed the next tower used to pop in ~230 m out
+and start charging almost immediately. `c.z` is now pushed to whichever is further, the scheduled
+slot or `speed × SW.spawnLeadSec`, so there is always a beat of idle, visible tower first.
 
-| Measured | |
-|---|---|
-| duration | 11 frames, **0.18 s** |
-| overshoot | 6.6%, both directions |
-| progress at 100 ms | 102% |
-| body roll | 27° / 28°, symmetric within 1° |
-
-## The old spring, for reference
-
-The gesture can be perfect and it will still feel stiff if the villain slides to the lane on rails.
-A **critically damped spring never overshoots**, and that is exactly what reads as mechanical. A
-phone home screen — and every good lane runner — uses a slightly **under-damped** spring: it
-arrives, tips a few percent past the mark, and settles.
+## Locking the altitude at charge start
 
 ```js
-laneOmega:23.0, laneZeta:0.56    // ~8% overshoot, settled in ~0.24s
-// semi-implicit Euler: velocity first, then position. Explicit Euler on a spring this stiff drifts.
-this.vel.x += (-k*(this.pos.x-target) - 2*zeta*om*this.vel.x)*dt;
-this.pos.x += this.vel.x*dt;
+SW.beamY = P.pos.y;    // the shot is aimed where he IS, not where he ends up
 ```
 
-And he **leans**: 24° of body roll driven by his own speed across the road, so it is exactly
-symmetric left and right and cannot desync from the motion. Swipe mode only — free flight
-deliberately does not roll, because an asymmetric mesh can never look identical banking left and
-right when the bank is *held*.
+Aiming continuously would make the evade impossible — the beam would follow him up. Locking at the
+start of the charge is what turns it into a real commitment: the moment the tower lights up, the
+height that kills you is decided, and you have `chargeSec` to leave it.
 
-Measured, and asserted, in `scripts/swipe-feel.mjs`:
-
-| | |
-|---|---|
-| overshoot | 8.2% right / 8.8% left |
-| settle | 14–15 frames (~0.24 s) |
-| progress at 100 ms | 100% |
-| body roll | 24° / 25°, symmetric within 1° |
-
-And `scripts/swipe-feel.mjs` also drives the evade both ways in — a swipe down and a real press on
-the on-screen button — and asserts the **body** folds: shoulder +1.8 rad, hip −1.9 rad, chin +0.9
-rad, a full 360° roll, and a return to the flight pose.
-
-## Latency is the whole feel
-
-The step fires on **touchmove**, the instant the finger crosses the threshold — **not** on release.
-Waiting for the lift adds the entire duration of the gesture to the response, which is what made
-the first version feel like mud next to a phone home screen. The anchor then re-arms where the
-threshold was crossed, so one long drag across the glass steps lane after lane.
-
-A short fast flick that lifts before crossing the threshold still counts, judged on **velocity** —
-that is the difference between a control that respects a quick wrist and one that makes you draw
-the whole distance.
-
-⚠️ **World +X is screen LEFT under this camera.** Swipe shipped inverted for exactly the same reason
-drag did. `scripts/swipe-mode.mjs` now projects him through the camera and checks the pixels, as a
-fresh transient in each direction — the chase camera tracks his x, so a few tenths later the sign
-has washed out.
-
-## A flick is a step, not a push
-
-The lane is an **integer** in `[-1,1]`, and a flick changes it. He leaves for the next lane and
-arrives there; nothing done mid-flight changes where he is going. That commitment is the whole feel
-of a swipe runner — a continuous position would just be the drag control with extra steps.
-
-Flick detection lives in `InputSystem` on its own touch id, so it works whichever control scheme is
-selected, and it is **consumed** by the reader (`consumeLane()`) so a flick can never be counted
-twice or dropped between frames.
-
-## The geometry has to be built for it
-
-| | |
-|---|---|
-| `SW.laneX` | 9.2 m between lane centres |
-| Targets | sit exactly **on** a lane and **fill** it — a tower narrower than its lane means landing in the right lane and still missing |
-| Next target | at most **one lane away**, so a single flick always reaches it |
-| Armored gates | span **all three lanes** |
-
-That last one is not a detail. A gate you can dodge by changing lane makes powers optional, and the
-whole power mechanic becomes decorative.
-
-## The laser tower
-
-Swipe mode's hazard, and it is a **building** — not a gantry. A black tower at the kerb with a
-cantilevered emitter reaching out over the road: an iris of six blades that rotates open, a lens
-that spins up, three energy rings sweeping *inward* into it, warning strobes up the face, and then
-a beam straight across the street at flight height, into the far side, where it splashes.
-
-```
-parked, dormant, ~600 m out
-  -> charge (1.85s, warning + EVADE)   begun when he is ONE CHARGE away, in TIME
-  -> fire   (0.75s)                    the beam is live as he arrives at it
-  -> cool   (0.55s)                    the iris closes again
-```
-
-`cool` matters: a weapon that just stops looks broken.
-
-### One tower at a time
-
-Without a `!this.parked` guard, a second tower parks while the first is still approaching and
-**overwrites the reference** — the first never charges, never fires, and is silently skipped. With
-only two pool slots that starves the pool as well. It is why encounter counts over an identical run
-varied by four times.
-
-### The beam is already lying across the street when he arrives
-
-Firing exactly on arrival put him at the *centre* of the lethal slab the moment it went live, so a
-press made then had only half a slab to get under — a coin flip at top speed. `SW.fireLead` lands
-the shot 0.24 s early. It also simply looks better: you fly **into** a beam you can see.
-
-### Charging is triggered by arrival TIME, not by spawn
-
-This is the bug that made the whole mechanic feel broken. The tower used to charge on a timer from
-the moment it spawned — up to 560 m ahead — so it **fired into an empty street long before the
-player got there**. From the cockpit that is "attacked by something I never saw": the beam had been
-and gone. The charge now begins when `(tower.z - player.z) / speed <= chargeSec`, so the warning is
-**the same 1.85 s at every speed** and the beam goes live exactly as he arrives.
-
-### Two fairness rules, both learned the hard way
-
-- **Score the hit on the way OUT of the slab, not on the way in.** A dive takes time to reach depth,
-  so entry is the one instant at which the answer is always "not yet" — latching there steals every
-  last-instant save. He is hit only if he was *never* under the beam while crossing it.
-- **Hold the dive while a beam is charging or live nearby.** Pressed the moment the warning
-  appeared, a 1.05 s dodge ended before the 1.85 s charge did and he stood up into the beam. Now he
-  times the climb himself. The roll runs off its own monotonic timer, or holding the dive would
-  rewind it.
-
-The dive also reaches depth in ~0.08 s (`damp` rate 34). At top speed the lethal slab takes only
-0.2 s to cross, so a press made *at* the beam still has to get him under it — otherwise evading
-quietly stops working in the fastest part of the run.
-
-`scripts/laser-tower.mjs` runs seven scenarios — two speeds × ignore / evade / last-instant, plus
-earliest-possible — and asserts that ignoring it always costs you and evading it never does.
-
-Three placement lessons, all learned by rendering it:
-
-- **The emitter has to reach over the road.** The tower body must stand clear of the play box, and
-  at that distance an aperture flush to its face sits outside the camera's 34° half-angle — you get
-  shot by something you never saw. Hence the cantilever arm.
-- **The tower needs lit panels.** A black slab against a dark street is invisible at 120 m, which is
-  exactly the distance at which you need to notice it.
-- **A wide additive halo washes the screen.** The first beam had an 84×26 sheet lying *flat* on the
-  road; over the whole street it read as orange fog, not as a laser. A beam reads from a hard edge,
-  so the halo stays tight and upright and the core stays bright.
-
-## The dive must never go through the floor
-
-Maps fly at very different heights — Tokyo 16, the Metro tunnel 7.5, the Backrooms corridor 4.2 — so
-a dive measured in absolute metres puts him **underground** on half of them: out of frame and out of
-the game. Both the dive and the beam derive from the cruise height instead:
+## Scoring the hit on the way OUT
 
 ```js
-duckDrop()   = min(SW.duckMax, cruiseY - SW.floorClear)   // never within 2.2 m of the deck
-beamHeight() = cruiseY + SW.beamRise                       // the beam sits ABOVE his flight line
+if(inSlab && Math.abs(P.pos.y-SW.beamY) > SW.beamHalf) c._safe=true;
 ```
 
-| Map | cruise | beam | dives to |
-|---|---|---|---|
-| Tokyo / Aero | 16 | 18.6 | 9.5 |
-| Metro | 7.5 | 10.1 | 2.2 |
-| Backrooms | 4.2 | 6.8 | 2.2 |
+The first version latched the hit on slab **entry**, which stole every last-instant save — the dive
+was still in the air when the verdict was already recorded. Score on exit and a save that lands one
+frame before the far edge still counts, which is exactly the save a player will insist they made.
 
-Clearance is checked against `duckDrop()*0.55`, not an absolute metre count, or the threshold is
-unreachable on a low-ceilinged map.
+## Holding the manoeuvre
 
-## Three lanes have to LOOK like three lanes
+`SW.evadeDur` is 1.15 s and the charge is 1.90 s, so the *earliest* possible press used to end
+before the beam even lit. The manoeuvre is therefore **held** at full clearance while a beam is
+charging or live nearby, and only returns once the street is clear. Both the earliest and the
+last-instant press now work, and `scripts/evade.mjs` asserts both.
 
-Two dashed dividers laid on the tarmac, following the same curve as the road, swipe mode only.
-
-⚠️ This shipped once **invisible**: the ribbon winds the same way as the road ribbons, whose normals
-point *down*, and unlike them it did not set `side: DoubleSide` — so it was back-face culled. Present
-in the scene, correct geometry, `visible: true`, and **zero draw calls**. `scripts/swipe-mode.mjs`
-now counts draw calls with the markings on and off, because "visible" is not the same as "drawn".
-
-(While chasing that: a probe that stubs `renderer.render` cannot then measure `info.render.calls` —
-capture the real one first, or every count is stale.)
-
-## The rig — the villain is not a statue
-
-The single biggest reason movement reads as unnatural is that **nothing about the body moves**. A
-statue that slides sideways and rotates is a prop being dragged around; a real runner's body does
-the moving and the translation is a consequence.
-
-`buildProceduralVillain` exposes one API for it, and the game drives it every frame:
+## Never through the floor
 
 ```js
-root.userData.pose({ idle, lean, tuck, speed })
+riseRoom() = SW.evadeRise
+dropRoom() = min(SW.evadeDrop, max(1.0, cruiseY - SW.floorClear))
 ```
 
-| | |
-|---|---|
-| `idle` | game seconds — arms and legs never stop moving |
-| `lean` | −1..1, the lane change: torso twists, arms counter-swing, legs splay |
-| `tuck` | 0..1, the evade: knees to the chest, elbows to the ribs, chin down |
-| `flare` | 0..1, the snap OUT of the tuck — limbs fling wide on the recovery |
-| `speed` | scales how hard the air pushes |
+A fixed drop put him underground on Metro (cruise 7.5) and Backrooms (cruise 4.2). Both the dive
+and the beam derive from `cruiseY`, so no map dives below `SW.floorClear`. Asserted per map.
 
-Two things worth not repeating:
+## The gesture
 
-- ⚠️ **`Object3D.clone()` runs `userData` through `JSON.parse(JSON.stringify(...))`.** That silently
-  deletes every function on it and turns `Object3D` references into plain `{}`. The rig existed and
-  drove *nothing*, with no error anywhere — `userData.pose` was simply gone. A procedural villain is
-  built fresh for one player and must not be cloned; only GLB scenes (shared with the loader cache)
-  need it.
-- **Idle motion runs on GAME time, not `performance.now()`.** Wall time keeps running while the game
-  is paused, and does not exist at all under a fixed-step test driver.
+Vertical only. It commits **during** `touchmove`, not on lift:
 
-GLB villains are single skinned meshes with no rig to fold, so they also get a **squash**: the model
-compresses along its own flight axis through the tuck. Without it their evade is a drop and a spin
-with a rigid body in the middle of it.
+```js
+Math.abs(dy) >= SW.swipePx && Math.abs(dy) > Math.abs(dx)*1.25
+```
 
-## EVADE is a manoeuvre, not a lift shaft
+then locks until the finger lifts, so one long drag is still exactly one command. A quick wrist that
+lifts early is caught by the velocity fallback on `touchend` (`SW.flickPx` / `SW.flickVel`).
+Sideways falls straight through to the drag control; diagonals pick the dominant axis; gestures that
+start on a button are ignored. There is also an on-screen **EVADE** button for anyone who would
+rather tap — it calls `player.evade(0)`, which picks whichever direction has the room.
 
-Three phases over `SW.duckTime`:
+⚠️ **World +X is screen LEFT under this camera.** Both the drag control and the old swipe shipped
+inverted for exactly this reason. Any test of a screen-space control must project through the camera
+and check pixels — a world-space assertion passes on an inverted control.
 
-| | |
-|---|---|
-| **TUCK** 0.00–0.20 | drops fast, pitches nose-up, like braking under the beam |
-| **ROLL** 0.20–0.72 | a complete barrel roll, held at the low point |
-| **RISE** 0.72–1.00 | back to cruise, roll easing out |
+## The animation
 
-The height curve and the roll are **separate on purpose**: the height is what the hit test reads,
-the roll is what sells it, and neither should be able to break the other.
-`pos.y = cruiseY - duck*SW.duckDrop`, and the beam test reads `pos.y` — an animation-only duck would
-look like a dodge and still take the hit. Pressing again mid-dodge is ignored rather than stacked,
-so mashing cannot park him underground.
+A climb and a dive are **opposite shapes**, not one shape used twice. Signed by `dir` through the
+pose rig:
 
-## Testing it
+| joint | climb (`dir +1`) | dive (`dir −1`) |
+|---|---|---|
+| arms | sweep **down and back**, −0.64 | elbows **into the ribs**, +1.76 |
+| legs | snap **straight and trail**, +0.46 | knees **to the chest**, −1.95 |
+| head | chin **up**, −0.44 | chin **down**, +0.86 |
+| spine | arches **back**, −0.30 | folds **forward**, +0.22 |
+
+Three phases — BREAK (0–0.16), CLEAR (0.16–0.66), RETURN (0.66–1.0) — plus a full 360° roll signed
+by the direction, a pitch, camera shake, a hitstop, a flash and a burst of particles thrown off the
+side he left. `scripts/characters.mjs` asserts the two shapes are genuinely opposite on all four
+joints, because a weaker copy of the dive is what "there's no animation for the evade" actually was.
+
+⚠️ **`Object3D.clone()` JSON round-trips `userData`.** It silently deletes functions and turns
+`Object3D` references into `{}`. That deleted `userData.pose` and turned `parts.armL` into a plain
+object, so the whole rig drove nothing — **with no error anywhere**. Procedural models are built
+per-instance through `build(gltf, own)` and are never cloned.
+
+## The tower itself
+
+A 150-unit tapering shaft (`CylinderGeometry(7.5, 13.5, 150, 10)`) with nine ribs, six buttress
+fins, five splayed crown spikes and twelve lit window bands. The head carries three torus rings, a
+`CircleGeometry(8.6,32)` lens, an eight-blade iris, three converging rings and five strobes. The
+shot is a 520-long core inside a wider glow, a muzzle cone, a ground sheet, **six splayed outrider
+rays** at their own tilts, and ten short crackle arcs that re-seed themselves as they fade — one
+clean cylinder reads as a laser pointer, a fan reads as a weapon.
+
+⚠️ **One tower at a time.** Without the `!this.parked` guard a second tower parks while the first is
+still approaching and overwrites the reference — the first never charges and is silently skipped,
+which showed up as encounter counts varying 4× between runs.
 
 ```bash
-node scripts/swipe-mode.mjs
+node scripts/evade.mjs
 ```
 
-It checks both halves: that swipe behaves like a swipe runner **and** that free flight is untouched
-— a flick is never even consumed there, the stick still steers continuously, its towers are not
-lane-quantised, and no rail cannon exists.
-
-⚠️ `_pathX` scales the road's lateral swing by `difficulty.level`, so a tower placed at one
-amplitude and measured at another reads as off-lane through no fault of the placement. Freeze
-`difficulty.update` in any test that measures lane alignment.
+31 checks: gesture semantics, eight encounter scenarios (46/95 speed × ignore/up/down/early/late),
+and the drop floor on all four maps.
 
 ---
 
@@ -1390,8 +1277,8 @@ timer.
   focus:'#btn-power', done:()=>this.count.power>=1 }
 ```
 
-- Steps are built **per run**, so they name the actual control scheme and mode — swipe mode gets a
-  rail-cannon step, free flight does not, and the steer step reads "flick" or "drag" or "stick".
+- Steps are built **per run**, so they name the actual control scheme — the steer step reads "drag"
+  or "stick" and focuses `#joy-base` only when the stick is actually on screen.
 - `focus` lights the control the step is about, which beats a pointing hand.
 - Progress comes from `note(kind)` calls placed at the real events — a smash, a lane change, a power
   fired, an evade — not from polling.
