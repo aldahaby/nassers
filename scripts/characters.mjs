@@ -134,8 +134,15 @@ for(const ch of CHARS){
   // the ones in the scene, and a full tuck really folds him up.
   const rigOK = !r.rig || (r.rig.poseIsFn && r.rig.partsLive && r.rig.restores
                 && r.rig.tuckArm>1.2 && r.rig.tuckLeg<-1.2 && r.rig.tuckHead>0.5
-                // the climb must be the OPPOSITE shape, not a weaker copy of the dive
-                && r.rig.riseArm<-0.3 && r.rig.riseLeg>0.2 && r.rig.riseHead<-0.2
+                // The climb must be the OPPOSITE shape, not a weaker copy of the dive: every joint
+                // moves the other way. Magnitude is deliberately NOT matched per joint — the pose
+                // is asymmetric (he leads with one shoulder), so the arm this samples travels less
+                // on a climb than the one on the far side, and pinning a number here would forbid
+                // exactly the asymmetry that makes it read as a person rather than a gymnast.
+                && Math.sign(r.rig.riseArm)===-Math.sign(r.rig.tuckArm)
+                && Math.sign(r.rig.riseLeg)===-Math.sign(r.rig.tuckLeg)
+                && Math.sign(r.rig.riseHead)===-Math.sign(r.rig.tuckHead)
+                && (Math.abs(r.rig.riseLeg)+Math.abs(r.rig.riseHead)+Math.abs(r.rig.riseArm))>1.0
                 && Math.abs(r.rig.leanTwist)>0.05);
   const ok = r.meshes>0 && r.clothVerts>0 && r.pctCloth<60 && r.portrait===true
              && r.hiddenAtMenu && r.shownInPlay && r.powers===4

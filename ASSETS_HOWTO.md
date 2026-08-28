@@ -1215,12 +1215,55 @@ Math.abs(dy) >= SW.swipePx && Math.abs(dy) > Math.abs(dx)*1.25
 then locks until the finger lifts, so one long drag is still exactly one command. A quick wrist that
 lifts early is caught by the velocity fallback on `touchend` (`SW.flickPx` / `SW.flickVel`).
 Sideways falls straight through to the drag control; diagonals pick the dominant axis; gestures that
-start on a button are ignored. There is also an on-screen **EVADE** button for anyone who would
-rather tap — it calls `player.evade(0)`, which picks whichever direction has the room.
+start on a button are ignored.
+
+Thresholds are `swipePx 34 / flickPx 22 / flickVel 0.50`. They started at 22/10/0.42, which fired on
+a 16-pixel twitch and made the evade feel hair-triggered while you were steering.
+
+## The EVADE button is for the JOYSTICK only
+
+On drag you swipe, and a button that only duplicates a gesture you already have is dead space over
+the playfield. On the stick your thumb is already committed bottom-left, so a button is the only
+workable answer and it stays. `_ui()` gates it on `input.scheme==='stick'`; the tutorial's rail-cannon
+step follows the same branch for its hint and its focus ring.
+
+`player.evade(0)` — what the button sends — picks whichever side is **open**, consulting the plate
+first and the available room second.
 
 ⚠️ **World +X is screen LEFT under this camera.** Both the drag control and the old swipe shipped
 inverted for exactly this reason. Any test of a screen-space control must project through the camera
 and check pixels — a world-space assertion passes on an inverted control.
+
+## The plate — sometimes one answer is welded shut
+
+`SW.barOn` is `+1` (the TOP is plated, so dive), `-1` (the BOTTOM is plated, so climb) or `0`
+(either works). It is decided **at charge start**, so the barrier is on screen for the entire
+warning and can never appear after you have committed. A heavy hazard-chevroned slab spans the
+whole opening between the legs, with lamps that strobe on the same count-in as the gun.
+
+Two rules, in order, and between them an unfair encounter is impossible:
+
+1. **An answer with no room is plated shut.** `canRise()` / `canDrop()` ask whether that direction
+   clears `beamHalf + barMargin` on *this* map. On Backrooms the deck is 2 m under the cruise line,
+   so a dive there cannot clear the beam — and the game therefore never asks for one. This is the
+   exact shape of the cheap death the barrier system was built to make impossible, and the barrier
+   turned out to be the fix for it as well as a feature.
+2. **Never plate the side he is already moving toward, and never plate both.**
+
+⚠️ **A swipe into the plate is REFUSED, not spent.** `evade()` returns false, bounces him off it
+with a jolt and a shake, and stays available — swipe the other way and it still works. Being locked
+into a losing animation because you read it wrong under pressure is the definition of a cheap death.
+The soak test deliberately swipes the wrong way first on 35% of encounters and asserts nobody dies.
+
+The plate is also enforced **physically**, as belt and braces on top of `evade()` refusing the
+direction: `pos.y` is hard-clamped out of the plated corridor, under any tunnel roof, and above the
+deck, every frame, whatever the manoeuvre is doing.
+
+## No double-binds
+
+An armored gate has to be shot open with a power; a beam has to be evaded. Both in the same stretch
+of road is a fight you can lose without making a mistake, so **if a gate is within `beamDepth + 46`
+of a tower, the tower stands down** and recycles itself. Asserted over whole runs, not sampled.
 
 ## The camera must not follow him
 
@@ -1233,22 +1276,44 @@ a hard-snapped camera teleports with him — the city drops out of frame and it 
 glitching above the map**. It also means he never appears to move at all, because the camera is
 pinned to him.
 
-The camera now follows **45% of the manoeuvre, damped**, and the aim carries 30%:
+The camera now follows **35% of the manoeuvre, damped and capped**:
 
 ```js
 const evOff = p.pos.y - (p.cruiseY || p.pos.y);
-const wantY = p.pos.y - evOff*(1-0.45) + height;
+const wantY = clamp(cruise + evOff*0.35, cruise-3.6, cruise+2.8) + height;
 this._camY  = damp(this._camY, wantY, 7.5, realDt);
 ```
 
 He then visibly rises out of the beam or drops under it *inside the frame*, which is the entire
 point. `scripts/evade.mjs` asserts both halves: the per-frame camera jump stays under 3.2 (it was a
-single-frame teleport of the full 11 m), and his height *relative to the camera's* travels more than
-5 over a climb.
+single-frame teleport of the full manoeuvre), and his height *relative to the camera's* travels more
+than 3.6 over a climb.
 
 ⚠️ Measure that separation as `p.y - cam.y`, never `|p.y - cam.y|`. A climb moves him **toward** the
 camera's height, so the absolute distance shrinks even as he visibly rises up the screen — the first
 version of this check failed on a camera that was working correctly.
+
+## You cannot see out of the map, by construction
+
+Altitude was never the real culprit. **It is the PITCH that decides how much sky and empty ground
+come into frame**, and the aim used to chase his actual height: on a climb it rose with him, the
+camera tilted up, and the horizon came over the rooftops.
+
+At cruise the camera sits `height` above him and aims `1.4` below him, so the look point is exactly
+`camY - height - 1.4`. Holding that identity through the whole manoeuvre means the downward angle
+**never changes** — the climb cannot expose anything the cruise shot does not already show:
+
+```js
+this._look.set(p.pos.x, this.cam.position.y - height - 1.4 - cine*0.6, p.pos.z + 8 - cine*1.2);
+```
+
+`scripts/evade.mjs` asserts the camera's pitch range stays under 1.2° across every encounter on
+every map. It measures ~0.1°. Two smaller supports underneath it: the climb is 7 m rather than 11,
+and the sky shader holds the fog colour for a band *below* the horizon (`clamp((-h-0.085)*2.4,0,1)`)
+so the fogged ground and the sky meet in the same colour instead of across a seam.
+
+⚠️ The sky shader lives in a JS template literal. A backtick in a GLSL comment terminates the string
+and the whole game fails to boot with `Unexpected identifier`.
 
 ## Slow-mo, or you will not see it
 
@@ -1270,10 +1335,28 @@ pose rig:
 | head | chin **up**, −0.44 | chin **down**, +0.86 |
 | spine | arches **back**, −0.30 | folds **forward**, +0.22 |
 
-Three phases — BREAK (0–0.16), CLEAR (0.16–0.66), RETURN (0.66–1.0) — plus a full 360° roll signed
-by the direction, a pitch, camera shake, a hitstop, a flash and a burst of particles thrown off the
-side he left. `scripts/characters.mjs` asserts the two shapes are genuinely opposite on all four
-joints, because a weaker copy of the dive is what "there's no animation for the evade" actually was.
+Three phases — BREAK (0–0.115), CLEAR (0.115–0.66), RETURN (0.66–1.0) — plus camera shake, a
+hitstop, a flash and particles thrown off the side he left.
+
+⚠️ **Not a barrel roll.** The first version spun him a full 360° about his own flight axis, which
+reads as a log rolling downhill and looks *identical whichever way he went*. What a person actually
+does is BREAK: throw a shoulder, bank hard onto one side, hold there while the danger goes past,
+roll back level. So the roll goes out to ~70° and **comes back**, it never wraps, and its sign is
+the direction he chose.
+
+⚠️ **Asymmetry is the whole trick.** A mirrored pose is a gymnastics shape. `ld = side * sign(dir)`
+is +1 on the arm that leads and −1 on the one that trails, and every joint is weighted by it, so he
+leads with the shoulder he banks onto. This is why `scripts/characters.mjs` checks the climb and the
+dive have **opposite signs** on each joint rather than matching magnitudes — pinning a number there
+would forbid exactly the asymmetry that makes it read as a person.
+
+⚠️ **A held pose must still breathe.** CLEAR holds for half a second, and a body that stops moving
+entirely for half a second reads as the animation having frozen. The bank drifts
+(`1.15 + 0.13*sin(t*3.6-0.5)`) and the limbs carry a small float that exists *only while tucked*.
+
+And he **watches it go past**: `look` runs 0 → 1 → 0 across the pass and turns his head, neck and
+torso back toward the beam. One number, and it is the difference between a stunt and someone who
+knows what nearly hit him.
 
 ⚠️ **`Object3D.clone()` JSON round-trips `userData`.** It silently deletes functions and turns
 `Object3D` references into `{}`. That deleted `userData.pose` and turned `parts.armL` into a plain
@@ -1339,9 +1422,15 @@ which showed up as encounter counts varying 4× between runs.
 node scripts/evade.mjs
 ```
 
-37 checks: gesture semantics, eight encounter scenarios (46/95 speed × ignore/up/down/early/late),
-the drop floor on all four maps, camera stability and in-frame separation, and the spire's geometry
-— on the centreline, gun on a leg, opening wider than the player's box.
+51 checks. Gesture semantics; the plate (obeying it always saves, swiping into it is refused not
+spent, correcting still saves, a map with no room below never asks for a dive); nothing may put him
+inside a plate, through a roof or under the deck; the camera's pitch never moves; the button exists
+only on the stick and always picks an open side; no beam ever fires over an armored gate; the
+spire's geometry; and thirteen encounter scenarios.
+
+Plus **the soak**: a simulated thumb with a randomised reaction time — and a 35% chance of swiping
+the *wrong* way first — across all four maps at 42, 78 and 108 units per second. Over 300 encounters
+per run, and the assertion is that not one of them kills a player who answered.
 
 ---
 

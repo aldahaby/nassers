@@ -32,11 +32,12 @@ const browser = await chromium.launch({
   executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args:['--use-gl=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
 
-const open = async (map)=>{
+const open = async (map, scheme)=>{
   const pg = await browser.newPage({viewport:{width:412,height:892},deviceScaleFactor:1});
   const errs=[]; pg.on('pageerror', e=>errs.push(e.message));
-  await pg.addInitScript(m=>{ try{ localStorage.setItem('invrun_char','forged');
-    localStorage.setItem('invrun_map',m); localStorage.setItem('invrun_tut','1'); }catch(e){} }, map);
+  await pg.addInitScript(([m,sc])=>{ try{ localStorage.setItem('invrun_char','forged');
+    localStorage.setItem('invrun_map',m); localStorage.setItem('invrun_tut','1');
+    localStorage.setItem('invrun_scheme', sc||'drag'); }catch(e){} }, [map, scheme]);
   await pg.goto(`http://127.0.0.1:${port}/game.html`,{waitUntil:'load'});
   await pg.waitForFunction('!!window.__game',{timeout:200000});
   await pg.waitForTimeout(1800);
@@ -77,7 +78,7 @@ const ges = await A.pg.evaluate(()=>{
   clear(); { const id=idc++, x0=200,y0=500;
     const a=new Touch({identifier:id,target:document.body,clientX:x0,clientY:y0});
     dispatchEvent(new TouchEvent('touchstart',{changedTouches:[a],touches:[a],bubbles:true,cancelable:false}));
-    ev('touchend', T(x0, y0-16, id)); }
+    ev('touchend', T(x0, y0-30, id)); }
   step(3); o.flickDir=P.evadeDir;                                // quick wrist, lifted early
   clear(); swipe(0,-140,12,6); step(3); o.longDir=P.evadeDir; o.longQueued=I._evadeDir;
   clear(); swipe(0,-90,6,8, document.getElementById('btn-power')); step(3); o.onButtonDir=P.evadeDir;
@@ -107,9 +108,10 @@ const ges = await A.pg.evaluate(()=>{
       if(Math.abs(dl)>Math.abs(l)) l=dl;
       if(Math.abs(dh)>Math.abs(h)) h=dh;
       if(Math.abs(dt2)>Math.abs(tt)) tt=dt2;
-      roll=Math.max(roll,Math.abs(P.evRoll||0)); }
+      if(Math.abs(P.evRoll||0)>Math.abs(roll)) roll=P.evRoll||0; }
     return { y:+y.toFixed(2), arm:+a.toFixed(2), leg:+l.toFixed(2), head:+h.toFixed(2),
-             torso:+tt.toFixed(2), rollDeg:Math.round(roll*57.3), back:+P.pos.y.toFixed(1) }; };
+             torso:+tt.toFixed(2), rollDeg:Math.round(roll*57.3),
+             endRollDeg:Math.round((P.evRoll||0)*57.3), back:+P.pos.y.toFixed(1) }; };
   o.up=peak(1); o.down=peak(-1);
   // the button with no direction picks a side and works
   clear(); document.getElementById('btn-evade').dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
@@ -120,8 +122,8 @@ await A.pg.close();
 
 // ---- 3-4. THE ENCOUNTER ---------------------------------------------------------------------
 // evadeMode: 'never' | 'up' | 'down' | 'early' | 'late'
-const runAt = async (speed, mode)=>{
-  const {pg, errs} = await open('nyc');
+const runAt = async (speed, mode, map, scheme)=>{
+  const {pg, errs} = await open(map||'nyc', scheme);
   const out = await pg.evaluate(([spd,mode])=>{
     const G=window.__game, P=G.player, SW=window.__cb.SW;
     G._clock.getDelta=()=>1/60; G.renderer.render=()=>{}; window.requestAnimationFrame=()=>0;
@@ -141,17 +143,77 @@ const runAt = async (speed, mode)=>{
               sParked:+((C.parked.z-P.pos.z)/spd).toFixed(2), warnFrames:0, hits0:hits,
               minDist:9e9, hit:false, evaded:false, done:false, warnAtCharge:true,
               lockErr:0, clearedBy:0 };
+      // NO DOUBLE-BIND. An armored gate needs a power; a beam needs an evade. If they ever land on
+      // the same stretch of road you can lose without making a mistake.
+      if((st==='charge'||st==='fire') && C.active){
+        let near=0;
+        for(const bl of G.city.buildings)
+          if(bl && bl.gate && bl.mesh && bl.mesh.visible
+             && Math.abs(bl.mesh.position.z-C.active.z) < SW.beamDepth+30) near++;
+        if(cur) cur.gateNear=Math.max(cur.gateNear||0, near);
+      }
       if(st==='charge' && cur){
         if(cur.lead===undefined){ cur.lead=+((C.active.z-P.pos.z)/spd).toFixed(2);
                                   cur.hits0=hits; cur.lockErr=+Math.abs(SW.beamY-P.pos.y).toFixed(2); }
-        if(vis(warnEl)&&vis(evEl)) cur.warnFrames++; else cur.warnAtCharge=false;
-        if(mode==='early' && !cur.evaded) cur.evaded=P.evade(1);
-        if((mode==='up'||mode==='down') && C.t>SW.chargeSec*0.7 && !cur.evaded)
-          cur.evaded=P.evade(mode==='up'?1:-1);
+        if(vis(warnEl)) cur.warnFrames++; else cur.warnAtCharge=false;
+        cur.btnShown = vis(evEl);
+        if(cur.bar===undefined){ cur.bar=SW.barOn;
+          cur.barVis = SW.barOn>0 ? C.active.barT.visible : SW.barOn<0 ? C.active.barB.visible : true;
+          cur.warnTxt=(warnEl.querySelector('span')||{}).textContent||''; }
+        if(mode==='early' && !cur.evaded) cur.evaded=P.evade(SW.barOn>0?-1:1);
+        if((mode==='up'||mode==='down') && C.t>SW.chargeSec*0.7 && !cur.evaded){
+          const want = mode==='up'?1:-1;
+          cur.evaded = P.evade(want);
+          if(!cur.evaded){ cur.refused=true; cur.evaded=P.evade(-want); }   // plated: take the other
+        }
+        // HUMAN: a real thumb, with a real reaction time. The warning appears, and somewhere
+        // between a fifth of a second and most of the window later the swipe lands — sometimes on
+        // the plated side first, which a person under pressure absolutely will do. If ANY of that
+        // can kill you, the encounter is unfair.
+        if(mode==='human' && !cur.evaded){
+          if(cur._rt===undefined){ cur._rt=0.20+Math.random()*(SW.chargeSec-0.34);
+                                   cur._slip=Math.random()<0.35; }
+          if(C.t>=cur._rt){
+            const safeD = SW.barOn ? -SW.barOn : (Math.random()<0.5?1:-1);
+            if(cur._slip && SW.barOn){ cur._slip=false; if(P.evade(SW.barOn)) cur.blockFailed=true;
+                                       cur.bounced=true; cur._rt=C.t+0.10; }
+            else cur.evaded=P.evade(safeD);
+          }
+        }
+        // SAFE always plays the side the game is telling you to. WRONG deliberately swipes into
+        // the plate first, then corrects — the one thing that must never be a death.
+        if(mode==='safe' && C.t>SW.chargeSec*0.55 && !cur.evaded)
+          cur.evaded=P.evade(SW.barOn>0?-1:SW.barOn<0?1:(Math.random()<0.5?1:-1));
+        if(mode==='wrong' && C.t>SW.chargeSec*0.50 && !cur.evaded){
+          if(SW.barOn){ if(P.evade(SW.barOn)) cur.blockFailed=true; else cur.bounced=true;
+                        cur.evaded=P.evade(-SW.barOn); }
+          else cur.evaded=P.evade(1);
+        }
+        // the button, in stick mode, must always pick an OPEN side
+        if(mode==='button' && C.t>SW.chargeSec*0.6 && !cur.evaded){
+          cur.evaded=P.evade(0); cur.btnDir=P.evadeDir;
+        }
+      }
+      // CAMERA. A hard-snapped follow teleported with him on an 11 m climb and threw the whole city
+      // out of frame. Track the per-frame jump, and how much of the manoeuvre he keeps for himself.
+      // NOTHING may put him inside a plate, through a roof, or under the deck — at ANY time,
+      // not just while the beam is lit.
+      if(cur){
+        if(SW.barOn>0) cur.intoPlate=Math.max(cur.intoPlate||0, P.pos.y-(SW.beamY+SW.beamHalf+0.9));
+        if(SW.barOn<0) cur.intoPlate=Math.max(cur.intoPlate||0, (SW.beamY-SW.beamHalf-0.9)-P.pos.y);
+        cur.roofOver=Math.max(cur.roofOver||0, P.ceilY?(P.pos.y-(P.ceilY-1.0)):-9);
+        cur.underDeck=Math.max(cur.underDeck||0, 1.0-P.pos.y);
       }
       // CAMERA. A hard-snapped follow teleported with him on an 11 m climb and threw the whole city
       // out of frame. Track the per-frame jump, and how much of the manoeuvre he keeps for himself.
       const camY=G.camera.cam.position.y;
+      // and the camera's PITCH must not move: it is the pitch, not the height, that decides how
+      // much sky and empty ground come into frame.
+      { const cm=G.camera.cam; const e=cm.matrixWorld.elements;
+        const pitch=Math.asin(Math.max(-1,Math.min(1, e[9])));   // +Z row of the camera basis
+        cur && (cur.pitchLo=Math.min(cur.pitchLo===undefined?pitch:cur.pitchLo,pitch),
+                cur.pitchHi=Math.max(cur.pitchHi===undefined?pitch:cur.pitchHi,pitch),
+                cur.pitchRange=+((cur.pitchHi-cur.pitchLo)*57.3).toFixed(2)); }
       if(cur){ if(cur._cy!==undefined) cur.camJump=Math.max(cur.camJump||0, Math.abs(camY-cur._cy));
                cur._cy=camY;
                // How far he travels IN FRAME: his height relative to the camera's, over the whole
@@ -163,11 +225,12 @@ const runAt = async (speed, mode)=>{
                cur.sep=+(cur.relHi-cur.relLo).toFixed(1); }
       if(st==='fire' && cur){
         if(mode==='late' && !cur.evaded && Math.abs(P.pos.z-C.active.z)<SW.beamDepth)
-          cur.evaded=P.evade(1);
+          cur.evaded=P.evade(SW.barOn>0?-1:1);
         cur.minDist=Math.min(cur.minDist, Math.abs(P.pos.z-C.active.z));
         if(cur.dAtFire===undefined) cur.dAtFire=+(C.active.z-P.pos.z).toFixed(1);
         cur.clearedBy=Math.max(cur.clearedBy, Math.abs(P.pos.y-SW.beamY));
         cur.lowY=Math.min(cur.lowY===undefined?9e9:cur.lowY, P.pos.y);
+        cur.hiY=Math.max(cur.hiY===undefined?-9e9:cur.hiY, P.pos.y);
       }
       if(last!=='idle' && st==='idle' && cur && !cur.done){
         cur.hit = hits>cur.hits0; cur.minDist=+cur.minDist.toFixed(1);
@@ -182,7 +245,11 @@ const runAt = async (speed, mode)=>{
                 leg:anyC.LEG, gunOnLeg:+Math.abs(Math.abs(anyC.gun.position.x)-anyC.LEG).toFixed(2),
                 clearW:+(anyC.LEG-9.6).toFixed(1), xBox:window.__cb.PLAY.xBox,
                 hasEye:!!anyC.eye, hasAim:!!anyC.aim };
-    return { spd, mode, n:enc.length, enc:enc.slice(0,6), geo,
+    return { spd, mode, n:enc.length,
+             hitN:enc.filter(e=>e.hit).length,
+             badN:enc.filter(e=>e.blockFailed || e.intoPlate>0.15 || e.roofOver>0
+                                || e.underDeck>0 || e.gateNear>0 || e.pitchRange>1.2).length,
+             enc:enc.slice(0,6), geo,
              chargeSec:SW.chargeSec, fireLead:SW.fireLead, beamHalf:SW.beamHalf };
   }, [speed, mode]);
   await pg.close();
@@ -191,6 +258,23 @@ const runAt = async (speed, mode)=>{
 const N46=await runAt(46,'never'),  U46=await runAt(46,'up'),   D46=await runAt(46,'down');
 const N95=await runAt(95,'never'),  U95=await runAt(95,'up');
 const E46=await runAt(46,'early'),  L46=await runAt(46,'late'), L95=await runAt(95,'late');
+// the PLATE: play the side you are told to, then deliberately play the wrong one and correct.
+const S46=await runAt(46,'safe'),   S95=await runAt(95,'safe');
+const W46=await runAt(46,'wrong'),  W95=await runAt(95,'wrong');
+// the same, on the two maps with a ceiling or a floor tight enough to remove an answer
+const SBR=await runAt(52,'safe','backrooms'), SMT=await runAt(52,'safe','metro');
+const WBR=await runAt(52,'wrong','backrooms');
+// and the button, which only exists on the stick
+const BST=await runAt(46,'button','nyc','stick');
+// ---- THE SOAK. A real thumb, a real reaction time, sometimes the wrong way first — on every map,
+// slow and fast. Hundreds of encounters, and not one of them may kill a player who answered.
+const HUM=[];
+for(const map of ['nyc','metro','backrooms','aero'])
+  for(const spd of [42, 78, 108])
+    HUM.push([map, spd, await runAt(spd,'human',map)]);
+const humTot=HUM.reduce((a,[,,R])=>a+R.out.n,0);
+const humHit=HUM.reduce((a,[,,R])=>a+R.out.hitN,0);
+const humBad=HUM.filter(([,,R])=>R.out.hitN>0 || R.out.badN>0).map(([m,sp,R])=>`${m}@${sp}:${R.out.hitN}/${R.out.badN}`);
 
 // ---- 5. EVERY MAP ---------------------------------------------------------------------------
 const heights = {};
@@ -214,11 +298,48 @@ for(const map of ['nyc','metro','backrooms','aero']){
 }
 const everyMap=f=>Object.values(heights).every(f);
 const ok=(R,f)=> R.out.enc.length>0 && R.out.enc.every(f);
+const every2=(Rs,f)=> Rs.every(R=>ok(R,f));
+
+const ALL=[N46,U46,D46,N95,U95,E46,L46,L95,S46,S95,W46,W95,SBR,SMT,WBR,BST];
+const every=(f)=>ALL.every(R=>R.out.enc.length===0 || R.out.enc.every(f));
 
 const checks=[
+  // ---- THE PLATE ------------------------------------------------------------------------------
+  // Play the side you are told to and you live. Every time, at both speeds, on every map.
+  // ---- THE SOAK: hundreds of encounters, a human thumb, every map, every speed --------------
+  ['a human thumb is never killed',         humHit===0 && humBad.length===0],
+  ['and the soak actually ran',             humTot>=150],
+  ['obeying the plate always saves',        ok(S46,e=>!e.hit) && ok(S95,e=>!e.hit)
+                                         && ok(SBR,e=>!e.hit) && ok(SMT,e=>!e.hit)],
+  // Swipe INTO the plate and it is refused, not spent — correcting still saves you.
+  ['a plated swipe is refused, not spent',  ok(W46,e=>!e.blockFailed) && ok(W95,e=>!e.blockFailed)
+                                         && ok(WBR,e=>!e.blockFailed)],
+  ['and correcting after it still saves',   ok(W46,e=>!e.hit) && ok(W95,e=>!e.hit) && ok(WBR,e=>!e.hit)],
+  ['the plate is up for the whole warning', every(e=>e.barVis!==false)],
+  ['the warning names the side to take',    ok(S46,e=>!e.bar || /UP|DOWN/.test(e.warnTxt||''))],
+  ['it plates at most one side',            every(e=>e.bar===0||e.bar===1||e.bar===-1)],
+  // Backrooms' deck is 2m under the cruise line: a dive there cannot clear the beam, so the game
+  // must never offer one. This is the exact shape of an unfair death.
+  ['a map with no room below never asks for a dive',
+                                            ok(SBR,e=>e.bar===-1) && ok(WBR,e=>e.bar===-1)],
+  // ---- NOTHING MAY PUT HIM SOMEWHERE ILLEGAL ---------------------------------------------------
+  ['no beam ever fires over a gate',        every(e=>!(e.gateNear>0))],
+  ['he never gets inside a plate',          every(e=>!(e.intoPlate>0.15))],
+  ['he never goes through a roof',          every(e=>!(e.roofOver>0))],
+  ['he never goes under the deck',          every(e=>!(e.underDeck>0))],
+  // ---- THE CAMERA CANNOT LOOK OUT OF THE MAP ---------------------------------------------------
+  // It is the PITCH that decides how much sky and empty ground come into frame. Holding it fixed
+  // is what makes "you cannot see out of the map" true by construction rather than by tuning.
+  ['the camera pitch never moves',          every(e=>!(e.pitchRange>1.2))],
+  // ---- THE BUTTON ------------------------------------------------------------------------------
+  ['no EVADE button on drag',               every2([N46,U46,S46,W46], e=>e.btnShown===false)],
+  ['the EVADE button is there on stick',    ok(BST,e=>e.btnShown===true)],
+  ['and it always picks an open side',      ok(BST,e=>!e.bar || e.btnDir===-e.bar)],
+  ['tapping it saves you',                  ok(BST,e=>!e.hit)],
+
   // the camera must GLIDE, and he must visibly leave it behind — this is the whole animation
   ['the camera never teleports',            ok(U46,e=>e.camJump<3.2) && ok(U95,e=>e.camJump<3.6)],
-  ['he visibly moves inside the frame',     ok(U46,e=>e.sep>5) && ok(D46,e=>e.sep>3.5)],
+  ['he visibly moves inside the frame',     ok(U46,e=>e.sep>3.6) && ok(D46,e=>e.sep>3.2)],
   // the spire straddles the road ahead, and the opening clears the player's own x-box
   ['the spire is dead ahead, not aside',    U46.out.geo.offAxis<0.5],
   ['the gun sits on one of its legs',       U46.out.geo.gunOnLeg<0.01],
@@ -243,7 +364,12 @@ const checks=[
                                          && Math.sign(ges.up.leg)!==Math.sign(ges.down.leg)
                                          && Math.sign(ges.up.head)!==Math.sign(ges.down.head)
                                          && Math.sign(ges.up.torso)!==Math.sign(ges.down.torso)],
-  ['both roll a full revolution',           ges.up.rollDeg>=355 && ges.down.rollDeg>=355],
+  // He BANKS. A full 360 barrel roll reads as a log rolling downhill and looks identical whichever
+  // way he went; a break onto one shoulder that comes back level is what evasion actually is.
+  ['he banks hard, but never wraps',        Math.abs(ges.up.rollDeg)>50 && Math.abs(ges.up.rollDeg)<130
+                                         && Math.abs(ges.down.rollDeg)>50 && Math.abs(ges.down.rollDeg)<130],
+  ['the two banks are opposite',            Math.sign(ges.up.rollDeg)!==Math.sign(ges.down.rollDeg)],
+  ['and he ends level',                     Math.abs(ges.up.endRollDeg)<12 && Math.abs(ges.down.endRollDeg)<12],
 
   ['encounters happen',                     N46.out.n>=3 && N95.out.n>=3],
   // it must be on screen and idle for a beat BEFORE it starts charging, at ANY speed — the gap is
@@ -274,6 +400,14 @@ const bad=checks.filter(c=>!c[1]).map(c=>c[0]);
 console.log('gesture', JSON.stringify(ges));
 console.log('heights', JSON.stringify(heights));
 console.log('geo    ', JSON.stringify(U46.out.geo));
+console.log('soak   ', humTot+' encounters, '+humHit+' hits, '+humBad.length+' illegal',
+            humBad.length?JSON.stringify(humBad):'',
+            JSON.stringify(HUM.map(([m,sp,R])=>m[0]+sp+':'+R.out.n)));
+for(const [n,R] of [['safe46',S46],['wrong46',W46],['safeBR',SBR],['safeMT',SMT],['button',BST]])
+  console.log(n.padEnd(9), 'n='+R.out.enc.length, 'tot='+R.out.n, 'err='+(R.errs[0]||'-').slice(0,60),
+    JSON.stringify(R.out.enc.slice(0,2).map(e=>({bar:e.bar,hit:e.hit,ev:e.evaded,
+      bnc:!!e.bounced,plate:+(e.intoPlate||0).toFixed(2),pit:e.pitchRange,btn:e.btnShown,
+      clr:e.clearedBy,txt:(e.warnTxt||'').slice(0,18)}))));
 for(const [n,R] of [['46 ignore',N46],['46 up',U46],['46 down',D46],['95 ignore',N95],
                     ['95 up',U95],['46 early',E46],['46 late',L46],['95 late',L95]])
   console.log(n.padEnd(10),'n='+R.out.n, JSON.stringify(R.out.enc.slice(0,2)

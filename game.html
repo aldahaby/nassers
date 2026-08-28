@@ -285,6 +285,9 @@
     #beam-warn b{ display:block; font-size:clamp(30px,10vw,54px); letter-spacing:2px; color:#fff;
       -webkit-text-stroke:2px rgba(255,60,60,.9); animation:warnPulse .3s steps(2) infinite; }
     #beam-warn span{ display:block; font-size:clamp(13px,4vw,18px); letter-spacing:3px; color:#7ff0dd; }
+    /* one side is plated shut: the instruction stops being a choice and becomes an order */
+    #beam-warn.barred span{ color:#ffd23a; font-weight:900;
+      animation:warnPulse .34s steps(2) infinite; }
     @keyframes warnPulse{ 0%{ opacity:1; } 100%{ opacity:.35; } }
     #btn-power.tgt{ color:#fff; box-shadow:inset 0 0 0 3px #ffd23a, 0 0 30px rgba(255,190,60,.95), 0 3px 0 #17092a;
       animation:pwrPulse .55s ease-in-out infinite; }
@@ -1002,7 +1005,7 @@
     <div id="btn-power" class="pad"><span id="power-label">POWER</span><i id="power-fill"></i></div>
     <div id="btn-evade" class="pad hidden"><span>EVADE</span><i id="evade-fill"></i></div>
   </div>
-  <div id="beam-warn" class="hidden"><b>INCOMING</b><span>TAP EVADE</span></div>
+  <div id="beam-warn" class="hidden"><b>INCOMING</b><span></span></div>
 
   <!-- TUTORIAL — coached over a live run, never a slideshow -->
   <div id="tut" class="hidden">
@@ -2312,14 +2315,17 @@
   // The beam locks the player's height when it starts charging, so it is always aimed exactly where
   // he was, and both answers are always available.
   const SW={
-    swipePx:22,         // finger travel that commits a swipe, decided DURING the move
-    flickPx:10,         // a quick wrist that lifts early still counts...
-    flickVel:0.42,      // ...if it moved this many px per ms
-    evadeRise:11.0,     // how far a climb takes him above the beam
-    evadeDrop:9.0,      // and how far a dive takes him below it
+    swipePx:34,         // finger travel that commits a swipe, decided DURING the move
+    flickPx:22,         // a quick wrist that lifts early still counts...
+    flickVel:0.50,      // ...if it moved this many px per ms
+    // A climb of 11 threw the camera high enough to look over the skyline. 7 clears the beam by a
+    // comfortable margin and keeps the frame full of city, which matters more than the altitude.
+    evadeRise:7.0,      // how far a climb takes him above the beam
+    evadeDrop:6.2,      // and how far a dive takes him below it
     floorClear:2.2,     // but never closer than this to the deck
+    ceilClear:2.6,      // and never closer than this to a tunnel roof
     evadeDur:1.15,      // seconds of the whole manoeuvre
-    beamHalf:3.6,       // half-height of the lethal band around the beam
+    beamHalf:3.4,       // half-height of the lethal band around the beam
     beamDepth:9.5,      // half-depth of the slab, along the road
     cannonFirst:820,    // metres before the first tower
     cannonGap:[430,660],// metres between towers after that
@@ -2330,6 +2336,11 @@
     spawnLeadSec:4.2,   // ...but never less than this many SECONDS of approach, whatever the speed
     spawnMin:300,       // and never less than this far, whatever the speed
     beamY:0,            // filled per encounter from the locked altitude
+    // THE BARRIER. Sometimes one of the two answers is welded shut with a hazard plate, so the
+    // dodge becomes a READ rather than a reflex. Never both — there is always a way out.
+    barChance:0.55,     // how often an encounter bars one side at all
+    barMargin:1.2,      // an answer needs this much clearance past beamHalf to be offered
+    barOn:0,            // +1 the TOP is plated (dive), -1 the BOTTOM is plated (climb), 0 open
   };
 
   const BANK_ROLL={ group:0, model:0 };
@@ -3231,10 +3242,14 @@
     surgeReady(){ return this.surgeCd<=0 && this.surgeActive<=0 && this.game.combo.count>=this.SURGE_COMBO; }
     trySurge(){ if(!this.surgeReady()) return false; this.surgeActive=this.SURGE_DUR; this.surgeCd=this.SURGE_CD; return true; }
     reset(){ const T=this.game.theme; const cy=T&&T.backrooms?4.2:(T&&T.station?7.5:16); this.cruiseY=cy;  // METRO flies LOW in the tunnel
+             // and the roof over him, where there is one — a climb that goes through the tunnel
+             // ceiling is exactly the kind of stupid death this whole system exists to prevent.
+             this.ceilY = T&&T.backrooms ? 17 : (T&&T.station ? cy+15.5 : 0);
              this.pos.set(0,cy,0); this.vel.set(0,0,40); this.fwdNow=40; this.rush=0;
              this.bank=this.pitch=this._smashPulse=0; this.surgeActive=0; this.surgeCd=0;
              this._lastSmashZ=undefined;
              this.evade01=0; this.evadeT=0; this.evadeDir=0; this.evT=0; this.evRoll=0; this.evPitch=0; this.evFlare=0;
+             this.evLook=0; this.barBounce=0; this.barBounceDir=0; this._barKick=0;
              this._laneFrom=undefined; this._laneTo=undefined; this._laneT=1;
              this.unglow();
              this._prevRc=undefined;
@@ -3268,8 +3283,16 @@
     // How far a climb and a dive can go on this map. Everything derives from the cruise height, so
     // a corridor that flies at 4.2 works the same as a skyline that flies at 16 — a dive measured in
     // absolute metres puts him through the floor on half the maps.
-    riseRoom(){ return SW.evadeRise; }
+    // HOW MUCH ROOM EACH ANSWER ACTUALLY HAS, on this map, right now. Both are capped by real
+    // scenery — the deck below, the tunnel roof above — and the cannon reads them to decide which
+    // answers it is allowed to offer.
+    riseRoom(){ return this.ceilY ? Math.min(SW.evadeRise, Math.max(1.0, this.ceilY - SW.ceilClear - this.cruiseY))
+                                  : SW.evadeRise; }
     dropRoom(){ return Math.min(SW.evadeDrop, Math.max(1.0, this.cruiseY - SW.floorClear)); }
+    // ...and whether that room is enough to actually clear the beam. If an answer cannot, it is
+    // never offered: the encounter plates it shut and tells you to take the other one.
+    canRise(){ return this.riseRoom() >= SW.beamHalf + SW.barMargin; }
+    canDrop(){ return this.dropRoom() >= SW.beamHalf + SW.barMargin; }
 
     // EVADE. dir is +1 to climb over the beam, -1 to dive under it. Tapping the button picks the
     // roomier side for you; a swipe says which. Pressing again mid-manoeuvre is ignored rather than
@@ -3278,7 +3301,26 @@
       if(this._menuMode) return false;
       if(this.evadeT>SW.evadeDur*0.55) return false;
       let d = dir|0;
-      if(!d) d = (this.dropRoom() >= SW.evadeDrop*0.8) ? -1 : 1;   // whichever way has the room
+      // THE PLATE. If this way is welded shut he bounces off it and the command is REFUSED, not
+      // spent — swipe the other way and it still works. A wrong read costs you time and a jolt,
+      // never the run: being locked into a losing animation is the definition of a cheap death.
+      if(d && SW.barOn && ((SW.barOn>0 && d>0) || (SW.barOn<0 && d<0))){
+        this.barBounce=0.34; this.barBounceDir=d;
+        const g0=this.game;
+        g0.camera.shake(0.45); g0.time.hitstop(60);
+        g0.effects.flash(0.08);
+        g0.effects.burst(new THREE.Vector3(this.pos.x, this.pos.y+d*2.6, this.pos.z+1),
+                         new THREE.Color(0xffd24a), 16, 26);
+        g0.haptics.fire('gateBlock');
+        g0.audio.gateBlock ? g0.audio.gateBlock() : (g0.audio.uiClick&&g0.audio.uiClick());
+        return false;
+      }
+      if(!d){                                   // the button has no direction: take the open side
+        if(SW.barOn>0) d=-1; else if(SW.barOn<0) d=1;
+        else d = this.canDrop() && this.dropRoom() >= SW.evadeDrop*0.8 ? -1 : 1;
+      }
+      if(d>0 && !this.canRise()) d=-1;           // and never commit to an answer with no room
+      else if(d<0 && !this.canDrop()) d=1;
       this.evadeDir=d; this.evadeT=SW.evadeDur; this.evT=0;
       this.evRoll=0; this.evPitch=0; this.evFlare=0; this._evOut=false;
       const g=this.game;
@@ -3360,21 +3402,55 @@
       const u = this.evadeT>0 ? clamp(1-this.evadeT/SW.evadeDur, 0, 1) : -1;
       let ez=0;
       if(u>=0){
-        ez = u<0.16 ? (u/0.16)
-           : u<0.66 ? 1
+        // HEIGHT. Out fast, held, and eased back — the curve the hit test reads.
+        // The BREAK has to be quick enough that a press made when he is ALREADY inside the beam
+        // slab still clears it: at 95 units a second the slab is a fifth of a second wide.
+        const br=clamp(u/0.115,0,1);
+        ez = u<0.115 ? br*br*(3-2*br)
+           : u<0.66  ? 1
            : 1-Math.pow((u-0.66)/0.34, 1.7);
-        const r=clamp(((this.evT||0)-0.12)/0.44,0,1);
-        this.evRoll = Math.PI*2 * (r*r*(3-2*r)) * (this.evadeDir>0?-1:1);   // he rolls INTO the move
-        this.evPitch = Math.sin(clamp((this.evT||0)/0.16,0,1)*Math.PI) * 0.62 * (this.evadeDir>0?-1:1);
+        // ROTATION. This was a full 360 barrel roll, and a body spinning about its own flight axis
+        // does not read as evasion — it reads as a log rolling down a hill, identical whichever way
+        // he went. What a person actually does is BREAK: he throws a shoulder, banks hard onto his
+        // side, holds there while the danger goes past, and rolls back level. So the roll goes OUT
+        // and COMES BACK, it never wraps, and its sign is the direction he chose.
+        const t=this.evT||0;
+        const outR=clamp((t-0.03)/0.20,0,1), inR=clamp((t-0.62)/0.42,0,1);
+        const bank=(outR*outR*(3-2*outR)) - (inR*inR*(3-2*inR));
+        const sgn=(this.evadeDir>0?-1:1);
+        // a slow drift through the hold: nobody is rigid for half a second in mid-air, and a pose
+        // that stops moving at all reads as the animation having frozen rather than being held
+        this.evRoll = (1.15 + 0.13*Math.sin(t*3.6-0.5))*bank*sgn;
+        // ...with a whip at the very start, so the break has a crack in it rather than a glide
+        this.evRoll += 0.30*Math.sin(clamp(t/0.16,0,1)*Math.PI)*sgn;
+        // PITCH is the nose leaving the flight line: hard at the break, held through the pass,
+        // unwound on the way home. A climb points the nose up; a dive drops it.
+        const hold=clamp((t-0.02)/0.14,0,1), unwind=clamp((t-0.66)/0.40,0,1);
+        this.evPitch = (0.74*(hold*hold*(3-2*hold)) * (1-unwind*unwind))
+                     * (this.evadeDir>0?-1:1)
+                     + 0.20*Math.sin(clamp(t/0.13,0,1)*Math.PI)*(this.evadeDir>0?-1:1);
+        // and he WATCHES IT GO PAST. The head turns back toward the beam through the middle of the
+        // manoeuvre and comes forward again on the way out — one number, and it is the difference
+        // between a stunt and someone who knows what nearly hit him.
+        this.evLook = Math.sin(clamp((u-0.10)/0.62,0,1)*Math.PI);
         this.evFlare = u>0.66 ? Math.sin((u-0.66)/0.34*Math.PI) : 0;
         if(u>0.70 && !this._evOut){ this._evOut=true;
           g.effects.burst(new THREE.Vector3(this.pos.x,this.pos.y,this.pos.z-2.4),
                           new THREE.Color(this.evadeDir>0?0xbfe6ff:0x9ff6e2), 14, 28);
           g.camera.shake(0.24); }
       } else { this.evRoll=damp(this.evRoll||0,0,14,dt); this.evPitch=damp(this.evPitch||0,0,14,dt);
-               this.evFlare=damp(this.evFlare||0,0,14,dt); this._evOut=false; }
+               this.evFlare=damp(this.evFlare||0,0,14,dt); this.evLook=damp(this.evLook||0,0,14,dt);
+               this._evOut=false; }
+      // THE PLATE BOUNCE. A refused swipe is not silent: he lurches at the plate, hits it, and is
+      // thrown back onto the flight line, which is a whole second of feedback saying "not that way".
+      if(this.barBounce>0){
+        this.barBounce=Math.max(0,this.barBounce-dt);
+        const q=1-this.barBounce/0.34;
+        this._barKick = Math.sin(clamp(q,0,1)*Math.PI) * 1.35 * (this.barBounceDir||0);
+        this.evRoll += this._barKick*0.22;
+      } else this._barKick = damp(this._barKick||0, 0, 12, dt);
       // one smoothed 0..1, signed by the direction he chose
-      this.evade01=damp(this.evade01||0, ez, 30, dt);
+      this.evade01=damp(this.evade01||0, ez, 46, dt);
 
       // Advance along the road FIRST, then steer against the road centre where he now is. Doing it
       // the other way round anchors the drag target one frame behind, which on a curving road is a
@@ -3436,7 +3512,14 @@
       // NEVER THROUGH THE FLOOR, and never off the top of the frame. The climb is a fixed rise;
       // the dive is whatever headroom the map actually has.
       const room = this.evadeDir>0 ? this.riseRoom() : -this.dropRoom();
-      this.pos.y=this.cruiseY + (this.evade01||0)*room;
+      this.pos.y=this.cruiseY + (this.evade01||0)*room + (this._barKick||0);
+      // THE PLATE IS SOLID. Belt and braces on top of evade() refusing the direction: whatever
+      // else happens — a bounce, a queued command, a future change to the curve — he physically
+      // cannot end up inside a plated corridor.
+      if(SW.barOn>0)      this.pos.y=Math.min(this.pos.y, SW.beamY + SW.beamHalf + 0.6);
+      else if(SW.barOn<0) this.pos.y=Math.max(this.pos.y, SW.beamY - SW.beamHalf - 0.6);
+      if(this.ceilY) this.pos.y=Math.min(this.pos.y, this.ceilY - SW.ceilClear);
+      this.pos.y=Math.max(this.pos.y, SW.floorClear);
 
       // BANK is still tracked (the cape shader reads it), but the villain no longer ROLLS.
       // A roll on an asymmetric mesh can never look identical left and right, so the fix is to
@@ -3492,6 +3575,8 @@
                        tuck: this.evade01||0,
                        dir: this.evadeDir||0,
                        flare: this.evFlare||0,
+                       look: this.evLook||0,
+                       bump: this._barKick||0,
                        speed: clamp((this.speed?this.speed():60)/140, 0, 1) });
         }
         if(this._rigSway){ const t=now*0.003;                    // rigged characters: wings/cape flap gently
@@ -5562,8 +5647,10 @@
       // So: follow only PART of the manoeuvre, and glide into it. He then visibly rises out of the
       // beam or drops under it INSIDE the frame, which is the entire point of the animation, while
       // the camera keeps the city where the eye expects it.
-      const evOff=p.pos.y-(p.cruiseY||p.pos.y);
-      const wantY=p.pos.y - evOff*(1-0.45) + height;      // 45% of the dodge, no more
+      // Follow 35% of the dodge, damped, and CAP it: however the manoeuvre is retuned later, the
+      // camera can never climb far enough to look out over the skyline.
+      const cruise=(p.cruiseY||p.pos.y), evOff=p.pos.y-cruise;
+      const wantY=clamp(cruise + evOff*0.35, cruise-3.6, cruise+2.8) + height;
       this._camY = (this._camY===undefined) ? wantY : damp(this._camY, wantY, 7.5, realDt);
       this.cam.position.y=this._camY;
       this.cam.up.set(0,1,0);                              // never roll
@@ -5574,10 +5661,15 @@
       this.cam.fov=damp(this.cam.fov,fov, cine>0.02?9:(p.surgeActive>0?10:6), realDt); this.cam.updateProjectionMatrix();
 
       // look down-ahead as always; during the shot, ease the aim slightly lower/nearer (same direction)
-      // The aim carries a little more of the dodge than the camera body does, so he stays framed
-      // and the road tilts under him — you SEE him leave the beam instead of merely being told.
-      this._lookY = (this._lookY===undefined) ? p.pos.y : damp(this._lookY, p.pos.y-evOff*0.30, 9, realDt);
-      this._look.set(p.pos.x, this._lookY-1.4 - cine*0.6, p.pos.z+8 - cine*1.2);
+      // ---- AIM. THE PITCH IS CONSTANT, BY CONSTRUCTION. At cruise the camera sits `height` above
+      // him and aims 1.4 below him, so the look point is always `camY - height - 1.4`. Holding that
+      // identity through the whole manoeuvre means the camera's downward angle NEVER changes — and
+      // since it is the pitch, not the altitude, that decides how much sky and empty ground come
+      // into frame, he cannot see out of the map on a climb no matter what the dodge does.
+      //
+      // Chasing his actual height instead is what did it: on a climb the aim rose with him, the
+      // camera tilted up, and the horizon came over the rooftops.
+      this._look.set(p.pos.x, this.cam.position.y - height - 1.4 - cine*0.6, p.pos.z+8 - cine*1.2);
       this.cam.lookAt(this._look);
 
       if(this.shakeAmt>0.001){
@@ -5587,8 +5679,7 @@
       }
     }
     resize(){ this.cam.aspect=innerWidth/innerHeight; this.cam.updateProjectionMatrix(); }
-    reset(){ this.shakeAmt=0; this.cam.position.set(0,20,-20);
-             this._camY=undefined; this._lookY=undefined; }
+    reset(){ this.shakeAmt=0; this.cam.position.set(0,20,-20); this._camY=undefined; }
   }
 
   // ===================================================================================
@@ -5633,9 +5724,13 @@
         { t:'ARMORED WALLS', b:'Black-and-yellow walls cannot be punched through. When POWER lights up, fire it — the blast takes the wall and the tower behind it.',
           h:'TAP POWER WHEN IT GLOWS', focus:'#btn-power', done:()=>this.count.power>=1 },
       ];
+      const stick=this.game.input.scheme==='stick';
       this.steps.push(
-        { t:'THE RAIL CANNON', b:'A spire locks onto your altitude and fires a beam clean across the street. You cannot go round it — swipe UP or DOWN, or tap EVADE, to leave that height.',
-          h:'SWIPE UP OR DOWN ON THE WARNING', focus:'#btn-evade', done:()=>this.count.evade>=1 });
+        { t:'THE RAIL CANNON', b:stick
+              ? 'A spire locks onto your altitude and fires a beam clean across the street. You cannot go round it — tap EVADE, or swipe up or down, to leave that height. If one side is plated shut, take the other.'
+              : 'A spire locks onto your altitude and fires a beam clean across the street. You cannot go round it — swipe UP or DOWN to leave that height. If one side is plated shut with a hazard barrier, take the other.',
+          h:stick?'TAP EVADE ON THE WARNING':'SWIPE UP OR DOWN ON THE WARNING',
+          focus:stick?'#btn-evade':null, done:()=>this.count.evade>=1 });
       this.steps.push(
         { t:'SURGE', b:'Chain six smashes without missing and SURGE arms. Fire it for a burst of speed and a huge hit radius.',
           h:'GO GET A HIGH SCORE', focus:'#btn-boost', done:()=>this.t>4.5 });
@@ -5829,7 +5924,7 @@
         // Three concentric layers, all ADDITIVE. The core was a plain transparent white cylinder and
         // it read as a pale peach ribbon against a bright sky — a solid mid-tone can only ever get
         // dimmer than what is behind it. Additive is what makes something look like it emits light.
-        const halo=new THREE.Mesh(new THREE.CylinderGeometry(5.4,5.4,BL,18,1,true),
+        const halo=new THREE.Mesh(new THREE.CylinderGeometry(4.6,4.6,BL,18,1,true),
           new THREE.MeshBasicMaterial({color:0xff3200, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
         halo.rotation.z=Math.PI/2; gun.add(halo);
@@ -5849,6 +5944,40 @@
           new THREE.MeshBasicMaterial({color:0xff6a3a, transparent:true, opacity:0, depthWrite:false,
             blending:THREE.AdditiveBlending, side:THREE.DoubleSide}));
         gun.add(sheet);
+        // ---- THE PLATE. Sometimes one of the two answers is welded shut, and the dodge stops being
+        // a reflex and becomes a READ. Hazard chevrons on heavy steel, spanning the whole opening
+        // so there is no way round it, with lamps down the leading edge. One is built for the top
+        // and one for the bottom; at most one is ever shown.
+        const barMat=new THREE.MeshStandardMaterial({color:0x2b2b30, roughness:.55, metalness:.6});
+        const chevA =new THREE.MeshStandardMaterial({color:0xf5c518, roughness:.5, metalness:.25,
+                                                     emissive:0x3a2a00, emissiveIntensity:.5});
+        const lampM =new THREE.MeshStandardMaterial({color:0xff8a3a, emissive:0xff5a10, emissiveIntensity:1.4, roughness:.4});
+        const mkBar=()=>{
+          const b=new THREE.Group(); b.visible=false; grp.add(b);
+          const W=LEG*2+8, T=3.4, D=13;
+          const slab=new THREE.Mesh(new THREE.BoxGeometry(W, T, D), barMat);
+          slab.castShadow=true; b.add(slab);
+          for(let k=0;k<14;k++){                      // hazard chevrons across the face
+            const cv=new THREE.Mesh(new THREE.BoxGeometry(3.4, T*0.72, 1.2), chevA);
+            cv.position.set((k-6.5)*(W/14), 0, -D/2-0.2); cv.rotation.z=0.62; b.add(cv);
+          }
+          for(let k=0;k<7;k++){                       // ribs on the back, so it has thickness
+            const rb=new THREE.Mesh(new THREE.BoxGeometry(2.2, T*1.5, 2.6), barMat);
+            rb.position.set((k-3)*(W/7), 0, D/2-1.0); b.add(rb);
+          }
+          for(let k=0;k<9;k++){                       // lamps down the leading edge
+            const lp=new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 0.9), lampM.clone());
+            lp.position.set((k-4)*(W/9.5), T*0.52, -D/2-0.5); b.add(lp);
+          }
+          for(const sx of [-1,1]){                    // the mounts that tie it into the legs
+            const m=new THREE.Mesh(new THREE.BoxGeometry(6, T*2.2, D*0.8), barMat);
+            m.position.set(sx*(W/2-2), 0, 0); m.castShadow=true; b.add(m);
+          }
+          b.userData.lamps=b.children.filter(o=>o.material===undefined?false:o.material.emissive&&o.material.emissiveIntensity>1);
+          return b;
+        };
+        const barT=mkBar(), barB=mkBar();
+
         // THE AIM. The single most useful thing on screen: a thin line across the opening at exactly
         // the height the beam is about to occupy, lit through the whole wind-up. You are not asked
         // to guess where it will be — you are shown, and then given a charge to leave that line.
@@ -5880,23 +6009,34 @@
         }
 
         return {grp, tower, gun, head, lens, lensM, blades, conv, strobes, bands, eye, eyeM, aim,
-                halo, beamGlow, beamCore, muzzle, sheet, rays, arcs, BL, LEG, z:0, side:1, live:false};
+                barT, barB, halo, beamGlow, beamCore, muzzle, sheet, rays, arcs, BL, LEG,
+                z:0, side:1, live:false};
       };
       for(let i=0;i<2;i++) this.list.push(mk());
       this._light=new THREE.PointLight(0xff6a3a, 0, 320, 2); this._light.visible=false; sc.add(this._light);
     }
     reset(){
-      for(const c of this.list){ c.live=false; c.armed=false; c.grp.visible=false; }
+      for(const c of this.list){ c.live=false; c.armed=false; c.grp.visible=false;
+                                 c.barT.visible=false; c.barB.visible=false; }
+      SW.barOn=0;
       this.state='idle'; this.t=0; this.active=null; this.parked=null; this._light.visible=false;
       this.nextZ=(this.game.player.pos.z||0) + SW.cannonFirst;
       this._ui(false);
     }
-    _ui(on, dir){
+    _ui(on){
       const b=document.getElementById('btn-evade'), w=document.getElementById('beam-warn');
-      if(b){ b.classList.toggle('hidden', !on); b.classList.toggle('live', !!on); }
+      // THE BUTTON IS FOR THE JOYSTICK ONLY. On drag you swipe, and a button that duplicates the
+      // gesture is dead space over the playfield. On the stick your thumb is already committed
+      // bottom-left, so the button is the only workable answer and it stays.
+      const stick = this.game.input && this.game.input.scheme==='stick';
+      if(b){ b.classList.toggle('hidden', !(on && stick)); b.classList.toggle('live', !!(on && stick)); }
       if(w){ w.classList.toggle('hidden', !on);
         const t=w.querySelector('span');
-        if(t) t.textContent = on ? 'SWIPE UP OR DOWN' : ''; }
+        if(t) t.textContent = !on ? ''
+            : SW.barOn>0 ? (stick?'PLATED ABOVE — GO DOWN':'SWIPE DOWN')
+            : SW.barOn<0 ? (stick?'PLATED BELOW — GO UP'  :'SWIPE UP')
+            : (stick?'EVADE':'SWIPE UP OR DOWN');
+        w.classList.toggle('barred', !!SW.barOn); }
     }
     _free(){ for(const c of this.list) if(!c.live) return c; return null; }
     _idle(c){
@@ -5916,14 +6056,18 @@
       // Full blast on approach — that is the whole point of it — then ease off as the camera
       // reaches the beam's own plane, because at point-blank the additive layers saturate to flat
       // white and swallow the character you are supposed to be watching clear it.
+      // Two axes, not one: how far the camera still is from the beam's slab along the road, AND
+      // how far it is from the beam's own height. Flying UNDER a live beam should read as passing
+      // under something enormous, not as the screen going white.
       const cam=this.game.camera.cam;
-      a *= 0.26 + 0.74*clamp(Math.abs(cam.position.z-c.z)/42, 0, 1);
+      const dz=Math.abs(cam.position.z-c.z)/52, dy=Math.abs(cam.position.y-SW.beamY)/16;
+      a *= 0.14 + 0.86*clamp(Math.sqrt(dz*dz+dy*dy), 0, 1);
       const punch=Math.min(1, k*7), w=(0.35+0.65*punch);
       c.halo.material.opacity    =0.30*a; c.halo.scale.set(w*1.1,1,w*1.1);
       c.beamGlow.material.opacity=0.85*a; c.beamGlow.scale.set(w,1,w);
       c.beamCore.material.opacity=1.00*a; c.beamCore.scale.set(w*(0.82+0.36*Math.sin(this.t*70)),1,w);
       c.muzzle.material.opacity=0.95*a;   c.muzzle.scale.setScalar(0.6+0.9*punch);
-      c.sheet.material.opacity=0.14*a;    c.sheet.scale.set(1,w,1);
+      c.sheet.material.opacity=0.09*a;    c.sheet.scale.set(1,w,1);
       const Y=c.beamGlow.position.y, off=c.beamGlow.position.x;
       for(let i=0;i<c.rays.length;i++){
         const r=c.rays[i], u=r.userData;
@@ -5960,6 +6104,7 @@
           // Push it to whichever is further: the scheduled slot, or a fixed number of SECONDS out.
           const lead=Math.max(SW.spawnMin, Math.max(20,P.fwdNow||45)*SW.spawnLeadSec);
           c.live=true; c.z=Math.max(this.nextZ, pz+lead); c.side=(Math.random()<0.5?-1:1); c.armed=false;
+          c._checked=false; c._clash=false;
           c.grp.visible=true;
           // DEAD AHEAD, on the road's own centreline, straddling it. You fly at it and through it.
           c.grp.position.set(g.city._pathX(c.z), 0, c.z);
@@ -5977,9 +6122,39 @@
       // any speed, and LOCK the altitude then — the shot is aimed where he is, not where he ends up.
       if(!this.active && this.parked && this.parked.live){
         const c0=this.parked, eta=(c0.z-pz)/Math.max(14, P.fwdNow||45);
-        if(eta<=SW.chargeSec+SW.fireLead){
+        // NEVER STACK TWO DEMANDS. An armored gate has to be shot open with a power; a beam has to
+        // be evaded. Both in the same stretch of road is a double-bind you can lose without making
+        // a mistake, so if a gate is anywhere near this tower the tower simply stands down.
+        if(eta<=SW.chargeSec+SW.fireLead+0.5 && !c0._checked){
+          c0._checked=true; c0._clash=false;
+          for(const b of g.city.buildings)
+            if(b && b.gate && b.mesh && b.mesh.visible
+               && Math.abs(b.mesh.position.z-c0.z) < SW.beamDepth+46){ c0._clash=true; break; }
+        }
+        if(c0._clash){ c0.live=false; c0.grp.visible=false; this.parked=null;
+                       this.nextZ=Math.max(this.nextZ, pz+SW.cannonGap[0]); }
+        else if(eta<=SW.chargeSec+SW.fireLead){
           this.active=c0; this.parked=null; this.state='charge'; this.t=0; c0.armed=true;
           SW.beamY = P.pos.y;
+          // ---- WHICH ANSWERS ARE OPEN. Decided HERE, at the start of the wind-up, so the plate is
+          // on screen for the whole warning and never appears after you have committed.
+          //
+          // Two rules, in order, and between them they make an unfair encounter impossible:
+          //   1. An answer with no room is plated shut. On Backrooms the deck is 2 m under his
+          //      cruise line — a dive there cannot clear the beam, so diving is not offered.
+          //   2. Never plate the side he is ALREADY moving toward, and never plate both.
+          const canU=P.canRise(), canD=P.canDrop();
+          let bar=0;
+          if(!canD && canU)      bar=-1;               // no room below: the floor side is plated
+          else if(!canU && canD) bar=+1;               // no room above: the roof side is plated
+          else if(canU && canD)  bar = (Math.random()<SW.barChance) ? (Math.random()<0.5?1:-1) : 0;
+          if(bar && P.evadeT>0 && P.evadeDir && ((bar>0&&P.evadeDir>0)||(bar<0&&P.evadeDir<0))) bar=0;
+          SW.barOn=bar;
+          c0.barT.visible = bar>0; c0.barB.visible = bar<0;
+          if(bar){
+            const bY = bar>0 ? SW.beamY + SW.beamHalf + 2.6 : SW.beamY - SW.beamHalf - 2.6;
+            (bar>0?c0.barT:c0.barB).position.set(0, bY, 0);
+          }
           const Y=SW.beamY, off=-(c0.BL*0.5)-12;
           c0.head.position.y=Y;
           c0.beamGlow.position.set(off,Y,0); c0.beamCore.position.copy(c0.beamGlow.position);
@@ -6018,6 +6193,9 @@
           c.conv[i].material.opacity=0.85*Math.pow(f,0.6)*e;
         }
         const strobe=(Math.sin(now*0.02*(1+e*3))>0)?1:0;
+        if(SW.barOn){ const bg=SW.barOn>0?c.barT:c.barB;
+          for(const o of bg.children) if(o.material && o.material.emissive && o.material.emissiveIntensity>=1)
+            o.material.emissiveIntensity=0.8+strobe*(1.2+e*3.0); }
         for(const w of c.strobes) w.material.emissiveIntensity=0.35+strobe*e*5;
         for(const b of c.bands) b.material.emissiveIntensity=0.85+e*3.2*strobe;
         this._light.visible=true;
@@ -6055,6 +6233,7 @@
           if(c._entered && !c._hit && !c._safe){ c._hit=true; this._punish(c); }
           this.state='cool'; this.t=0; this._beam(c,0,0);
           this._light.visible=false; this._ui(false);
+          SW.barOn=0; c.barT.visible=false; c.barB.visible=false;
         }
       } else if(this.state==='cool'){
         const k=clamp(this.t/0.55,0,1), e=1-k;
@@ -8119,6 +8298,8 @@
     root.userData.pose=(o)=>{
       const tk=clamp(o.tuck||0,0,1), ln=clamp(o.lean||0,-1,1), t=o.idle||0, sp=clamp(o.speed||0,0,1);
       const fl=clamp(o.flare||0,0,1);        // the snap OUT of the manoeuvre, 0 -> 1 -> 0
+      const lk=clamp(o.look||0,0,1);         // 0 -> 1 -> 0 across the pass: he turns to WATCH it
+      const bp=clamp(o.bump||0,-2,2);        // he hit a plate and is being thrown off it
       // +1 he CLIMBED over the beam, -1 he DIVED under it. They are opposite shapes: a climb arches
       // the spine back with the arms swept low behind him, a dive folds him forward into a ball.
       // One shape used for both is what makes an evade read as generic.
@@ -8127,31 +8308,53 @@
       // ARMS. From fists-first out in front, they fold in and down until the elbows are at the
       // ribs. The counter-swing on a lane change is small and opposite between the two, which is
       // what a body actually does when it throws itself sideways.
+      //
+      // ASYMMETRY IS THE WHOLE TRICK. A mirrored pose is a gymnastics shape; a person throwing
+      // himself out of the way leads with ONE shoulder and drags the other. `ld` is +1 on the arm
+      // that leads and -1 on the one that trails, and everything below is weighted by it.
       for(const [g,side,b] of [[armL,-1,base.aL],[armR,1,base.aR]]){
         const wob=Math.sin(t*2.1 + (side>0?0:1.7))*0.055*(1-tk)*(0.4+sp);
+        const ld = side*(o.dir>0 ? 1 : -1);   // he always leads with the shoulder he banks onto
         // IN, not out. Rotating the shoulder z AWAY from the body splays the arms wide, which is
         // the opposite of a tuck — the elbows have to come to the ribs and the fists to the chin.
-        // climb: arms sweep DOWN and back, like pulling the air past him. dive: elbows to the ribs.
-        g.rotation.x = b.x + tkD*1.78 - tkU*0.62 - fl*0.30 + wob;
-        g.rotation.z = b.z - side*tkD*0.78 + side*tkU*0.52 + side*fl*0.46 - ln*0.26*side;
-        g.rotation.y = -ln*0.34 - side*tkD*0.30 + side*tkU*0.22;
+        // climb: the lead arm is FLUNG back over the shoulder and the trail arm rakes the air
+        // below him. dive: elbows to the ribs, lead fist crossed over the face.
+        // the hold breathes: a small float that only exists WHILE tucked, so the manoeuvre never
+        // parks on one frozen frame the way the first version did
+        const hf=tk*Math.sin(t*3.6 + side*1.1)*0.075;
+        g.rotation.x = b.x + tkD*(1.78 + ld*0.34) - tkU*(0.88 + ld*0.82) - fl*0.30 + wob + hf
+                     + bp*side*0.10;
+        // LESS SPLAY. Arms straight out to the sides is a skydiver; swept back along the body with
+        // one shoulder leading is someone throwing himself out of the way.
+        g.rotation.z = b.z - side*tkD*(0.78 - ld*0.22) + side*tkU*(0.20 + ld*0.24)
+                     + side*fl*0.46 - ln*0.26*side - bp*0.34 + hf*0.5;
+        g.rotation.y = -ln*0.34 - side*tkD*(0.30 + ld*0.26) + side*tkU*(0.34 - ld*0.46)
+                     + lk*ld*0.30;
       }
       // LEGS. Knees come up to the chest for the tuck; otherwise they trail with a slow scissor
       // and a small opposite splay into the turn.
       for(const [g,side,b] of [[legL,-1,base.lL],[legR,1,base.lR]]){
         const sc=Math.sin(t*1.7 + (side>0?0:Math.PI))*0.085*(1-tk)*(0.35+sp);
-        // climb: legs snap straight and trail hard. dive: knees to the chest.
-        g.rotation.x = b.x - tkD*1.95 + tkU*0.46 + fl*0.34 + sc;
-        g.rotation.z = b.z + side*tkD*0.26 - side*tkU*0.16 + side*fl*0.20 + ln*0.10;
-        g.rotation.y = ln*0.20;
+        const ld = side*(o.dir>0 ? 1 : -1);
+        // climb: legs snap straight and SCISSOR — one knee driven down, the other trailing, which
+        // is what a body does when it throws itself upward. dive: knees to the chest, tucked tight.
+        const hf=tk*Math.sin(t*3.1 + side*2.2 + 0.8)*0.085;
+        g.rotation.x = b.x - tkD*(1.95 - ld*0.30) + tkU*(0.52 - ld*0.78) + fl*0.34 + sc + hf
+                     - bp*side*0.12;
+        g.rotation.z = b.z + side*tkD*(0.26 + ld*0.18) - side*tkU*(0.16 - ld*0.26)
+                     + side*fl*0.20 + ln*0.10 + bp*0.22;
+        g.rotation.y = ln*0.20 - lk*ld*0.14;
       }
       // HEAD. Craned back to look ahead in flight; chin driven to the chest through the tuck.
       // he LOOKS at it: chin down through a dive, head thrown back through a climb
-      headG.rotation.x = base.hd.x + tkD*0.86 - tkU*0.44 - fl*0.22 + Math.sin(t*1.3)*0.03*(1-tk);
-      headG.rotation.z = -ln*0.22;
+      headG.rotation.x = base.hd.x + tkD*0.86 - tkU*0.44 - fl*0.22 + Math.sin(t*1.3)*0.03*(1-tk)
+                       + lk*(o.dir>0 ? 0.42 : -0.40);   // and he cranes back toward what missed him
+      headG.rotation.z = -ln*0.22 + lk*(o.dir>0?-0.26:0.26) + bp*0.20;
+      headG.rotation.y = lk*(o.dir>0 ? 0.62 : -0.55);   // the LOOK: eyes off the road, onto the beam
       // and the whole torso twists into the turn — without this the arms look detached
-      torso.rotation.y = ln*0.16;
-      torso.rotation.x = tkU*-0.30 + tkD*0.22;     // the spine arches back, or folds forward
+      torso.rotation.y = ln*0.16 + lk*(o.dir>0 ? 0.24 : -0.20);
+      torso.rotation.x = tkU*-0.30 + tkD*0.22 - bp*0.16;   // the spine arches back, or folds forward
+      torso.rotation.z = tk*(o.dir>0?-0.16:0.13) + bp*0.24;
       void _v;
     };
     return root;
@@ -8302,7 +8505,11 @@
         vertexShader:`varying vec3 vd; void main(){ vd=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
         fragmentShader:`varying vec3 vd; uniform vec3 top; uniform vec3 mid; uniform vec3 bot;
           uniform sampler2D cloudTex; uniform float cloudAmt;
-          void main(){ float h=vd.y; float t=clamp(h,0.0,1.0); float b=clamp(-h*2.0,0.0,1.0);
+          void main(){ float h=vd.y; float t=clamp(h,0.0,1.0);
+            // hold the horizon colour for a band BELOW the horizon too: the ground fogs out to
+            // exactly this colour, so if the sky started shading toward bot immediately there
+            // would be a visible seam along the skyline where the map ends.
+            float b=clamp((-h-0.085)*2.4,0.0,1.0);
             vec3 c=mix(mid,top,t); c=mix(c,bot,b);
             if(cloudAmt>0.001){
               float u=atan(vd.z,vd.x)/6.2831853+0.5;
