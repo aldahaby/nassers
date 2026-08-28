@@ -288,6 +288,14 @@
     /* one side is plated shut: the instruction stops being a choice and becomes an order */
     #beam-warn.barred span{ color:#ffd23a; font-weight:900;
       animation:warnPulse .34s steps(2) infinite; }
+    /* and an arrow you cannot miss even with your eyes on your own character */
+    #beam-arrow{ display:none; font-style:normal; font-size:clamp(38px,13vw,66px); line-height:1;
+      margin-top:4px; color:#ffd23a; text-shadow:0 0 18px rgba(255,180,20,.9), 0 3px 0 rgba(0,0,0,.6);
+      animation:arrowNudge .5s ease-in-out infinite alternate; }
+    #beam-warn.barred #beam-arrow{ display:block; }
+    @keyframes arrowNudge{ from{ transform:translateY(-6px); opacity:.75; }
+                           to  { transform:translateY(6px);  opacity:1; } }
+    #beam-warn.up #beam-arrow{ animation-direction:alternate-reverse; }
     @keyframes warnPulse{ 0%{ opacity:1; } 100%{ opacity:.35; } }
     #btn-power.tgt{ color:#fff; box-shadow:inset 0 0 0 3px #ffd23a, 0 0 30px rgba(255,190,60,.95), 0 3px 0 #17092a;
       animation:pwrPulse .55s ease-in-out infinite; }
@@ -1005,7 +1013,7 @@
     <div id="btn-power" class="pad"><span id="power-label">POWER</span><i id="power-fill"></i></div>
     <div id="btn-evade" class="pad hidden"><span>EVADE</span><i id="evade-fill"></i></div>
   </div>
-  <div id="beam-warn" class="hidden"><b>INCOMING</b><span></span></div>
+  <div id="beam-warn" class="hidden"><b>INCOMING</b><span></span><em id="beam-arrow"></em></div>
 
   <!-- TUTORIAL — coached over a live run, never a slideshow -->
   <div id="tut" class="hidden">
@@ -1537,6 +1545,11 @@
     // 0 = nothing asked for, +1 = climb, -1 = dive. Consumed by the reader so one swipe is one
     // manoeuvre and it can never be counted twice or dropped between frames.
     consumeEvade(){ const d=this._evadeDir; this._evadeDir=0; return d; }
+    // Drop every queued and in-flight input. Called at the start of a run, so a gesture made on a
+    // menu sheet cannot be spent as a command the moment play begins.
+    reset(){ this._evadeDir=0; this.joy=0; this.drag=0; this._dragId=null;
+             this.dragPx=0; this.dragActive=false; this.dragSeq++;
+             this.keys && this.keys.clear && this.keys.clear(); }
     setScheme(v){ this.scheme=(v==='drag')?'drag':'stick';
       try{ localStorage.setItem('invrun_scheme',this.scheme); }catch(e){}
       this.joy=0; this.drag=0; this._dragId=null; this.dragPx=0; this.dragActive=false; this.dragSeq++; this._evadeDir=0;
@@ -1592,34 +1605,52 @@
       //
       // Only the VERTICAL axis is a command here: up climbs over the beam, down dives under it.
       // Horizontal belongs to the drag control, so a sideways gesture must fall straight through.
-      let ax=0, ay=0, at=0, aid=null, locked=false;
+      //
+      // ⚠️ A FINGER THAT HAS STEERED CAN NEVER SWIPE. This is the whole reason the evade used to
+      // fire "on its own": both controls read the SAME touch, and dy/dx were measured from the
+      // press point only. Drag 20px left to steer, then let your thumb arc 40px down — which is
+      // what a thumb physically does on a phone — and 40 > 20*1.25 committed an evade nobody
+      // asked for. The lift-off flick was worse: releasing a steering drag with a little downward
+      // drift was a valid flick.
+      //
+      // So once a touch has travelled `dragLock` horizontally it is a STEERING touch for the rest
+      // of its life and can no longer produce a command, and the vertical has to beat the
+      // horizontal outright rather than merely by a quarter.
+      let ax=0, ay=0, at=0, aid=null, locked=false, steering=false, maxDx=0;
       addEventListener('touchstart',e=>{
         const t=e.changedTouches[0];
         if(t && !isCtrl(e.target)){ aid=t.identifier; ax=t.clientX; ay=t.clientY;
-                                    at=performance.now(); locked=false; }
+                                    at=performance.now(); locked=false; steering=false; maxDx=0; }
       },{passive:true});
       addEventListener('touchmove',e=>{
         if(aid===null || locked) return;
         for(const t of e.changedTouches){
           if(t.identifier!==aid) continue;
           const dx=t.clientX-ax, dy=t.clientY-ay;
-          if(Math.abs(dy)>=SW.swipePx && Math.abs(dy)>Math.abs(dx)*1.25){
+          maxDx=Math.max(maxDx, Math.abs(dx));
+          // ...and the horizontal has to be LEADING when it crosses that line. A deliberate
+          // vertical swipe with a bit of sideways wobble is still a swipe; a sideways move that
+          // only later goes vertical is steering.
+          if(maxDx>=SW.dragLock && Math.abs(dx)>Math.abs(dy)) steering=true;
+          if(steering) continue;
+          if(Math.abs(dy)>=SW.swipePx && Math.abs(dy)>Math.abs(dx)*SW.vertBias){
             this._evadeDir = dy<0 ? 1 : -1; locked=true; }
         }
       },{passive:true});
       addEventListener('touchend',e=>{
         for(const t of e.changedTouches){
           if(t.identifier!==aid) continue;
-          if(!locked){
+          if(!locked && !steering){
             // a quick wrist that lifted before crossing still counts, judged on velocity
             const dx=t.clientX-ax, dy=t.clientY-ay, dt=Math.max(1,performance.now()-at);
-            if(Math.abs(dy)>SW.flickPx && Math.abs(dy)>Math.abs(dx)*1.25 && Math.abs(dy)/dt>SW.flickVel)
+            if(Math.abs(dy)>SW.flickPx && Math.abs(dy)>Math.abs(dx)*SW.vertBias
+               && Math.abs(dy)/dt>SW.flickVel)
               this._evadeDir = dy<0 ? 1 : -1;
           }
-          aid=null; locked=false;
+          aid=null; locked=false; steering=false; maxDx=0;
         }
       },{passive:true});
-      addEventListener('touchcancel',()=>{ aid=null; locked=false; },{passive:true});
+      addEventListener('touchcancel',()=>{ aid=null; locked=false; steering=false; maxDx=0; },{passive:true});
 
       addEventListener('touchstart',e=>{
         if(this.scheme!=='drag' || this._dragId!==null) return;
@@ -2318,6 +2349,8 @@
     swipePx:34,         // finger travel that commits a swipe, decided DURING the move
     flickPx:22,         // a quick wrist that lifts early still counts...
     flickVel:0.50,      // ...if it moved this many px per ms
+    dragLock:16,        // once a thumb has travelled this far sideways it is STEERING, not commanding
+    vertBias:1.9,       // and a swipe's vertical has to beat its horizontal by this much
     // A climb of 11 threw the camera high enough to look over the skyline. 7 clears the beam by a
     // comfortable margin and keeps the frame full of city, which matters more than the altitude.
     evadeRise:7.0,      // how far a climb takes him above the beam
@@ -5952,31 +5985,51 @@
         const chevA =new THREE.MeshStandardMaterial({color:0xf5c518, roughness:.5, metalness:.25,
                                                      emissive:0x3a2a00, emissiveIntensity:.5});
         const lampM =new THREE.MeshStandardMaterial({color:0xff8a3a, emissive:0xff5a10, emissiveIntensity:1.4, roughness:.4});
-        const mkBar=()=>{
+        // The first version was a thin slab at the FAR edge of the blocked corridor, and from the
+        // seat it read as another piece of the gate's structure — the player reported simply not
+        // seeing it. A barrier has to occupy the space it is denying you. This is a portcullis:
+        // hazard bars filling the whole corridor from the edge of the beam outward, so the blocked
+        // side is visibly FULL rather than merely capped somewhere off in the distance.
+        //
+        // Built from the beam edge outward along `sign`, and parked at that edge at charge time.
+        const mkBar=(sign)=>{
           const b=new THREE.Group(); b.visible=false; grp.add(b);
-          const W=LEG*2+8, T=3.4, D=13;
-          const slab=new THREE.Mesh(new THREE.BoxGeometry(W, T, D), barMat);
-          slab.castShadow=true; b.add(slab);
-          for(let k=0;k<14;k++){                      // hazard chevrons across the face
-            const cv=new THREE.Mesh(new THREE.BoxGeometry(3.4, T*0.72, 1.2), chevA);
-            cv.position.set((k-6.5)*(W/14), 0, -D/2-0.2); cv.rotation.z=0.62; b.add(cv);
+          const W=LEG*2+6, D=10, N=6, GAP=2.45, lamps=[];
+          const put2=(g2,m,x,y,z)=>{ const o=new THREE.Mesh(g2,m); o.position.set(x,y,z);
+                                     o.castShadow=true; b.add(o); return o; };
+          // the bars themselves, alternating hazard yellow and steel, marching away from the beam
+          for(let k=0;k<N;k++){
+            const y=sign*(1.5+k*GAP);
+            put2(new THREE.BoxGeometry(W, 1.55, D*0.42), k%2 ? chevA : barMat, 0, y, 0);
+            // and a chevron run on the face that is pointed at the player
+            if(k%2===0) for(let q=0;q<11;q++){
+              const cv=new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.15, 1.0), chevA);
+              cv.position.set((q-5)*(W/11), y, -D*0.24); cv.rotation.z=0.66; b.add(cv);
+            }
           }
-          for(let k=0;k<7;k++){                       // ribs on the back, so it has thickness
-            const rb=new THREE.Mesh(new THREE.BoxGeometry(2.2, T*1.5, 2.6), barMat);
-            rb.position.set((k-3)*(W/7), 0, D/2-1.0); b.add(rb);
+          // vertical stringers tying them together — this is what makes it read as a GRATE
+          const HH=(N-1)*GAP+3.0;
+          for(let k=0;k<8;k++)
+            put2(new THREE.BoxGeometry(1.25, HH, D*0.30), barMat, (k-3.5)*(W/8), sign*(1.5+HH/2-1.5), 0);
+          // a solid capping beam at the outer edge, and the mounts into the legs
+          put2(new THREE.BoxGeometry(W+6, 2.8, D), barMat, 0, sign*(1.5+(N-1)*GAP+2.0), 0);
+          for(const sx of [-1,1])
+            put2(new THREE.BoxGeometry(5, HH+3, D*0.9), barMat, sx*(W/2), sign*(1.5+HH/2-1.5), 0);
+          // LAMPS along the edge nearest the beam — the line you must not cross
+          for(let k=0;k<11;k++){
+            const lp=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.0,1.0), lampM.clone());
+            lp.position.set((k-5)*(W/11), sign*0.35, -D*0.46); b.add(lp); lamps.push(lp);
           }
-          for(let k=0;k<9;k++){                       // lamps down the leading edge
-            const lp=new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 0.9), lampM.clone());
-            lp.position.set((k-4)*(W/9.5), T*0.52, -D/2-0.5); b.add(lp);
-          }
-          for(const sx of [-1,1]){                    // the mounts that tie it into the legs
-            const m=new THREE.Mesh(new THREE.BoxGeometry(6, T*2.2, D*0.8), barMat);
-            m.position.set(sx*(W/2-2), 0, 0); m.castShadow=true; b.add(m);
-          }
-          b.userData.lamps=b.children.filter(o=>o.material===undefined?false:o.material.emissive&&o.material.emissiveIntensity>1);
+          // a translucent hazard curtain across the whole opening, facing the player: at distance
+          // the bars alone are a thin comb, and this is the thing that reads at 150 metres.
+          const veil=new THREE.Mesh(new THREE.PlaneGeometry(W, HH),
+            new THREE.MeshBasicMaterial({color:0xffb400, transparent:true, opacity:0.13,
+              depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending}));
+          veil.position.set(0, sign*(1.5+HH/2-1.5), -D*0.5); b.add(veil);
+          b.userData.lampList=lamps; b.userData.veil=veil;
           return b;
         };
-        const barT=mkBar(), barB=mkBar();
+        const barT=mkBar(+1), barB=mkBar(-1);
 
         // THE AIM. The single most useful thing on screen: a thin line across the opening at exactly
         // the height the beam is about to occupy, lit through the whole wind-up. You are not asked
@@ -6036,7 +6089,10 @@
             : SW.barOn>0 ? (stick?'PLATED ABOVE — GO DOWN':'SWIPE DOWN')
             : SW.barOn<0 ? (stick?'PLATED BELOW — GO UP'  :'SWIPE UP')
             : (stick?'EVADE':'SWIPE UP OR DOWN');
-        w.classList.toggle('barred', !!SW.barOn); }
+        const ar=document.getElementById('beam-arrow');
+        if(ar) ar.textContent = (on && SW.barOn) ? (SW.barOn>0 ? '▼' : '▲') : '';
+        w.classList.toggle('barred', !!(on && SW.barOn));
+        w.classList.toggle('up', SW.barOn<0); }
     }
     _free(){ for(const c of this.list) if(!c.live) return c; return null; }
     _idle(c){
@@ -6152,8 +6208,9 @@
           SW.barOn=bar;
           c0.barT.visible = bar>0; c0.barB.visible = bar<0;
           if(bar){
-            const bY = bar>0 ? SW.beamY + SW.beamHalf + 2.6 : SW.beamY - SW.beamHalf - 2.6;
-            (bar>0?c0.barT:c0.barB).position.set(0, bY, 0);
+            // sits ON the edge of the lethal band and fills outward from there, so what you see is
+            // exactly the space you are being denied.
+            (bar>0?c0.barT:c0.barB).position.set(0, SW.beamY + bar*SW.beamHalf, 0);
           }
           const Y=SW.beamY, off=-(c0.BL*0.5)-12;
           c0.head.position.y=Y;
@@ -6194,8 +6251,8 @@
         }
         const strobe=(Math.sin(now*0.02*(1+e*3))>0)?1:0;
         if(SW.barOn){ const bg=SW.barOn>0?c.barT:c.barB;
-          for(const o of bg.children) if(o.material && o.material.emissive && o.material.emissiveIntensity>=1)
-            o.material.emissiveIntensity=0.8+strobe*(1.2+e*3.0); }
+          for(const o of bg.userData.lampList) o.material.emissiveIntensity=0.8+strobe*(1.2+e*3.0);
+          bg.userData.veil.material.opacity=0.10+0.13*e*(0.55+0.45*strobe); }
         for(const w of c.strobes) w.material.emissiveIntensity=0.35+strobe*e*5;
         for(const b of c.bands) b.material.emissiveIntensity=0.85+e*3.2*strobe;
         this._light.visible=true;
@@ -7178,6 +7235,9 @@
     constructor(game){ this.game=game; this.state='READY'; }
     startRun(){
       const g=this.game; this.resetAll(); g.momentum.start(); this.state='Running';
+      // Drain any gesture queued while the menu was up: input.reset() was never called anywhere,
+      // so a stray swipe on a sheet fired an evade the instant the next run began.
+      g.input.reset && g.input.reset();
       g.audio.resume(); g.audio.startMusic();
       { const ov=document.getElementById('start-overlay');
         ov.classList.add('hidden'); ov.classList.remove('leaving'); }

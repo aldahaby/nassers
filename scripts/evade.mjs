@@ -80,6 +80,35 @@ const ges = await A.pg.evaluate(()=>{
     dispatchEvent(new TouchEvent('touchstart',{changedTouches:[a],touches:[a],bubbles:true,cancelable:false}));
     ev('touchend', T(x0, y0-30, id)); }
   step(3); o.flickDir=P.evadeDir;                                // quick wrist, lifted early
+  // ---- THE PREFIRE. Both controls read the SAME touch. A thumb steering left ARCS downward —
+  // that is just what a thumb does — and the evade used to fire on its own from exactly this.
+  const swipe2=(pts,hold=7)=>{                      // a path, not a straight line
+    const id=idc++, x0=200, y0=500;
+    const t0=new Touch({identifier:id,target:document.body,clientX:x0,clientY:y0});
+    document.body.dispatchEvent(new TouchEvent('touchstart',{changedTouches:[t0],touches:[t0],bubbles:true,cancelable:false}));
+    for(const [dx,dy] of pts){ const spin=performance.now()+hold; while(performance.now()<spin){}
+      ev('touchmove', T(x0+dx, y0+dy, id)); }
+    const l=pts[pts.length-1]; ev('touchend', T(x0+l[0], y0+l[1], id));
+  };
+  // steer left, then let the thumb sag: the classic false positive
+  clear(); swipe2([[-30,2],[-70,10],[-110,26],[-140,52],[-160,78]]);
+  step(3); o.arcDrag=P.evadeDir;
+  // steer right and flick off the screen on the release
+  clear(); swipe2([[40,0],[95,4],[150,10]],6);
+  { const id=idc++, x=350, y=520;
+    ev('touchend', T(x, y-34, id)); }
+  step(3); o.dragLift=P.evadeDir;
+  // a long horizontal hold that then goes vertical — still steering, still not a command
+  clear(); swipe2([[-120,0],[-120,-20],[-120,-55],[-120,-95]]);
+  step(3); o.dragThenUp=P.evadeDir;
+  // but a clean vertical from a fresh touch still commits...
+  clear(); swipe(0,-90); step(3); o.cleanUp=P.evadeDir;
+  // ...and so does a real thumb's vertical swipe, which is never perfectly straight
+  clear(); swipe2([[4,-16],[9,-34],[15,-56],[21,-78],[24,-96]]); step(3); o.wobblyUp=P.evadeDir;
+  // and a gesture queued while the menu is up must be drained by the run, not spent as a command
+  clear(); G.run.toMenu&&G.run.toMenu(); swipe(0,-100); G.run.startRun(); step(3);
+  o.menuLeak=P.evadeDir; G.cannon.reset(); G.cannon.nextZ=P.pos.z+90000;
+
   clear(); swipe(0,-140,12,6); step(3); o.longDir=P.evadeDir; o.longQueued=I._evadeDir;
   clear(); swipe(0,-90,6,8, document.getElementById('btn-power')); step(3); o.onButtonDir=P.evadeDir;
 
@@ -159,7 +188,37 @@ const runAt = async (speed, mode, map, scheme)=>{
         cur.btnShown = vis(evEl);
         if(cur.bar===undefined){ cur.bar=SW.barOn;
           cur.barVis = SW.barOn>0 ? C.active.barT.visible : SW.barOn<0 ? C.active.barB.visible : true;
-          cur.warnTxt=(warnEl.querySelector('span')||{}).textContent||''; }
+          cur.warnTxt=(warnEl.querySelector('span')||{}).textContent||'';
+          cur.arrow=(document.getElementById('beam-arrow')||{}).textContent||''; }
+        // CAN HE ACTUALLY SEE IT? `visible===true` proved nothing — the first barrier was a thin
+        // slab out at the far edge of the corridor and the player simply never noticed it. Project
+        // its box through the live camera and measure the share of the screen it covers.
+        if(SW.barOn){
+          const bg=SW.barOn>0?C.active.barT:C.active.barB, cam=G.camera.cam;
+          // ⚠️ The renderer is stubbed in this harness, so NOTHING updates world matrices — every
+          // projection would silently read an identity matrix and measure nothing. Force them.
+          G.scene.updateMatrixWorld(true);
+          cam.updateMatrixWorld(true); cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+          const V3=cam.position.constructor;
+          let x0=9,x1=-9,y0=9,y1=-9, anyFront=false;
+          bg.traverse(o=>{
+            if(!o.isMesh) return;
+            if(!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+            const bb=o.geometry.boundingBox;
+            for(let k=0;k<8;k++){
+              const v=new V3(k&1?bb.max.x:bb.min.x, k&2?bb.max.y:bb.min.y, k&4?bb.max.z:bb.min.z);
+              v.applyMatrix4(o.matrixWorld);
+              const lv=v.clone().applyMatrix4(cam.matrixWorldInverse);
+              if(lv.z>-0.5) continue;                  // behind the camera: not on screen
+              v.project(cam); anyFront=true;
+              x0=Math.min(x0,v.x); x1=Math.max(x1,v.x); y0=Math.min(y0,v.y); y1=Math.max(y1,v.y);
+            }
+          });
+          if(anyFront && x1>x0){
+            const w=Math.min(1,x1)-Math.max(-1,x0), h=Math.min(1,y1)-Math.max(-1,y0);
+            if(w>0&&h>0) cur.barPct=Math.max(cur.barPct||0, +((w*h)/4*100).toFixed(1));
+          }
+        }
         if(mode==='early' && !cur.evaded) cur.evaded=P.evade(SW.barOn>0?-1:1);
         if((mode==='up'||mode==='down') && C.t>SW.chargeSec*0.7 && !cur.evaded){
           const want = mode==='up'?1:-1;
@@ -209,7 +268,7 @@ const runAt = async (speed, mode, map, scheme)=>{
       const camY=G.camera.cam.position.y;
       // and the camera's PITCH must not move: it is the pitch, not the height, that decides how
       // much sky and empty ground come into frame.
-      { const cm=G.camera.cam; const e=cm.matrixWorld.elements;
+      { const cm=G.camera.cam; cm.updateMatrixWorld(true); const e=cm.matrixWorld.elements;
         const pitch=Math.asin(Math.max(-1,Math.min(1, e[9])));   // +Z row of the camera basis
         cur && (cur.pitchLo=Math.min(cur.pitchLo===undefined?pitch:cur.pitchLo,pitch),
                 cur.pitchHi=Math.max(cur.pitchHi===undefined?pitch:cur.pitchHi,pitch),
@@ -316,6 +375,10 @@ const checks=[
                                          && ok(WBR,e=>!e.blockFailed)],
   ['and correcting after it still saves',   ok(W46,e=>!e.hit) && ok(W95,e=>!e.hit) && ok(WBR,e=>!e.hit)],
   ['the plate is up for the whole warning', every(e=>e.barVis!==false)],
+  ['and it is big on screen, not a hairline',
+        [S46,S95,W46,SBR,SMT,WBR].every(R=>R.out.enc.filter(e=>e.bar).every(e=>e.barPct>=6))],
+  ['a HUD arrow names the way out',        [S46,SBR,BST].every(R=>R.out.enc.filter(e=>e.bar)
+        .every(e=>e.arrow===(e.bar>0?'\u25bc':'\u25b2')))],
   ['the warning names the side to take',    ok(S46,e=>!e.bar || /UP|DOWN/.test(e.warnTxt||''))],
   ['it plates at most one side',            every(e=>e.bar===0||e.bar===1||e.bar===-1)],
   // Backrooms' deck is 2m under the cruise line: a dive there cannot clear the beam, so the game
@@ -349,6 +412,13 @@ const checks=[
   ['swipe UP asks for a climb',             ges.upDir===1],
   ['swipe DOWN asks for a dive',            ges.downDir===-1],
   ['a sideways gesture is not an evade',    ges.sidewaysDir===0],
+  // ---- THE PREFIRE ---------------------------------------------------------------------------
+  ['a steering drag that arcs is not a swipe',   ges.arcDrag===0],
+  ['nor is the flick off the end of one',        ges.dragLift===0],
+  ['nor a steer that then goes vertical',        ges.dragThenUp===0],
+  ['but a clean vertical still commits',         ges.cleanUp===1],
+  ['and so does a wobbly real-thumb one',        ges.wobblyUp===1],
+  ['a gesture made on a menu never fires',       ges.menuLeak===0],
   ['a diagonal picks the dominant axis',    ges.diagUpDir===1],
   ['a slow nudge does nothing',             ges.nudgeDir===0],
   ['a quick wrist counts on velocity',      ges.flickDir===1],
@@ -406,7 +476,7 @@ console.log('soak   ', humTot+' encounters, '+humHit+' hits, '+humBad.length+' i
 for(const [n,R] of [['safe46',S46],['wrong46',W46],['safeBR',SBR],['safeMT',SMT],['button',BST]])
   console.log(n.padEnd(9), 'n='+R.out.enc.length, 'tot='+R.out.n, 'err='+(R.errs[0]||'-').slice(0,60),
     JSON.stringify(R.out.enc.slice(0,2).map(e=>({bar:e.bar,hit:e.hit,ev:e.evaded,
-      bnc:!!e.bounced,plate:+(e.intoPlate||0).toFixed(2),pit:e.pitchRange,btn:e.btnShown,
+      bnc:!!e.bounced,pct:e.barPct,arw:e.arrow,pit:e.pitchRange,btn:e.btnShown,
       clr:e.clearedBy,txt:(e.warnTxt||'').slice(0,18)}))));
 for(const [n,R] of [['46 ignore',N46],['46 up',U46],['46 down',D46],['95 ignore',N95],
                     ['95 up',U95],['46 early',E46],['46 late',L46],['95 late',L95]])

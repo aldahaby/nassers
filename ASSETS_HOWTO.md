@@ -1220,6 +1220,21 @@ start on a button are ignored.
 Thresholds are `swipePx 34 / flickPx 22 / flickVel 0.50`. They started at 22/10/0.42, which fired on
 a 16-pixel twitch and made the evade feel hair-triggered while you were steering.
 
+⚠️ **A finger that has steered can never swipe.** This is why the evade used to fire *on its own*.
+Both controls read the SAME touch, and `dy`/`dx` were measured from the press point only — so drag
+20px left to steer, let your thumb arc 40px down (which is what a thumb physically does on a phone),
+and `40 > 20*1.25` committed an evade nobody asked for. Releasing a steering drag with a little
+downward drift was a valid *flick*, which was worse.
+
+A touch is now marked **steering** the moment it has travelled `SW.dragLock` (16px) horizontally
+*while the horizontal is leading* — and a steering touch can never produce a command, on move or on
+lift. The leading test matters: a deliberate vertical swipe with sideways wobble is still a swipe;
+only a sideways move that later goes vertical is steering. `SW.vertBias` also went from 1.25 to 1.9,
+so the vertical must beat the horizontal outright rather than by a quarter.
+
+⚠️ **`input.reset()` did not exist and was called from nowhere.** A gesture made on a menu sheet sat
+in `_evadeDir` and was spent the instant the next run began. `startRun()` drains it now.
+
 ## The EVADE button is for the JOYSTICK only
 
 On drag you swipe, and a button that only duplicates a gesture you already have is dead space over
@@ -1238,8 +1253,22 @@ and check pixels — a world-space assertion passes on an inverted control.
 
 `SW.barOn` is `+1` (the TOP is plated, so dive), `-1` (the BOTTOM is plated, so climb) or `0`
 (either works). It is decided **at charge start**, so the barrier is on screen for the entire
-warning and can never appear after you have committed. A heavy hazard-chevroned slab spans the
-whole opening between the legs, with lamps that strobe on the same count-in as the gun.
+warning and can never appear after you have committed.
+
+⚠️ **A barrier has to occupy the space it is denying you.** The first version was a thin slab at the
+FAR edge of the blocked corridor, and from the seat it read as another piece of the gate's structure
+— players simply did not see it. It is now a **portcullis**: hazard bars, stringers, strobing edge
+lamps and a translucent curtain filling the whole corridor outward from the edge of the beam, so the
+blocked side is visibly *full* rather than merely capped somewhere off in the distance. Plus a
+strobing `▲`/`▼` in the HUD warning, for when your eyes are on your own character.
+
+⚠️ **`visible === true` proves nothing.** That is what the first test asserted, and it passed on a
+barrier nobody could see. `scripts/evade.mjs` now projects the barrier's geometry through the live
+camera and measures the share of the screen it covers, asserting ≥6%. It measures 33–50%.
+
+⚠️ **The harness stubs the renderer, so nothing updates world matrices.** Every projection silently
+read an identity matrix and measured zero. Call `scene.updateMatrixWorld(true)` and refresh
+`camera.matrixWorldInverse` yourself before projecting anything in a test.
 
 Two rules, in order, and between them an unfair encounter is impossible:
 
@@ -1422,7 +1451,9 @@ which showed up as encounter counts varying 4× between runs.
 node scripts/evade.mjs
 ```
 
-51 checks. Gesture semantics; the plate (obeying it always saves, swiping into it is refused not
+59 checks. Gesture semantics, including the prefire cases (a steering drag that arcs, the flick off
+the end of one, a steer that then goes vertical, a gesture queued on a menu) against the two that
+must still work (a clean vertical, and a wobbly real-thumb one); the plate (obeying it always saves, swiping into it is refused not
 spent, correcting still saves, a map with no room below never asks for a dive); nothing may put him
 inside a plate, through a roof or under the deck; the camera's pitch never moves; the button exists
 only on the stick and always picks an open side; no beam ever fires over an armored gate; the
