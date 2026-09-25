@@ -17,8 +17,15 @@ export function pickRandom<T>(items: readonly T[]): T | undefined {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-/** Local wall-clock time, e.g. "10:45". */
+/**
+ * Local wall-clock time in 12-hour format, e.g. "10:45 PM", "12:35 AM".
+ * Midnight is 12 AM and noon is 12 PM (never "0:xx"). Built from a timestamp,
+ * so times past midnight roll over naturally.
+ */
 export function formatClockTime(timestamp: number): string {
   const d = new Date(timestamp);
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const hours24 = d.getHours();
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  const period = hours24 < 12 ? 'AM' : 'PM';
+  return `${hours12}:${String(d.getMinutes()).padStart(2, '0')} ${period}`;
 }
