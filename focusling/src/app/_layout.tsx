@@ -26,6 +26,7 @@ export default function RootLayout() {
         <LoadingView />
       ) : (
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+          <Stack.Screen name="inventory" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen
             name="session-complete"
             options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }}

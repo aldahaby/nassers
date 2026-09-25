@@ -53,6 +53,12 @@ export const ECONOMY = {
     coinPct: 0.1,
   },
 
-  /** Coins a brand-new player starts with, so the shop is not empty on day one. */
+  /** Coins a brand-new player starts with: enough for a first snack on day one. */
   starterCoins: 20,
+
+  /**
+   * Multiplies every shop price (rounded). The fastest way to rebalance the whole
+   * shop at once; per-item prices live in `shopCatalog.ts`.
+   */
+  priceMultiplier: 1,
 } as const;

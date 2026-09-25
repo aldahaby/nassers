@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { SHOP_ITEMS } from '@/config/shopCatalog';
+import { getProgression } from '@/core';
+import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { services } from '@/services';
 import { useGameStore } from '@/state';
 import { Button, Card, Screen, colors, spacing, typography } from '@/ui';
@@ -45,10 +46,13 @@ function SettingRow({ label, value, onChange }: { label: string; value: boolean;
   );
 }
 
-/** Shortcuts for exercising progression and cosmetics before their screens exist. */
+/** Shortcuts for testing progression, sessions and items. Hidden unless the setting is on. */
 function DeveloperTools() {
-  const { debugGrant, startFocus, endFocus, purchase, equip } = useGameStore.getState();
+  const { debugGrant, debugPrimeXp, debugDressUp, startFocus, endFocus } = useGameStore.getState();
   const hasActive = useGameStore((s) => Boolean(s.save?.focus.active));
+  const xp = useGameStore((s) => s.save?.pet?.lifetimeXp ?? 0);
+  const coins = useGameStore((s) => s.save?.wallet.coins ?? 0);
+  const progression = getProgression(xp);
   const [message, setMessage] = useState<string | null>(null);
 
   const simulate = (outcome: 'completed' | 'abandoned') => {
@@ -60,27 +64,34 @@ function DeveloperTools() {
     setMessage(result.ok ? `${outcome}: +${result.value.coins} coins, +${result.value.xp} XP` : result.error);
   };
 
-  const dressUp = () => {
-    debugGrant({ coins: 1000 });
-    for (const item of SHOP_ITEMS) {
-      if (item.equipSlot && item.id !== 'decor-beanbag') {
-        purchase(item.id);
-        equip(item.id);
-      }
-    }
-    setMessage('Bought and equipped a starter wardrobe');
-  };
-
   return (
     <Card>
       <Text style={typography.heading}>🛠 Developer tools</Text>
+      <Text style={styles.status} accessibilityLabel="Developer status">
+        Lv {progression.level} · {progression.stage} · {xp} XP · {coins} coins
+      </Text>
+      <Text style={styles.muted}>Progress</Text>
       <View style={styles.grid}>
-        <Button variant="secondary" label="+100 coins" onPress={() => debugGrant({ coins: 100 })} style={styles.cell} />
         <Button variant="secondary" label="+250 XP" onPress={() => debugGrant({ xp: 250 })} style={styles.cell} />
+        <Button variant="secondary" label="Prime level-up" onPress={() => debugPrimeXp('levelUp')} style={styles.cell} />
+        <Button variant="secondary" label="Prime growth" onPress={() => debugPrimeXp('nextStage')} style={styles.cell} />
+        <Button variant="secondary" label="Prime evolution" onPress={() => debugPrimeXp('evolution')} style={styles.cell} />
+      </View>
+      <Text style={styles.muted}>Sessions (30 min)</Text>
+      <View style={styles.grid}>
         <Button variant="secondary" label="Simulate success" onPress={() => simulate('completed')} style={styles.cell} />
         <Button variant="secondary" label="Simulate abandon" onPress={() => simulate('abandoned')} style={styles.cell} />
       </View>
-      <Button variant="secondary" label="Dress up (buy + equip all)" onPress={dressUp} />
+      <Text style={styles.muted}>Items</Text>
+      <InventoryDevTools />
+      <Button
+        variant="secondary"
+        label="Dress up (own + equip one per slot)"
+        onPress={() => {
+          debugDressUp();
+          setMessage('Equipped one item in every slot');
+        }}
+      />
       {message && <Text style={styles.muted}>{message}</Text>}
     </Card>
   );
@@ -108,6 +119,7 @@ function ResetCard() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   muted: { ...typography.body, fontSize: 14, color: colors.textMuted },
+  status: { ...typography.label, color: colors.primaryDark, fontVariant: ['tabular-nums'] },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   cell: { flexGrow: 1, flexBasis: '45%' },
 });

@@ -20,3 +20,11 @@ export const PET_WELCOME_BACK_LINES: Record<'completed' | 'abandoned', readonly 
   completed: ['Thanks for focusing with me!', 'We did it!', 'That felt great. Again soon?'],
   abandoned: ['Every bit counts. Welcome back!', 'Nice try! We can go again anytime.'],
 };
+
+/** Said when the pet uses or receives items. */
+export const PET_ITEM_LINES = {
+  toy: ['Wheee!', 'Again! Again!', 'Best toy ever!', 'So fun!'],
+  food: ['Yum!', 'Delicious!', 'Nom nom nom!', 'Thank you!'],
+  accessory: ['Do I look good?', 'I love it!', 'So stylish!'],
+  decoration: ['So cozy!', 'Our room looks great!', 'I love it here!'],
+} as const;

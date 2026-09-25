@@ -11,6 +11,8 @@ export function createLifetimeStats(): LifetimeStats {
     totalFocusMinutes: 0,
     lifetimeCoinsEarned: 0,
     longestSessionMinutes: 0,
+    itemsPurchased: 0,
+    coinsSpent: 0,
   };
 }
 

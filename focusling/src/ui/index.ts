@@ -14,3 +14,6 @@ export * from './components/ConfirmDialog';
 export * from './components/Confetti';
 export * from './components/CountUpText';
 export * from './components/ProgressRing';
+export * from './items/ItemArt';
+export * from './components/AnimatedNumber';
+export * from './icons/CoinIcon';

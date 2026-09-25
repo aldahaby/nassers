@@ -1,17 +1,21 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { PET_FOCUS_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
 import { PET_SPECIES } from '@/config/pets';
-import { getStageDefinitionById } from '@/core';
+import { getOwnedListings, getStageDefinitionById, type ShopListing } from '@/core';
+import { usePetSpeech } from '@/features/inventory/usePetSpeech';
 import { ActiveSessionBanner } from '@/features/pet/ActiveSessionBanner';
 import { PetStatsCard } from '@/features/pet/PetStatsCard';
+import { ItemsBar } from '@/features/pet/ItemsBar';
+import { PetReactionStage } from '@/features/pet/PetReactionStage';
 import { PetTopBar } from '@/features/pet/PetTopBar';
 import { useActiveSession, useCoins, useEquipped, useGameStore, usePetView, useStreakDays } from '@/state';
-import { AnimatedPet, Button, RoomScene, Screen, SpeechBubble, colors, spacing, typography } from '@/ui';
+import { Button, RoomScene, Screen, SpeechBubble, colors, spacing, typography } from '@/ui';
 import { pickRandom } from '@/utils/format';
 
-const BUBBLE_MS = 2200;
+/** Most toys/snacks shown for one-tap use under the pet. */
+const QUICK_ITEM_LIMIT = 8;
 
 /** The emotional centre of the app: the pet in its room, plus its stats. */
 export default function PetScreen() {
@@ -25,20 +29,32 @@ export default function PetScreen() {
   const welcomeBack = useGameStore((s) => s.pendingWelcome);
   const consumeWelcome = useGameStore((s) => s.consumeWelcome);
   const [cheerKey, setCheerKey] = useState(0);
-
-  const [bubble, setBubble] = useState<string | null>(null);
-  const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
-  }, []);
+  const reaction = useGameStore((s) => s.petReaction);
+  const inventory = useGameStore((s) => s.save?.inventory);
+  const { play, feed, consumePetReaction } = useGameStore.getState();
+  const { bubble, say, sayForReaction } = usePetSpeech();
 
   const mood = view?.mood ?? 'content';
 
-  const say = useCallback((line: string | null) => {
-    setBubble(line);
-    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
-    bubbleTimer.current = setTimeout(() => setBubble(null), BUBBLE_MS);
-  }, []);
+  // Owned toys first, then snacks, for one-tap use.
+  const quickItems = useMemo(() => {
+    if (!inventory) return [];
+    const owned = getOwnedListings(inventory);
+    return [...owned.filter((l) => l.category === 'toy'), ...owned.filter((l) => l.category === 'food')].slice(0, QUICK_ITEM_LIMIT);
+  }, [inventory]);
+
+  const useQuickItem = useCallback(
+    (listing: ShopListing) => (listing.category === 'food' ? feed(listing.id) : play(listing.id)),
+    [feed, play],
+  );
+
+  const onReactionStart = useCallback(
+    (r: Parameters<typeof sayForReaction>[0]) => {
+      consumePetReaction();
+      sayForReaction(r);
+    },
+    [consumePetReaction, sayForReaction],
+  );
 
   // Coming back from a finished session: a happy hop and a thank-you.
   useEffect(() => {
@@ -67,13 +83,15 @@ export default function PetScreen() {
 
       <RoomScene equipped={equipped} height={petSize * 1.45}>
         <SpeechBubble text={bubble} />
-        <AnimatedPet
+        <PetReactionStage
           speciesId={pet.speciesId}
           stage={progression.stage}
           mood={mood}
           equipped={equipped}
           size={petSize}
           expression={activeSession ? 'focused' : 'auto'}
+          reaction={reaction}
+          onReactionStart={onReactionStart}
           onPress={handleTap}
           cheerKey={cheerKey}
           accessibilityLabel={`${pet.name}, ${stageLabel} ${PET_SPECIES[pet.speciesId].name}. Feeling ${mood}.`}
@@ -86,6 +104,8 @@ export default function PetScreen() {
           {stageLabel} {PET_SPECIES[pet.speciesId].name} · feeling {mood}
         </Text>
       </View>
+
+      <ItemsBar quickItems={quickItems} onUse={useQuickItem} />
 
       {activeSession ? (
         <ActiveSessionBanner session={activeSession} />

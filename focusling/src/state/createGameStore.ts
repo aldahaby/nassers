@@ -2,8 +2,13 @@ import { create } from 'zustand';
 import {
   adoptPet,
   createNewSave,
+  debugClearInventory,
+  debugDressUp,
   debugGrant,
+  debugOwnOneOfEach,
   debugPrimeXp,
+  debugResetEquipped,
+  debugUnlockAll,
   debugSetRemaining,
   endSession,
   equipItem,
@@ -15,6 +20,7 @@ import {
   purchaseItem,
   refreshSave,
   startSession,
+  unequipItem,
   unequipSlot,
   type BlockTarget,
   type EquipSlot,
@@ -41,6 +47,20 @@ export interface GameStoreDeps {
 
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
+/**
+ * A one-off event for the pet screen to animate: playing with a toy, eating, or
+ * showing off a new item. Consumed (cleared) once the animation starts.
+ */
+export type PetReaction =
+  | { id: number; kind: 'toy'; itemId: string; happinessGained: number; rewarded: boolean }
+  | { id: number; kind: 'food'; itemId: string; happinessGained: number; healthGained: number }
+  | { id: number; kind: 'equip'; itemId: string };
+
+export interface PurchaseResult {
+  firstPurchase: boolean;
+  happinessGained: number;
+}
+
 export interface GameStore {
   status: LoadStatus;
   error: string | null;
@@ -49,6 +69,7 @@ export interface GameStore {
   lastSummary: SessionSummary | null;
   /** Set when the completion screen closes, so the pet screen can greet the player once. */
   pendingWelcome: FocusOutcome | null;
+  petReaction: PetReaction | null;
 
   hydrate(): Promise<void>;
   /** Apply decay and auto-complete due sessions. Safe to call often. */
@@ -58,11 +79,16 @@ export interface GameStore {
   petPet(): number;
   startFocus(minutes: number, targets: BlockTarget[]): Result<null, FocusError>;
   endFocus(outcome: FocusOutcome): Result<SessionReward, FocusError>;
-  purchase(itemId: string): Result<null, InventoryError>;
-  equip(itemId: string): Result<null, InventoryError>;
+  purchase(itemId: string): Result<PurchaseResult, InventoryError>;
+  /** Wear/place an item. `showOnPet` queues a reaction for the pet screen. */
+  equip(itemId: string, options?: { showOnPet?: boolean }): Result<null, InventoryError>;
   unequip(slot: EquipSlot): void;
-  feed(itemId: string): Result<null, InventoryError>;
-  play(itemId: string): Result<null, InventoryError>;
+  unequipItem(itemId: string): void;
+  /** Feed the pet; always queues an eating reaction. */
+  feed(itemId: string): Result<PetReaction, InventoryError>;
+  /** Play with a toy; always queues a play reaction (stats only off cooldown). */
+  play(itemId: string): Result<PetReaction, InventoryError>;
+  consumePetReaction(): void;
   dismissSummary(): void;
   consumeWelcome(): void;
   updateSettings(patch: Partial<UserSettings>): void;
@@ -71,6 +97,11 @@ export interface GameStore {
   debugPrimeXp(target: XpPrimeTarget): void;
   /** Leave only `remainingMs` on the active session. */
   debugSetRemaining(remainingMs: number): void;
+  debugClearInventory(): void;
+  debugUnlockAll(): void;
+  debugOwnOneOfEach(): void;
+  debugResetEquipped(): void;
+  debugDressUp(): void;
   resetProgress(): Promise<void>;
 }
 
@@ -82,6 +113,7 @@ export interface GameStore {
 export function createGameStore(deps: GameStoreDeps) {
   const now = deps.now ?? Date.now;
   let writeChain: Promise<void> = Promise.resolve();
+  let reactionId = 0;
 
   return create<GameStore>()((set, get) => {
     /** Store and persist a new save. Writes are serialised so they land in order. */
@@ -100,6 +132,8 @@ export function createGameStore(deps: GameStoreDeps) {
       return ok(null);
     };
 
+    const nextReactionId = () => (reactionId += 1);
+
     const requireSave = (): GameSave => {
       const save = get().save;
       if (!save) throw new Error('Game state used before hydration');
@@ -112,6 +146,7 @@ export function createGameStore(deps: GameStoreDeps) {
       save: null,
       lastSummary: null,
       pendingWelcome: null,
+      petReaction: null,
 
       async hydrate() {
         if (get().status === 'loading') return;
@@ -173,11 +208,53 @@ export function createGameStore(deps: GameStoreDeps) {
         return ok(result.value.reward);
       },
 
-      purchase: (itemId) => applyResult(purchaseItem(requireSave(), itemId, now())),
-      equip: (itemId) => applyResult(equipItem(requireSave(), itemId)),
+      purchase(itemId) {
+        const result = purchaseItem(requireSave(), itemId, now());
+        if (!result.ok) return result;
+        commit(result.value.save);
+        return ok({ firstPurchase: result.value.firstPurchase, happinessGained: result.value.happinessGained });
+      },
+
+      equip(itemId, options) {
+        const result = applyResult(equipItem(requireSave(), itemId));
+        if (result.ok && options?.showOnPet) set({ petReaction: { id: nextReactionId(), kind: 'equip', itemId } });
+        return result;
+      },
+
       unequip: (slot) => commit(unequipSlot(requireSave(), slot)),
-      feed: (itemId) => applyResult(feedPet(requireSave(), itemId, now())),
-      play: (itemId) => applyResult(playWithToy(requireSave(), itemId, now())),
+      unequipItem: (itemId) => commit(unequipItem(requireSave(), itemId)),
+
+      feed(itemId) {
+        const result = feedPet(requireSave(), itemId, now());
+        if (!result.ok) return result;
+        const reaction: PetReaction = {
+          id: nextReactionId(),
+          kind: 'food',
+          itemId,
+          happinessGained: result.value.happinessGained,
+          healthGained: result.value.healthGained,
+        };
+        commit(result.value.save, { petReaction: reaction });
+        return ok(reaction);
+      },
+
+      play(itemId) {
+        const result = playWithToy(requireSave(), itemId, now());
+        if (!result.ok) return result;
+        const reaction: PetReaction = {
+          id: nextReactionId(),
+          kind: 'toy',
+          itemId,
+          happinessGained: result.value.happinessGained,
+          rewarded: result.value.rewarded,
+        };
+        commit(result.value.save, { petReaction: reaction });
+        return ok(reaction);
+      },
+
+      consumePetReaction() {
+        set({ petReaction: null });
+      },
 
       dismissSummary() {
         set({ pendingWelcome: get().lastSummary?.outcome ?? null, lastSummary: null });
@@ -204,13 +281,19 @@ export function createGameStore(deps: GameStoreDeps) {
         commit(debugSetRemaining(requireSave(), remainingMs, now()));
       },
 
+      debugClearInventory: () => commit(debugClearInventory(requireSave())),
+      debugUnlockAll: () => commit(debugUnlockAll(requireSave(), now())),
+      debugOwnOneOfEach: () => commit(debugOwnOneOfEach(requireSave(), now())),
+      debugResetEquipped: () => commit(debugResetEquipped(requireSave())),
+      debugDressUp: () => commit(debugDressUp(requireSave(), now())),
+
       async resetProgress() {
         const active = get().save?.focus.active;
         if (active) await deps.screenTime.stopBlocking(active.id);
         await writeChain;
         await deps.saveRepository.clear();
         const fresh = createNewSave(now(), { debugToolsEnabled: get().save?.profile.settings.debugToolsEnabled });
-        commit(fresh, { lastSummary: null });
+        commit(fresh, { lastSummary: null, pendingWelcome: null, petReaction: null });
       },
     };
   });

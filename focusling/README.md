@@ -46,7 +46,23 @@ logic, local persistence, and a mock Screen Time service.
   with 8 s left, skip to 8 s left, complete now, simulate opening a blocked app, and prime XP one
   short of a level-up, growth stage or evolution
 
-Next: Shop and Inventory screens, Stats screen.
+**Milestone 3 (shop, inventory and pet items):**
+- Shop tab with Accessories / Toys / Food / Room, a prominent coin balance, and 20 original items.
+  Tapping opens a details sheet (on-pet or in-room preview, what it does, cosmetic vs interactive,
+  price vs balance, "about N more focus sessions"). Nothing is bought from the grid
+- After buying: the item pops in, the balance ticks down, and you're offered "Put it on" / "Place it"
+  / "Play" / "Feed". The first-ever purchase says "Your focus paid for {pet}'s first gift!"
+- Accessories in head / face / neck slots (items that would overlap share a slot); room decor in
+  wall / left floor / centre rug / right floor slots; all persisted
+- Toys have their own animations (ball bounces, bear hug, twirling star, bubbles);
+  happiness only once per cooldown, but playing is always allowed. Food plays an eating animation
+  and is consumed
+- Inventory (from the Shop's "My items" or the pet screen's "Items") with a pinned live preview of the
+  pet and room: wear / take off, place / remove, play, feed
+- Pet screen items bar: one-tap toys and snacks
+- Developer tools: +100 coins, clear inventory, unlock all, one of each, reset equipped, dress up
+
+Next: a real Screen Time proof-of-concept on a device.
 
 ## Tuning
 

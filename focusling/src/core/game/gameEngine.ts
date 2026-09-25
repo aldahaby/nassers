@@ -152,6 +152,7 @@ export function endSession(
       history: [finished, ...save.focus.history].slice(0, FOCUS_CONFIG.historyLimit),
     },
     stats: {
+      ...save.stats,
       sessionsCompleted: save.stats.sessionsCompleted + (completed ? 1 : 0),
       sessionsAbandoned: save.stats.sessionsAbandoned + (completed ? 0 : 1),
       totalFocusMinutes: save.stats.totalFocusMinutes + focusedMinutes,
@@ -227,4 +228,18 @@ export function refreshSave(
   }
   if (current.pet) current = { ...current, pet: applyDecay(current.pet, now) };
   return { save: current, completedSummary };
+}
+
+/** Session length used for "about N more sessions" hints in the shop. */
+export const AFFORD_HINT_SESSION_MINUTES = 30;
+
+/**
+ * Rough number of typical focus sessions still needed to afford an item
+ * (0 when already affordable). Uses the same reward formula as a real session.
+ */
+export function estimateSessionsToAfford(save: GameSave, price: number, now: Timestamp): number {
+  const short = price - save.wallet.coins;
+  if (short <= 0) return 0;
+  const perSession = estimateReward(save, AFFORD_HINT_SESSION_MINUTES, now).coins;
+  return Math.ceil(short / Math.max(1, perSession));
 }

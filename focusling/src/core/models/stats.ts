@@ -15,6 +15,8 @@ export interface LifetimeStats {
   totalFocusMinutes: number;
   lifetimeCoinsEarned: number;
   longestSessionMinutes: number;
+  itemsPurchased: number;
+  coinsSpent: number;
 }
 
 export interface StreakState {

@@ -5,7 +5,7 @@ import type { Pet } from './pet';
 import type { UserProfile } from './profile';
 import type { DailyStats, LifetimeStats, StreakState } from './stats';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export interface Wallet {
   coins: number;

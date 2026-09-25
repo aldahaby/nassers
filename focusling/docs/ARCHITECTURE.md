@@ -292,3 +292,22 @@ latest-wins for settings). `profile.id` is already generated for that.
   `pendingWelcome` so the pet screen greets the player once.
 - The UI never recomputes rewards: the setup screen, countdown, confirmation and completion screen
   all read values that `core` produced.
+
+## 10. Shop, inventory and items (milestone 3)
+
+- Catalog (`config/shopCatalog.ts`) holds every price, bonus, cooldown, slot and toy play style.
+  Prices are per item and pass through `ECONOMY.priceMultiplier`. `core/__tests__/balance.test.ts`
+  keeps each category inside its price band and checks early affordability.
+- Slots: accessories `head | face | neck`, room `wall | floorLeft | floorCenter | floorRight`. One item
+  per slot, so overlapping items (cap, headphones, crowns) can't be worn together.
+- `purchaseItem` is the only place coins are deducted. It returns `firstPurchase`, and
+  `stats.itemsPurchased` / `coinsSpent` track spending.
+- `playWithToy` always succeeds for an owned toy but only grants happiness outside the toy's
+  cooldown (`rewarded: false` otherwise). `feedPet` consumes one food.
+- Save schema v2 (migration in `core/save/migrations.ts`): purchase stats, `food-veggie-bowl` renamed
+  to `food-fruit-bowl`, the retired `ears` slot moved to `head`, and stale equipped entries dropped.
+- Store `petReaction`: `play`, `feed` and `equip(..., { showOnPet: true })` queue a one-off reaction.
+  `PetReactionStage` plays it on whichever screen is focused (Pet or Inventory), then clears it.
+- Item art: accessories and decorations are drawn once (`ui/pet/accessories.tsx`,
+  `ui/room/decorations.tsx`), and shop icons crop that same art. Toys and food live in
+  `ui/items/toyFoodArt.tsx`.

@@ -7,6 +7,7 @@ import {
   getMood,
   getProgression,
   toDateKey,
+  type EquipSlot,
 } from '@/core';
 import { useNow } from '@/hooks/useNow';
 import { useGameStore } from './gameStore';
@@ -68,4 +69,4 @@ export function useDebugToolsEnabled(): boolean {
   return useGameStore((s) => s.save?.profile.settings.debugToolsEnabled ?? false);
 }
 
-const EMPTY_EQUIPPED = {};
+const EMPTY_EQUIPPED: Partial<Record<EquipSlot, string>> = {};

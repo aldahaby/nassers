@@ -1,6 +1,16 @@
 import type { ReactElement } from 'react';
 import { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
+/** Crop (viewBox in room space) framing each decoration for its shop icon. */
+export const DECORATION_ICON_VIEWBOX: Record<string, string> = {
+  'decor-potted-plant': '22 122 76 120',
+  'decor-star-garland': '34 30 132 36',
+  'decor-glow-lamp': '262 90 88 150',
+  'decor-beanbag': '250 168 104 82',
+  'decor-cozy-rug': '62 238 236 52',
+  'decor-aquarium': '14 150 106 100',
+};
+
 /**
  * Room decoration art keyed by shop item id. Drawn in a 360×300 room space;
  * each piece positions itself for its slot.
@@ -40,6 +50,36 @@ export const DECORATION_ART: Record<string, () => ReactElement> = {
       <Path d="M284 150 L328 150 L318 116 L294 116 Z" fill="#FFD166" />
       <Rect x={303} y={150} width={6} height={80} fill="#B58A63" />
       <Ellipse cx={306} cy={234} rx={24} ry={6} fill="#B58A63" />
+    </G>
+  ),
+  'decor-cozy-rug': () => (
+    <G>
+      <Ellipse cx={180} cy={264} rx={112} ry={22} fill="#C9B8FF" />
+      <Ellipse cx={180} cy={264} rx={92} ry={16} fill="none" stroke="#FFFFFF" strokeWidth={3} strokeDasharray="8 7" opacity={0.8} />
+      <Ellipse cx={180} cy={264} rx={60} ry={10} fill="#B39DFF" />
+    </G>
+  ),
+  'decor-aquarium': () => (
+    <G>
+      <Rect x={26} y={222} width={82} height={20} rx={4} fill="#B58A63" />
+      <Rect x={22} y={158} width={90} height={66} rx={10} fill="#BFE6FF" stroke="#8CCBF0" strokeWidth={4} />
+      <Rect x={26} y={172} width={82} height={48} rx={6} fill="#8FD3FF" />
+      <Path d="M30 212 C40 202 44 214 52 206 C60 214 66 202 74 210 C84 202 92 214 104 206 L104 220 L30 220 Z" fill="#E9D3A8" />
+      <Path d="M44 214 C42 200 48 194 46 184" stroke="#4BAE6E" strokeWidth={4} fill="none" strokeLinecap="round" />
+      <Path d="M92 216 C94 204 88 198 92 190" stroke="#5BC286" strokeWidth={4} fill="none" strokeLinecap="round" />
+      <G>
+        <Ellipse cx={66} cy={188} rx={10} ry={6} fill="#FFA66E" />
+        <Path d="M56 188 L48 182 L48 194 Z" fill="#FFA66E" />
+        <Circle cx={71} cy={187} r={1.6} fill="#2B2140" />
+      </G>
+      <G>
+        <Ellipse cx={88} cy={202} rx={7} ry={4.5} fill="#FF6FA3" />
+        <Path d="M95 202 L101 198 L101 206 Z" fill="#FF6FA3" />
+        <Circle cx={84} cy={201} r={1.3} fill="#2B2140" />
+      </G>
+      <Circle cx={78} cy={180} r={2} fill="#FFFFFF" opacity={0.8} />
+      <Circle cx={82} cy={174} r={1.4} fill="#FFFFFF" opacity={0.8} />
+      <Rect x={28} y={162} width={20} height={4} rx={2} fill="#FFFFFF" opacity={0.6} />
     </G>
   ),
   'decor-beanbag': () => (

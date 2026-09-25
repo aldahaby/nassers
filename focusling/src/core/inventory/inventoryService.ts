@@ -4,9 +4,11 @@ import { applyStatDelta } from '../pet/petCareService';
 import { MINUTE_MS } from '../shared/dates';
 import { fail, ok, type Result } from '../shared/result';
 import type {
+  CareOutcome,
   EquipSlot,
   GameSave,
   PassiveBonus,
+  PurchaseOutcome,
   ShopItem,
   ShopListing,
   Timestamp,
@@ -20,7 +22,6 @@ export type InventoryError =
   | 'not-owned'
   | 'not-equippable'
   | 'wrong-category'
-  | 'on-cooldown'
   | 'no-pet';
 
 export function createInventory(): UserInventory {
@@ -29,6 +30,11 @@ export function createInventory(): UserInventory {
 
 export function isOwned(inventory: UserInventory, itemId: string): boolean {
   return (inventory.items[itemId]?.quantity ?? 0) > 0;
+}
+
+export function isEquipped(inventory: UserInventory, itemId: string): boolean {
+  const slot = getShopItem(itemId)?.equipSlot;
+  return slot !== undefined && inventory.equipped[slot] === itemId;
 }
 
 export function getShopListings(inventory: UserInventory): ShopListing[] {
@@ -41,12 +47,7 @@ export function getOwnedListings(inventory: UserInventory): ShopListing[] {
 
 function toListing(item: ShopItem, inventory: UserInventory): ShopListing {
   const quantity = inventory.items[item.id]?.quantity ?? 0;
-  return {
-    ...item,
-    owned: quantity > 0,
-    quantity,
-    equipped: item.equipSlot !== undefined && inventory.equipped[item.equipSlot] === item.id,
-  };
+  return { ...item, owned: quantity > 0, quantity, equipped: isEquipped(inventory, item.id) };
 }
 
 /** Summed and capped bonuses from everything currently equipped. */
@@ -55,7 +56,18 @@ export function getEquippedBonuses(inventory: UserInventory): Required<PassiveBo
   return combinePassiveBonuses(bonuses);
 }
 
-export function purchaseItem(save: GameSave, itemId: string, now: Timestamp): Result<GameSave, InventoryError> {
+/** Coins still needed to afford an item (0 when affordable). */
+export function coinsShort(save: GameSave, itemId: string): number {
+  const item = getShopItem(itemId);
+  return item ? Math.max(0, item.price - save.wallet.coins) : 0;
+}
+
+/**
+ * Buy one of an item. Coins are deducted exactly once, here. Food stacks; every
+ * other item can be owned once. Non-food items give a small one-time happiness
+ * bump ("a gift!"); food pays out when eaten instead.
+ */
+export function purchaseItem(save: GameSave, itemId: string, now: Timestamp): Result<PurchaseOutcome, InventoryError> {
   const item = getShopItem(itemId);
   if (!item) return fail('unknown-item');
   if (!item.consumable && isOwned(save.inventory, itemId)) return fail('already-owned');
@@ -75,15 +87,32 @@ export function purchaseItem(save: GameSave, itemId: string, now: Timestamp): Re
     },
   };
 
-  // Food pays out when eaten; everything else gives a little joy on arrival.
-  const pet =
-    save.pet && !item.consumable
-      ? { ...save.pet, stats: applyStatDelta(save.pet.stats, { happiness: item.happinessBonus }) }
-      : save.pet;
+  let pet = save.pet;
+  let happinessGained = 0;
+  if (pet && !item.consumable) {
+    const stats = applyStatDelta(pet.stats, { happiness: item.happinessBonus });
+    happinessGained = stats.happiness - pet.stats.happiness;
+    pet = { ...pet, stats };
+  }
 
-  return ok({ ...save, pet, inventory, wallet: { coins: save.wallet.coins - item.price } });
+  return ok({
+    save: {
+      ...save,
+      pet,
+      inventory,
+      wallet: { coins: save.wallet.coins - item.price },
+      stats: {
+        ...save.stats,
+        itemsPurchased: save.stats.itemsPurchased + 1,
+        coinsSpent: save.stats.coinsSpent + item.price,
+      },
+    },
+    firstPurchase: save.stats.itemsPurchased === 0,
+    happinessGained,
+  });
 }
 
+/** Wear or place an owned item. Replaces whatever was in the same slot. */
 export function equipItem(save: GameSave, itemId: string): Result<GameSave, InventoryError> {
   const item = getShopItem(itemId);
   if (!item) return fail('unknown-item');
@@ -96,12 +125,19 @@ export function equipItem(save: GameSave, itemId: string): Result<GameSave, Inve
 }
 
 export function unequipSlot(save: GameSave, slot: EquipSlot): GameSave {
+  if (!(slot in save.inventory.equipped)) return save;
   const equipped = { ...save.inventory.equipped };
   delete equipped[slot];
   return { ...save, inventory: { ...save.inventory, equipped } };
 }
 
-export function feedPet(save: GameSave, itemId: string, now: Timestamp): Result<GameSave, InventoryError> {
+/** Take off / remove an item if it is the one in its slot. */
+export function unequipItem(save: GameSave, itemId: string): GameSave {
+  const slot = getShopItem(itemId)?.equipSlot;
+  return slot && save.inventory.equipped[slot] === itemId ? unequipSlot(save, slot) : save;
+}
+
+export function feedPet(save: GameSave, itemId: string, now: Timestamp): Result<CareOutcome, InventoryError> {
   const item = getShopItem(itemId);
   if (!item) return fail('unknown-item');
   if (item.category !== 'food') return fail('wrong-category');
@@ -113,13 +149,12 @@ export function feedPet(save: GameSave, itemId: string, now: Timestamp): Result<
   if (owned.quantity === 1) delete items[itemId];
   else items[itemId] = { ...owned, quantity: owned.quantity - 1, lastUsedAt: now };
 
+  const stats = applyStatDelta(save.pet.stats, { health: item.healthBonus, happiness: item.happinessBonus });
   return ok({
-    ...save,
-    pet: {
-      ...save.pet,
-      stats: applyStatDelta(save.pet.stats, { health: item.healthBonus, happiness: item.happinessBonus }),
-    },
-    inventory: { ...save.inventory, items },
+    save: { ...save, pet: { ...save.pet, stats }, inventory: { ...save.inventory, items } },
+    happinessGained: stats.happiness - save.pet.stats.happiness,
+    healthGained: stats.health - save.pet.stats.health,
+    rewarded: true,
   });
 }
 
@@ -130,18 +165,30 @@ export function toyCooldownRemainingMs(save: GameSave, itemId: string, now: Time
   return Math.max(0, lastUsedAt + item.playCooldownMinutes * MINUTE_MS - now);
 }
 
-export function playWithToy(save: GameSave, itemId: string, now: Timestamp): Result<GameSave, InventoryError> {
+/**
+ * Play with a toy. Playing is always allowed (the reaction is the point), but
+ * happiness is only granted once per cooldown window, so it can't be farmed.
+ */
+export function playWithToy(save: GameSave, itemId: string, now: Timestamp): Result<CareOutcome, InventoryError> {
   const item = getShopItem(itemId);
   if (!item) return fail('unknown-item');
   if (item.category !== 'toy') return fail('wrong-category');
   if (!save.pet) return fail('no-pet');
   const owned = save.inventory.items[itemId];
   if (!owned) return fail('not-owned');
-  if (toyCooldownRemainingMs(save, itemId, now) > 0) return fail('on-cooldown');
 
+  if (toyCooldownRemainingMs(save, itemId, now) > 0) {
+    return ok({ save, happinessGained: 0, healthGained: 0, rewarded: false });
+  }
+  const stats = applyStatDelta(save.pet.stats, { happiness: item.happinessBonus });
   return ok({
-    ...save,
-    pet: { ...save.pet, stats: applyStatDelta(save.pet.stats, { happiness: item.happinessBonus }) },
-    inventory: { ...save.inventory, items: { ...save.inventory.items, [itemId]: { ...owned, lastUsedAt: now } } },
+    save: {
+      ...save,
+      pet: { ...save.pet, stats },
+      inventory: { ...save.inventory, items: { ...save.inventory.items, [itemId]: { ...owned, lastUsedAt: now } } },
+    },
+    happinessGained: stats.happiness - save.pet.stats.happiness,
+    healthGained: 0,
+    rewarded: true,
   });
 }

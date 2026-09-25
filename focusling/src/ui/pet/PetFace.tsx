@@ -2,7 +2,7 @@ import { Circle, Ellipse, G, Path } from 'react-native-svg';
 import type { GrowthStage, PetMood } from '@/core';
 import type { PetAnatomy } from './anatomy';
 
-export type FaceExpression = 'auto' | 'blink' | 'delighted' | 'focused';
+export type FaceExpression = 'auto' | 'blink' | 'delighted' | 'focused' | 'eating';
 
 interface Props {
   anatomy: PetAnatomy;
@@ -22,7 +22,7 @@ export function PetFace({ anatomy, mood, stage, expression, cheekColor }: Props)
   const rightX = 100 + eyeDx;
 
   const eyes = (() => {
-    if (expression === 'delighted') {
+    if (expression === 'delighted' || expression === 'eating') {
       // Happy closed "^ ^" eyes.
       return [leftX, rightX].map((x) => (
         <Path
@@ -71,6 +71,10 @@ export function PetFace({ anatomy, mood, stage, expression, cheekColor }: Props)
           <Ellipse cx={100} cy={mouthY + 4} rx={4} ry={2.5} fill="#FF8FA8" />
         </G>
       );
+    }
+    if (expression === 'eating') {
+      // Mid-chomp: a round open mouth.
+      return <Ellipse cx={100} cy={mouthY + 3} rx={7} ry={6.5} fill={INK} />;
     }
     if (expression === 'focused') {
       return <Path d={`M95 ${mouthY} Q100 ${mouthY + 4} 105 ${mouthY}`} stroke={INK} strokeWidth={3.2} strokeLinecap="round" fill="none" />;

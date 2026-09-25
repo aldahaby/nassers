@@ -11,7 +11,8 @@ interface Props {
   children: ReactNode;
 }
 
-const DECOR_SLOTS: readonly DecorationSlot[] = ['wall', 'floorLeft', 'floorRight'];
+/** Back-to-front draw order: the rug lies under everything standing on the floor. */
+const DECOR_SLOTS: readonly DecorationSlot[] = ['wall', 'floorCenter', 'floorLeft', 'floorRight'];
 
 /** The pet's room: wall, window, floor and any placed decorations, with the pet on top. */
 export function RoomScene({ equipped, height, children }: Props) {
