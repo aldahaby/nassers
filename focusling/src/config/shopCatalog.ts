@@ -1,0 +1,202 @@
+import type { ShopCategory, ShopItem } from '@/core/models';
+
+/**
+ * The shop catalog. Adding an item here is all that is needed for it to appear
+ * in the shop; equippable items also need artwork in `ui/pet/accessories` or
+ * `ui/room/decorations` keyed by id.
+ */
+export const SHOP_ITEMS: readonly ShopItem[] = [
+  // Toys: reusable, grant happiness when played with (with a cooldown).
+  {
+    id: 'toy-bouncy-ball',
+    name: 'Bouncy Ball',
+    description: 'Boing! A classic for burning off energy.',
+    category: 'toy',
+    price: 15,
+    icon: '🔴',
+    happinessBonus: 4,
+    healthBonus: 0,
+    consumable: false,
+    playCooldownMinutes: 30,
+  },
+  {
+    id: 'toy-plush-bear',
+    name: 'Plush Bear',
+    description: 'A squishy friend for cuddles.',
+    category: 'toy',
+    price: 40,
+    icon: '🧸',
+    happinessBonus: 7,
+    healthBonus: 0,
+    consumable: false,
+    playCooldownMinutes: 60,
+  },
+  {
+    id: 'toy-squeaky-star',
+    name: 'Squeaky Star',
+    description: 'Squeaks when squeezed. Endlessly funny.',
+    category: 'toy',
+    price: 25,
+    icon: '⭐',
+    happinessBonus: 5,
+    healthBonus: 0,
+    consumable: false,
+    playCooldownMinutes: 45,
+  },
+
+  // Accessories: worn on the pet, small passive XP bonuses.
+  {
+    id: 'acc-sunglasses',
+    name: 'Cool Shades',
+    description: 'Too cool for doomscrolling.',
+    category: 'accessory',
+    price: 60,
+    icon: '🕶️',
+    happinessBonus: 6,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'face',
+    passiveBonus: { xpPct: 0.02 },
+  },
+  {
+    id: 'acc-cap',
+    name: 'Sporty Cap',
+    description: 'Keeps the glare off focused eyes.',
+    category: 'accessory',
+    price: 50,
+    icon: '🧢',
+    happinessBonus: 5,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'head',
+    passiveBonus: { xpPct: 0.02 },
+  },
+  {
+    id: 'acc-headphones',
+    name: 'Focus Headphones',
+    description: 'Noise-cancelling, distraction-cancelling.',
+    category: 'accessory',
+    price: 80,
+    icon: '🎧',
+    happinessBonus: 6,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'ears',
+    passiveBonus: { xpPct: 0.03 },
+  },
+  {
+    id: 'acc-bow-tie',
+    name: 'Dapper Bow',
+    description: 'For formal focus occasions.',
+    category: 'accessory',
+    price: 35,
+    icon: '🎀',
+    happinessBonus: 4,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'neck',
+    passiveBonus: { xpPct: 0.01 },
+  },
+
+  // Food: consumable, restores health and happiness.
+  {
+    id: 'food-berry-snack',
+    name: 'Berry Snack',
+    description: 'A quick, juicy pick-me-up.',
+    category: 'food',
+    price: 5,
+    icon: '🫐',
+    happinessBonus: 3,
+    healthBonus: 8,
+    consumable: true,
+  },
+  {
+    id: 'food-veggie-bowl',
+    name: 'Veggie Bowl',
+    description: 'Crunchy, colourful and very nourishing.',
+    category: 'food',
+    price: 12,
+    icon: '🥗',
+    happinessBonus: 2,
+    healthBonus: 15,
+    consumable: true,
+  },
+  {
+    id: 'food-honey-cake',
+    name: 'Honey Cake',
+    description: 'A sweet treat for a job well done.',
+    category: 'food',
+    price: 20,
+    icon: '🍰',
+    happinessBonus: 10,
+    healthBonus: 5,
+    consumable: true,
+  },
+
+  // Decorations: placed in the room, small passive coin bonuses.
+  {
+    id: 'decor-potted-plant',
+    name: 'Potted Plant',
+    description: 'A little green makes everything calmer.',
+    category: 'decoration',
+    price: 45,
+    icon: '🪴',
+    happinessBonus: 5,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'floorLeft',
+    passiveBonus: { coinPct: 0.02 },
+  },
+  {
+    id: 'decor-glow-lamp',
+    name: 'Glow Lamp',
+    description: 'A warm light for late-night focus.',
+    category: 'decoration',
+    price: 55,
+    icon: '💡',
+    happinessBonus: 5,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'floorRight',
+    passiveBonus: { coinPct: 0.03 },
+  },
+  {
+    id: 'decor-beanbag',
+    name: 'Comfy Beanbag',
+    description: 'The ultimate flop spot after a long session.',
+    category: 'decoration',
+    price: 70,
+    icon: '🛋️',
+    happinessBonus: 8,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'floorRight',
+    passiveBonus: { coinPct: 0.03 },
+  },
+  {
+    id: 'decor-star-garland',
+    name: 'Star Garland',
+    description: 'Twinkly stars strung across the wall.',
+    category: 'decoration',
+    price: 40,
+    icon: '✨',
+    happinessBonus: 4,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: 'wall',
+    passiveBonus: { coinPct: 0.02 },
+  },
+];
+
+export const SHOP_CATEGORIES: readonly { id: ShopCategory; label: string }[] = [
+  { id: 'toy', label: 'Toys' },
+  { id: 'accessory', label: 'Accessories' },
+  { id: 'food', label: 'Food' },
+  { id: 'decoration', label: 'Room' },
+];
+
+const ITEMS_BY_ID: ReadonlyMap<string, ShopItem> = new Map(SHOP_ITEMS.map((item) => [item.id, item]));
+
+export function getShopItem(id: string): ShopItem | undefined {
+  return ITEMS_BY_ID.get(id);
+}
