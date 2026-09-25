@@ -276,3 +276,19 @@ the pure `core/` module can run server-side to validate submitted sessions.
 first, then push the `GameSave` document to a backend. On conflict it can merge by rule
 (max of monotonic counters such as `lifetimeXp` and `lifetimeCoinsEarned`, union of inventory,
 latest-wins for settings). `profile.id` is already generated for that.
+
+## 9. Focus loop (milestone 2)
+
+- `core/game/gameEngine.ts`: `getActiveSessionProgress` (live timer and projection from
+  timestamps), `previewAbandon` (what ending now would pay), and `endSession`, which now also
+  returns a `SessionSummary`.
+- `core/game/sessionSummary.ts`: `SessionSummary` holds before/after coins, XP and streaks for the
+  completion animations, plus at most one `Celebration` (evolution > growth > level-up) and
+  `completedWhileAway`.
+- `core/game/debugTools.ts`: `debugPrimeXp` and `debugSetRemaining` for fast testing.
+- Store: `lastSummary` is set whenever a session ends: by the timer, by ending early, by a
+  Screen Time violation, or on launch for a session that ran out while the app was closed. The
+  tabs layout watches it and opens the `/session-complete` modal. Closing that modal sets
+  `pendingWelcome` so the pet screen greets the player once.
+- The UI never recomputes rewards: the setup screen, countdown, confirmation and completion screen
+  all read values that `core` produced.

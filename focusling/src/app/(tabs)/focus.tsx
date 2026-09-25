@@ -1,6 +1,9 @@
-import { EmptyState } from '@/ui';
+import { ActiveSession } from '@/features/focus/ActiveSession';
+import { FocusSetup } from '@/features/focus/FocusSetup';
+import { useActiveSession } from '@/state';
 
-// Placeholder until the focus milestone. Game logic for it already exists in `core/`.
+/** The Focus tab: setup when idle, the calm countdown while a session runs. */
 export default function FocusScreen() {
-  return <EmptyState icon="⏳" title="Focus sessions" body="Pick 15, 30, 45, 60 minutes or a custom length, then focus together with your pet. Coming in the next milestone." />;
+  const active = useActiveSession();
+  return active ? <ActiveSession /> : <FocusSetup />;
 }

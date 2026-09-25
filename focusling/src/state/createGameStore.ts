@@ -3,6 +3,8 @@ import {
   adoptPet,
   createNewSave,
   debugGrant,
+  debugPrimeXp,
+  debugSetRemaining,
   endSession,
   equipItem,
   feedPet,
@@ -23,7 +25,9 @@ import {
   type PetSpeciesId,
   type Result,
   type SessionReward,
+  type SessionSummary,
   type UserSettings,
+  type XpPrimeTarget,
 } from '@/core';
 import type { SaveRepository, ScreenTimeService } from '@/services';
 
@@ -41,8 +45,10 @@ export interface GameStore {
   status: LoadStatus;
   error: string | null;
   save: GameSave | null;
-  /** Reward from the most recently finished session, until the UI dismisses it. */
-  lastReward: SessionReward | null;
+  /** Summary of the most recently finished session, until the completion screen dismisses it. */
+  lastSummary: SessionSummary | null;
+  /** Set when the completion screen closes, so the pet screen can greet the player once. */
+  pendingWelcome: FocusOutcome | null;
 
   hydrate(): Promise<void>;
   /** Apply decay and auto-complete due sessions. Safe to call often. */
@@ -57,9 +63,14 @@ export interface GameStore {
   unequip(slot: EquipSlot): void;
   feed(itemId: string): Result<null, InventoryError>;
   play(itemId: string): Result<null, InventoryError>;
-  dismissReward(): void;
+  dismissSummary(): void;
+  consumeWelcome(): void;
   updateSettings(patch: Partial<UserSettings>): void;
   debugGrant(grant: { coins?: number; xp?: number }): void;
+  /** Put the pet 1 XP short of a milestone. */
+  debugPrimeXp(target: XpPrimeTarget): void;
+  /** Leave only `remainingMs` on the active session. */
+  debugSetRemaining(remainingMs: number): void;
   resetProgress(): Promise<void>;
 }
 
@@ -99,7 +110,8 @@ export function createGameStore(deps: GameStoreDeps) {
       status: 'idle',
       error: null,
       save: null,
-      lastReward: null,
+      lastSummary: null,
+      pendingWelcome: null,
 
       async hydrate() {
         if (get().status === 'loading') return;
@@ -107,8 +119,8 @@ export function createGameStore(deps: GameStoreDeps) {
         try {
           const loaded = await deps.saveRepository.load();
           const base = loaded ?? createNewSave(now(), { debugToolsEnabled: deps.debugDefault });
-          const { save, completedReward } = refreshSave(base, now());
-          commit(save, { status: 'ready', lastReward: completedReward });
+          const { save, completedSummary } = refreshSave(base, now());
+          commit(save, { status: 'ready', lastSummary: completedSummary });
         } catch (error) {
           set({ status: 'error', error: error instanceof Error ? error.message : String(error) });
         }
@@ -118,9 +130,9 @@ export function createGameStore(deps: GameStoreDeps) {
         const save = get().save;
         if (!save) return;
         const result = refreshSave(save, now());
-        if (result.completedReward) {
-          void deps.screenTime.stopBlocking(save.focus.active?.id ?? '');
-          commit(result.save, { lastReward: result.completedReward });
+        if (result.completedSummary) {
+          void deps.screenTime.stopBlocking(result.completedSummary.sessionId);
+          commit(result.save, { lastSummary: result.completedSummary });
         } else if (result.save.pet !== save.pet) {
           set({ save: result.save });
         }
@@ -156,7 +168,7 @@ export function createGameStore(deps: GameStoreDeps) {
         const sessionId = save.focus.active?.id;
         const result = endSession(save, outcome, now());
         if (!result.ok) return fail(result.error);
-        commit(result.value.save, { lastReward: result.value.reward });
+        commit(result.value.save, { lastSummary: result.value.summary });
         if (sessionId) void deps.screenTime.stopBlocking(sessionId);
         return ok(result.value.reward);
       },
@@ -167,8 +179,12 @@ export function createGameStore(deps: GameStoreDeps) {
       feed: (itemId) => applyResult(feedPet(requireSave(), itemId, now())),
       play: (itemId) => applyResult(playWithToy(requireSave(), itemId, now())),
 
-      dismissReward() {
-        set({ lastReward: null });
+      dismissSummary() {
+        set({ pendingWelcome: get().lastSummary?.outcome ?? null, lastSummary: null });
+      },
+
+      consumeWelcome() {
+        set({ pendingWelcome: null });
       },
 
       updateSettings(patch) {
@@ -180,13 +196,21 @@ export function createGameStore(deps: GameStoreDeps) {
         commit(debugGrant(requireSave(), grant));
       },
 
+      debugPrimeXp(target) {
+        commit(debugPrimeXp(requireSave(), target));
+      },
+
+      debugSetRemaining(remainingMs) {
+        commit(debugSetRemaining(requireSave(), remainingMs, now()));
+      },
+
       async resetProgress() {
         const active = get().save?.focus.active;
         if (active) await deps.screenTime.stopBlocking(active.id);
         await writeChain;
         await deps.saveRepository.clear();
         const fresh = createNewSave(now(), { debugToolsEnabled: get().save?.profile.settings.debugToolsEnabled });
-        commit(fresh, { lastReward: null });
+        commit(fresh, { lastSummary: null });
       },
     };
   });

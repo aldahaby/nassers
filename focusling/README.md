@@ -24,22 +24,29 @@ No native modules beyond Expo's standard set are used yet, so **Expo Go** works.
 | `npm run lint` | ESLint (Expo config) |
 | `npx expo export --platform web` | Static web build in `dist/` |
 
-## Status: milestone 1 (foundation)
+## Status
 
-Working:
-- Onboarding: welcome, how it works, choose one of 3 original starter pets, name it
-- Pet home screen: animated pet (idle bob, breathing, blinking, tap to squish with hearts and a
-  speech bubble), name, level, XP, growth stage, happiness, health, coins, day streak; equipped
-  accessories and room decorations are drawn on the pet and in the room
-- Bottom tabs: Pet · Focus · Shop · Stats · Settings
-- All game logic (economy, progression, care, focus sessions, inventory, streaks) as pure,
-  tested functions
-- Local persistence with schema versioning and migrations
-- Mock Screen Time service behind a swappable interface
-- Settings with developer tools: grant coins or XP, simulate a successful or abandoned session,
-  "dress up" to preview cosmetics, and reset
+**Milestone 1 (foundation):** onboarding, animated pet home screen, bottom tabs, pure tested game
+logic, local persistence, and a mock Screen Time service.
 
-Next milestone: the Focus, Shop/Inventory and Stats screens, plus the reward summary animation.
+**Milestone 2 (focus loop):**
+- Focus setup: 15/30/45/60 or a custom length (±5 min stepper, 5–180), the pet on screen, and the
+  expected coins, XP, completion bonus and happiness before you start
+- Active session: the pet breathes slowly inside a progress ring and gives a quiet smile about every
+  45 s; big countdown, end time, coins and XP you'll earn, session streak. Timing comes from
+  timestamps, so leaving the app or reloading doesn't break it
+- End early: a low-key text link, a confirmation that makes "Keep focusing" the main button, and a
+  neutral "Session ended early. You still made some progress."
+- Completion: reward rows reveal one by one, the coin balance counts up, the XP bar fills and rolls
+  over levels, streak progress, confetti, and a happy pet. A separate celebration screen follows for
+  a level-up, a new growth stage (old form → flash → new form) or evolution
+- A session that ended while the app was closed opens straight into its reward screen
+- Returning to the pet: it hops and thanks you, and the stats already show the new values
+- Developer tools on the Focus tab (only when Settings → Developer tools is on): start a session
+  with 8 s left, skip to 8 s left, complete now, simulate opening a blocked app, and prime XP one
+  short of a level-up, growth stage or evolution
+
+Next: Shop and Inventory screens, Stats screen.
 
 ## Tuning
 

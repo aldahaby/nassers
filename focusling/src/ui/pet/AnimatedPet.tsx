@@ -13,7 +13,11 @@ interface Props {
   /** Pixel size at the Adult stage; other stages scale from it. */
   size: number;
   /** Override the face, e.g. 'focused' during a session. */
-  expression?: Exclude<FaceExpression, 'blink' | 'delighted'>;
+  expression?: Exclude<FaceExpression, 'blink'>;
+  /** Slower, smaller idle motion for focus sessions. */
+  calm?: boolean;
+  /** Each change (after the first render) plays the happy hop-and-hearts reaction. */
+  cheerKey?: number;
   onPress?: () => void;
   accessibilityLabel?: string;
 }
@@ -24,7 +28,18 @@ const HEART_COUNT = 3;
  * The living pet: idles with a gentle bob and breath, blinks at random, and
  * squishes, hops and puffs out hearts when tapped.
  */
-export function AnimatedPet({ speciesId, stage, mood, equipped, size, expression = 'auto', onPress, accessibilityLabel }: Props) {
+export function AnimatedPet({
+  speciesId,
+  stage,
+  mood,
+  equipped,
+  size,
+  expression = 'auto',
+  calm = false,
+  cheerKey,
+  onPress,
+  accessibilityLabel,
+}: Props) {
   const bob = useState(() => new Animated.Value(0))[0];
   const squish = useState(() => new Animated.Value(0))[0];
   const hop = useState(() => new Animated.Value(0))[0];
@@ -33,8 +48,9 @@ export function AnimatedPet({ speciesId, stage, mood, equipped, size, expression
   const [delighted, setDelighted] = useState(false);
   const delightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sleepy pets breathe slower.
-  const idleMs = mood === 'sleepy' || mood === 'lonely' ? 2400 : 1600;
+  // Sleepy pets breathe slower; a focusing pet slower still.
+  const idleMs = calm ? 3200 : mood === 'sleepy' || mood === 'lonely' ? 2400 : 1600;
+  const bobHeight = calm ? -3 : -6;
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -66,7 +82,7 @@ export function AnimatedPet({ speciesId, stage, mood, equipped, size, expression
     if (delightTimer.current) clearTimeout(delightTimer.current);
   }, []);
 
-  const handlePress = useCallback(() => {
+  const react = useCallback(() => {
     squish.setValue(0);
     hop.setValue(0);
     Animated.parallel([
@@ -90,15 +106,26 @@ export function AnimatedPet({ speciesId, stage, mood, equipped, size, expression
     setDelighted(true);
     if (delightTimer.current) clearTimeout(delightTimer.current);
     delightTimer.current = setTimeout(() => setDelighted(false), 1000);
+  }, [hearts, hop, squish]);
+
+  const handlePress = useCallback(() => {
+    react();
     onPress?.();
-  }, [hearts, hop, onPress, squish]);
+  }, [react, onPress]);
+
+  // Parent-triggered cheer: scheduled so the reaction runs outside the render/effect pass.
+  useEffect(() => {
+    if (!cheerKey) return;
+    const timer = setTimeout(react, 0);
+    return () => clearTimeout(timer);
+  }, [cheerKey, react]);
 
   const stageScale = getStageDefinitionById(stage).scale;
   const artSize = size * stageScale;
   const face: FaceExpression = delighted ? 'delighted' : blinking ? 'blink' : expression;
 
   const transform = [
-    { translateY: Animated.add(bob.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }), hop.interpolate({ inputRange: [0, 1], outputRange: [0, -28] })) },
+    { translateY: Animated.add(bob.interpolate({ inputRange: [0, 1], outputRange: [0, bobHeight] }), hop.interpolate({ inputRange: [0, 1], outputRange: [0, -28] })) },
     { scaleX: squish.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) },
     {
       scaleY: Animated.add(

@@ -8,6 +8,17 @@ export function formatCountdown(ms: number): string {
   return h ? `${h}:${mmss}` : mmss;
 }
 
+/** `1 coin`, `3 coins`. */
+export function plural(count: number, one: string, many = `${one}s`): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
 export function pickRandom<T>(items: readonly T[]): T | undefined {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+/** Local wall-clock time, e.g. "10:45". */
+export function formatClockTime(timestamp: number): string {
+  const d = new Date(timestamp);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 }

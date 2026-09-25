@@ -41,6 +41,15 @@ export function PetFace({ anatomy, mood, stage, expression, cheekColor }: Props)
       ));
     }
     const sleepy = expression === 'auto' && (mood === 'sleepy' || mood === 'lonely');
+    if (expression === 'focused') {
+      // Calm, attentive eyes: a little narrower, gaze softly lowered.
+      return [leftX, rightX].map((x) => (
+        <G key={x}>
+          <Ellipse cx={x} cy={eyeY + 1} rx={7 * eyeScale} ry={8 * eyeScale} fill={INK} />
+          <Circle cx={x + 2.2} cy={eyeY - 1.5} r={2.6 * eyeScale} fill="#FFFFFF" />
+        </G>
+      ));
+    }
     return [leftX, rightX].map((x) => (
       <G key={x}>
         <Ellipse cx={x} cy={eyeY} rx={7.5 * eyeScale} ry={(sleepy ? 6 : 10) * eyeScale} fill={INK} />
@@ -64,7 +73,7 @@ export function PetFace({ anatomy, mood, stage, expression, cheekColor }: Props)
       );
     }
     if (expression === 'focused') {
-      return <Path d={`M94 ${mouthY} L106 ${mouthY}`} stroke={INK} strokeWidth={3.5} strokeLinecap="round" />;
+      return <Path d={`M95 ${mouthY} Q100 ${mouthY + 4} 105 ${mouthY}`} stroke={INK} strokeWidth={3.2} strokeLinecap="round" fill="none" />;
     }
     if (mood === 'sleepy') return <Ellipse cx={100} cy={mouthY + 1} rx={3.5} ry={3} fill={INK} />;
     if (mood === 'lonely') {

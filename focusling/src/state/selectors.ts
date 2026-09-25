@@ -1,5 +1,13 @@
 import { useMemo } from 'react';
-import { getEffectiveStreakDays, getEquippedBonuses, getMood, getProgression, toDateKey } from '@/core';
+import {
+  estimateReward,
+  getActiveSessionProgress,
+  getEffectiveStreakDays,
+  getEquippedBonuses,
+  getMood,
+  getProgression,
+  toDateKey,
+} from '@/core';
 import { useNow } from '@/hooks/useNow';
 import { useGameStore } from './gameStore';
 
@@ -36,6 +44,28 @@ export function useEquippedBonuses() {
 
 export function useActiveSession() {
   return useGameStore((s) => s.save?.focus.active ?? null);
+}
+
+/** What a session of `minutes` would pay if completed. */
+export function useRewardEstimate(minutes: number) {
+  const save = useGameStore((s) => s.save);
+  const now = useNow(60_000);
+  return useMemo(() => (save ? estimateReward(save, minutes, now) : null), [save, minutes, now]);
+}
+
+/** Live countdown and projection for the running session; re-renders every second. */
+export function useActiveSessionProgress() {
+  const save = useGameStore((s) => s.save);
+  const now = useNow(1000);
+  return useMemo(() => (save ? getActiveSessionProgress(save, now) : null), [save, now]);
+}
+
+export function useSessionStreak(): number {
+  return useGameStore((s) => s.save?.streak.currentSessionStreak ?? 0);
+}
+
+export function useDebugToolsEnabled(): boolean {
+  return useGameStore((s) => s.save?.profile.settings.debugToolsEnabled ?? false);
 }
 
 const EMPTY_EQUIPPED = {};

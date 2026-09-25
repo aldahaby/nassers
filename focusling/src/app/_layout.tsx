@@ -25,7 +25,12 @@ export default function RootLayout() {
       ) : status !== 'ready' ? (
         <LoadingView />
       ) : (
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+          <Stack.Screen
+            name="session-complete"
+            options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }}
+          />
+        </Stack>
       )}
     </SafeAreaProvider>
   );

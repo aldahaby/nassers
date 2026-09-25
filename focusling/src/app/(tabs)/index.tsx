@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { PET_FOCUS_LINES, PET_TAP_LINES } from '@/config/petLines';
+import { PET_FOCUS_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
 import { PET_SPECIES } from '@/config/pets';
 import { getStageDefinitionById } from '@/core';
 import { ActiveSessionBanner } from '@/features/pet/ActiveSessionBanner';
@@ -22,6 +22,9 @@ export default function PetScreen() {
   const activeSession = useActiveSession();
   const petPet = useGameStore((s) => s.petPet);
   const { width } = useWindowDimensions();
+  const welcomeBack = useGameStore((s) => s.pendingWelcome);
+  const consumeWelcome = useGameStore((s) => s.consumeWelcome);
+  const [cheerKey, setCheerKey] = useState(0);
 
   const [bubble, setBubble] = useState<string | null>(null);
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,13 +33,28 @@ export default function PetScreen() {
   }, []);
 
   const mood = view?.mood ?? 'content';
+
+  const say = useCallback((line: string | null) => {
+    setBubble(line);
+    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
+    bubbleTimer.current = setTimeout(() => setBubble(null), BUBBLE_MS);
+  }, []);
+
+  // Coming back from a finished session: a happy hop and a thank-you.
+  useEffect(() => {
+    if (!welcomeBack) return;
+    const timer = setTimeout(() => {
+      if (welcomeBack === 'completed') setCheerKey((k) => k + 1);
+      say(pickRandom(PET_WELCOME_BACK_LINES[welcomeBack]) ?? null);
+      consumeWelcome();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [welcomeBack, say, consumeWelcome]);
   const handleTap = useCallback(() => {
     const gained = petPet();
     const line = activeSession ? pickRandom(PET_FOCUS_LINES) : pickRandom(PET_TAP_LINES[mood]);
-    setBubble(gained > 0 ? `${line ?? ''}  +${gained} 💖` : (line ?? null));
-    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
-    bubbleTimer.current = setTimeout(() => setBubble(null), BUBBLE_MS);
-  }, [petPet, activeSession, mood]);
+    say(gained > 0 ? `${line ?? ''}  +${gained} 💖` : (line ?? null));
+  }, [petPet, activeSession, mood, say]);
 
   if (!view) return null;
   const { pet, progression } = view;
@@ -57,6 +75,7 @@ export default function PetScreen() {
           size={petSize}
           expression={activeSession ? 'focused' : 'auto'}
           onPress={handleTap}
+          cheerKey={cheerKey}
           accessibilityLabel={`${pet.name}, ${stageLabel} ${PET_SPECIES[pet.speciesId].name}. Feeling ${mood}.`}
         />
       </RoomScene>

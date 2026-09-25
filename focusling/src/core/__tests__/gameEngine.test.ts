@@ -64,11 +64,12 @@ describe('gameEngine', () => {
   it('auto-completes a session whose timer ran out while the app was closed', () => {
     const save = started(newGame(), 30);
     const early = refreshSave(save, T0 + 10 * MINUTE_MS);
-    expect(early.completedReward).toBeNull();
+    expect(early.completedSummary).toBeNull();
     expect(early.save.focus.active).not.toBeNull();
 
     const late = refreshSave(save, T0 + 45 * MINUTE_MS);
-    expect(late.completedReward?.outcome).toBe('completed');
+    expect(late.completedSummary?.outcome).toBe('completed');
+    expect(late.completedSummary?.completedWhileAway).toBe(true);
     expect(late.save.focus.active).toBeNull();
   });
 

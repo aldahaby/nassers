@@ -14,3 +14,9 @@ export const PET_FOCUS_LINES: readonly string[] = [
   'Deep breaths, steady focus.',
   'Every minute counts!',
 ];
+
+/** Said when the player returns to the pet screen after a session ends. */
+export const PET_WELCOME_BACK_LINES: Record<'completed' | 'abandoned', readonly string[]> = {
+  completed: ['Thanks for focusing with me!', 'We did it!', 'That felt great. Again soon?'],
+  abandoned: ['Every bit counts. Welcome back!', 'Nice try! We can go again anytime.'],
+};

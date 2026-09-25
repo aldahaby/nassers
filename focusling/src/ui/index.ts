@@ -10,3 +10,7 @@ export * from './pet/AnimatedPet';
 export * from './pet/PetArt';
 export * from './room/RoomScene';
 export * from './theme';
+export * from './components/ConfirmDialog';
+export * from './components/Confetti';
+export * from './components/CountUpText';
+export * from './components/ProgressRing';

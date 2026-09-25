@@ -1,0 +1,42 @@
+/**
+ * Developer-only helpers for testing the focus loop quickly. Only reachable from
+ * UI that is hidden unless the "Developer tools" setting is on.
+ */
+import { GROWTH_STAGES } from '@/config/progression';
+import { MINUTE_MS } from '../shared/dates';
+import { getProgression, totalXpForLevel } from '../progression/progressionService';
+import type { GameSave, Timestamp } from '../models';
+
+export type XpPrimeTarget = 'levelUp' | 'nextStage' | 'evolution';
+
+export function debugGrant(save: GameSave, grant: { coins?: number; xp?: number }): GameSave {
+  return {
+    ...save,
+    wallet: { coins: save.wallet.coins + (grant.coins ?? 0) },
+    pet: save.pet ? { ...save.pet, lifetimeXp: save.pet.lifetimeXp + (grant.xp ?? 0) } : null,
+  };
+}
+
+/**
+ * Put the pet 1 XP short of a milestone, so the next rewarded session crosses it.
+ * Never lowers XP; returns the save unchanged if the milestone is already behind.
+ */
+export function debugPrimeXp(save: GameSave, target: XpPrimeTarget): GameSave {
+  if (!save.pet) return save;
+  const current = getProgression(save.pet.lifetimeXp);
+  let goal: number | null;
+  if (target === 'levelUp') goal = totalXpForLevel(current.level + 1);
+  else if (target === 'nextStage') goal = current.nextStageAtXp;
+  else goal = GROWTH_STAGES[GROWTH_STAGES.length - 1]!.minXp;
+
+  if (goal === null || goal - 1 <= save.pet.lifetimeXp) return save;
+  return { ...save, pet: { ...save.pet, lifetimeXp: goal - 1 } };
+}
+
+/** Move the active session's start back so only `remainingMs` is left. */
+export function debugSetRemaining(save: GameSave, remainingMs: number, now: Timestamp): GameSave {
+  const session = save.focus.active;
+  if (!session) return save;
+  const startedAt = now + remainingMs - session.plannedDurationMinutes * MINUTE_MS;
+  return { ...save, focus: { ...save.focus, active: { ...session, startedAt } } };
+}

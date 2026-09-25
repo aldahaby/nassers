@@ -9,6 +9,9 @@ import { calculateCoinXpReward, type RewardContext } from '../economy/economySer
 import {
   createFocusSession,
   getElapsedMinutes,
+  getEndsAt,
+  getProgressFraction,
+  getRemainingMs,
   isSessionDue,
   type FocusError,
 } from '../focus/focusSessionService';
@@ -20,13 +23,17 @@ import { createId } from '../shared/ids';
 import { fail, ok, type Result } from '../shared/result';
 import { getEffectiveStreakDays, recordSessionForStreak } from '../streaks/streakService';
 import { emptyDailyStats, pruneDailyStats } from './dailyStats';
+import { summarizeSession } from './sessionSummary';
 import type {
+  AbandonPreview,
+  ActiveSessionProgress,
   BlockTarget,
   FocusOutcome,
   GameSave,
   PetSpeciesId,
   RewardEstimate,
   SessionReward,
+  SessionSummary,
   Timestamp,
 } from '../models';
 
@@ -96,7 +103,7 @@ export function endSession(
   save: GameSave,
   outcome: FocusOutcome,
   now: Timestamp,
-): Result<{ save: GameSave; reward: SessionReward }, FocusError> {
+): Result<{ save: GameSave; reward: SessionReward; summary: SessionSummary }, FocusError> {
   const session = save.focus.active;
   if (!session) return fail('no-active-session');
   if (!save.pet) return fail('no-pet');
@@ -170,33 +177,54 @@ export function endSession(
     ),
   };
 
-  return ok({ save: next, reward });
+  return ok({ save: next, reward, summary: summarizeSession(save, next, reward, getEndsAt(session), now) });
+}
+
+/** Live timer + projected rewards for the running session. */
+export function getActiveSessionProgress(save: GameSave, now: Timestamp): ActiveSessionProgress | null {
+  const session = save.focus.active;
+  if (!session) return null;
+  return {
+    remainingMs: getRemainingMs(session, now),
+    elapsedMinutes: getElapsedMinutes(session, now),
+    progress: getProgressFraction(session, now),
+    endsAt: getEndsAt(session),
+    projected: estimateReward(save, session.plannedDurationMinutes, now),
+  };
+}
+
+/** What the user keeps if they end the active session now (shown in the confirmation). */
+export function previewAbandon(save: GameSave, now: Timestamp): AbandonPreview | null {
+  const session = save.focus.active;
+  if (!session) return null;
+  const focusedMinutes = getElapsedMinutes(session, now);
+  const reward = calculateCoinXpReward(
+    focusedMinutes,
+    session.plannedDurationMinutes,
+    'abandoned',
+    getRewardContext(save, now),
+  );
+  return { focusedMinutes, coins: reward.coins, xp: reward.xp };
 }
 
 /**
  * Bring a save up to date when the app opens or returns to the foreground:
  * apply passive decay and complete any session whose timer ran out meanwhile.
  */
-export function refreshSave(save: GameSave, now: Timestamp): { save: GameSave; completedReward: SessionReward | null } {
+export function refreshSave(
+  save: GameSave,
+  now: Timestamp,
+): { save: GameSave; completedSummary: SessionSummary | null } {
   let current = save;
-  let completedReward: SessionReward | null = null;
+  let completedSummary: SessionSummary | null = null;
 
   if (current.focus.active && isSessionDue(current.focus.active, now)) {
     const result = endSession(current, 'completed', now);
     if (result.ok) {
       current = result.value.save;
-      completedReward = result.value.reward;
+      completedSummary = result.value.summary;
     }
   }
   if (current.pet) current = { ...current, pet: applyDecay(current.pet, now) };
-  return { save: current, completedReward };
-}
-
-/** Developer helper for exercising progression visuals. */
-export function debugGrant(save: GameSave, grant: { coins?: number; xp?: number }): GameSave {
-  return {
-    ...save,
-    wallet: { coins: save.wallet.coins + (grant.coins ?? 0) },
-    pet: save.pet ? { ...save.pet, lifetimeXp: save.pet.lifetimeXp + (grant.xp ?? 0) } : null,
-  };
+  return { save: current, completedSummary };
 }

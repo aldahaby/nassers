@@ -52,3 +52,48 @@ export interface RewardEstimate {
   healthDelta: number;
   bonusMultiplier: number;
 }
+
+/** A one-off moment worth its own celebration screen. At most one per session. */
+export type Celebration =
+  | { kind: 'levelUp'; level: number }
+  | { kind: 'growth'; from: GrowthStage; to: GrowthStage; level: number }
+  | { kind: 'evolution'; from: GrowthStage; to: GrowthStage; level: number };
+
+/**
+ * Everything the completion screen needs, captured when a session ends:
+ * the reward plus before/after values so the UI can animate the change.
+ */
+export interface SessionSummary {
+  sessionId: string;
+  outcome: FocusOutcome;
+  plannedMinutes: number;
+  reward: SessionReward;
+  coinsBefore: number;
+  coinsAfter: number;
+  xpBefore: number;
+  xpAfter: number;
+  dayStreakBefore: number;
+  dayStreakAfter: number;
+  sessionStreakAfter: number;
+  celebration: Celebration | null;
+  /** True when the timer ran out while the app was closed or in the background. */
+  completedWhileAway: boolean;
+}
+
+/** Live view of the running session, derived from timestamps on every tick. */
+export interface ActiveSessionProgress {
+  remainingMs: number;
+  elapsedMinutes: number;
+  /** 0–1. */
+  progress: number;
+  endsAt: Timestamp;
+  /** What completing this session will pay. */
+  projected: RewardEstimate;
+}
+
+/** What ending the session right now would still pay. */
+export interface AbandonPreview {
+  focusedMinutes: number;
+  coins: number;
+  xp: number;
+}
