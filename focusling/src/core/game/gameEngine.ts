@@ -31,6 +31,8 @@ import type {
   FocusOutcome,
   GameSave,
   PetSpeciesId,
+  ProtectionMode,
+  ProtectionSettings,
   RewardEstimate,
   SessionReward,
   SessionSummary,
@@ -86,12 +88,14 @@ export function startSession(
   minutes: number,
   targets: BlockTarget[],
   now: Timestamp,
+  options: { protectionMode?: ProtectionMode; sessionId?: string } = {},
 ): Result<GameSave, FocusError> {
   if (!save.pet) return fail('no-pet');
   if (save.focus.active) return fail('session-already-active');
-  const created = createFocusSession(minutes, targets, now);
+  const created = createFocusSession(minutes, targets, now, options.protectionMode ?? 'none');
   if (!created.ok) return created;
-  return ok({ ...save, focus: { ...save.focus, active: created.value } });
+  const session = options.sessionId ? { ...created.value, id: options.sessionId } : created.value;
+  return ok({ ...save, focus: { ...save.focus, active: session } });
 }
 
 /**
@@ -242,4 +246,8 @@ export function estimateSessionsToAfford(save: GameSave, price: number, now: Tim
   if (short <= 0) return 0;
   const perSession = estimateReward(save, AFFORD_HINT_SESSION_MINUTES, now).coins;
   return Math.ceil(short / Math.max(1, perSession));
+}
+
+export function updateProtectionSettings(save: GameSave, patch: Partial<ProtectionSettings>): GameSave {
+  return { ...save, protection: { ...save.protection, ...patch } };
 }

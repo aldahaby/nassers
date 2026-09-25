@@ -48,3 +48,4 @@ Docs: https://docs.expo.dev/eas/index.md
 - OS integrations go behind interfaces in `src/services/` and are chosen in `src/services/index.ts`.
 - Add tests in `src/core/__tests__/` for any rule change. Run `npm test`, `npm run typecheck`, `npm run lint`.
 - See `docs/ARCHITECTURE.md`.
+- Native protection code: `modules/focusling-protection/ios` (Swift) and `targets/*` (extensions). `FocuslingSharedState.swift` copies must stay identical (a test checks this). Keep `src/config/protectionVectors.json` as the shared source of truth for detection policy behaviour.

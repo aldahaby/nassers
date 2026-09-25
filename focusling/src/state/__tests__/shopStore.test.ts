@@ -1,6 +1,6 @@
 import { getShopItem } from '@/config/shopCatalog';
 import { MemorySaveRepository } from '@/services/persistence/MemorySaveRepository';
-import { MockScreenTimeService } from '@/services/screenTime/MockScreenTimeService';
+import { MockProtectionService } from '@/services/protection/MockProtectionService';
 import { createGameStore } from '../createGameStore';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -9,8 +9,8 @@ const T0 = new Date(2026, 0, 5, 9, 0).getTime();
 async function setup() {
   let clock = T0;
   const repo = new MemorySaveRepository();
-  const screenTime = new MockScreenTimeService();
-  const make = () => createGameStore({ saveRepository: repo, screenTime, now: () => clock });
+  const screenTime = new MockProtectionService();
+  const make = () => createGameStore({ saveRepository: repo, protection: screenTime, now: () => clock });
   const store = make();
   await store.getState().hydrate();
   store.getState().adoptPet('cloudling', 'Nimbus');
@@ -102,7 +102,7 @@ describe('developer mode', () => {
     const { store, reopen } = await setup();
     store.getState().debugPrimeXp('levelUp');
     const levelBefore = store.getState().save!.pet!.lifetimeXp;
-    store.getState().startFocus(15, []);
+    await store.getState().startFocus(15);
     store.getState().debugSetRemaining(5_000);
     const ended = store.getState().endFocus('completed');
     expect(ended.ok).toBe(true);

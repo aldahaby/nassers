@@ -1,3 +1,4 @@
+import { DEFAULT_PROTECTION } from '@/config/protection';
 import { getShopItem } from '@/config/shopCatalog';
 import { CURRENT_SCHEMA_VERSION, type GameSave } from '../models';
 
@@ -32,6 +33,17 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
       inventory: { items, equipped },
       stats: { itemsPurchased: Object.keys(items).length, coinsSpent: 0, ...stats },
       schemaVersion: 2,
+    };
+  },
+  // v2 → v3: focus protection settings; sessions remember their protection mode.
+  2: (save) => {
+    const focus = (save.focus ?? { active: null, history: [] }) as { active: RawRecord | null; history: RawRecord[] };
+    const withMode = (s: RawRecord) => ({ protectionMode: 'none', ...s });
+    return {
+      ...save,
+      protection: { ...DEFAULT_PROTECTION, surfaces: [...DEFAULT_PROTECTION.surfaces] },
+      focus: { active: focus.active ? withMode(focus.active) : null, history: (focus.history ?? []).map(withMode) },
+      schemaVersion: 3,
     };
   },
 };

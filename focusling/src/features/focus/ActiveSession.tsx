@@ -11,6 +11,8 @@ import {
 } from '@/state';
 import { AnimatedPet, Card, ConfirmDialog, ProgressRing, Screen, colors, spacing, typography } from '@/ui';
 import { formatClockTime, formatCountdown, plural } from '@/utils/format';
+import { ProtectionNoticeCard } from '@/features/protection/ProtectionNoticeCard';
+import { ProtectionStatusPill } from '@/features/protection/ProtectionStatusPill';
 import { FocusDevPanel } from './FocusDevPanel';
 import { RewardTiles } from './RewardTiles';
 
@@ -92,6 +94,9 @@ export function ActiveSession() {
           {progress.elapsedMinutes} of {session.plannedDurationMinutes} min · ends {formatClockTime(progress.endsAt)}
         </Text>
       </View>
+
+      <ProtectionStatusPill session={session} />
+      <ProtectionNoticeCard />
 
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>When you finish</Text>

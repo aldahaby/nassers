@@ -2,7 +2,7 @@ import { FOCUS_CONFIG } from '@/config/focus';
 import { MINUTE_MS } from '../shared/dates';
 import { createId } from '../shared/ids';
 import { fail, ok, type Result } from '../shared/result';
-import type { BlockTarget, FocusSession, Timestamp } from '../models';
+import type { BlockTarget, FocusSession, ProtectionMode, Timestamp } from '../models';
 
 export type FocusError = 'invalid-duration' | 'session-already-active' | 'no-active-session' | 'no-pet';
 
@@ -16,6 +16,7 @@ export function createFocusSession(
   plannedDurationMinutes: number,
   blockedTargets: BlockTarget[],
   now: Timestamp,
+  protectionMode: ProtectionMode = 'none',
 ): Result<FocusSession, FocusError> {
   if (!isValidDuration(plannedDurationMinutes)) return fail('invalid-duration');
   return ok({
@@ -25,6 +26,7 @@ export function createFocusSession(
     endedAt: null,
     status: 'active',
     blockedTargets,
+    protectionMode,
     reward: null,
   });
 }

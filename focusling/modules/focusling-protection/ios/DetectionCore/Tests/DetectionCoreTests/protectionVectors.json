@@ -1,0 +1,205 @@
+{
+  "description": "Shared DetectionPolicy test vectors. Used by src/core/__tests__/protection.test.ts and modules/focusling-protection/ios/Tests/DetectionPolicyTests.swift so the TypeScript reference and the native Swift detector agree. Times are ms; 'reels' = instagramReels.",
+  "policy": {
+    "confidenceThreshold": 0.75,
+    "requiredVotes": 3,
+    "windowSize": 5,
+    "minimumDetectionMs": 1500,
+    "cooldownMs": 20000
+  },
+  "cases": [
+    {
+      "name": "single confident frame never intervenes",
+      "samples": [
+        {
+          "at": 0,
+          "surface": "reels",
+          "confidence": 0.99
+        }
+      ],
+      "expectInterventionsAt": []
+    },
+    {
+      "name": "low-confidence frames are ignored",
+      "samples": [
+        {
+          "at": 0,
+          "surface": "reels",
+          "confidence": 0.6
+        },
+        {
+          "at": 1000,
+          "surface": "reels",
+          "confidence": 0.7
+        },
+        {
+          "at": 2000,
+          "surface": "reels",
+          "confidence": 0.74
+        },
+        {
+          "at": 3000,
+          "surface": "reels",
+          "confidence": 0.5
+        }
+      ],
+      "expectInterventionsAt": []
+    },
+    {
+      "name": "three of five spanning 1.5 s intervenes",
+      "samples": [
+        {
+          "at": 0,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 1000,
+          "surface": "other",
+          "confidence": 0.9
+        },
+        {
+          "at": 2000,
+          "surface": "reels",
+          "confidence": 0.8
+        },
+        {
+          "at": 3000,
+          "surface": "reels",
+          "confidence": 0.95
+        }
+      ],
+      "expectInterventionsAt": [
+        3000
+      ]
+    },
+    {
+      "name": "votes too close together wait for the minimum duration",
+      "samples": [
+        {
+          "at": 0,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 400,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 800,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 1600,
+          "surface": "reels",
+          "confidence": 0.9
+        }
+      ],
+      "expectInterventionsAt": [
+        1600
+      ]
+    },
+    {
+      "name": "old positives slide out of the window",
+      "samples": [
+        {
+          "at": 0,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 1000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 2000,
+          "surface": "other",
+          "confidence": 0.9
+        },
+        {
+          "at": 3000,
+          "surface": "other",
+          "confidence": 0.9
+        },
+        {
+          "at": 4000,
+          "surface": "other",
+          "confidence": 0.9
+        },
+        {
+          "at": 5000,
+          "surface": "other",
+          "confidence": 0.9
+        },
+        {
+          "at": 6000,
+          "surface": "reels",
+          "confidence": 0.9
+        }
+      ],
+      "expectInterventionsAt": []
+    },
+    {
+      "name": "cooldown suppresses repeat interventions, then detection resumes",
+      "samples": [
+        {
+          "at": 0,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 1000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 2000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 3000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 4000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 5000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 21000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 22000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 23000,
+          "surface": "reels",
+          "confidence": 0.9
+        },
+        {
+          "at": 24000,
+          "surface": "reels",
+          "confidence": 0.9
+        }
+      ],
+      "expectInterventionsAt": [
+        2000,
+        24000
+      ]
+    }
+  ]
+}

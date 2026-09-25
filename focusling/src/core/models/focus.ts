@@ -1,4 +1,5 @@
 import type { GrowthStage } from './pet';
+import type { ProtectionMode } from './protection';
 import type { Id, Timestamp } from './common';
 
 /**
@@ -40,6 +41,8 @@ export interface FocusSession {
   endedAt: Timestamp | null;
   status: FocusSessionStatus;
   blockedTargets: BlockTarget[];
+  /** Protection this session was started with (native state is still authoritative). */
+  protectionMode: ProtectionMode;
   reward: SessionReward | null;
 }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { getProgression } from '@/core';
-import { MockScreenTimeService, services } from '@/services';
+import { services } from '@/services';
 import { useGameStore } from '@/state';
 import { Button, colors, radius, spacing, typography } from '@/ui';
 
@@ -15,12 +15,11 @@ export function FocusDevPanel({ mode }: { mode: 'setup' | 'active' }) {
   const { startFocus, endFocus, debugPrimeXp, debugSetRemaining } = useGameStore.getState();
   const progression = getProgression(xp);
 
-  const startNearComplete = () => {
-    if (startFocus(15, []).ok) debugSetRemaining(8_000);
+  const startNearComplete = async () => {
+    if ((await startFocus(15)).ok) debugSetRemaining(8_000);
   };
-  const simulateViolation = () => {
-    if (services.screenTime instanceof MockScreenTimeService) services.screenTime.simulateViolation();
-  };
+  /** A detected Reel: interrupts the distraction, never ends or penalises the session. */
+  const fakeDetection = () => void services.protection.debug.triggerFakeDetection();
 
   return (
     <View style={styles.panel}>
@@ -36,7 +35,7 @@ export function FocusDevPanel({ mode }: { mode: 'setup' | 'active' }) {
           </Text>
           {mode === 'setup' ? (
             <View style={styles.grid}>
-              <Button variant="secondary" label="Start 15m, 8s left" onPress={startNearComplete} style={styles.cell} />
+              <Button variant="secondary" label="Start 15m, 8s left" onPress={() => void startNearComplete()} style={styles.cell} />
               <Button variant="secondary" label="Prime level-up" onPress={() => debugPrimeXp('levelUp')} style={styles.cell} />
               <Button variant="secondary" label="Prime growth" onPress={() => debugPrimeXp('nextStage')} style={styles.cell} />
               <Button variant="secondary" label="Prime evolution" onPress={() => debugPrimeXp('evolution')} style={styles.cell} />
@@ -45,7 +44,8 @@ export function FocusDevPanel({ mode }: { mode: 'setup' | 'active' }) {
             <View style={styles.grid}>
               <Button variant="secondary" label="Skip to 8s left" onPress={() => debugSetRemaining(8_000)} style={styles.cell} />
               <Button variant="secondary" label="Complete now" onPress={() => endFocus('completed')} style={styles.cell} />
-              <Button variant="secondary" label="Simulate app opened" onPress={simulateViolation} style={styles.cell} />
+              <Button variant="secondary" label="Fake Reel detection" onPress={fakeDetection} style={styles.cell} />
+              <Button variant="secondary" label="End early (dev)" onPress={() => endFocus('abandoned')} style={styles.cell} />
               <Button variant="secondary" label="Prime level-up" onPress={() => debugPrimeXp('levelUp')} style={styles.cell} />
             </View>
           )}

@@ -8,7 +8,18 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.focusling.app"
+      "bundleIdentifier": "com.focusling.app",
+      "entitlements": {
+        "com.apple.developer.family-controls": true,
+        "com.apple.security.application-groups": [
+          "group.com.focusling.app"
+        ]
+      },
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "screen-capture"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +38,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "@bacons/apple-targets"
     ],
     "scheme": "focusling"
   }

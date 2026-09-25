@@ -1,6 +1,10 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { FOCUS_CONFIG } from '@/config/focus';
+import type { ProtectionStartError } from '@/core';
+import { ProtectionSummaryRow } from '@/features/protection/ProtectionSummaryRow';
+import { isSelectiveFailure, startErrorMessage } from '@/features/protection/protectionCopy';
 import { useEquipped, useGameStore, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
 import { AnimatedPet, Button, Card, Screen, colors, radius, spacing, typography } from '@/ui';
 import { DurationPicker } from './DurationPicker';
@@ -17,16 +21,28 @@ export function FocusSetup() {
 
   const [minutes, setMinutes] = useState<number>(FOCUS_CONFIG.defaultMinutes);
   const [custom, setCustom] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ProtectionStartError | 'invalid' | null>(null);
+  const [starting, setStarting] = useState(false);
+  const updateProtection = useGameStore((s) => s.updateProtection);
   const estimate = useRewardEstimate(minutes);
 
   if (!view || !estimate) return null;
   const { pet, progression, mood } = view;
   const bonusPct = Math.round((estimate.bonusMultiplier - 1) * 100);
 
-  const start = () => {
-    const result = startFocus(minutes, []);
-    setError(result.ok ? null : 'That session could not start. Try a length between 5 and 180 minutes.');
+  const start = async () => {
+    setStarting(true);
+    const result = await startFocus(minutes);
+    setStarting(false);
+    if (result.ok) return setError(null);
+    const e = result.error;
+    setError(e === 'invalid-duration' || e === 'session-already-active' || e === 'no-pet' || e === 'no-active-session' ? 'invalid' : e);
+  };
+
+  /** Offered only after Reels-only fails; the person chooses, nothing switches silently. */
+  const useWholeAppInstead = async () => {
+    updateProtection({ mode: 'wholeApp' });
+    await start();
   };
 
   return (
@@ -72,8 +88,28 @@ export function FocusSetup() {
         </Text>
       </Card>
 
-      {error && <Text style={styles.error}>{error}</Text>}
-      <Button label="Start Focus" icon="⏳" onPress={start} accessibilityHint={`Starts a ${minutes} minute session`} />
+      <ProtectionSummaryRow />
+
+      {error && (
+        <Card style={styles.errorCard}>
+          <Text style={styles.errorText}>
+            {error === 'invalid' ? 'That session could not start. Try a length between 5 and 180 minutes.' : startErrorMessage(error)}
+          </Text>
+          {error !== 'invalid' && isSelectiveFailure(error) && (
+            <Button label="Block Instagram entirely instead" variant="secondary" onPress={useWholeAppInstead} />
+          )}
+          {error !== 'invalid' && !isSelectiveFailure(error) && (
+            <Button label="Set up protection" variant="secondary" onPress={() => router.push('/protection')} />
+          )}
+        </Card>
+      )}
+      <Button
+        label={starting ? 'Starting protection…' : 'Start Focus'}
+        icon="⏳"
+        onPress={() => void start()}
+        disabled={starting}
+        accessibilityHint={`Starts a ${minutes} minute session`}
+      />
 
       {debug && <FocusDevPanel mode="setup" />}
     </Screen>
@@ -93,5 +129,6 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
   cardTitle: { ...typography.label, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.8 },
   note: { ...typography.label, fontWeight: '600', textAlign: 'center', lineHeight: 18 },
-  error: { ...typography.label, color: colors.danger, textAlign: 'center' },
+  errorCard: { gap: spacing.sm },
+  errorText: { ...typography.body, fontSize: 15, color: colors.text, textAlign: 'center' },
 });

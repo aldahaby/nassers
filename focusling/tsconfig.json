@@ -3,7 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "types": ["jest", "react-native"],
+    "types": ["jest", "react-native", "node"],
     "paths": {
       "@/*": ["./src/*"]
     }

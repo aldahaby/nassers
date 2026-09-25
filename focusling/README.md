@@ -15,7 +15,7 @@ npm install
 npx expo start          # then press i (iOS simulator), a (Android), or w (web)
 ```
 
-No native modules beyond Expo's standard set are used yet, so **Expo Go** works.
+The web build and Expo Go use a mock protection service. Real protection needs an iOS development build (see `docs/IOS_DEVICE_TEST_PLAN.md`).
 
 | Command | |
 |---|---|
@@ -62,7 +62,17 @@ logic, local persistence, and a mock Screen Time service.
 - Pet screen items bar: one-tap toys and snacks
 - Developer tools: +100 coins, clear inventory, unlock all, one of each, reset equipped, dress up
 
-Next: a real Screen Time proof-of-concept on a device.
+**Milestone 4 (iOS selective blocking POC), awaiting physical-device testing:**
+- Research and decision: `docs/IOS_SELECTIVE_BLOCKING_RESEARCH.md` (chosen: on-device visual
+  detection with iOS 27 ScreenCaptureKit, plus a Screen Time shield intervention; whole-app blocking
+  as the user-chosen fallback). Third parties: `docs/THIRD_PARTY_RESEARCH.md`.
+- Native module `modules/focusling-protection` (Swift): Family Controls, FamilyActivityPicker,
+  ManagedSettings, DeviceActivity, ScreenCaptureKit capture, Vision-based Reels detector
+  (heuristic, not production), temporal voting policy, interventions, App Group state.
+- Extensions in `targets/`: Shield Configuration, Shield Action, Device Activity Monitor.
+- JS: `FocusProtectionService` (mock on web, iOS on device), native-authoritative session start,
+  one cleanup path, reconciliation, Protection settings screen, Developer Mode native panel.
+- Device test plan: `docs/IOS_DEVICE_TEST_PLAN.md`.
 
 ## Tuning
 

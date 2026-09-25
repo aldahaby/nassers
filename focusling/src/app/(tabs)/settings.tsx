@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { getProgression } from '@/core';
+import { router } from 'expo-router';
+import { ProtectionDebugPanel } from '@/features/protection/ProtectionDebugPanel';
 import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { services } from '@/services';
 import { useGameStore } from '@/state';
@@ -24,11 +26,13 @@ export default function SettingsScreen() {
         />
       </Card>
       <Card>
-        <Text style={typography.heading}>App blocking</Text>
+        <Text style={typography.heading}>Focus protection</Text>
         <Text style={styles.muted}>
-          Blocking mode: {services.screenTime.kind === 'mock' ? 'Simulated (prototype)' : services.screenTime.kind}. Real
-          iOS and Android app blocking arrives in a later milestone.
+          {services.protection.platform === 'mock'
+            ? 'Simulated on this device: nothing is actually blocked.'
+            : 'Protect Instagram during focus sessions: Reels only, or the entire app.'}
         </Text>
+        <Button variant="secondary" label="Protection settings" onPress={() => router.push('/protection')} />
       </Card>
       {settings.debugToolsEnabled && <DeveloperTools />}
       <ResetCard />
@@ -55,9 +59,9 @@ function DeveloperTools() {
   const progression = getProgression(xp);
   const [message, setMessage] = useState<string | null>(null);
 
-  const simulate = (outcome: 'completed' | 'abandoned') => {
+  const simulate = async (outcome: 'completed' | 'abandoned') => {
     if (!hasActive) {
-      const started = startFocus(30, []);
+      const started = await startFocus(30);
       if (!started.ok) return setMessage(`Could not start: ${started.error}`);
     }
     const result = endFocus(outcome);
@@ -79,8 +83,8 @@ function DeveloperTools() {
       </View>
       <Text style={styles.muted}>Sessions (30 min)</Text>
       <View style={styles.grid}>
-        <Button variant="secondary" label="Simulate success" onPress={() => simulate('completed')} style={styles.cell} />
-        <Button variant="secondary" label="Simulate abandon" onPress={() => simulate('abandoned')} style={styles.cell} />
+        <Button variant="secondary" label="Simulate success" onPress={() => void simulate('completed')} style={styles.cell} />
+        <Button variant="secondary" label="Simulate abandon" onPress={() => void simulate('abandoned')} style={styles.cell} />
       </View>
       <Text style={styles.muted}>Items</Text>
       <InventoryDevTools />
@@ -93,6 +97,7 @@ function DeveloperTools() {
         }}
       />
       {message && <Text style={styles.muted}>{message}</Text>}
+      <ProtectionDebugPanel />
     </Card>
   );
 }

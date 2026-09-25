@@ -20,7 +20,7 @@ describe('save migrations', () => {
     };
 
     const migrated = migrateSave(v1);
-    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.schemaVersion).toBe(3);
     expect(migrated.inventory.equipped).toEqual({ head: 'acc-headphones' });
     expect(migrated.inventory.items['food-fruit-bowl']).toMatchObject({ itemId: 'food-fruit-bowl', quantity: 2 });
     expect(migrated.inventory.items['food-veggie-bowl']).toBeUndefined();
@@ -35,5 +35,23 @@ describe('save migrations', () => {
       equipped: { head: 'acc-cap', face: 'acc-sunglasses', wall: 'acc-cap', neck: 'nonsense' },
     };
     expect(migrateSave(raw).inventory.equipped).toEqual({ head: 'acc-cap' });
+  });
+});
+
+describe('v2 → v3 migration', () => {
+  it('adds protection settings and marks existing sessions as unprotected', () => {
+    const save = adoptPet(createNewSave(T0), 'cloudling', 'Nimbus', T0);
+    const v2 = JSON.parse(JSON.stringify(save));
+    v2.schemaVersion = 2;
+    delete v2.protection;
+    v2.focus = {
+      active: { id: 'a', plannedDurationMinutes: 30, startedAt: T0, endedAt: null, status: 'active', blockedTargets: [], reward: null },
+      history: [{ id: 'h', plannedDurationMinutes: 15, startedAt: T0, endedAt: T0, status: 'completed', blockedTargets: [], reward: null }],
+    };
+    const migrated = migrateSave(v2);
+    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.protection).toEqual({ mode: 'none', surfaces: ['instagramReels'], fallbackBehavior: 'askUser' });
+    expect(migrated.focus.active?.protectionMode).toBe('none');
+    expect(migrated.focus.history[0]?.protectionMode).toBe('none');
   });
 });

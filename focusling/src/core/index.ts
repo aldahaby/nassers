@@ -11,5 +11,7 @@ export * from './progression/progressionService';
 export * from './save/createNewSave';
 export * from './save/migrations';
 export * from './shared/dates';
+export * from './shared/ids';
 export * from './shared/result';
 export * from './streaks/streakService';
+export * from './protection';

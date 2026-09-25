@@ -1,4 +1,5 @@
 import { ECONOMY } from '@/config/economy';
+import { DEFAULT_PROTECTION } from '@/config/protection';
 import { createInventory } from '../inventory/inventoryService';
 import { createId } from '../shared/ids';
 import { createStreakState } from '../streaks/streakService';
@@ -34,5 +35,6 @@ export function createNewSave(now: Timestamp, options: { debugToolsEnabled?: boo
     stats: createLifetimeStats(),
     streak: createStreakState(),
     daily: {},
+    protection: { ...DEFAULT_PROTECTION, surfaces: [...DEFAULT_PROTECTION.surfaces] },
   };
 }

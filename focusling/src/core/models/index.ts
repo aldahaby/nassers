@@ -5,3 +5,4 @@ export * from './pet';
 export * from './profile';
 export * from './save';
 export * from './stats';
+export * from './protection';
