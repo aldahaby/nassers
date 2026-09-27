@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ProtectionMode } from '@/core';
@@ -8,7 +8,8 @@ import {
   SCREEN_RECOGNITION_EXPLAINER,
   SCREEN_TIME_EXPLAINER,
 } from '@/features/protection/protectionCopy';
-import { useGameStore } from '@/state';
+import { useAppRoutes } from '@/hooks/useAppRoutes';
+import { useGameStore, useIsChildView } from '@/state';
 import { Button, Card, Screen, colors, radius, spacing, typography } from '@/ui';
 
 const MODES: readonly ProtectionMode[] = ['none', 'selective', 'wholeApp'];
@@ -25,11 +26,16 @@ export default function ProtectionScreen() {
   const sessionActive = useGameStore((s) => Boolean(s.save?.focus.active));
   const { updateProtection, requestProtectionAuthorization, selectProtectedApps, refreshProtection } = useGameStore.getState();
   const [busy, setBusy] = useState<string | null>(null);
+  const routes = useAppRoutes();
+  const childView = useIsChildView();
+  const parentView = useGameStore((s) => s.save?.mode === 'family' && s.familyView === 'parent');
 
   useEffect(() => {
     void refreshProtection();
   }, [refreshProtection]);
 
+  // In Family Mode, protection is a parent setting.
+  if (childView) return <Redirect href="/(child)" />;
   if (!settings) return null;
   const authorized = status?.authorization === 'approved';
   const count = status?.selectedTargetCount ?? 0;
@@ -47,7 +53,7 @@ export default function ProtectionScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/focus'))} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace(parentView ? '/parent' : routes.focus))} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
           <Text style={styles.back}>‹ Back</Text>
         </Pressable>
         <Text style={styles.title}>Focus protection</Text>
@@ -123,7 +129,7 @@ export default function ProtectionScreen() {
           </Card>
         )}
 
-        <Button label="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/focus'))} />
+        <Button label="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace(parentView ? '/parent' : routes.focus))} />
       </ScrollView>
     </Screen>
   );

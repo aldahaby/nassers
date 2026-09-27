@@ -75,6 +75,15 @@ export function RewardSummary({ summary, pet, continueLabel, onContinue, reduced
           ))}
         </Card>
 
+        {summary.missionCompletions.map((m) => (
+          <View key={m.missionId} style={styles.mission} accessible accessibilityLabel={`${m.title} complete. Plus ${m.coins} coins and ${m.xp} XP.`}>
+            <Text style={styles.missionTitle}>🎯  {m.title} complete!</Text>
+            <Text style={styles.missionReward}>
+              +{m.coins} coins  +{m.xp} XP
+            </Text>
+          </View>
+        ))}
+
         <Card style={styles.card}>
           <View style={styles.balanceRow}>
             <Text style={styles.balanceLabel}>Coin balance</Text>
@@ -146,6 +155,9 @@ function StreakLine({ summary }: { summary: SessionSummary }) {
 }
 
 const styles = StyleSheet.create({
+  mission: { alignSelf: 'stretch', backgroundColor: '#EFFBF4', borderRadius: radius.lg, padding: spacing.lg, gap: 2, borderWidth: 2, borderColor: '#BFEBD3' },
+  missionTitle: { ...typography.heading, fontSize: 18 },
+  missionReward: { ...typography.number, color: '#1F8A55' },
   flex: { flex: 1, backgroundColor: colors.background },
   content: { alignItems: 'center', paddingTop: spacing.xl },
   heading: { alignItems: 'center', gap: spacing.xs },

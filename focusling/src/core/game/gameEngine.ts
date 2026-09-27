@@ -24,6 +24,7 @@ import { fail, ok, type Result } from '../shared/result';
 import { getEffectiveStreakDays, recordSessionForStreak } from '../streaks/streakService';
 import { emptyDailyStats, pruneDailyStats } from './dailyStats';
 import { summarizeSession } from './sessionSummary';
+import { applySessionToMissions, pruneMissionProgress } from '../missions/missionService';
 import type {
   AbandonPreview,
   ActiveSessionProgress,
@@ -60,7 +61,14 @@ export function estimateReward(save: GameSave, minutes: number, now: Timestamp):
   };
 }
 
-export function adoptPet(save: GameSave, speciesId: PetSpeciesId, name: string, now: Timestamp): GameSave {
+export function adoptPet(
+  save: GameSave,
+  speciesId: PetSpeciesId,
+  name: string,
+  now: Timestamp,
+  options: { completeOnboarding?: boolean } = {},
+): GameSave {
+  const completeOnboarding = options.completeOnboarding ?? true;
   return {
     ...save,
     pet: {
@@ -73,7 +81,7 @@ export function adoptPet(save: GameSave, speciesId: PetSpeciesId, name: string, 
       statsUpdatedAt: now,
       lastPettedAt: null,
     },
-    profile: { ...save.profile, onboardingCompletedAt: now },
+    profile: completeOnboarding ? { ...save.profile, onboardingCompletedAt: now } : save.profile,
   };
 }
 
@@ -182,7 +190,15 @@ export function endSession(
     ),
   };
 
-  return ok({ save: next, reward, summary: summarizeSession(save, next, reward, getEndsAt(session), now) });
+  // Missions see the finished session in the same step, so progress and rewards
+  // can never be applied twice or missed.
+  const missions = applySessionToMissions(next, finished, now);
+  const withMissions = { ...missions.save, missions: pruneMissionProgress(missions.save.missions, now) };
+  return ok({
+    save: withMissions,
+    reward,
+    summary: summarizeSession(save, withMissions, reward, getEndsAt(session), now, missions.completions),
+  });
 }
 
 /** Live timer + projected rewards for the running session. */

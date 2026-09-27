@@ -1,5 +1,6 @@
 import type { GrowthStage } from './pet';
 import type { ProtectionMode } from './protection';
+import type { MissionCompletion } from './missions';
 import type { Id, Timestamp } from './common';
 
 /**
@@ -81,6 +82,8 @@ export interface SessionSummary {
   celebration: Celebration | null;
   /** True when the timer ran out while the app was closed or in the background. */
   completedWhileAway: boolean;
+  /** Missions this session completed (each rewarded exactly once). */
+  missionCompletions: MissionCompletion[];
 }
 
 /** Live view of the running session, derived from timestamps on every tick. */

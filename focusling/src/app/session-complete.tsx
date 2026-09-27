@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { CelebrationView } from '@/features/completion/CelebrationView';
 import { RewardSummary } from '@/features/completion/RewardSummary';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useEquipped, useGameStore, usePetView } from '@/state';
+import { useEquipped, useGameStore, useHomeHref, usePetView } from '@/state';
 
 /**
  * Shown whenever a session ends: the reward summary first, then (if earned)
@@ -16,15 +16,16 @@ export default function SessionCompleteScreen() {
   const view = usePetView();
   const equipped = useEquipped();
   const reducedMotion = useReducedMotion();
+  const home = useHomeHref();
 
-  if (!summary || !view) return <Redirect href="/(tabs)" />;
+  if (!summary || !view) return <Redirect href={home} />;
   const { pet, progression } = view;
   const { celebration } = summary;
 
   const finish = () => {
     useGameStore.getState().dismissSummary();
     // Pop back to the existing tabs (never push a second copy) and land on the pet.
-    router.dismissTo('/(tabs)');
+    router.dismissTo(home === '/onboarding' ? '/' : home);
   };
 
   if (phase === 'celebration' && celebration) {

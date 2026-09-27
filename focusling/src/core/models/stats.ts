@@ -7,6 +7,8 @@ export interface DailyStats {
   sessionsAbandoned: number;
   coinsEarned: number;
   xpEarned: number;
+  missionsCompleted: number;
+  missionCoinsEarned: number;
 }
 
 export interface LifetimeStats {

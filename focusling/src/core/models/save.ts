@@ -4,9 +4,12 @@ import type { UserInventory } from './inventory';
 import type { Pet } from './pet';
 import type { UserProfile } from './profile';
 import type { ProtectionSettings } from './protection';
+import type { AppMode, FamilySettings } from './family';
+import type { MissionState } from './missions';
+import type { PlayStats } from './play';
 import type { DailyStats, LifetimeStats, StreakState } from './stats';
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export interface Wallet {
   coins: number;
@@ -37,4 +40,10 @@ export interface GameSave {
   daily: Record<string, DailyStats>;
   /** Focus protection preferences. The chosen apps are opaque native tokens, not stored here. */
   protection: ProtectionSettings;
+  /** Self-use or local Family Mode. Existing saves migrate to "self". */
+  mode: AppMode;
+  /** Present only in Family Mode. */
+  family: FamilySettings | null;
+  missions: MissionState;
+  play: PlayStats;
 }

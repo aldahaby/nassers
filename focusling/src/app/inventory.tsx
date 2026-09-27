@@ -8,6 +8,7 @@ import { usePetSpeech } from '@/features/inventory/usePetSpeech';
 import { PetReactionStage } from '@/features/pet/PetReactionStage';
 import { ownedStatus } from '@/features/shop/itemCopy';
 import { ItemDetailSheet } from '@/features/shop/ItemDetailSheet';
+import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
 import { useEquipped, useGameStore, usePetView } from '@/state';
 import { Button, Card, RoomScene, Screen, SpeechBubble, colors, radius, spacing, typography } from '@/ui';
@@ -30,6 +31,7 @@ export default function InventoryScreen() {
   const { width } = useWindowDimensions();
   const [selected, setSelected] = useState<string | null>(null);
   const now = useNow(30_000);
+  const routes = useAppRoutes();
 
   if (!view || !save) return null;
   const { pet, progression, mood } = view;
@@ -56,7 +58,7 @@ export default function InventoryScreen() {
   return (
     <Screen contentStyle={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace(routes.pet))} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12}>
           <Text style={styles.back}>‹ Back</Text>
         </Pressable>
         <Text style={styles.title}>{pet.name}&apos;s things</Text>
@@ -86,7 +88,7 @@ export default function InventoryScreen() {
           <Card style={styles.empty}>
             <Text style={styles.emptyTitle}>Nothing here yet</Text>
             <Text style={styles.emptyBody}>Focus to earn coins, then pick out a first gift for {pet.name}.</Text>
-            <Button label="Visit the Shop" onPress={() => router.navigate('/(tabs)/shop')} />
+            <Button label="Visit the Shop" onPress={() => router.navigate(routes.shop)} />
           </Card>
         ) : (
           SHOP_CATEGORIES.map((category) => {
@@ -97,7 +99,7 @@ export default function InventoryScreen() {
                   {category.label} <Text style={styles.count}>{items.length}</Text>
                 </Text>
                 {items.length === 0 ? (
-                  <Pressable onPress={() => router.navigate('/(tabs)/shop')} style={styles.sectionEmpty} accessibilityRole="button">
+                  <Pressable onPress={() => router.navigate(routes.shop)} style={styles.sectionEmpty} accessibilityRole="button">
                     <Text style={styles.sectionEmptyText}>{EMPTY_COPY[category.id]} Find some in the Shop ›</Text>
                   </Pressable>
                 ) : (

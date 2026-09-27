@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ShopListing } from '@/core';
+import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { ItemArt, colors, radius, shadow, spacing } from '@/ui';
 
 interface Props {
@@ -14,13 +15,14 @@ interface Props {
  * can be used with a single tap. Nudges to the shop while nothing is owned.
  */
 export function ItemsBar({ quickItems, onUse }: Props) {
+  const routes = useAppRoutes();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       <Pressable style={[styles.pill, shadow]} onPress={() => router.push('/inventory')} accessibilityRole="button" accessibilityLabel="Items and customisation">
         <Text style={styles.pillLabel}>🎒 Items</Text>
       </Pressable>
       {quickItems.length === 0 ? (
-        <Pressable style={[styles.pill, styles.shopPill]} onPress={() => router.navigate('/(tabs)/shop')} accessibilityRole="button">
+        <Pressable style={[styles.pill, styles.shopPill]} onPress={() => router.navigate(routes.shop)} accessibilityRole="button">
           <Text style={styles.shopLabel}>Visit the shop ›</Text>
         </Pressable>
       ) : (

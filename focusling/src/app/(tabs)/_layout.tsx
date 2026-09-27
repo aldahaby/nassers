@@ -1,5 +1,5 @@
-import { Redirect, router } from 'expo-router';
-import { useEffect } from 'react';
+import { Redirect } from 'expo-router';
+import { useSessionCompleteRedirect } from '@/hooks/useSessionCompleteRedirect';
 import { Tabs } from 'expo-router/js-tabs';
 import { useGameStore } from '@/state';
 import { TabIcon, colors, type TabIconName } from '@/ui';
@@ -13,15 +13,12 @@ const TABS: readonly { name: string; title: string; icon: TabIconName }[] = [
 ];
 
 export default function TabsLayout() {
-  const hasPet = useGameStore((s) => Boolean(s.save?.pet));
-  const hasSummary = useGameStore((s) => s.lastSummary !== null);
+  const onboarded = useGameStore((s) => Boolean(s.save?.pet && s.save.profile.onboardingCompletedAt));
+  const family = useGameStore((s) => s.save?.mode === 'family');
+  useSessionCompleteRedirect();
 
-  // Whenever a session ends (timer, early end, or while the app was closed), show the results.
-  useEffect(() => {
-    if (hasPet && hasSummary) router.push('/session-complete');
-  }, [hasPet, hasSummary]);
-
-  if (!hasPet) return <Redirect href="/onboarding" />;
+  if (!onboarded) return <Redirect href="/onboarding" />;
+  if (family) return <Redirect href="/(child)" />;
 
   return (
     <Tabs

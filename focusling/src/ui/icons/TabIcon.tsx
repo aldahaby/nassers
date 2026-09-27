@@ -1,7 +1,7 @@
 import type { ColorValue } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-export type TabIconName = 'pet' | 'focus' | 'shop' | 'stats' | 'settings';
+export type TabIconName = 'pet' | 'focus' | 'shop' | 'stats' | 'settings' | 'missions' | 'play';
 
 /** Simple original line icons for the tab bar. */
 export function TabIcon({ name, color, size = 26 }: { name: TabIconName; color: ColorValue; size?: number }) {
@@ -34,6 +34,18 @@ export function TabIcon({ name, color, size = 26 }: { name: TabIconName; color: 
           <Rect x={4} y={12} width={4} height={8} rx={1.2} {...stroke} />
           <Rect x={10} y={7} width={4} height={13} rx={1.2} {...stroke} />
           <Rect x={16} y={4} width={4} height={16} rx={1.2} {...stroke} />
+        </>
+      )}
+      {name === 'missions' && (
+        <>
+          <Circle cx={12} cy={12} r={8} {...stroke} />
+          <Circle cx={12} cy={12} r={4} {...stroke} />
+          <Circle cx={12} cy={12} r={0.8} fill={color} />
+        </>
+      )}
+      {name === 'play' && (
+        <>
+          <Path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.3 5 C9.9 5 11.2 6 12 7.2 C12.8 6 14.1 5 15.7 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20 Z" {...stroke} />
         </>
       )}
       {name === 'settings' && (

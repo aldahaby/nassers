@@ -1,8 +1,9 @@
 import { Redirect } from 'expo-router';
-import { useGameStore } from '@/state';
+import { useGameStore, useHomeHref } from '@/state';
 
-/** Entry: new players go to onboarding, returning players to their pet. */
+/** Entry: onboarding, the self tabs, the child view, or (if it was open) the parent area. */
 export default function Index() {
-  const hasPet = useGameStore((s) => Boolean(s.save?.pet));
-  return <Redirect href={hasPet ? '/(tabs)' : '/onboarding'} />;
+  const home = useHomeHref();
+  const parentView = useGameStore((s) => s.save?.mode === 'family' && s.familyView === 'parent');
+  return <Redirect href={parentView ? '/parent' : home} />;
 }

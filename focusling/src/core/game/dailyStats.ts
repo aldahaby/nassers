@@ -3,7 +3,16 @@ import { daysBetween } from '../shared/dates';
 import type { DailyStats, DateKey } from '../models';
 
 export function emptyDailyStats(date: DateKey): DailyStats {
-  return { date, focusMinutes: 0, sessionsCompleted: 0, sessionsAbandoned: 0, coinsEarned: 0, xpEarned: 0 };
+  return {
+    date,
+    focusMinutes: 0,
+    sessionsCompleted: 0,
+    sessionsAbandoned: 0,
+    coinsEarned: 0,
+    xpEarned: 0,
+    missionsCompleted: 0,
+    missionCoinsEarned: 0,
+  };
 }
 
 /** Drop days older than the retention window. */

@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
+import { PLAY_ECONOMY } from '@/config/play';
 import {
+  emptyDailyStats,
   estimateReward,
+  getCurrentMission,
+  getMissionViews,
+  getPlayAccess,
+  playStatsFor,
   getActiveSessionProgress,
   getEffectiveStreakDays,
   getEquippedBonuses,
@@ -69,4 +75,61 @@ export function useDebugToolsEnabled(): boolean {
   return useGameStore((s) => s.save?.profile.settings.debugToolsEnabled ?? false);
 }
 
+export type HomeHref = '/onboarding' | '/(tabs)' | '/(child)';
+
+/** Where "home" is: onboarding until it's done, then the self tabs or the child view. */
+export function useHomeHref(): HomeHref {
+  const onboarded = useGameStore((s) => Boolean(s.save?.profile.onboardingCompletedAt && s.save?.pet));
+  const family = useGameStore((s) => s.save?.mode === 'family');
+  if (!onboarded) return '/onboarding';
+  return family ? '/(child)' : '/(tabs)';
+}
+
+export function useAppMode() {
+  return useGameStore((s) => s.save?.mode ?? 'self');
+}
+
+export function useIsChildView(): boolean {
+  return useGameStore((s) => s.save?.mode === 'family' && s.familyView === 'child');
+}
+
+/** Today's missions; re-evaluated each minute so day changes show up. */
+export function useMissionViews() {
+  const save = useGameStore((s) => s.save);
+  const now = useNow(60_000);
+  return useMemo(() => (save ? getMissionViews(save, now) : []), [save, now]);
+}
+
+export function useCurrentMission() {
+  const save = useGameStore((s) => s.save);
+  const now = useNow(60_000);
+  return useMemo(() => (save ? getCurrentMission(save, now) : null), [save, now]);
+}
+
+export function usePlayToday() {
+  const save = useGameStore((s) => s.save);
+  const now = useNow(60_000);
+  return useMemo(() => {
+    if (!save) return null;
+    const stats = playStatsFor(save.play, now);
+    return {
+      coinsEarned: stats.coinsEarned,
+      cap: PLAY_ECONOMY.dailyCoinCap,
+      capReached: stats.coinsEarned >= PLAY_ECONOMY.dailyCoinCap,
+      completions: stats.completions,
+      access: getPlayAccess(save, now),
+    };
+  }, [save, now]);
+}
+
 const EMPTY_EQUIPPED: Partial<Record<EquipSlot, string>> = {};
+
+/** Today's aggregate focus numbers (no per-app or content detail exists to show). */
+export function useTodayStats() {
+  const daily = useGameStore((s) => s.save?.daily);
+  const now = useNow(60_000);
+  return useMemo(() => {
+    const key = toDateKey(now);
+    return daily?.[key] ?? emptyDailyStats(key);
+  }, [daily, now]);
+}

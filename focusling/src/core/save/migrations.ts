@@ -46,6 +46,25 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
       schemaVersion: 3,
     };
   },
+  // v3 → v4: Family Mode, Missions and Play. Every existing save is a self-use save;
+  // nothing else changes (pet, coins, inventory, history, settings, protection).
+  3: (save) => {
+    const daily = Object.fromEntries(
+      Object.entries((save.daily ?? {}) as Record<string, RawRecord>).map(([k, d]) => [
+        k,
+        { missionsCompleted: 0, missionCoinsEarned: 0, ...d },
+      ]),
+    );
+    return {
+      ...save,
+      daily,
+      mode: 'self',
+      family: null,
+      missions: { items: [], progress: {} },
+      play: { date: null, coinsEarned: 0, happinessEarned: 0, completions: {}, rewardedRounds: [], debugUnlockedDate: null },
+      schemaVersion: 4,
+    };
+  },
 };
 
 export class SaveMigrationError extends Error {}

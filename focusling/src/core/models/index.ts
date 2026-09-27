@@ -6,3 +6,6 @@ export * from './profile';
 export * from './save';
 export * from './stats';
 export * from './protection';
+export * from './family';
+export * from './missions';
+export * from './play';

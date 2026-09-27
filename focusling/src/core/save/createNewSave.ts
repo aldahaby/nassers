@@ -1,6 +1,8 @@
 import { ECONOMY } from '@/config/economy';
 import { DEFAULT_PROTECTION } from '@/config/protection';
 import { createInventory } from '../inventory/inventoryService';
+import { createMissionState } from '../missions/missionService';
+import { createPlayStats } from '../play/playService';
 import { createId } from '../shared/ids';
 import { createStreakState } from '../streaks/streakService';
 import { CURRENT_SCHEMA_VERSION, type GameSave, type LifetimeStats, type Timestamp } from '../models';
@@ -36,5 +38,9 @@ export function createNewSave(now: Timestamp, options: { debugToolsEnabled?: boo
     streak: createStreakState(),
     daily: {},
     protection: { ...DEFAULT_PROTECTION, surfaces: [...DEFAULT_PROTECTION.surfaces] },
+    mode: 'self',
+    family: null,
+    missions: createMissionState(),
+    play: createPlayStats(),
   };
 }

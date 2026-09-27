@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getStageDefinitionById, type EquipSlot, type GrowthStage, type PetMood, type PetSpeciesId } from '@/core';
 import { colors, useNativeDriver } from '@/ui/theme';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { PetArt } from './PetArt';
 import type { FaceExpression } from './PetFace';
 
@@ -47,12 +48,18 @@ export function AnimatedPet({
   const [blinking, setBlinking] = useState(false);
   const [delighted, setDelighted] = useState(false);
   const delightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Reduce Motion: no idle bob, no hop or squish; reactions are a face change and fading hearts.
+  const reducedMotion = useReducedMotion();
 
   // Sleepy pets breathe slower; a focusing pet slower still.
   const idleMs = calm ? 3200 : mood === 'sleepy' || mood === 'lonely' ? 2400 : 1600;
   const bobHeight = calm ? -3 : -6;
 
   useEffect(() => {
+    if (reducedMotion) {
+      bob.setValue(0);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(bob, { toValue: 1, duration: idleMs, easing: Easing.inOut(Easing.sin), useNativeDriver }),
@@ -61,7 +68,7 @@ export function AnimatedPet({
     );
     loop.start();
     return () => loop.stop();
-  }, [bob, idleMs]);
+  }, [bob, idleMs, reducedMotion]);
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -85,7 +92,15 @@ export function AnimatedPet({
   const react = useCallback(() => {
     squish.setValue(0);
     hop.setValue(0);
-    Animated.parallel([
+    const heartsIn = Animated.stagger(
+      120,
+      hearts.map((h) => {
+        h.setValue(0);
+        return Animated.timing(h, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver });
+      }),
+    );
+    if (reducedMotion) heartsIn.start();
+    else Animated.parallel([
       Animated.sequence([
         Animated.timing(squish, { toValue: 1, duration: 90, useNativeDriver }),
         Animated.spring(squish, { toValue: 0, friction: 3, tension: 160, useNativeDriver }),
@@ -94,19 +109,13 @@ export function AnimatedPet({
         Animated.timing(hop, { toValue: 1, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver }),
         Animated.timing(hop, { toValue: 0, duration: 260, easing: Easing.bounce, useNativeDriver }),
       ]),
-      Animated.stagger(
-        120,
-        hearts.map((h) => {
-          h.setValue(0);
-          return Animated.timing(h, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver });
-        }),
-      ),
+      heartsIn,
     ]).start();
 
     setDelighted(true);
     if (delightTimer.current) clearTimeout(delightTimer.current);
     delightTimer.current = setTimeout(() => setDelighted(false), 1000);
-  }, [hearts, hop, squish]);
+  }, [hearts, hop, squish, reducedMotion]);
 
   const handlePress = useCallback(() => {
     react();
@@ -157,9 +166,9 @@ export function AnimatedPet({
                 top: size * 0.3,
                 opacity: h.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 1, 1, 0] }),
                 transform: [
-                  { translateY: h.interpolate({ inputRange: [0, 1], outputRange: [0, -size * 0.35] }) },
-                  { translateX: h.interpolate({ inputRange: [0, 1], outputRange: [0, (i - 1) * 14] }) },
-                  { scale: h.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.4, 1.2, 1] }) },
+                  { translateY: h.interpolate({ inputRange: [0, 1], outputRange: [0, reducedMotion ? 0 : -size * 0.35] }) },
+                  { translateX: h.interpolate({ inputRange: [0, 1], outputRange: [0, reducedMotion ? 0 : (i - 1) * 14] }) },
+                  { scale: h.interpolate({ inputRange: [0, 0.3, 1], outputRange: reducedMotion ? [1, 1, 1] : [0.4, 1.2, 1] }) },
                 ],
               },
             ]}

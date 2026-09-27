@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PET_NAME_MAX_LENGTH, PET_SPECIES } from '@/config/pets';
 import type { PetSpeciesId } from '@/core';
 import { OnboardingStep } from '@/features/onboarding/OnboardingStep';
+import { useOnboardingProgress } from '@/features/onboarding/flow';
 import { useGameStore } from '@/state';
 import { AnimatedPet, colors, radius, spacing, typography } from '@/ui';
 
@@ -14,6 +15,8 @@ function isSpecies(value: unknown): value is PetSpeciesId {
 export default function NamePetScreen() {
   const { species } = useLocalSearchParams<{ species?: string }>();
   const adoptPet = useGameStore((s) => s.adoptPet);
+  const family = useGameStore((s) => s.save?.mode === 'family');
+  const progress = useOnboardingProgress('name');
   const [name, setName] = useState('');
 
   if (!isSpecies(species)) return <Redirect href="/onboarding/choose" />;
@@ -23,11 +26,13 @@ export default function NamePetScreen() {
   const adopt = () => {
     if (!trimmed) return;
     adoptPet(species, trimmed);
-    router.replace('/(tabs)');
+    // Family setup finishes with a first mission; self onboarding is done here.
+    if (family) router.push('/onboarding/family-mission');
+    else router.replace('/(tabs)');
   };
 
   return (
-    <OnboardingStep step={4} actionLabel={trimmed ? `Say hi to ${trimmed}` : 'Name your pet'} actionDisabled={!trimmed} onAction={adopt}>
+    <OnboardingStep {...progress} actionLabel={trimmed ? `Say hi to ${trimmed}` : 'Name your pet'} actionDisabled={!trimmed} onAction={adopt}>
       <View style={styles.hero}>
         <AnimatedPet speciesId={species} stage="baby" mood="joyful" size={180} />
         <Text style={styles.title}>{"What's their name?"}</Text>

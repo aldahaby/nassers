@@ -5,7 +5,7 @@ import { FOCUS_CONFIG } from '@/config/focus';
 import type { ProtectionStartError } from '@/core';
 import { ProtectionSummaryRow } from '@/features/protection/ProtectionSummaryRow';
 import { isSelectiveFailure, startErrorMessage } from '@/features/protection/protectionCopy';
-import { useEquipped, useGameStore, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
+import { useEquipped, useGameStore, useIsChildView, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
 import { AnimatedPet, Button, Card, Screen, colors, radius, spacing, typography } from '@/ui';
 import { DurationPicker } from './DurationPicker';
 import { FocusDevPanel } from './FocusDevPanel';
@@ -16,6 +16,7 @@ export function FocusSetup() {
   const view = usePetView();
   const equipped = useEquipped();
   const startFocus = useGameStore((s) => s.startFocus);
+  const childView = useIsChildView();
   const debug = useDebugToolsEnabled();
   const { width } = useWindowDimensions();
 
@@ -88,17 +89,19 @@ export function FocusSetup() {
         </Text>
       </Card>
 
-      <ProtectionSummaryRow />
+      {/* In Child View, protection is a parent setting and isn't shown here. */}
+      {!childView && <ProtectionSummaryRow />}
 
       {error && (
         <Card style={styles.errorCard}>
           <Text style={styles.errorText}>
             {error === 'invalid' ? 'That session could not start. Try a length between 5 and 180 minutes.' : startErrorMessage(error)}
           </Text>
-          {error !== 'invalid' && isSelectiveFailure(error) && (
+          {error !== 'invalid' && childView && <Text style={styles.errorText}>Ask a grown-up to check the protection settings.</Text>}
+          {error !== 'invalid' && !childView && isSelectiveFailure(error) && (
             <Button label="Block Instagram entirely instead" variant="secondary" onPress={useWholeAppInstead} />
           )}
-          {error !== 'invalid' && !isSelectiveFailure(error) && (
+          {error !== 'invalid' && !childView && !isSelectiveFailure(error) && (
             <Button label="Set up protection" variant="secondary" onPress={() => router.push('/protection')} />
           )}
         </Card>

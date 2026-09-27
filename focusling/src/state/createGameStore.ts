@@ -1,7 +1,28 @@
 import { create } from 'zustand';
 import {
   adoptPet,
+  addMission,
+  chooseAppMode,
+  completeFamilySetup,
+  completeGameRound,
   createId,
+  createParentGate,
+  debugCompleteMission,
+  debugGrantPlayCoins,
+  debugMissionAlmostDone,
+  debugPlayCapOneLeft,
+  debugResetDailyPlay,
+  debugResetTodaysMissions,
+  debugSimulateNextDay,
+  debugUnlockPlay,
+  isValidPin,
+  removeMission,
+  setChildNickname,
+  setMissionActive,
+  setParentGate,
+  setPlaySettings,
+  updateMission,
+  verifyParentPin,
   createNewSave,
   isCurrentSessionEvent,
   isProtectionActiveFor,
@@ -28,7 +49,14 @@ import {
   startSession,
   unequipItem,
   unequipSlot,
+  type AppMode,
   type EquipSlot,
+  type GameId,
+  type GameRoundResult,
+  type MissionCompletion,
+  type MissionDraft,
+  type MissionError,
+  type PlaySettings,
   type FocusError,
   type FocusOutcome,
   type GameSave,
@@ -66,6 +94,14 @@ export type PetReaction =
   | { id: number; kind: 'food'; itemId: string; happinessGained: number; healthGained: number }
   | { id: number; kind: 'equip'; itemId: string };
 
+export type FamilyView = 'child' | 'parent';
+
+export type ParentUnlockResult =
+  | { ok: true }
+  | { ok: false; reason: 'wrong'; attemptsBeforePause: number }
+  | { ok: false; reason: 'locked'; retryAt: number }
+  | { ok: false; reason: 'no-pin' };
+
 export interface PurchaseResult {
   firstPurchase: boolean;
   happinessGained: number;
@@ -86,6 +122,10 @@ export interface GameStore {
   protectionNotice: ReconcileNotice;
   /** Distractions interrupted during the current session (not persisted; stats come later). */
   interventionsThisSession: number;
+  /** Family Mode: which view is open. In memory only, so a restart always opens Child View. */
+  familyView: FamilyView;
+  /** A mission finished outside a session (e.g. developer tools), to celebrate on the pet screen. */
+  missionCelebration: MissionCompletion | null;
 
   hydrate(): Promise<void>;
   /** Apply decay and auto-complete due sessions. Safe to call often. */
@@ -137,6 +177,41 @@ export interface GameStore {
   switchSessionToWholeApp(): Promise<Result<null, ProtectionStartError>>;
   dismissProtectionNotice(): void;
   emergencyProtectionCleanup(): Promise<void>;
+
+  // ── Family Mode ──
+  chooseMode(mode: AppMode): void;
+  setParentPin(pin: string): Result<null, 'invalid-pin'>;
+  setChildNickname(nickname: string): void;
+  finishFamilySetup(): void;
+  /** Leaving Child View always requires the parent PIN. */
+  unlockParentView(pin: string): ParentUnlockResult;
+  enterChildView(): void;
+  updatePlaySettings(patch: Partial<PlaySettings>): void;
+
+  // ── Missions ──
+  addMission(draft: MissionDraft): Result<null, MissionError>;
+  updateMission(id: string, draft: MissionDraft): Result<null, MissionError>;
+  setMissionActive(id: string, active: boolean): void;
+  removeMission(id: string): void;
+  consumeMissionCelebration(): void;
+
+  // ── Play ──
+  /** A new round ID; only a completed round with this ID can be rewarded, once. */
+  startGameRound(gameId: GameId): string;
+  completeGameRound(round: { gameId: GameId; roundId: string; score: number }): GameRoundResult;
+
+  // ── Developer tools (refuse to run unless Developer tools are on) ──
+  debugEnterParentView(): boolean;
+  debugResetParentPin(): void;
+  debugSwitchMode(mode: AppMode): void;
+  debugCompleteMission(id: string): void;
+  debugMissionAlmostDone(id: string): void;
+  debugSimulateNextDay(): void;
+  debugResetTodaysMissions(): void;
+  debugGrantPlayCoins(coins: number): void;
+  debugPlayCapOneLeft(): void;
+  debugResetDailyPlay(): void;
+  debugUnlockPlay(): void;
 }
 
 /**
@@ -167,6 +242,23 @@ export function createGameStore(deps: GameStoreDeps) {
     };
 
     const nextReactionId = () => (reactionId += 1);
+
+    /** Developer actions are ignored unless Developer tools are enabled. */
+    const devOnly = (fn: (save: GameSave) => GameSave | void) => {
+      const save = get().save;
+      if (!save?.profile.settings.debugToolsEnabled) return false;
+      const next = fn(save);
+      if (next) commit(next);
+      return true;
+    };
+
+    const randomSalt = () => {
+      const bytes = new Uint8Array(16);
+      const cryptoApi = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto;
+      if (cryptoApi?.getRandomValues) cryptoApi.getRandomValues(bytes);
+      else for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+      return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    };
 
     /**
      * The one protection cleanup path. Every way a session ends goes through here,
@@ -236,6 +328,8 @@ export function createGameStore(deps: GameStoreDeps) {
       protection: null,
       protectionNotice: null,
       interventionsThisSession: 0,
+      familyView: 'child',
+      missionCelebration: null,
 
       async hydrate() {
         if (get().status === 'loading') return;
@@ -265,7 +359,9 @@ export function createGameStore(deps: GameStoreDeps) {
       },
 
       adoptPet(speciesId, name) {
-        commit(adoptPet(requireSave(), speciesId, name, now()));
+        const save = requireSave();
+        // Family setup finishes later (after the first mission), so it doesn't complete onboarding here.
+        commit(adoptPet(save, speciesId, name, now(), { completeOnboarding: save.mode !== 'family' }));
       },
 
       petPet() {
@@ -391,7 +487,7 @@ export function createGameStore(deps: GameStoreDeps) {
         await writeChain;
         await deps.saveRepository.clear();
         const fresh = createNewSave(now(), { debugToolsEnabled: get().save?.profile.settings.debugToolsEnabled });
-        commit(fresh, { lastSummary: null, pendingWelcome: null, petReaction: null });
+        commit(fresh, { lastSummary: null, pendingWelcome: null, petReaction: null, familyView: 'child', missionCelebration: null });
       },
 
       updateProtection(patch) {
@@ -483,6 +579,105 @@ export function createGameStore(deps: GameStoreDeps) {
         await deps.protection.emergencyCleanup();
         set({ protection: await deps.protection.getStatus(), protectionNotice: null });
       },
+
+      chooseMode(mode) {
+        commit(chooseAppMode(requireSave(), mode));
+      },
+
+      setParentPin(pin) {
+        if (!isValidPin(pin)) return fail('invalid-pin');
+        commit(setParentGate(requireSave(), createParentGate(pin, randomSalt())));
+        return ok(null);
+      },
+
+      setChildNickname(nickname) {
+        commit(setChildNickname(requireSave(), nickname));
+      },
+
+      finishFamilySetup() {
+        commit(completeFamilySetup(requireSave(), now()), { familyView: 'child' });
+      },
+
+      unlockParentView(pin) {
+        const save = requireSave();
+        const gate = save.family?.gate;
+        if (!gate) return { ok: false, reason: 'no-pin' };
+        const check = verifyParentPin(gate, pin, now());
+        commit(setParentGate(save, check.gate), check.ok ? { familyView: 'parent' } : {});
+        if (check.ok) return { ok: true };
+        return check.reason === 'locked'
+          ? { ok: false, reason: 'locked', retryAt: check.retryAt }
+          : { ok: false, reason: 'wrong', attemptsBeforePause: check.attemptsBeforePause };
+      },
+
+      enterChildView() {
+        set({ familyView: 'child' });
+      },
+
+      updatePlaySettings(patch) {
+        commit(setPlaySettings(requireSave(), patch));
+      },
+
+      addMission(draft) {
+        const result = addMission(requireSave(), draft, createId('mission'), now());
+        if (!result.ok) return result;
+        commit(result.value);
+        return ok(null);
+      },
+
+      updateMission(id, draft) {
+        const result = updateMission(requireSave(), id, draft);
+        if (!result.ok) return result;
+        commit(result.value);
+        return ok(null);
+      },
+
+      setMissionActive: (id, active) => commit(setMissionActive(requireSave(), id, active)),
+      removeMission: (id) => commit(removeMission(requireSave(), id)),
+      consumeMissionCelebration: () => set({ missionCelebration: null }),
+
+      startGameRound: () => createId('round'),
+
+      completeGameRound(round) {
+        const { save, result } = completeGameRound(requireSave(), round, now());
+        if (!result.duplicate && !result.locked) commit(save);
+        return result;
+      },
+
+      debugEnterParentView() {
+        return devOnly(() => set({ familyView: 'parent' }));
+      },
+
+      debugResetParentPin() {
+        // Clears the PIN; the next visit to Parent View asks to create a new one.
+        devOnly((save) => (save.family ? { ...save, family: { ...save.family, gate: null } } : save));
+      },
+
+      debugSwitchMode(mode) {
+        devOnly((save) => {
+          let next = chooseAppMode(save, mode);
+          if (mode === 'family' && next.family && !next.family.child.nickname) next = setChildNickname(next, 'Test child');
+          if (mode === 'family') next = completeFamilySetup(next, now());
+          set({ familyView: 'child' });
+          return next;
+        });
+      },
+
+      debugCompleteMission(id) {
+        devOnly((save) => {
+          const result = debugCompleteMission(save, id, now());
+          if (result.completion) set({ missionCelebration: result.completion });
+          return result.save;
+        });
+      },
+
+      debugMissionAlmostDone: (id) => void devOnly((save) => debugMissionAlmostDone(save, id, now())),
+      debugSimulateNextDay: () => void devOnly((save) => debugSimulateNextDay(save)),
+      debugResetTodaysMissions: () => void devOnly((save) => debugResetTodaysMissions(save, now())),
+      debugGrantPlayCoins: (coins) => void devOnly((save) => debugGrantPlayCoins(save, coins, now())),
+      debugPlayCapOneLeft: () => void devOnly((save) => debugPlayCapOneLeft(save, now())),
+      debugResetDailyPlay: () => void devOnly((save) => debugResetDailyPlay(save, now())),
+      debugUnlockPlay: () => void devOnly((save) => debugUnlockPlay(save, now())),
     };
   });
 }

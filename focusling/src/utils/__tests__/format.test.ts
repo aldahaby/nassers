@@ -1,4 +1,4 @@
-import { formatClockTime } from '../format';
+import { formatClockTime, formatMinuteOfDay } from '../format';
 
 const MINUTE = 60_000;
 // Local-time constructor, so results don't depend on the test machine's time zone.
@@ -24,5 +24,15 @@ describe('formatClockTime', () => {
     expect(formatClockTime(at(9, 7))).toBe('9:07 AM');
     expect(formatClockTime(at(15, 45))).toBe('3:45 PM');
     expect(formatClockTime(at(11, 59))).toBe('11:59 AM');
+  });
+});
+
+describe('formatMinuteOfDay', () => {
+  it('uses 12-hour labels with 12 AM midnight and 12 PM noon', () => {
+    expect(formatMinuteOfDay(0)).toBe('12 AM');
+    expect(formatMinuteOfDay(12 * 60)).toBe('12 PM');
+    expect(formatMinuteOfDay(16 * 60)).toBe('4 PM');
+    expect(formatMinuteOfDay(6 * 60 + 30)).toBe('6:30 AM');
+    expect(formatMinuteOfDay(23 * 60 + 5)).toBe('11:05 PM');
   });
 });

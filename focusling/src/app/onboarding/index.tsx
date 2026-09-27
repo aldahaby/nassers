@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { OnboardingStep } from '@/features/onboarding/OnboardingStep';
+import { useOnboardingProgress } from '@/features/onboarding/flow';
 import { AnimatedPet, colors, spacing, typography } from '@/ui';
 
 export default function WelcomeScreen() {
+  const progress = useOnboardingProgress('welcome');
   return (
-    <OnboardingStep step={1} actionLabel="Let's go" onAction={() => router.push('/onboarding/how-it-works')}>
+    <OnboardingStep {...progress} actionLabel="Let's go" onAction={() => router.push('/onboarding/who')}>
       <View style={styles.hero}>
         <View style={styles.row}>
           <AnimatedPet speciesId="sproutling" stage="young" mood="joyful" size={110} />
@@ -14,7 +16,7 @@ export default function WelcomeScreen() {
         </View>
         <Text style={styles.title}>Welcome to Focusling</Text>
         <Text style={styles.body}>
-          A tiny friend who grows when you put the phone down. Less scrolling, more you, and a happier pet.
+          A tiny friend who grows when the phone goes down. Less scrolling, more real life, and a happier pet.
         </Text>
       </View>
     </OnboardingStep>

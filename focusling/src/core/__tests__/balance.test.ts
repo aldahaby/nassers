@@ -51,3 +51,23 @@ describe('shop balance', () => {
     }
   });
 });
+
+describe('play and missions never out-earn focus', () => {
+  // Imported lazily to keep this file's original suite unchanged.
+  const { PLAY_ECONOMY, TOY_TOSS, MEMORY_GARDEN } = jest.requireActual('@/config/play');
+  const { MISSION_REWARD_LEVELS } = jest.requireActual('@/config/missions');
+  const maxRoundCoins = Math.max(MEMORY_GARDEN.coins, ...TOY_TOSS.coinsByCatches);
+
+  it('one 30-minute focus session is worth at least 3 play rounds', () => {
+    expect(coinsFor(30)).toBeGreaterThanOrEqual(3 * maxRoundCoins);
+  });
+
+  it('a whole day of play earns no more than one 30-minute session', () => {
+    expect(PLAY_ECONOMY.dailyCoinCap).toBeLessThanOrEqual(coinsFor(30));
+  });
+
+  it('the biggest mission reward stays below an hour of focus', () => {
+    const biggest = Math.max(...Object.values(MISSION_REWARD_LEVELS as Record<string, { coins: number }>).map((r) => r.coins));
+    expect(biggest).toBeLessThan(coinsFor(60));
+  });
+});

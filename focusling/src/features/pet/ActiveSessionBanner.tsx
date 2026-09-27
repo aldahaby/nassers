@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { getRemainingMs, type FocusSession } from '@/core';
+import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
 import { colors, radius, spacing } from '@/ui';
 import { formatCountdown } from '@/utils/format';
@@ -8,9 +9,10 @@ import { formatCountdown } from '@/utils/format';
 /** Shown on the pet screen while a focus session is running. */
 export function ActiveSessionBanner({ session }: { session: FocusSession }) {
   const now = useNow(1000);
+  const routes = useAppRoutes();
 
   return (
-    <Pressable style={styles.banner} onPress={() => router.navigate('/(tabs)/focus')} accessibilityRole="button">
+    <Pressable style={styles.banner} onPress={() => router.navigate(routes.focus)} accessibilityRole="button">
       <Text style={styles.text}>⏳ Focusing together · {formatCountdown(getRemainingMs(session, now))} left</Text>
     </Pressable>
   );

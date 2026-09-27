@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { OnboardingStep } from '@/features/onboarding/OnboardingStep';
+import { useOnboardingProgress } from '@/features/onboarding/flow';
 import { Card, colors, spacing, typography } from '@/ui';
 
 const LOOP = [
@@ -11,8 +12,9 @@ const LOOP = [
 ];
 
 export default function HowItWorksScreen() {
+  const progress = useOnboardingProgress('how-it-works');
   return (
-    <OnboardingStep step={2} actionLabel="Choose my pet" onAction={() => router.push('/onboarding/choose')}>
+    <OnboardingStep {...progress} actionLabel="Choose my pet" onAction={() => router.push('/onboarding/choose')}>
       <Text style={styles.title}>How it works</Text>
       <View style={styles.list}>
         {LOOP.map((item) => (

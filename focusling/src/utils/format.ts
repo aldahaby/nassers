@@ -29,3 +29,12 @@ export function formatClockTime(timestamp: number): string {
   const period = hours24 < 12 ? 'AM' : 'PM';
   return `${hours12}:${String(d.getMinutes()).padStart(2, '0')} ${period}`;
 }
+
+/** 12-hour label for minutes after local midnight: 960 → "4 PM", 390 → "6:30 AM", 0 → "12 AM". */
+export function formatMinuteOfDay(minute: number): string {
+  const h24 = Math.floor(minute / 60) % 24;
+  const m = minute % 60;
+  const period = h24 < 12 ? 'AM' : 'PM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}

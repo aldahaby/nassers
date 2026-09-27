@@ -1,0 +1,233 @@
+import { router, type Href } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { PET_FOCUS_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
+import { PET_SPECIES } from '@/config/pets';
+import { getOwnedListings, getStageDefinitionById, type ShopListing } from '@/core';
+import { usePetSpeech } from '@/features/inventory/usePetSpeech';
+import { MissionCard } from '@/features/missions/MissionCard';
+import { MissionCelebrationCard } from '@/features/missions/MissionCelebrationCard';
+import { ActiveSessionBanner } from '@/features/pet/ActiveSessionBanner';
+import { PetStatsCard } from '@/features/pet/PetStatsCard';
+import { ItemsBar } from '@/features/pet/ItemsBar';
+import { PetReactionStage } from '@/features/pet/PetReactionStage';
+import { PetTopBar } from '@/features/pet/PetTopBar';
+import { useAppRoutes } from '@/hooks/useAppRoutes';
+import {
+  useActiveSession,
+  useCoins,
+  useCurrentMission,
+  useEquipped,
+  useGameStore,
+  usePetView,
+  usePlayToday,
+  useStreakDays,
+} from '@/state';
+import { Button, Card, RoomScene, Screen, SpeechBubble, colors, radius, shadow, spacing, typography } from '@/ui';
+import { pickRandom } from '@/utils/format';
+
+/** Most toys/snacks shown for one-tap use under the pet. */
+const QUICK_ITEM_LIMIT = 8;
+
+interface Props {
+  /** "self": the classic pet tab. "child": Family Mode's Child View home. */
+  variant: 'self' | 'child';
+}
+
+/** The emotional centre of the app: the pet in its room, today's mission, and its stats. */
+export function PetHomeScreen({ variant }: Props) {
+  const view = usePetView();
+  const coins = useCoins();
+  const streakDays = useStreakDays();
+  const equipped = useEquipped();
+  const activeSession = useActiveSession();
+  const mission = useCurrentMission();
+  const play = usePlayToday();
+  const routes = useAppRoutes();
+  const petPet = useGameStore((s) => s.petPet);
+  const { width } = useWindowDimensions();
+  const welcomeBack = useGameStore((s) => s.pendingWelcome);
+  const consumeWelcome = useGameStore((s) => s.consumeWelcome);
+  const celebration = useGameStore((s) => s.missionCelebration);
+  const [cheerKey, setCheerKey] = useState(0);
+  const reaction = useGameStore((s) => s.petReaction);
+  const inventory = useGameStore((s) => s.save?.inventory);
+  const { play: playWith, feed, consumePetReaction, consumeMissionCelebration } = useGameStore.getState();
+  const { bubble, say, sayForReaction } = usePetSpeech();
+
+  const mood = view?.mood ?? 'content';
+
+  // Owned toys first, then snacks, for one-tap use.
+  const quickItems = useMemo(() => {
+    if (!inventory) return [];
+    const owned = getOwnedListings(inventory);
+    return [...owned.filter((l) => l.category === 'toy'), ...owned.filter((l) => l.category === 'food')].slice(0, QUICK_ITEM_LIMIT);
+  }, [inventory]);
+
+  const useQuickItem = useCallback(
+    (listing: ShopListing) => (listing.category === 'food' ? feed(listing.id) : playWith(listing.id)),
+    [feed, playWith],
+  );
+
+  const onReactionStart = useCallback(
+    (r: Parameters<typeof sayForReaction>[0]) => {
+      consumePetReaction();
+      sayForReaction(r);
+    },
+    [consumePetReaction, sayForReaction],
+  );
+
+  // Coming back from a finished session: a happy hop and a thank-you.
+  useEffect(() => {
+    if (!welcomeBack) return;
+    const timer = setTimeout(() => {
+      if (welcomeBack === 'completed') setCheerKey((k) => k + 1);
+      say(pickRandom(PET_WELCOME_BACK_LINES[welcomeBack]) ?? null);
+      consumeWelcome();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [welcomeBack, say, consumeWelcome]);
+
+  // A mission finished outside a session summary (e.g. developer tools): a calm cheer.
+  useEffect(() => {
+    if (!celebration) return;
+    const timer = setTimeout(() => setCheerKey((k) => k + 1), 250);
+    return () => clearTimeout(timer);
+  }, [celebration]);
+
+  const handleTap = useCallback(() => {
+    const gained = petPet();
+    const line = activeSession ? pickRandom(PET_FOCUS_LINES) : pickRandom(PET_TAP_LINES[mood]);
+    say(gained > 0 ? `${line ?? ''}  +${gained} 💖` : (line ?? null));
+  }, [petPet, activeSession, mood, say]);
+
+  if (!view) return null;
+  const { pet, progression } = view;
+  const stageLabel = getStageDefinitionById(progression.stage).label;
+  const petSize = Math.min(240, width * 0.58);
+  const child = variant === 'child';
+  const playLocked = play ? !play.access.open : false;
+
+  return (
+    <Screen scroll>
+      <PetTopBar coins={coins} streakDays={streakDays} level={progression.level} />
+
+      <RoomScene equipped={equipped} height={petSize * 1.45}>
+        <SpeechBubble text={bubble} />
+        <PetReactionStage
+          speciesId={pet.speciesId}
+          stage={progression.stage}
+          mood={mood}
+          equipped={equipped}
+          size={petSize}
+          expression={activeSession ? 'focused' : 'auto'}
+          reaction={reaction}
+          onReactionStart={onReactionStart}
+          onPress={handleTap}
+          cheerKey={cheerKey}
+          accessibilityLabel={`${pet.name}, ${stageLabel} ${PET_SPECIES[pet.speciesId].name}. Feeling ${mood}.`}
+        />
+      </RoomScene>
+
+      <View style={styles.identity}>
+        <Text style={styles.name}>{pet.name}</Text>
+        <Text style={styles.subtitle}>
+          {stageLabel} {PET_SPECIES[pet.speciesId].name} · feeling {mood}
+        </Text>
+      </View>
+
+      {celebration && <MissionCelebrationCard completion={celebration} petName={pet.name} onDismiss={consumeMissionCelebration} />}
+
+      <ItemsBar quickItems={quickItems} onUse={useQuickItem} />
+
+      {activeSession ? (
+        <ActiveSessionBanner session={activeSession} />
+      ) : (
+        <Button label="Start focusing" icon="⏳" onPress={() => router.navigate(routes.focus)} />
+      )}
+
+      {mission ? (
+        <MissionCard view={mission} compact onPress={() => router.navigate(routes.missions as Href)} accessibilityHint="Opens missions" />
+      ) : (
+        <Card style={styles.emptyMission}>
+          <Text style={styles.emptyTitle}>{child ? 'No mission today' : 'Set yourself a mission'}</Text>
+          <Text style={styles.emptyBody}>
+            {child
+              ? `Focus sessions still help ${pet.name} grow. A grown-up can add a mission any time.`
+              : `Missions are small daily goals, like 45 focus minutes. Finish one for bonus coins.`}
+          </Text>
+          {!child && <Button label="Choose a mission" variant="secondary" onPress={() => router.navigate(routes.missions as Href)} />}
+        </Card>
+      )}
+
+      <View style={styles.entries}>
+        <EntryTile
+          icon="🎯"
+          title="Missions"
+          detail={mission?.status === 'complete' ? 'Done for today' : 'Daily goals'}
+          onPress={() => router.navigate(routes.missions as Href)}
+        />
+        <EntryTile
+          icon="🧩"
+          title="Play"
+          detail={playLocked ? 'After a mission' : play?.capReached ? 'Just for fun' : `${play?.coinsEarned ?? 0}/${play?.cap ?? 0} play coins`}
+          onPress={() => router.navigate(routes.play as Href)}
+        />
+      </View>
+
+      <PetStatsCard stats={pet.stats} progression={progression} />
+
+      {child && (
+        <Pressable
+          onPress={() => router.push('/parent-gate')}
+          style={styles.grownUps}
+          accessibilityRole="button"
+          accessibilityLabel="Grown-ups"
+          accessibilityHint="Opens the parent area. A parent PIN is needed."
+        >
+          <Text style={styles.grownUpsText}>🔒 Grown-ups</Text>
+        </Pressable>
+      )}
+    </Screen>
+  );
+}
+
+function EntryTile({ icon, title, detail, onPress }: { icon: string; title: string; detail: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.tile, shadow]} accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`}>
+      <Text style={styles.tileIcon}>{icon}</Text>
+      <View style={styles.tileText}>
+        <Text style={styles.tileTitle}>{title}</Text>
+        <Text style={styles.tileDetail} numberOfLines={1}>
+          {detail}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  identity: { alignItems: 'center', gap: 2, marginTop: -spacing.sm },
+  name: { ...typography.title },
+  subtitle: { ...typography.label, color: colors.textMuted },
+  emptyMission: { gap: spacing.sm },
+  emptyTitle: { ...typography.heading, fontSize: 18 },
+  emptyBody: { ...typography.body, fontSize: 15, color: colors.textMuted },
+  entries: { flexDirection: 'row', gap: spacing.md },
+  tile: {
+    flex: 1,
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+  },
+  tileIcon: { fontSize: 28 },
+  tileText: { flex: 1 },
+  tileTitle: { ...typography.heading, fontSize: 17 },
+  tileDetail: { ...typography.label, fontSize: 12 },
+  grownUps: { alignSelf: 'center', minHeight: 44, paddingHorizontal: spacing.lg, justifyContent: 'center' },
+  grownUpsText: { ...typography.label, color: colors.textMuted },
+});
