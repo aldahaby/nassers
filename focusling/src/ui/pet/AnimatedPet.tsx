@@ -153,7 +153,16 @@ export function AnimatedPet({
       style={[styles.container, { width: size * 1.1, height: size * 1.1 }]}
     >
       <Animated.View style={{ transform }}>
-        <PetArt speciesId={speciesId} stage={stage} mood={mood} expression={face} equipped={equipped} size={artSize} />
+        <PetArt
+          speciesId={speciesId}
+          stage={stage}
+          mood={mood}
+          expression={face}
+          equipped={equipped}
+          size={artSize}
+          auraAnimated={!reducedMotion && !calm}
+          auraDim={calm}
+        />
       </Animated.View>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         {hearts.map((h, i) => (

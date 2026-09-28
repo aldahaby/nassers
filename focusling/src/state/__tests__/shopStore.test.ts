@@ -75,14 +75,17 @@ describe('shop through the store', () => {
     const { store, reopen } = await setup();
     store.getState().debugUnlockAll();
     store.getState().debugDressUp();
-    expect(Object.keys(store.getState().save!.inventory.equipped)).toHaveLength(7);
+    expect(Object.keys(store.getState().save!.inventory.equipped)).toHaveLength(9);
     store.getState().debugResetEquipped();
     expect(store.getState().save!.inventory.equipped).toEqual({});
     let reopened = await reopen();
     expect(reopened.getState().save!.inventory.equipped).toEqual({});
     reopened.getState().debugClearInventory();
-    reopened = await reopen();
     expect(reopened.getState().save!.inventory).toEqual({ items: {}, equipped: {} });
+    reopened = await reopen();
+    // Starter cosmetics are always owned, so the next launch grants them back.
+    expect(Object.keys(reopened.getState().save!.inventory.items)).toEqual(['fc-charm-star']);
+    expect(reopened.getState().save!.inventory.equipped).toEqual({});
   });
 });
 

@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import {
   adoptPet,
+  applyLook,
+  clearLook,
+  grantUnlocks,
+  markItemsSeen,
+  saveLook,
   addMission,
   chooseAppMode,
   completeFamilySetup,
@@ -162,6 +167,11 @@ export interface GameStore {
   debugOwnOneOfEach(): void;
   debugResetEquipped(): void;
   debugDressUp(): void;
+  /** Clear "New" badges for these items. */
+  markItemsSeen(ids: string[]): void;
+  saveLook(index: number): void;
+  applyLook(index: number): void;
+  clearLook(index: number): void;
   resetProgress(): Promise<void>;
 
   // ── Focus protection ──
@@ -337,7 +347,9 @@ export function createGameStore(deps: GameStoreDeps) {
         try {
           const loaded = await deps.saveRepository.load();
           const base = loaded ?? createNewSave(now(), { debugToolsEnabled: deps.debugDefault });
-          const { save, completedSummary } = refreshSave(base, now());
+          // Items added in an update (or milestones reached before cosmetics existed) are
+          // granted quietly on launch; they show a "New" badge in the wardrobe.
+          const { save, completedSummary } = refreshSave(grantUnlocks(base, now()).save, now());
           commit(save, { status: 'ready', lastSummary: completedSummary });
           if (completedSummary) void stopProtection(completedSummary.sessionId, 'completed');
           void get().refreshProtection();
@@ -416,6 +428,14 @@ export function createGameStore(deps: GameStoreDeps) {
       },
 
       unequip: (slot) => commit(unequipSlot(requireSave(), slot)),
+      markItemsSeen: (ids) => {
+        const save = requireSave();
+        const next = markItemsSeen(save, ids);
+        if (next !== save) commit(next);
+      },
+      saveLook: (index) => commit(saveLook(requireSave(), index, now())),
+      applyLook: (index) => commit(applyLook(requireSave(), index)),
+      clearLook: (index) => commit(clearLook(requireSave(), index)),
       unequipItem: (itemId) => commit(unequipItem(requireSave(), itemId)),
 
       feed(itemId) {

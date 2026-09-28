@@ -347,3 +347,17 @@ Architecture summary:
   Developer tools are on.
 - `Screen` caps content width (640 pt, or 1120 pt for the dashboard) so tablets get a centred column.
 
+## 12. Cosmetics and rewards (creative milestone)
+
+Full design: [`COSMETICS.md`](COSMETICS.md). Summary:
+
+- **Save v5** adds `cosmetics` (new-item badges, saved looks) and `stats.missionsCompleted`.
+- `config/cosmetics.ts` holds collections, colourway palettes and item data; `CATALOG` joins them
+  with the classic shop. Items carry `source` (shop / starter / earned), `unlock`, `art { key,
+  palette }` and `credit`.
+- `core/cosmetics/` grants unlocks idempotently inside `endSession` and on launch, and derives the
+  wardrobe, next unlock and looks. Cosmetics are stat-neutral.
+- Rendering: palette-driven drawings keyed by art key on per-species anatomy anchors; fixed layer
+  order neck → charm → face → head, with auras on an overlay that animates only when allowed.
+- Motion and success colours are now theme tokens (`motion`, `colors.success*`, `colors.stage`).
+

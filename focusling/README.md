@@ -89,7 +89,17 @@ logic, local persistence, and a mock Screen Time service.
   a 10-coin daily play cap, and an optional "after a mission" parent setting.
 - Developer tools for modes, gate, missions and play (hidden and refused when off).
 
+**Creative milestone (cosmetics, wardrobe, rewards):** details in `docs/COSMETICS.md`.
+- Focus Club: an original cute-streetwear collection (Gummy Visor, Cloud Cap, Charm Harness, Mood
+  Charms, Emotion Auras) in colourways, across five combinable slots (head, face, neck, charm, aura).
+- Earned by visible focus milestones (first session, hours focused, missions, growth, streaks), never
+  by chance; a few colourways cost coins. All cosmetics are stat-neutral.
+- Session completion reveals new items ("New for Nimbus" → Wear it / Later) plus an honest "Next"
+  line; the Wardrobe has try-on for everything, progress for locked pieces and 3 saved looks.
+- An equip beat (land → hop → sparkle) and twinkling auras, all toned down for Reduce Motion and
+  still during focus sessions.
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,
-`shopCatalog.ts`, `missions.ts`, `play.ts`, `family.ts`.
+`shopCatalog.ts`, `cosmetics.ts`, `missions.ts`, `play.ts`, `family.ts`.

@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   text: { alignItems: 'center', gap: spacing.xs },
   title: { ...typography.heading, textAlign: 'center' },
   detail: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
-  reward: { ...typography.body, fontWeight: '800', color: '#1F8A55', textAlign: 'center' },
+  reward: { ...typography.body, fontWeight: '800', color: colors.success, textAlign: 'center' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   action: { flexGrow: 1, flexBasis: 140 },
 });

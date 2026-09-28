@@ -7,7 +7,7 @@ export type ShopCategory = 'toy' | 'accessory' | 'food' | 'decoration';
  * One item per slot. Items that would overlap on the pet share a slot (a cap,
  * headphones and crowns are all `head`), so incompatible pairs can't be worn together.
  */
-export type AccessorySlot = 'head' | 'face' | 'neck';
+export type AccessorySlot = 'head' | 'face' | 'neck' | 'charm' | 'aura';
 /** Fixed placement spots in the pet's room. */
 export type DecorationSlot = 'wall' | 'floorLeft' | 'floorRight' | 'floorCenter';
 export type EquipSlot = AccessorySlot | DecorationSlot;
@@ -18,7 +18,41 @@ export interface PassiveBonus {
   coinPct?: number;
 }
 
-/** Catalog definition. Static data lives in `config/shopCatalog.ts`. */
+/**
+ * How an item is obtained. `shop` items are bought with coins; `starter` items
+ * are given to everyone; `earned` items unlock from real focus milestones.
+ * (Future provenance such as seasonal, creator or licensed capsules would add
+ * values here; none involve randomness.)
+ */
+export type ItemSource = 'shop' | 'starter' | 'earned';
+
+/** A predictable milestone that unlocks an earned item. Progress is always shown. */
+export type UnlockRule =
+  | { kind: 'sessions'; count: number }
+  | { kind: 'focusMinutes'; minutes: number }
+  | { kind: 'missions'; count: number }
+  | { kind: 'stage'; stage: 'young' | 'adult' | 'evolved' }
+  | { kind: 'dayStreak'; days: number };
+
+/** Colours for palette-driven art, so one drawing supports many colourways. */
+export interface ItemPalette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  /** 0–1, for translucent materials (gummy, jelly, glass). */
+  opacity?: number;
+}
+
+/** Where an item's artwork came from, and whether it is final. */
+export interface ItemCredit {
+  designer: string;
+  /** `original`: made in-house, no third-party IP. Licensed items would carry the licence reference. */
+  rights: 'original';
+  /** `v1`: in-code vector art, fine to ship but slated for an illustrator pass. */
+  art: 'v1' | 'final';
+}
+
+/** Catalog definition. Static data lives in `config/shopCatalog.ts` and `config/cosmetics.ts`. */
 export interface ShopItem {
   id: Id;
   name: string;
@@ -35,9 +69,36 @@ export interface ShopItem {
   consumable: boolean;
   /** Where the item goes when equipped. Absent = not equippable. */
   equipSlot?: EquipSlot;
+  /** Cosmetics are stat-neutral by default; a bonus must be set deliberately. */
   passiveBonus?: PassiveBonus;
   /** Toys: minimum minutes between happiness-granting plays. */
   playCooldownMinutes?: number;
+  /** Defaults to `shop`. Only `shop` items can be bought. */
+  source?: ItemSource;
+  /** Required when `source` is `earned`. */
+  unlock?: UnlockRule;
+  /** Collection id (see `config/cosmetics.ts`). */
+  collection?: string;
+  /** Shared artwork key (defaults to the item id) and its colourway. */
+  art?: { key: string; palette?: ItemPalette };
+  /** Colourway name shown after the item name, e.g. "Frost". */
+  colorway?: string;
+  credit?: ItemCredit;
+}
+
+/** A saved outfit: what goes in each wearable slot. */
+export interface SavedLook {
+  id: Id;
+  equipped: Partial<Record<AccessorySlot, Id>>;
+  savedAt: Timestamp;
+}
+
+/** Wardrobe state that isn't ownership. */
+export interface CosmeticsState {
+  /** Unlocked or bought items not yet seen in the wardrobe ("New" badge). */
+  newItemIds: Id[];
+  /** Up to `COSMETICS.maxLooks` saved outfits; `null` = empty slot. */
+  looks: (SavedLook | null)[];
 }
 
 /** An owned item. */

@@ -20,7 +20,7 @@ describe('save migrations', () => {
     };
 
     const migrated = migrateSave(v1);
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     expect(migrated.inventory.equipped).toEqual({ head: 'acc-headphones' });
     expect(migrated.inventory.items['food-fruit-bowl']).toMatchObject({ itemId: 'food-fruit-bowl', quantity: 2 });
     expect(migrated.inventory.items['food-veggie-bowl']).toBeUndefined();
@@ -49,7 +49,7 @@ describe('v2 → v3 migration', () => {
       history: [{ id: 'h', plannedDurationMinutes: 15, startedAt: T0, endedAt: T0, status: 'completed', blockedTargets: [], reward: null }],
     };
     const migrated = migrateSave(v2);
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     expect(migrated.protection).toEqual({ mode: 'none', surfaces: ['instagramReels'], fallbackBehavior: 'askUser' });
     expect(migrated.focus.active?.protectionMode).toBe('none');
     expect(migrated.focus.history[0]?.protectionMode).toBe('none');

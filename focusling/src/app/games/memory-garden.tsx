@@ -131,6 +131,6 @@ const styles = StyleSheet.create({
   cardDown: { backgroundColor: '#DDF1E4', borderColor: '#BFE3CB' },
   cardUp: { backgroundColor: colors.surface, borderColor: colors.primarySoft },
   cardMatched: { borderColor: '#9AD9B3', backgroundColor: '#F2FBF5' },
-  check: { position: 'absolute', top: 4, right: 8, fontWeight: '900', color: '#1F8A55', fontSize: 16 },
+  check: { position: 'absolute', top: 4, right: 8, fontWeight: '900', color: colors.success, fontSize: 16 },
   leaf: { opacity: 0.8 },
 });

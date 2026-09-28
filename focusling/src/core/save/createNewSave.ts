@@ -1,5 +1,6 @@
 import { ECONOMY } from '@/config/economy';
 import { DEFAULT_PROTECTION } from '@/config/protection';
+import { createCosmeticsState, grantUnlocks } from '../cosmetics/cosmeticsService';
 import { createInventory } from '../inventory/inventoryService';
 import { createMissionState } from '../missions/missionService';
 import { createPlayStats } from '../play/playService';
@@ -16,12 +17,13 @@ export function createLifetimeStats(): LifetimeStats {
     longestSessionMinutes: 0,
     itemsPurchased: 0,
     coinsSpent: 0,
+    missionsCompleted: 0,
   };
 }
 
 /** A fresh save for a first launch, before onboarding. */
 export function createNewSave(now: Timestamp, options: { debugToolsEnabled?: boolean } = {}): GameSave {
-  return {
+  const save: GameSave = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     savedAt: now,
     profile: {
@@ -42,5 +44,8 @@ export function createNewSave(now: Timestamp, options: { debugToolsEnabled?: boo
     family: null,
     missions: createMissionState(),
     play: createPlayStats(),
+    cosmetics: createCosmeticsState(),
   };
+  // Starter cosmetics, so the wardrobe is never empty.
+  return grantUnlocks(save, now).save;
 }

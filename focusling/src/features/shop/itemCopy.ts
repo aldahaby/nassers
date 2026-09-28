@@ -17,19 +17,27 @@ export function itemKindLabel(item: CatalogItem): string {
   }
 }
 
+/** A bonus line only for items deliberately configured with one (cosmetics are stat-neutral by default). */
+function bonusLine(item: CatalogItem, when: string): string[] {
+  const b = item.passiveBonus;
+  if (!b) return [];
+  return [[b.xpPct ? `+${pct(b.xpPct)}% XP` : '', b.coinPct ? `+${pct(b.coinPct)}% coins` : ''].filter(Boolean).join(', ') + ` from focus ${when}`];
+}
+
 /** Plain-language list of what an item does. */
 export function itemEffects(item: CatalogItem, petName: string): string[] {
   switch (item.category) {
     case 'accessory':
       return [
         `${petName} wears it where you can see it`,
-        `+${pct(item.passiveBonus?.xpPct)}% XP from focus while worn`,
+        ...bonusLine(item, 'while worn'),
+        'Just for looks: no effect on coins or XP',
         `+${item.happinessBonus} happiness when ${petName} first gets it`,
       ];
     case 'decoration':
       return [
         `Goes in the room behind ${petName}`,
-        `+${pct(item.passiveBonus?.coinPct)}% coins from focus while placed`,
+        ...bonusLine(item, 'while placed'),
         `+${item.happinessBonus} happiness when it arrives`,
       ];
     case 'toy':

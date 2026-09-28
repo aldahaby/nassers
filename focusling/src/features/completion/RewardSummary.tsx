@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { EquipSlot, GrowthStage, PetSpeciesId, SessionSummary } from '@/core';
 import { AnimatedPet, Button, Card, Confetti, CountUpText, Screen, colors, radius, spacing, typography, useNativeDriver } from '@/ui';
+import { UnlockReveal } from './UnlockReveal';
 import { XpGainBar } from './XpGainBar';
 
 interface Props {
@@ -84,6 +85,15 @@ export function RewardSummary({ summary, pet, continueLabel, onContinue, reduced
           </View>
         ))}
 
+        <UnlockReveal
+          unlocked={summary.unlockedItems}
+          petName={pet.name}
+          delay={countStart}
+          reducedMotion={reducedMotion}
+          onWear={() => setCheerKey((k) => k + 1)}
+          showNext={completed}
+        />
+
         <Card style={styles.card}>
           <View style={styles.balanceRow}>
             <Text style={styles.balanceLabel}>Coin balance</Text>
@@ -155,9 +165,9 @@ function StreakLine({ summary }: { summary: SessionSummary }) {
 }
 
 const styles = StyleSheet.create({
-  mission: { alignSelf: 'stretch', backgroundColor: '#EFFBF4', borderRadius: radius.lg, padding: spacing.lg, gap: 2, borderWidth: 2, borderColor: '#BFEBD3' },
+  mission: { alignSelf: 'stretch', backgroundColor: colors.successSoft, borderRadius: radius.lg, padding: spacing.lg, gap: 2, borderWidth: 2, borderColor: colors.successBorder },
   missionTitle: { ...typography.heading, fontSize: 18 },
-  missionReward: { ...typography.number, color: '#1F8A55' },
+  missionReward: { ...typography.number, color: colors.success },
   flex: { flex: 1, backgroundColor: colors.background },
   content: { alignItems: 'center', paddingTop: spacing.xl },
   heading: { alignItems: 'center', gap: spacing.xs },

@@ -29,6 +29,7 @@ export default function RootLayout() {
           <Stack.Screen name="inventory" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="protection" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="missions" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="wardrobe" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="play" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="games/memory-garden" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="games/toy-toss" options={{ animation: 'fade', gestureEnabled: false }} />

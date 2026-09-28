@@ -19,6 +19,8 @@ export interface LifetimeStats {
   longestSessionMinutes: number;
   itemsPurchased: number;
   coinsSpent: number;
+  /** Missions completed, all time (unlocks earned cosmetics). */
+  missionsCompleted: number;
 }
 
 export interface StreakState {

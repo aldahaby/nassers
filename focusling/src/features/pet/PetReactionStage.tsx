@@ -5,6 +5,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { getShopItem, type ToyPlayStyle } from '@/config/shopCatalog';
 import type { EquipSlot, GrowthStage, PetMood, PetSpeciesId } from '@/core';
 import type { PetReaction } from '@/state';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { AnimatedPet, ItemArt, colors, useNativeDriver } from '@/ui';
 
 interface Props {
@@ -23,6 +24,9 @@ interface Props {
   accessibilityLabel?: string;
 }
 
+/** Where an equipped item settles on the pet (fraction of pet height). Room decor doesn't land. */
+const LANDING_Y: Partial<Record<EquipSlot, number>> = { head: 0.28, face: 0.52, neck: 0.78, charm: 0.84 };
+
 type Playing = { reaction: PetReaction; style: ToyPlayStyle | 'eat' | 'show' };
 
 const REACTION_MS: Record<Playing['style'], number> = {
@@ -31,7 +35,7 @@ const REACTION_MS: Record<Playing['style'], number> = {
   spin: 1900,
   bubbles: 2300,
   eat: 2100,
-  show: 1400,
+  show: 1500,
 };
 
 /**
@@ -60,6 +64,8 @@ export function PetReactionStage({
   const [prop] = useState(() => ({ x: new Animated.Value(0), y: new Animated.Value(0), scale: new Animated.Value(0), spin: new Animated.Value(0) }));
   const [petTilt] = useState(() => new Animated.Value(0));
   const [sparkle] = useState(() => new Animated.Value(0));
+  const [land] = useState(() => new Animated.Value(0));
+  const reducedMotion = useReducedMotion();
   const [bubbles] = useState(() => Array.from({ length: 9 }, () => new Animated.Value(0)));
 
   const later = useCallback((ms: number, fn: () => void) => {
@@ -159,15 +165,22 @@ export function PetReactionStage({
           break;
         }
         case 'show': {
-          // A new item: a happy hop and a ring of sparkles.
-          setCheer((c) => c + 1);
-          t(sparkle, 1, 1100, Easing.out(Easing.cubic)).start();
+          // The equip beat: the item lands softly, the pet hops, one ring of sparkles,
+          // then back to idle. Reduce Motion: a single static highlight fade instead.
+          if (reducedMotion) {
+            t(sparkle, 1, 900).start();
+            break;
+          }
+          land.setValue(0);
+          t(land, 1, 380, Easing.out(Easing.quad)).start();
+          later(380, () => setCheer((c) => c + 1));
+          Animated.sequence([Animated.delay(380), t(sparkle, 1, 1000, Easing.out(Easing.cubic))]).start();
           break;
         }
       }
       later(REACTION_MS[next.style], () => setPlaying(null));
     },
-    [bubbles, later, petTilt, prop, size, sparkle],
+    [bubbles, land, later, petTilt, prop, reducedMotion, size, sparkle],
   );
 
   // Pick up a queued reaction once this screen is visible.
@@ -196,6 +209,9 @@ export function PetReactionStage({
     : expression;
   const propItem = playing && playing.style !== 'show' && playing.style !== 'bubbles' ? playing.reaction.itemId : null;
   const propSize = size * (playing?.style === 'hug' ? 0.46 : playing?.style === 'eat' ? 0.24 : 0.28);
+  const landingItem = playing?.style === 'show' ? getShopItem(playing.reaction.itemId) : undefined;
+  const landingY = landingItem?.equipSlot ? LANDING_Y[landingItem.equipSlot] : undefined;
+  const landing = landingItem && landingY !== undefined ? { itemId: landingItem.id, y: landingY, size: size * 0.42 } : null;
 
   return (
     <View style={{ width: size * 1.1, height: size * 1.1 }}>
@@ -263,7 +279,40 @@ export function PetReactionStage({
             );
           })}
 
+        {playing?.style === 'show' && !reducedMotion && landing && (
+          <Animated.View
+            style={{
+              position: 'absolute',
+              left: size * 0.55 - landing.size / 2,
+              top: size * landing.y - landing.size / 2,
+              width: landing.size,
+              height: landing.size,
+              opacity: land.interpolate({ inputRange: [0, 0.15, 0.85, 1], outputRange: [0, 1, 1, 0] }),
+              transform: [{ translateY: land.interpolate({ inputRange: [0, 1], outputRange: [-size * 0.3, 0] }) }],
+            }}
+          >
+            <ItemArt itemId={landing.itemId} size={landing.size} />
+          </Animated.View>
+        )}
+
+        {playing?.style === 'show' && reducedMotion && (
+          <Animated.View
+            style={{
+              position: 'absolute',
+              left: size * 0.05,
+              top: size * 0.05,
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              borderWidth: 3,
+              borderColor: colors.coin,
+              opacity: sparkle.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.7, 0] }),
+            }}
+          />
+        )}
+
         {playing?.style === 'show' &&
+          !reducedMotion &&
           [0, 1, 2, 3, 4, 5].map((i) => {
             const angle = (i / 6) * Math.PI * 2;
             return (

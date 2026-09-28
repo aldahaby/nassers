@@ -51,4 +51,5 @@ Docs: https://docs.expo.dev/eas/index.md
 - Family Mode is local-only. Don't add analytics, ads, accounts, remote tracking or any monitoring of the child (messages, browsing, location, screenshots, activity logs). Any cloud Family Mode needs a separate privacy/security/legal review first.
 - Developer shortcuts (including the Parent Gate shortcut) must stay hidden and store-refused when Developer tools are off.
 - Games follow the Calm Play rule in `docs/FAMILY_MODE.md`: finite, no timers or speed-ups, no loot boxes, equal exit buttons, respect Reduce Motion.
+- Cosmetics: see `docs/COSMETICS.md`. Keep them stat-neutral and earned by visible, predictable milestones; no random drops, rarity ladders, countdowns or real-money prompts (especially in Child View). New items are data in `config/cosmetics.ts` plus art keyed by `art.key`.
 - Native protection code: `modules/focusling-protection/ios` (Swift) and `targets/*` (extensions). `FocuslingSharedState.swift` copies must stay identical (a test checks this). Keep `src/config/protectionVectors.json` as the shared source of truth for detection policy behaviour.

@@ -1,8 +1,11 @@
 import { memo } from 'react';
+import { View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
 import { PET_SPECIES } from '@/config/pets';
 import type { EquipSlot, GrowthStage, PetMood, PetSpeciesId } from '@/core';
-import { ACCESSORY_ART, ACCESSORY_LAYER_ORDER } from './accessories';
+import { getShopItem } from '@/config/shopCatalog';
+import { ACCESSORY_LAYER_ORDER, resolveAccessoryArt } from './accessories';
+import { AuraLayer } from './auras';
 import { ANATOMY } from './anatomy';
 import { PetBody } from './PetBody';
 import { PetFace, type FaceExpression } from './PetFace';
@@ -14,14 +17,28 @@ export interface PetArtProps {
   expression?: FaceExpression;
   equipped?: Partial<Record<EquipSlot, string>>;
   size: number;
+  /** Twinkle the equipped aura (AnimatedPet turns this off for Reduce Motion / focus). */
+  auraAnimated?: boolean;
+  /** Softer aura, e.g. during a focus session. */
+  auraDim?: boolean;
 }
 
 /** Static, original vector art for a pet. Animation is layered on by AnimatedPet. */
-export const PetArt = memo(function PetArt({ speciesId, stage, mood, expression = 'auto', equipped, size }: PetArtProps) {
+export const PetArt = memo(function PetArt({
+  speciesId,
+  stage,
+  mood,
+  expression = 'auto',
+  equipped,
+  size,
+  auraAnimated = false,
+  auraDim = false,
+}: PetArtProps) {
   const species = PET_SPECIES[speciesId];
   const anatomy = ANATOMY[speciesId];
+  const auraItem = equipped?.aura ? getShopItem(equipped.aura) : undefined;
 
-  return (
+  const art = (
     <Svg width={size} height={size} viewBox="0 0 200 200">
       <Ellipse cx={100} cy={182} rx={52} ry={8} fill="#000000" opacity={0.08} />
       {stage === 'evolved' && <EvolvedAura />}
@@ -29,10 +46,17 @@ export const PetArt = memo(function PetArt({ speciesId, stage, mood, expression 
       <PetFace anatomy={anatomy} mood={mood} stage={stage} expression={expression} cheekColor={species.palette.cheek} />
       {ACCESSORY_LAYER_ORDER.map((slot) => {
         const itemId = equipped?.[slot];
-        const art = itemId ? ACCESSORY_ART[itemId] : undefined;
-        return art ? <G key={slot}>{art(anatomy)}</G> : null;
+        const resolved = itemId ? resolveAccessoryArt(itemId) : null;
+        return resolved ? <G key={slot}>{resolved.render(anatomy, resolved.palette)}</G> : null;
       })}
     </Svg>
+  );
+  if (!auraItem?.art) return art;
+  return (
+    <View style={{ width: size, height: size }}>
+      {art}
+      <AuraLayer artKey={auraItem.art.key} palette={auraItem.art.palette ?? { primary: '#FFD166', secondary: '#E8A93A', accent: '#FFF' }} size={size} animated={auraAnimated} dim={auraDim} />
+    </View>
   );
 });
 

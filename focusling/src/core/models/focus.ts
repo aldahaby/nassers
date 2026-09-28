@@ -84,6 +84,8 @@ export interface SessionSummary {
   completedWhileAway: boolean;
   /** Missions this session completed (each rewarded exactly once). */
   missionCompletions: MissionCompletion[];
+  /** Cosmetics this session unlocked (each granted exactly once). */
+  unlockedItems: Id[];
 }
 
 /** Live view of the running session, derived from timestamps on every tick. */

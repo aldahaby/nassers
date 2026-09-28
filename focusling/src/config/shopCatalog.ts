@@ -1,4 +1,5 @@
 import type { AccessorySlot, DecorationSlot, EquipSlot, ShopCategory, ShopItem } from '@/core/models';
+import { FOCUS_CLUB_ITEMS } from './cosmetics';
 import { ECONOMY } from './economy';
 
 /**
@@ -31,8 +32,8 @@ export interface CatalogItem extends ShopItem {
  * Artwork is keyed by id in `ui/items/ItemArt.tsx` (icons), `ui/pet/accessories.tsx`
  * (worn) and `ui/room/decorations.tsx` (placed).
  */
-export const SHOP_ITEMS: readonly CatalogItem[] = [
-  // ── Accessories: cosmetic, worn on the pet, small passive XP bonus ─────────
+const SHOP_ITEMS_BASE: readonly CatalogItem[] = [
+  // ── Accessories: cosmetic and stat-neutral, worn on the pet ────────────────
   {
     id: 'acc-bow-tie',
     name: 'Dapper Bow',
@@ -44,7 +45,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'neck',
-    passiveBonus: { xpPct: 0.01 },
   },
   {
     id: 'acc-cap',
@@ -57,7 +57,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'head',
-    passiveBonus: { xpPct: 0.02 },
   },
   {
     id: 'acc-sunglasses',
@@ -70,7 +69,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'face',
-    passiveBonus: { xpPct: 0.02 },
   },
   {
     id: 'acc-flower-crown',
@@ -83,7 +81,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'head',
-    passiveBonus: { xpPct: 0.03 },
   },
   {
     id: 'acc-headphones',
@@ -96,7 +93,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'head',
-    passiveBonus: { xpPct: 0.03 },
   },
   {
     id: 'acc-golden-crown',
@@ -109,7 +105,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'head',
-    passiveBonus: { xpPct: 0.05 },
   },
 
   // ── Toys: interactive, reusable, happiness on a per-toy cooldown ───────────
@@ -224,7 +219,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'floorLeft',
-    passiveBonus: { coinPct: 0.02 },
   },
   {
     id: 'decor-star-garland',
@@ -237,7 +231,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'wall',
-    passiveBonus: { coinPct: 0.02 },
   },
   {
     id: 'decor-glow-lamp',
@@ -250,7 +243,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'floorRight',
-    passiveBonus: { coinPct: 0.02 },
   },
   {
     id: 'decor-cozy-rug',
@@ -263,7 +255,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'floorCenter',
-    passiveBonus: { coinPct: 0.03 },
   },
   {
     id: 'decor-beanbag',
@@ -276,7 +267,6 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'floorRight',
-    passiveBonus: { coinPct: 0.03 },
   },
   {
     id: 'decor-aquarium',
@@ -289,9 +279,11 @@ export const SHOP_ITEMS: readonly CatalogItem[] = [
     healthBonus: 0,
     consumable: false,
     equipSlot: 'floorLeft',
-    passiveBonus: { coinPct: 0.04 },
   },
 ];
+
+/** Everything in the game: the classic shop items plus cosmetic collections. */
+export const CATALOG: readonly CatalogItem[] = [...SHOP_ITEMS_BASE, ...FOCUS_CLUB_ITEMS];
 
 export const SHOP_CATEGORIES: readonly { id: ShopCategory; label: string }[] = [
   { id: 'accessory', label: 'Accessories' },
@@ -305,6 +297,8 @@ export const ACCESSORY_SLOTS: Record<AccessorySlot, string> = {
   head: 'Head',
   face: 'Face',
   neck: 'Neck',
+  charm: 'Charm',
+  aura: 'Aura',
 };
 
 export const DECORATION_SLOTS: Record<DecorationSlot, string> = {
@@ -320,7 +314,13 @@ export function slotLabel(slot: EquipSlot): string {
     : DECORATION_SLOTS[slot as DecorationSlot];
 }
 
-const ITEMS_BY_ID: ReadonlyMap<string, CatalogItem> = new Map(SHOP_ITEMS.map((item) => [item.id, item]));
+const ITEMS_BY_ID: ReadonlyMap<string, CatalogItem> = new Map(CATALOG.map((item) => [item.id, item]));
+
+/** Items sold for coins (what the Shop screen lists). */
+export const SHOP_ITEMS: readonly CatalogItem[] = CATALOG.filter((item) => (item.source ?? 'shop') === 'shop');
+
+/** Items unlocked by focus milestones or given to everyone. */
+export const EARNED_ITEMS: readonly CatalogItem[] = CATALOG.filter((item) => item.source === 'earned' || item.source === 'starter');
 
 export function getShopItem(id: string): CatalogItem | undefined {
   return ITEMS_BY_ID.get(id);

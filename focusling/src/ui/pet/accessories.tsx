@@ -1,15 +1,20 @@
 import type { ReactElement } from 'react';
 import { Circle, G, Path, Rect } from 'react-native-svg';
-import type { AccessorySlot } from '@/core';
+import { getShopItem } from '@/config/shopCatalog';
+import type { AccessorySlot, ItemPalette } from '@/core';
 import type { PetAnatomy } from './anatomy';
+import { FOCUS_CLUB_ART, FOCUS_CLUB_ICON_VIEWBOX } from './focusClubArt';
 
-type AccessoryArt = (a: PetAnatomy) => ReactElement;
+export type AccessoryArt = (a: PetAnatomy, palette: ItemPalette) => ReactElement;
+
+const NEUTRAL: ItemPalette = { primary: '#C9B8FF', secondary: '#7B5CFF', accent: '#FFFFFF' };
 
 /**
- * Artwork for wearable items, keyed by shop item id, drawn relative to the
- * shared anatomy anchors. Items without art here still work, just invisibly.
+ * Artwork for wearable items, keyed by art key (an item's `art.key`, or its id),
+ * drawn relative to the shared anatomy anchors. Palette-driven drawings give
+ * every colourway from one function. Auras are drawn by `AuraLayer` instead.
  */
-export const ACCESSORY_ART: Record<string, AccessoryArt> = {
+const CLASSIC_ART: Record<string, AccessoryArt> = {
   'acc-cap': ({ headTop }) => (
     <G>
       <Path d={`M62 ${headTop + 22} C62 ${headTop - 6} 138 ${headTop - 6} 138 ${headTop + 22} Z`} fill="#4FA8FF" />
@@ -98,14 +103,28 @@ export const ACCESSORY_ART: Record<string, AccessoryArt> = {
   ),
 };
 
-/** Draw order: lower layers first so hats sit over headphones, etc. */
-export const ACCESSORY_LAYER_ORDER: readonly AccessorySlot[] = ['neck', 'face', 'head'];
+export const ACCESSORY_ART: Record<string, AccessoryArt> = { ...CLASSIC_ART, ...FOCUS_CLUB_ART };
+
+/**
+ * Draw order inside the pet: lower layers first, so a charm hangs over a collar
+ * and hats sit over headphones and visors. Auras live on their own layer.
+ */
+export const ACCESSORY_LAYER_ORDER: readonly Exclude<AccessorySlot, 'aura'>[] = ['neck', 'charm', 'face', 'head'];
+
+/** The drawing and palette for an item id, or null if it has no worn art. */
+export function resolveAccessoryArt(itemId: string): { render: AccessoryArt; palette: ItemPalette; key: string } | null {
+  const item = getShopItem(itemId);
+  const key = item?.art?.key ?? itemId;
+  const render = ACCESSORY_ART[key];
+  return render ? { render, palette: item?.art?.palette ?? NEUTRAL, key } : null;
+}
 
 /**
  * Crop (viewBox in pet space, measured on the Cloudling anatomy) that frames each
  * accessory on its own, so shop icons reuse the exact worn artwork.
  */
 export const ACCESSORY_ICON_VIEWBOX: Record<string, string> = {
+  ...FOCUS_CLUB_ICON_VIEWBOX,
   'acc-cap': '54 50 116 52',
   'acc-sunglasses': '62 90 76 42',
   'acc-headphones': '28 42 144 90',

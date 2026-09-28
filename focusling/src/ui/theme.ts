@@ -22,6 +22,28 @@ export const colors = {
   roomFloor: '#F4D2AE',
   roomFloorShade: '#EAC096',
   white: '#FFFFFF',
+  /** Positive states (mission done, caught, unlocked). Always paired with text or an icon. */
+  success: '#1F8A55',
+  successSoft: '#EFFBF4',
+  successBorder: '#BFEBD3',
+  /** Soft spotlight behind the pet on character-first screens. */
+  stage: '#FDEBD8',
+  stageGlow: '#FFF3E4',
+  ink: '#2F2548',
+} as const;
+
+/**
+ * Motion tokens (ms). Everyday UI is quick; rewards get a little more time;
+ * ambient loops are slow so they never pull focus.
+ */
+export const motion = {
+  quick: 160,
+  base: 260,
+  reveal: 420,
+  /** Equip beat: notice → land → hop → sparkle → settle. */
+  equip: 1200,
+  /** One half-cycle of a slow ambient loop (auras, idle twinkles). */
+  ambient: 1800,
 } as const;
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;

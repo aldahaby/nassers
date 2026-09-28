@@ -11,7 +11,7 @@ import { ItemDetailSheet } from '@/features/shop/ItemDetailSheet';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
 import { useEquipped, useGameStore, usePetView } from '@/state';
-import { Button, Card, RoomScene, Screen, SpeechBubble, colors, radius, spacing, typography } from '@/ui';
+import { Button, Card, RoomScene, Screen, SpeechBubble, TabIcon, colors, radius, spacing, typography } from '@/ui';
 
 const EMPTY_COPY: Record<ShopCategory, string> = {
   accessory: 'No accessories yet.',
@@ -93,6 +93,25 @@ export default function InventoryScreen() {
         ) : (
           SHOP_CATEGORIES.map((category) => {
             const items = owned.filter((l) => l.category === category.id);
+            if (category.id === 'accessory') {
+              // Wearables live in the Wardrobe (collection, try-on, looks).
+              return (
+                <Pressable
+                  key={category.id}
+                  onPress={() => router.push('/wardrobe')}
+                  style={styles.wardrobeLink}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Wardrobe, ${items.length} accessories owned`}
+                >
+                  <TabIcon name="wardrobe" color={colors.white} size={22} />
+                  <View style={styles.wardrobeText}>
+                    <Text style={styles.wardrobeTitle}>Wardrobe</Text>
+                    <Text style={styles.wardrobeSub}>{items.length} accessories · try on, earn, save looks</Text>
+                  </View>
+                  <Text style={styles.wardrobeChevron}>›</Text>
+                </Pressable>
+              );
+            }
             return (
               <View key={category.id} style={styles.section}>
                 <Text style={styles.sectionTitle}>
@@ -131,6 +150,11 @@ export default function InventoryScreen() {
 
 const styles = StyleSheet.create({
   screen: { paddingBottom: 0 },
+  wardrobeLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.ink, borderRadius: radius.lg, padding: spacing.lg },
+  wardrobeText: { flex: 1 },
+  wardrobeTitle: { ...typography.heading, fontSize: 18, color: colors.white },
+  wardrobeSub: { ...typography.label, color: '#CFC6E8' },
+  wardrobeChevron: { fontSize: 24, fontWeight: '900', color: colors.white },
   list: { flex: 1, marginHorizontal: -spacing.lg },
   listContent: { gap: spacing.lg, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

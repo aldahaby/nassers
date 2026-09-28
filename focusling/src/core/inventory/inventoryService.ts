@@ -22,7 +22,9 @@ export type InventoryError =
   | 'not-owned'
   | 'not-equippable'
   | 'wrong-category'
-  | 'no-pet';
+  | 'no-pet'
+  /** Starter and earned cosmetics can't be bought; they're unlocked by focusing. */
+  | 'not-for-sale';
 
 export function createInventory(): UserInventory {
   return { items: {}, equipped: {} };
@@ -70,6 +72,7 @@ export function coinsShort(save: GameSave, itemId: string): number {
 export function purchaseItem(save: GameSave, itemId: string, now: Timestamp): Result<PurchaseOutcome, InventoryError> {
   const item = getShopItem(itemId);
   if (!item) return fail('unknown-item');
+  if ((item.source ?? 'shop') !== 'shop') return fail('not-for-sale');
   if (!item.consumable && isOwned(save.inventory, itemId)) return fail('already-owned');
   if (save.wallet.coins < item.price) return fail('insufficient-coins');
 

@@ -28,3 +28,11 @@ export const PET_ITEM_LINES = {
   accessory: ['Do I look good?', 'I love it!', 'So stylish!'],
   decoration: ['So cozy!', 'Our room looks great!', 'I love it here!'],
 } as const;
+
+/** Said once per visit when the wardrobe has something new. Invitation, never pressure. */
+export const PET_NEW_ITEM_LINES: readonly string[] = [
+  'Psst… something new in the wardrobe!',
+  'I earned something! Want to see?',
+  'Ooh, a new look is waiting for me.',
+];
+

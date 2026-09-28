@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import type { DecorationSlot, EquipSlot } from '@/core';
 import { colors, radius } from '@/ui/theme';
 import { DECORATION_ART } from './decorations';
@@ -30,6 +30,8 @@ export function RoomScene({ equipped, height, children }: Props) {
         </G>
         <Rect x={0} y={228} width={360} height={72} fill={colors.roomFloor} />
         <Rect x={0} y={224} width={360} height={8} fill={colors.roomFloorShade} />
+        {/* A soft pool of light where the pet stands, so it reads as the centre of the room. */}
+        <Ellipse cx={180} cy={262} rx={120} ry={26} fill="#FFF6E8" opacity={0.55} />
         {DECOR_SLOTS.map((slot) => {
           const id = equipped[slot];
           const art = id ? DECORATION_ART[id] : undefined;

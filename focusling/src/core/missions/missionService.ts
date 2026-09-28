@@ -96,7 +96,11 @@ function grantMissionReward(save: GameSave, mission: Mission, now: Timestamp): G
     ...save,
     pet,
     wallet: { coins: save.wallet.coins + mission.rewardCoins },
-    stats: { ...save.stats, lifetimeCoinsEarned: save.stats.lifetimeCoinsEarned + mission.rewardCoins },
+    stats: {
+      ...save.stats,
+      lifetimeCoinsEarned: save.stats.lifetimeCoinsEarned + mission.rewardCoins,
+      missionsCompleted: save.stats.missionsCompleted + 1,
+    },
     daily: {
       ...save.daily,
       [today]: {

@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   wrap: { gap: spacing.md },
   section: { ...typography.heading, marginTop: spacing.sm },
   muted: { ...typography.body, fontSize: 14, color: colors.textMuted },
-  notice: { ...typography.label, color: '#1F8A55' },
+  notice: { ...typography.label, color: colors.success },
   item: { gap: spacing.sm },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   cell: { flexGrow: 1, flexBasis: 90 },

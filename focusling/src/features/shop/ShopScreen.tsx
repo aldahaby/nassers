@@ -8,7 +8,7 @@ import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { ItemCard } from '@/features/shop/ItemCard';
 import { ItemDetailSheet } from '@/features/shop/ItemDetailSheet';
 import { useCoins, useDebugToolsEnabled, useGameStore, usePetView } from '@/state';
-import { AnimatedNumber, CoinIcon, Screen, colors, radius, shadow, spacing, typography } from '@/ui';
+import { AnimatedNumber, CoinIcon, Screen, TabIcon, colors, radius, shadow, spacing, typography } from '@/ui';
 
 /** The shop: browse by category, tap an item for details. Nothing is bought from the grid. */
 export default function ShopScreen() {
@@ -45,10 +45,24 @@ export default function ShopScreen() {
         </View>
       </View>
 
-      <Pressable style={styles.inventoryLink} onPress={() => router.push('/inventory')} accessibilityRole="button">
-        <Text style={styles.inventoryLabel}>🎒 My items</Text>
-        <Text style={styles.inventoryChevron}>›</Text>
-      </Pressable>
+      <View style={styles.links}>
+        <Pressable style={[styles.inventoryLink, styles.linkHalf]} onPress={() => router.push('/wardrobe')} accessibilityRole="button" accessibilityLabel="Wardrobe: earn Focus Club pieces by focusing">
+          <TabIcon name="wardrobe" color={colors.primaryDark} size={20} />
+          <View style={styles.linkText}>
+            <Text style={styles.inventoryLabel}>Wardrobe</Text>
+            <Text style={styles.linkSub}>Earn with focus</Text>
+          </View>
+          <Text style={styles.inventoryChevron}>›</Text>
+        </Pressable>
+        <Pressable style={[styles.inventoryLink, styles.linkHalf]} onPress={() => router.push('/inventory')} accessibilityRole="button" accessibilityLabel="My items">
+          <TabIcon name="bag" color={colors.primaryDark} size={20} />
+          <View style={styles.linkText}>
+            <Text style={styles.inventoryLabel}>My items</Text>
+            <Text style={styles.linkSub}>Toys, snacks, room</Text>
+          </View>
+          <Text style={styles.inventoryChevron}>›</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.tabs} accessibilityRole="tablist">
         {SHOP_CATEGORIES.map((c) => {
@@ -95,7 +109,11 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.label, fontWeight: '600' },
   balance: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   balanceValue: { fontSize: 24, fontWeight: '900', color: colors.coinDark, fontVariant: ['tabular-nums'] },
-  inventoryLink: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  linkHalf: { flexGrow: 1, flexBasis: 150 },
+  linkText: { flex: 1 },
+  linkSub: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  inventoryLink: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md },
   inventoryLabel: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
   inventoryChevron: { fontSize: 22, fontWeight: '900', color: colors.primaryDark },
   tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: radius.pill, padding: 4 },

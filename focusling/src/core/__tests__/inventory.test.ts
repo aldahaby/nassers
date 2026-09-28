@@ -20,7 +20,7 @@ import {
 } from '../game/debugTools';
 import { createNewSave } from '../save/createNewSave';
 import { MINUTE_MS } from '../shared/dates';
-import { SHOP_ITEMS, getShopItem } from '@/config/shopCatalog';
+import { CATALOG, getShopItem } from '@/config/shopCatalog';
 import type { GameSave } from '../models';
 
 const T0 = new Date(2026, 0, 5, 9, 0).getTime();
@@ -115,7 +115,8 @@ describe('equipment slots', () => {
       floorCenter: 'decor-cozy-rug',
       wall: 'decor-star-garland',
     });
-    expect(getEquippedBonuses(save.inventory).coinPct).toBeCloseTo(0.1); // capped
+    // Cosmetics are stat-neutral: a full room gives no bonus (capping is covered in economy.test).
+    expect(getEquippedBonuses(save.inventory)).toEqual({ xpPct: 0, coinPct: 0 });
     expect(unequipSlot(save, 'floorCenter').inventory.equipped.floorCenter).toBeUndefined();
   });
 });
@@ -157,7 +158,7 @@ describe('inventory debug tools', () => {
     const start = rich();
     const all = debugUnlockAll(start, T0);
     expect(all.wallet.coins).toBe(1000);
-    expect(Object.keys(all.inventory.items)).toHaveLength(SHOP_ITEMS.length);
+    expect(Object.keys(all.inventory.items)).toHaveLength(CATALOG.length);
     expect(all.inventory.items['food-cookie']?.quantity).toBe(5);
     expect(all.stats.itemsPurchased).toBe(0);
 
@@ -168,10 +169,10 @@ describe('inventory debug tools', () => {
     // Regression: dressing up must never spend coins or count as a (first) purchase.
     expect(dressed.wallet.coins).toBe(1000);
     expect(dressed.stats).toMatchObject({ itemsPurchased: 0, coinsSpent: 0 });
-    expect(Object.keys(dressed.inventory.equipped).sort()).toEqual(['face', 'floorCenter', 'floorLeft', 'floorRight', 'head', 'neck', 'wall']);
+    expect(Object.keys(dressed.inventory.equipped).sort()).toEqual(['aura', 'charm', 'face', 'floorCenter', 'floorLeft', 'floorRight', 'head', 'neck', 'wall']);
     const bare = debugResetEquipped(dressed);
     expect(bare.inventory.equipped).toEqual({});
-    expect(Object.keys(bare.inventory.items)).toHaveLength(SHOP_ITEMS.length);
+    expect(Object.keys(bare.inventory.items)).toHaveLength(CATALOG.length);
 
     expect(debugClearInventory(dressed).inventory).toEqual({ items: {}, equipped: {} });
   });

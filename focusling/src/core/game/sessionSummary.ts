@@ -1,7 +1,7 @@
 import { getProgression } from '../progression/progressionService';
 import { toDateKey } from '../shared/dates';
 import { getEffectiveStreakDays } from '../streaks/streakService';
-import type { Celebration, GameSave, MissionCompletion, SessionReward, SessionSummary, Timestamp } from '../models';
+import type { Celebration, GameSave, Id, MissionCompletion, SessionReward, SessionSummary, Timestamp } from '../models';
 
 /** A session counts as "finished while away" if it was resolved this long after its end time. */
 export const AWAY_THRESHOLD_MS = 60_000;
@@ -40,6 +40,7 @@ export function summarizeSession(
   endsAt: Timestamp,
   now: Timestamp,
   missionCompletions: MissionCompletion[] = [],
+  unlockedItems: Id[] = [],
 ): SessionSummary {
   const session = before.focus.active!;
   const xpBefore = before.pet?.lifetimeXp ?? 0;
@@ -60,5 +61,6 @@ export function summarizeSession(
     celebration: pickCelebration(withProgression(reward, xpBefore, xpAfter), xpBefore, xpAfter),
     completedWhileAway: reward.outcome === 'completed' && now - endsAt >= AWAY_THRESHOLD_MS,
     missionCompletions,
+    unlockedItems,
   };
 }

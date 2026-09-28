@@ -1,6 +1,6 @@
 import type { Timestamp } from './common';
 import type { FocusSession } from './focus';
-import type { UserInventory } from './inventory';
+import type { CosmeticsState, UserInventory } from './inventory';
 import type { Pet } from './pet';
 import type { UserProfile } from './profile';
 import type { ProtectionSettings } from './protection';
@@ -9,7 +9,7 @@ import type { MissionState } from './missions';
 import type { PlayStats } from './play';
 import type { DailyStats, LifetimeStats, StreakState } from './stats';
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export interface Wallet {
   coins: number;
@@ -46,4 +46,6 @@ export interface GameSave {
   family: FamilySettings | null;
   missions: MissionState;
   play: PlayStats;
+  /** Wardrobe extras: "new" badges and saved looks. Ownership lives in `inventory`. */
+  cosmetics: CosmeticsState;
 }

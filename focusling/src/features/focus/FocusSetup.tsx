@@ -85,7 +85,7 @@ export function FocusSetup() {
         />
         <Text style={styles.note}>
           Includes a +{estimate.completionBonusCoins} coin bonus for finishing
-          {bonusPct > 0 ? ` and +${bonusPct}% from your streak and items` : ''}.
+          {bonusPct > 0 ? ` and +${bonusPct}% from your streak` : ''}.
         </Text>
       </Card>
 

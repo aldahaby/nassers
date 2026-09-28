@@ -1,7 +1,7 @@
 import { router, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { PET_FOCUS_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
+import { PET_FOCUS_LINES, PET_NEW_ITEM_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
 import { PET_SPECIES } from '@/config/pets';
 import { getOwnedListings, getStageDefinitionById, type ShopListing } from '@/core';
 import { usePetSpeech } from '@/features/inventory/usePetSpeech';
@@ -88,6 +88,18 @@ export function PetHomeScreen({ variant }: Props) {
     return () => clearTimeout(timer);
   }, [welcomeBack, say, consumeWelcome]);
 
+  // Something new in the wardrobe: the pet mentions it once per visit (not during focus).
+  const hasNewItems = useGameStore((s) => (s.save?.cosmetics.newItemIds.length ?? 0) > 0);
+  const [hinted, setHinted] = useState(false);
+  useEffect(() => {
+    if (!hasNewItems || hinted || welcomeBack || activeSession) return;
+    const timer = setTimeout(() => {
+      say(pickRandom(PET_NEW_ITEM_LINES) ?? null);
+      setHinted(true);
+    }, 1400);
+    return () => clearTimeout(timer);
+  }, [hasNewItems, hinted, welcomeBack, activeSession, say]);
+
   // A mission finished outside a session summary (e.g. developer tools): a calm cheer.
   useEffect(() => {
     if (!celebration) return;
@@ -104,7 +116,7 @@ export function PetHomeScreen({ variant }: Props) {
   if (!view) return null;
   const { pet, progression } = view;
   const stageLabel = getStageDefinitionById(progression.stage).label;
-  const petSize = Math.min(240, width * 0.58);
+  const petSize = Math.min(290, width * 0.7);
   const child = variant === 'child';
   const playLocked = play ? !play.access.open : false;
 
@@ -112,7 +124,7 @@ export function PetHomeScreen({ variant }: Props) {
     <Screen scroll>
       <PetTopBar coins={coins} streakDays={streakDays} level={progression.level} />
 
-      <RoomScene equipped={equipped} height={petSize * 1.45}>
+      <RoomScene equipped={equipped} height={Math.min(petSize * 1.3, 420)}>
         <SpeechBubble text={bubble} />
         <PetReactionStage
           speciesId={pet.speciesId}

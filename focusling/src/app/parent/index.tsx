@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   stateRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.md },
   pill: { fontWeight: '800', fontSize: 14, paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden' },
   pill_neutral: { backgroundColor: colors.surfaceMuted, color: colors.text },
-  pill_good: { backgroundColor: '#DDF6E8', color: '#1F8A55' },
+  pill_good: { backgroundColor: '#DDF6E8', color: colors.success },
   pill_warn: { backgroundColor: '#FFF0D6', color: '#8A5A00' },
   childRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   childText: { flex: 1, gap: 2 },

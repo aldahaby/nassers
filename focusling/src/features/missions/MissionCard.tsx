@@ -64,7 +64,7 @@ export function MissionCard({ view, onPress, compact = false, accessibilityHint 
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm },
-  cardDone: { backgroundColor: '#EFFBF4' },
+  cardDone: { backgroundColor: colors.successSoft },
   cardMuted: { opacity: 0.75 },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   badge: { fontSize: 24, width: 32, textAlign: 'center', color: colors.health, fontWeight: '900' },
@@ -79,6 +79,6 @@ const styles = StyleSheet.create({
   fillDone: { backgroundColor: colors.health },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   progress: { ...typography.label, color: colors.text },
-  progressDone: { color: '#1F8A55' },
+  progressDone: { color: colors.success },
   small: { ...typography.label },
 });

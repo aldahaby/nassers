@@ -65,6 +65,19 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
       schemaVersion: 4,
     };
   },
+  // v4 → v5: cosmetics (new-item badges, saved looks) and a lifetime missions count.
+  // Accessories become stat-neutral in config; owned and equipped items are untouched.
+  // Starter/earned items a save already qualifies for are granted on load (grantUnlocks).
+  4: (save) => {
+    const daily = Object.values((save.daily ?? {}) as Record<string, { missionsCompleted?: number }>);
+    const stats = (save.stats ?? {}) as RawRecord;
+    return {
+      ...save,
+      stats: { missionsCompleted: daily.reduce((n, d) => n + (d.missionsCompleted ?? 0), 0), ...stats },
+      cosmetics: { newItemIds: [], looks: [null, null, null] },
+      schemaVersion: 5,
+    };
+  },
 };
 
 export class SaveMigrationError extends Error {}

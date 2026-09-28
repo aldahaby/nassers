@@ -16,8 +16,10 @@ const ASPIRATIONAL_MIN = 100;
 
 describe('shop balance', () => {
   it('has 16–20 items across all four categories', () => {
-    expect(SHOP_ITEMS.length).toBeGreaterThanOrEqual(16);
-    expect(SHOP_ITEMS.length).toBeLessThanOrEqual(20);
+    // The classic shop stays curated; cosmetic collections are counted separately.
+    const classic = SHOP_ITEMS.filter((i) => !i.collection);
+    expect(classic.length).toBeGreaterThanOrEqual(16);
+    expect(classic.length).toBeLessThanOrEqual(20);
     expect(new Set(SHOP_ITEMS.map((i) => i.category))).toEqual(new Set(['food', 'toy', 'accessory', 'decoration']));
   });
 
