@@ -38,8 +38,9 @@ export function StyleTabs({ value, onChange }: { value: StyleTab; onChange: (tab
 
 const styles = StyleSheet.create({
   bar: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: radius.lg, padding: 4, gap: 4 },
-  tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, gap: 2, paddingHorizontal: 2 },
+  // Tabs size to their labels, then share the spare width, so "Collections" never clips at 320 pt (web has no adjustsFontSizeToFit).
+  tab: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minHeight: 54, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, gap: 2, paddingHorizontal: 2 },
   tabActive: { backgroundColor: colors.ink },
-  label: { fontSize: 12, fontWeight: '800', color: colors.textMuted },
+  label: { fontSize: 12, fontWeight: '800', color: colors.textMuted, letterSpacing: -0.1 },
   labelActive: { color: colors.white },
 });

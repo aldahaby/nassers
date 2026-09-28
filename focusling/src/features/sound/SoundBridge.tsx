@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { playSound, soundService } from '@/services/audio';
 import { useGameStore } from '@/state';
+import { focusCue, type FocusSnapshot } from './focusCue';
 
 /**
  * Connects the saved Sound Effects / Haptics settings and the focus state to
@@ -15,8 +16,8 @@ export function SoundBridge() {
   const haptics = useGameStore((s) => s.save?.profile.settings.hapticsEnabled ?? true);
   const activeId = useGameStore((s) => s.save?.focus.active?.id ?? null);
   const summary = useGameStore((s) => s.lastSummary);
-  const prevActive = useRef<string | null>(activeId);
-  const prevSummary = useRef(summary);
+  const debug = useGameStore((s) => s.save?.profile.settings.debugToolsEnabled ?? false);
+  const prev = useRef<FocusSnapshot>({ activeId, summary });
 
   useEffect(() => {
     void soundService.start();
@@ -26,18 +27,20 @@ export function SoundBridge() {
     soundService.update({ enabled, hapticsEnabled: haptics });
   }, [enabled, haptics]);
 
+  // Developer tools only: expose the sound decisions log for QA scripts and the Audio Lab.
   useEffect(() => {
-    const started = activeId !== null && prevActive.current === null;
-    prevActive.current = activeId;
-    if (started) playSound('focus-start');
-    // Focus state is updated after the cue, so the start cue itself is allowed.
-    soundService.update({ focusActive: activeId !== null });
-  }, [activeId]);
+    const g = globalThis as { __focuslingSound?: unknown };
+    if (debug) g.__focuslingSound = soundService;
+    else delete g.__focuslingSound;
+  }, [debug]);
 
   useEffect(() => {
-    if (summary && summary !== prevSummary.current && summary.outcome === 'completed') playSound('focus-complete');
-    prevSummary.current = summary;
-  }, [summary]);
+    const cue = focusCue(prev.current, { activeId, summary });
+    prev.current = { activeId, summary };
+    if (cue) playSound(cue);
+    // Focus state is updated after the cue, so the start cue itself is allowed.
+    soundService.update({ focusActive: activeId !== null });
+  }, [activeId, summary]);
 
   return null;
 }

@@ -96,7 +96,7 @@ export const PetArt = memo(function PetArt({
   return (
     <View style={{ width: size, height: size }}>
       {art}
-      <AuraLayer artKey={auraItem.art.key} palette={auraItem.art.palette ?? { primary: '#FFD166', secondary: '#E8A93A', accent: '#FFF' }} size={size} animated={auraAnimated} dim={auraDim} />
+      <AuraLayer key={auraItem.art.key} artKey={auraItem.art.key} palette={auraItem.art.palette ?? { primary: '#FFD166', secondary: '#E8A93A', accent: '#FFF' }} size={size} animated={auraAnimated} dim={auraDim} />
     </View>
   );
 });

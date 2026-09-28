@@ -30,7 +30,7 @@ export default function RoomStudio() {
   return (
     <Screen scroll>
       <View style={styles.header}>
-        <Pressable onPress={leave} accessibilityRole="button" accessibilityLabel="Cancel" hitSlop={12} style={styles.back}>
+        <Pressable onPress={leave} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} style={styles.back}>
           <Text style={styles.backText}>‹</Text>
         </Pressable>
         <View style={styles.headerText}>

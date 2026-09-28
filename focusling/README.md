@@ -123,7 +123,15 @@ logic, local persistence, and a mock Screen Time service.
   "Earned after 5 completed focus sessions"), collection lookbooks and personality families
   (Calm, Hype, Dreamy, Cool) for reactions. Still v1 vector art; see the illustrator handoff.
 
+**Character, room and sound pass:** details in `docs/ART_DIRECTION.md` §11–15 and `docs/AUDIO_DIRECTION.md`.
+- Richer base Focuslings: species-specific rendering (cloud lobes, veined leaves, layered flame),
+  illustrated eyes, a fuller expression library, visible growth without clothing, and quiet idle life.
+- **Room Studio:** any room colour, free for everyone (Child View too), with presets and a derived,
+  art-directed palette that adapts to very dark and very bright colours.
+- **Bubbly micro-sounds:** original synthesised UI sounds with one semantic palette, focus-session
+  silence rules, rapid-tap protection, a Sound Effects setting and a developer Audio Lab. No music.
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,
-`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`.
+`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`, `room.ts`, `sounds.ts`.

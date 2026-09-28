@@ -207,6 +207,9 @@ export function AuraLayer({ artKey, palette, size, animated, dim = false }: Laye
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: dim ? 0.55 : 1 }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {spots.map((spot, i) => {
+        const phase = phases[i];
+        // Layouts differ per aura; PetArt remounts on change, this guard just keeps a stray render safe.
+        if (!phase) return null;
         // Kept small so the aura supports the pet instead of competing with it.
         const box = 24 * spot.s * unit * AURA_FRAME.particleScale;
         return (
@@ -218,8 +221,8 @@ export function AuraLayer({ artKey, palette, size, animated, dim = false }: Laye
               top: spot.y * unit - box / 2,
               width: box,
               height: box,
-              opacity: phases[i],
-              transform: [{ translateY: phases[i]!.interpolate({ inputRange: [0.25, 1], outputRange: [3 * unit, 0] }) }],
+              opacity: phase,
+              transform: [{ translateY: phase.interpolate({ inputRange: [0.25, 1], outputRange: [3 * unit, 0] }) }],
             }}
           >
             <Svg width={box} height={box} viewBox="0 0 24 24">

@@ -55,6 +55,8 @@ export function StyleDevTools() {
           <Button key={species} variant="secondary" label={PET_SPECIES[species].name} onPress={run(`Species: ${species}`, () => store.debugSetSpecies(species))} style={styles.cell} />
         ))}
         <Button variant="secondary" label="Open Fit Lab" onPress={() => router.push('/dev/fit-lab' as Href)} style={styles.cell} />
+        <Button variant="secondary" label="Character Lab" onPress={() => router.push('/dev/character-lab' as Href)} style={styles.cell} />
+        <Button variant="secondary" label="Audio Lab" onPress={() => router.push('/dev/audio-lab' as Href)} style={styles.cell} />
       </View>
       {message && <Text style={styles.muted}>{message}</Text>}
     </View>

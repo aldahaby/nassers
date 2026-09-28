@@ -138,7 +138,7 @@ export default function WardrobeScreen() {
             Wardrobe
           </Text>
           <Text style={styles.subtitle}>
-            {owned} pieces · {completeCount} of {COLLECTION_LIST.length} collections complete
+            {owned === 1 ? '1 piece' : `${owned} pieces`} · {completeCount} of {COLLECTION_LIST.length} collections complete
           </Text>
         </View>
       </View>

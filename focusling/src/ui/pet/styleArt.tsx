@@ -159,7 +159,9 @@ const DREAMWAVE_ART: Record<string, Art> = {
         <Path d={moonPath(122, h - 28, 9)} fill={fillFor('holo', moon)} stroke={p.secondary} strokeWidth={1.8} strokeLinejoin="round" />
         <Specular x={119} y={h - 33} rx={2.2} ry={1.2} opacity={0.9} />
         {/* Glossy plastic band: one clean highlight. */}
-        <Path d={`M62 ${h + 24} Q100 ${h - 6} 138 ${h + 24}`} stroke={p.primary} strokeWidth={7} strokeLinecap="round" fill="none" />
+        {/* A darker outline under the band keeps it readable on lavender pets and in grayscale. */}
+        <Path d={`M62 ${h + 24} Q100 ${h - 6} 138 ${h + 24}`} stroke={p.secondary} strokeWidth={9.5} strokeLinecap="round" fill="none" />
+        <Path d={`M62 ${h + 24} Q100 ${h - 6} 138 ${h + 24}`} stroke={p.primary} strokeWidth={6} strokeLinecap="round" fill="none" />
         <Streak d={`M70 ${h + 17} Q100 ${h - 4} 128 ${h + 16}`} width={1.8} opacity={0.85} />
       </G>
     );

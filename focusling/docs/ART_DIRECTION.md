@@ -63,12 +63,13 @@ place them relative to what's on the head. Each head drawing declares one mode i
 
 | Mode | Meaning | Drawings |
 |---|---|---|
-| `lift` | Closed crown. The crest sits on top of the crown and pokes through a species opening: a stitched **grommet** (sprout) or a warm **vent** (flame). It scales down only if it would leave the canvas (never below ~0.7×, tested). | Caps, beanies, Cloud Beret |
+| `lift` | Closed crown. The crest sits on top of the crown and pokes through a species opening: a brass **eyelet** (sprout) or a glowing, stitched **heat vent** (flame). It scales down only if it would leave the canvas (never below ~0.7×, tested). | Caps, beanies, Cloud Beret |
 | `over` | Open or thin headwear. The crest is redrawn in front of it at its natural spot. | Headphones, Arcade Headset, Crescent Headband, Golden Crown |
 | `under` | Normal stacking; the headwear only touches the crest's base. | Racer Goggles, Flower Crown |
 
-**Cloudling** has no separate crest: its whole cloud silhouette is the crest. Hats sit on the top puff;
-the side puffs, wings and outline must stay visible (checked on the Fit Lab board).
+**Cloudling** has no separate crest: its whole cloud silhouette is the crest. Under a closed hat, soft
+**cloud tufts** puff out from under both sides of the brim (`CloudTufts`), so the silhouette still reads
+as a cloud instead of a flat cap; side puffs, wings and outline stay visible.
 
 Every head drawing must be listed in `HEAD_FIT` (tested), so a new hat can't silently cover a crest.
 Tests also check, for every hat × species × stage, that the crest's tip stays visible and on-canvas.
@@ -141,7 +142,12 @@ speaks in that family's voice. No stats, scores, quizzes or reward effects.
 
 ---
 
-## 8. Checking the art (Fit Lab)
+## 8. Checking the art (Fit Lab, Character Lab)
+
+Developer tools → **Character Lab** (`/dev/character-lab`): the naked-pet test (each species × Baby /
+Young / Adult / Evolved × A naked, B one accessory, C a full Look), the expression library, face
+close-ups, and the room comparison board (Default, White, Black, Red, Green, Blue, Yellow, Pink,
+Purple, Gray and a custom colour from the real picker; decorations on/off).
 
 Developer tools → Fit Lab (`/dev/fit-lab`, hidden and route-refused when Developer tools are off):
 - **Creative board:** Core (Focus Club) / Midnight Arcade / Dreamwave / Cloud Racer / Moss Club /
@@ -163,10 +169,14 @@ final illustration. What an illustrator should do:
   `HEAD_FIT` values; logic never needs to change (art is keyed data, separate from rules).
 - Deliver per-item SVG (or layered vectors) in the 200 × 200 pet space; one drawing per art key,
   colourways via the palette slots (primary, secondary, accent, optional lens opacity).
-- Give crests a proper "through the hat" treatment per species (the grommet/vent is a stand-in).
-- Known weak spots today: Dreamwave is the least distinct in grayscale (lavender on lavender);
-  fuzzy/knit texture is approximated with dotted strokes; auras are simple particle shapes; wood grain
-  is a few lines; Cloudling hats flatten the top puff.
+- Redraw the base pets (`PetBody`, `PetFace`, `crest.tsx`) keeping silhouettes, `ANATOMY` anchors and
+  the crest heights; the species language (§11) and growth language (§12) are the brief.
+- Room art (`RoomScene`) takes a `RoomPalette`; a new room drawing should paint only with palette
+  tones so every user colour keeps working.
+- Known weak spots today: fuzzy/knit texture is approximated with dotted strokes; auras are simple
+  particle shapes; wood grain is a few lines; eyelet/vent openings and cloud tufts are simple stand-ins;
+  Dreamwave is better in grayscale (darker band outline) but is still the softest-contrast collection
+  on a lavender Cloudling; expressions are drawn with a small set of shapes.
 
 ---
 
@@ -180,3 +190,81 @@ final illustration. What an illustrator should do:
   future `{ kind: 'achievement' }` source can sit next to milestones and coins. No native-protection
   achievements are implemented.
 - Not planned in this pass: After Hours / Jelly Lab collections, rotations, social features.
+
+---
+
+## 11. Base character rendering and species language
+
+Hierarchy (never broken): **1 silhouette → 2 face → 3 species signature → 4 small material/detail
+cues.** At phone size 1 and 2 carry the pet; 3 and 4 reward a close look. All flat SVG: soft radial
+body gradients (light top-left, shaded edge), one rim-light stroke, a two-layer contact shadow, no
+blur or filters. Per-species tones live in `SPECIES_ART` (`src/ui/pet/speciesArt.ts`).
+
+| Species | Feeling | Cues |
+|---|---|---|
+| **Cloudling** | soft, airy, squishy, dreamy | layered lobes with cool lavender creases, edge highlights on each puff, lower lobes in soft shadow, a cloud-shaped belly (three bumps), puff wings with their own shade |
+| **Sproutling** | fresh, organic, curious, growing | veined leaves (midrib, side veins from Adult) with a lighter tip, a stem with a light edge that grows out of the head, faint seed-coat side lines, a dewdrop highlight |
+| **Emberling** | warm, energetic, glowing, cozy | a three-layer flame (warm red-orange, gold, cream core) with a highlight, a warm inner body glow, tiny floating embers, a gradient tail wisp; never sharp or aggressive |
+
+Feet read as paws (sole highlight, toe lines from Young).
+
+## 12. Eye language and expressions
+
+**Eyes:** an ink oval with a gentle vertical gradient, the species tint reflected in the lower eye
+(lavender, leaf green, ember orange), one primary catchlight (top right) and one tiny secondary
+(bottom left). Closed states share one stroke weight (4.2) so every expression is the same character.
+Babies get larger eyes (×1.18). Behind translucent eyewear the catchlights still read.
+
+**Library** (`EXPRESSIONS` in `PetFace.tsx`): content (auto), delighted (happy), excited (star
+catchlights, big smile), curious (glance up, small "o"), proud (content closed eyes, warm closed
+smile, stronger blush), surprised (round eyes, round mouth), wink (cool/confident), focused, sleepy,
+eating, blink. **No punishing faces:** "lonely" is shown as calm half-lids and a neutral mouth, never
+a frown or tears. Reactions map to these: Wave → delighted, Happy Hop / Star Twirl → excited,
+Cool Pose / Pixel Pop → wink, Victory Lap → proud, Firefly Hello → curious, Sleepy / Dream Float →
+sleepy.
+
+## 13. Growth language
+
+| Stage | Naked pet |
+|---|---|
+| **Baby** | largest eyes, simplest details, smallest crest (one leaf and a bud; a small flame) |
+| **Young** | balanced proportions; Cloudling wings, a second leaf, a cream flame core, toe lines, a few embers |
+| **Adult** | stronger species details: belly marks (moon, spark), leaf veins and a tendril, Emberling tail, larger wings |
+| **Evolved** | one signature flourish: Cloudling iridescent top rim + belly star; Sproutling bloom + glowing leaf edges + leaf mark; Emberling side flamelets + golden core; plus the soft evolved glow |
+
+Fantasy creature evolution, not body ideals: later stages never become less round or less cute.
+
+## 14. Room palette
+
+The room is the pet's space, and its colour is **free** (Room Studio). One chosen colour becomes a
+designed room (`roomPalette` in `src/ui/room/roomPalette.ts`, tuning in `src/config/room.ts`):
+
+```
+user colour → wall (exactly the colour) · trim (±11 L) · floor (same hue, 70% saturation, darker or
+lighter) · floor edge · spotlight (the pool the pet stands in) · halo (soft disc behind the pet) ·
+shadow · small accent · window sky
+```
+
+- **Dark rooms** (luminance < 0.16): lighter floor, a lifted halo, stronger shadows, and a calm
+  night window (moon and stars; static).
+- **Very bright rooms** (white, yellow; luminance > 0.82): the spotlight and halo are tinted warm so
+  they still show; the floor goes darker.
+- **Very saturated walls**: the halo is desaturated so the pet separates from the wall.
+- The chosen colour is never replaced; only supporting tones adapt. Tested for white, black, red,
+  green, blue, yellow, purple, gray, pink and every preset.
+- **Room colour is not an app theme:** only the room (and the Wardrobe stage and Focus setup pet
+  circle, which are the pet's space) change colour. The interface keeps the Focusling design system.
+- Decorations keep their own colours and are drawn after the halo and floor, so they stay readable.
+- Future (not built): earnable room treatments (wallpapers, floors, lighting moods, windows, collection
+  sets) would add optional fields to `RoomState`; normal colours are never locked.
+
+## 15. Animation restraint
+
+- Idle life is occasional and silent: a blink every 2–5 s, and every 4–8 s one small moment (a glance,
+  a double blink, or a crest wiggle: leaves settle, the flame flickers).
+- Nothing idles during a focus session except the slow breath and blinks; hidden screens pause.
+- **Reduce Motion:** no bob, hop, squish or crest wiggle; glances and blinks remain (they don't move
+  the pet); reactions become a face change and effects that fade in place.
+- Ordinary taps: a squish, hearts, a crest wiggle and at most one soft species sound; no counters,
+  combos or escalating feedback.
+

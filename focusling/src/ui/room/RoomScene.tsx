@@ -11,7 +11,7 @@ interface Props {
   height: number;
   /** The user's room colour (null/undefined = the default Focusling room). */
   roomColor?: string | null;
-  /** Optional control pinned to the room's top-right corner (e.g. the Room Studio entry). */
+  /** Optional control pinned to the room's bottom-right corner (e.g. the Room Studio entry). */
   corner?: ReactNode;
   children: ReactNode;
 }
@@ -86,5 +86,6 @@ export function RoomScene({ equipped, height, roomColor, corner, children }: Pro
 const styles = StyleSheet.create({
   room: { borderRadius: radius.lg, overflow: 'hidden' },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 12 },
-  corner: { position: 'absolute', top: 10, right: 10 },
+  // Bottom corner: the top is where the pet's speech bubble appears.
+  corner: { position: 'absolute', bottom: 10, right: 10 },
 });
