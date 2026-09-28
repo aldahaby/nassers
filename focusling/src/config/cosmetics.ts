@@ -383,7 +383,7 @@ export const CLOUD_RACER_ITEMS: readonly CatalogItem[] = [
 const MC = {
   moss: { primary: '#6E9B4E', secondary: '#2F4A2E', accent: '#F4E9D2' },
   amber: { primary: '#E9B44C', secondary: '#A9744F', accent: '#FFF4D6', opacity: 0.55 },
-  fuzz: { primary: '#8DB86B', secondary: '#4E7A3A', accent: '#F4E9D2' },
+  fuzz: { primary: '#8AA65A', secondary: '#4E6B34', accent: '#F4E9D2' },
   satchel: { primary: '#A9744F', secondary: '#6B4630', accent: '#F4E9D2' },
   toadstool: { primary: '#C8553D', secondary: '#F4E9D2', accent: '#A9744F' },
   ladybug: { primary: '#D8402F', secondary: '#2A2A33', accent: '#FFFFFF' },

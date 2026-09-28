@@ -128,3 +128,29 @@ describe('personality presentation', () => {
     for (const p of PERSONALITIES) expect(Object.keys(p).sort()).toEqual(['id', 'ink', 'line', 'name', 'tint']);
   });
 });
+
+describe('acquisition provenance', () => {
+  const { describeProvenance, describeHowToGet } = jest.requireActual('@/features/wardrobe/cosmeticCopy');
+  const { provenanceOf } = jest.requireActual('@/core');
+  const { getShopItem } = jest.requireActual('@/config/shopCatalog');
+
+  it('says how an owned piece was earned, in plain words', () => {
+    expect(describeProvenance(provenanceOf(getShopItem('ma-beanie')), { withDate: false })).toBe('Earned after 5 completed focus sessions');
+    expect(describeProvenance(provenanceOf(getShopItem('fc-visor-frost')), { withDate: false })).toBe('Earned after your first completed focus session');
+    expect(describeProvenance(provenanceOf(getShopItem('mc-aura')), { withDate: false })).toBe('Earned after 20 hours of focus');
+    expect(describeProvenance(provenanceOf(getShopItem('mc-scarf')), { withDate: false })).toBe('Earned after 12 completed missions');
+    expect(describeProvenance(provenanceOf(getShopItem('mc-toadstool')), { withDate: false })).toBe('Earned by focusing 10 days in a row');
+    expect(describeProvenance(provenanceOf(getShopItem('fc-charm-star')), { withDate: false })).toBe('Every Focusling starts with one');
+    expect(describeProvenance(provenanceOf(getShopItem('mc-satchel')), { withDate: false })).toMatch(/^Bought with \d+ focus coins$/);
+  });
+
+  it('adds the date a piece arrived when known', () => {
+    const at = new Date(2026, 8, 28).getTime();
+    expect(describeProvenance(provenanceOf(getShopItem('ma-beanie'), at))).toMatch(/^Earned after 5 completed focus sessions · .+/);
+  });
+
+  it('says how to get pieces that are not owned yet', () => {
+    expect(describeHowToGet(getShopItem('mc-beanie'))).toBe('Finish 15 focus sessions');
+    expect(describeHowToGet(getShopItem('mc-ladybug'))).toMatch(/^In the shop for \d+ focus coins$/);
+  });
+});

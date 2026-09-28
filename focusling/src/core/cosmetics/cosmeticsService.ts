@@ -37,6 +37,28 @@ export function isWearable(item: ShopItem): boolean {
   return item.equipSlot !== undefined && (WEARABLE_SLOTS as readonly string[]).includes(item.equipSlot);
 }
 
+/**
+ * Where a piece comes from, for "Earned after 5 completed focus sessions" on
+ * item details, collection pages and the reveal. It reads the catalog rule and
+ * (when owned) the date it arrived; nothing here is random or hidden.
+ *
+ * Extension point: a future behaviour achievement (e.g. "kept a calm evening
+ * streak") would add a `{ kind: 'achievement'; achievementId }` variant and an
+ * `UnlockRule` kind with its own progress readout. Nothing like that exists yet;
+ * in particular no native-protection achievements are implemented.
+ */
+export type Provenance =
+  | { kind: 'starter'; acquiredAt: Timestamp | null }
+  | { kind: 'milestone'; rule: UnlockRule; acquiredAt: Timestamp | null }
+  | { kind: 'coins'; price: number; acquiredAt: Timestamp | null };
+
+export function provenanceOf(item: ShopItem, acquiredAt: Timestamp | null = null): Provenance {
+  const source = itemSource(item);
+  if (source === 'starter') return { kind: 'starter', acquiredAt };
+  if (source === 'earned' && item.unlock) return { kind: 'milestone', rule: item.unlock, acquiredAt };
+  return { kind: 'coins', price: item.price, acquiredAt };
+}
+
 export interface UnlockProgress {
   current: number;
   target: number;

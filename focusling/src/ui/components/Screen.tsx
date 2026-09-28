@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '@/ui/theme';
@@ -12,15 +12,17 @@ interface Props {
   contentStyle?: ViewStyle;
   /** Wide screens (dashboards) use more of a tablet's width. */
   width?: keyof typeof SCREEN_MAX_WIDTH;
+  /** Lets a screen scroll itself, e.g. back up to the pet after picking a piece. */
+  scrollRef?: Ref<ScrollView>;
 }
 
 /** Standard screen container: safe area, background, padding, optional scrolling. */
-export function Screen({ children, scroll = false, contentStyle, width = 'narrow' }: Props) {
+export function Screen({ children, scroll = false, contentStyle, width = 'narrow', scrollRef }: Props) {
   const column = { maxWidth: SCREEN_MAX_WIDTH[width] };
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       {scroll ? (
-        <ScrollView contentContainerStyle={[styles.content, column, contentStyle]} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, column, contentStyle]} showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
       ) : (

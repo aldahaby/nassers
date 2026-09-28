@@ -6,6 +6,7 @@ import { getReaction } from '@/config/reactions';
 import { getShopItem } from '@/config/shopCatalog';
 import { collectionProgress, getWardrobe, isReactionUnlocked, withEquipped, type WardrobeEntry } from '@/core';
 import { usePetSpeech } from '@/features/inventory/usePetSpeech';
+import { PieceDetail } from '@/features/style/PieceDetail';
 import { StyleStage } from '@/features/style/StyleStage';
 import { WardrobeTile } from '@/features/wardrobe/WardrobeTile';
 import { cosmeticName } from '@/features/wardrobe/cosmeticCopy';
@@ -14,8 +15,9 @@ import { useEquipped, useGameStore, usePetView } from '@/state';
 import { Button, CollectionBadge, ItemArt, ReactionIcon, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
 
 /**
- * One collection as a lookbook: identity, the pet in the curated Look,
- * every piece and how it's earned, and the Reaction completion unlocks.
+ * One collection as a lookbook: the pet in the curated Look on the
+ * collection's set, the Look's pieces, every piece with its provenance
+ * ("Earned after …"), and the Reaction completion unlocks.
  */
 export default function CollectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,6 +32,7 @@ export default function CollectionScreen() {
   const { width } = useWindowDimensions();
   const [showLook, setShowLook] = useState(true);
   const [tryItem, setTryItem] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
   const [cheer, setCheer] = useState(0);
   const entries = useMemo(() => (save && collection ? getWardrobe(save).filter((e) => e.item.collection === collection.id) : []), [save, collection]);
@@ -47,9 +50,11 @@ export default function CollectionScreen() {
   const columns = width >= 900 ? 5 : width >= 640 ? 4 : 3;
   const base = showLook ? { ...stripLookSlots(equipped), ...collection.featuredLook } : equipped;
   const shown = tryItem ? withEquipped(base, tryItem) : base;
+  const detailEntry = entries.find((e) => e.item.id === detailId);
 
   const onTile = (entry: WardrobeEntry) => {
     const { item, state } = entry;
+    setDetailId(item.id);
     if (state === 'equipped') {
       unequipItem(item.id);
       return;
@@ -148,7 +153,31 @@ export default function CollectionScreen() {
         </View>
       )}
 
+      <Text style={styles.sectionTitle}>The look</Text>
+      <View style={styles.lookStrip}>
+        {lookIds.map((lookId) => {
+          const item = getShopItem(lookId)!;
+          const have = (save.inventory.items[lookId]?.quantity ?? 0) > 0;
+          return (
+            <Pressable
+              key={lookId}
+              onPress={() => setDetailId(lookId)}
+              style={[styles.lookPiece, { backgroundColor: collection.palette.wash }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${cosmeticName(item)}${have ? ', owned' : ''}. Show details.`}
+            >
+              <ItemArt itemId={lookId} size={44} />
+              <Text style={styles.lookPieceName} numberOfLines={2}>
+                {item.name}
+              </Text>
+              {have && <TabIcon name="check" color={colors.success} size={12} />}
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Text style={styles.sectionTitle}>Pieces</Text>
+      {detailEntry && <PieceDetail entry={detailEntry} acquiredAt={save.inventory.items[detailEntry.item.id]?.acquiredAt ?? null} trying={tryItem === detailEntry.item.id} />}
       <View style={styles.grid}>
         {entries.map((entry) => (
           <View key={entry.item.id} style={{ width: `${100 / columns}%`, padding: spacing.xs }}>
@@ -206,6 +235,9 @@ const styles = StyleSheet.create({
   reactionText: { flex: 1, minWidth: 120, gap: 2 },
   reactionName: { ...typography.heading, fontSize: 16 },
   reactionDesc: { ...typography.label },
+  lookStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  lookPiece: { width: 84, minHeight: 100, alignItems: 'center', gap: 2, padding: spacing.xs, borderRadius: radius.md },
+  lookPieceName: { fontSize: 11, fontWeight: '800', color: colors.text, textAlign: 'center' },
   sectionTitle: { ...typography.label, textTransform: 'uppercase', letterSpacing: 0.8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -spacing.xs },
   accent: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md },

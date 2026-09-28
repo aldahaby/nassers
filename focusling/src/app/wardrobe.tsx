@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { COLLECTION_LIST } from '@/config/collections';
 import { getShopItem } from '@/config/shopCatalog';
@@ -16,6 +16,8 @@ import {
 } from '@/core';
 import { usePetSpeech } from '@/features/inventory/usePetSpeech';
 import { CollectionCard } from '@/features/style/CollectionCard';
+import { OutfitCard } from '@/features/style/OutfitCard';
+import { PieceDetail } from '@/features/style/PieceDetail';
 import { ReactionList } from '@/features/style/ReactionList';
 import { StyleStage } from '@/features/style/StyleStage';
 import { StyleTabs, type StyleTab } from '@/features/style/StyleTabs';
@@ -23,6 +25,7 @@ import { SavedLooks } from '@/features/wardrobe/SavedLooks';
 import { WardrobeTile } from '@/features/wardrobe/WardrobeTile';
 import { cosmeticName, describeProgress, describeUnlock, slotName } from '@/features/wardrobe/cosmeticCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useEquipped, useGameStore, usePetView } from '@/state';
 import { Button, CollectionBadge, PetArt, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
 
@@ -31,8 +34,9 @@ const FILTERS: readonly Filter[] = ['all', ...WEARABLE_SLOTS];
 type Preview = { kind: 'item'; itemId: string } | { kind: 'look'; collectionId: string } | null;
 
 /**
- * The Wardrobe: a lookbook with the pet on top. Pieces, Looks, Collections and
- * Reactions share one large preview; anything can be tried on for free.
+ * The Wardrobe as a dressing room: pet first (a big stage), outfit second
+ * (what it's wearing, its personality, quick save), inventory third (Pieces,
+ * Looks, Collections, Reactions). Anything can be tried on for free.
  */
 export default function WardrobeScreen() {
   const params = useLocalSearchParams<{ tab?: StyleTab }>();
@@ -40,13 +44,19 @@ export default function WardrobeScreen() {
   const equipped = useEquipped();
   const save = useGameStore((s) => s.save);
   const reaction = useGameStore((s) => s.petReaction);
-  const { equip, unequipItem, consumePetReaction, markItemsSeen, wearCollectionLook } = useGameStore.getState();
+  const { equip, unequipItem, consumePetReaction, markItemsSeen, wearCollectionLook, saveLook } = useGameStore.getState();
   const { bubble, say, sayForReaction } = usePetSpeech();
   const routes = useAppRoutes();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<StyleTab>(params.tab ?? 'pieces');
   const [filter, setFilter] = useState<Filter>('all');
   const [preview, setPreview] = useState<Preview>(null);
+  // An owned piece shown up close (provenance, material) after tapping it.
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const reducedMotion = useReducedMotion();
+  // Pet first: after picking a piece, bring the stage (and the piece's details) back into view.
+  const showOnStage = () => scrollRef.current?.scrollTo({ y: 0, animated: !reducedMotion });
   const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
   const [cheer, setCheer] = useState(0);
   // "New" badges stay visible for this visit, then clear when leaving.
@@ -74,23 +84,41 @@ export default function WardrobeScreen() {
 
   const onTile = (entry: WardrobeEntry) => {
     const { item, state } = entry;
+    showOnStage();
     if (state === 'equipped') {
       setPreview(null);
+      setFocusId(item.id);
       unequipItem(item.id);
       return;
     }
     if (state === 'owned') {
       setPreview(null);
+      setFocusId(item.id);
       const swapped = conflictsFor(equipped, item.id).map((id) => getShopItem(id)?.name).filter(Boolean);
       equip(item.id, { showOnPet: true });
       if (swapped.length) setTimeout(() => say(`Swapped out the ${swapped.join(' and ')} so it fits.`), 900);
       return;
     }
+    setFocusId(null);
     setPreview((current) => (current?.kind === 'item' && current.itemId === item.id ? null : { kind: 'item', itemId: item.id }));
     say(`Trying on the ${cosmeticName(item)}!`);
   };
 
   const previewReaction = (reactionId: string) => setPerformance((p) => ({ reactionId, key: (p?.key ?? 0) + 1 }));
+  const detailEntry = entries.find((e) => e.item.id === (previewItem?.id ?? focusId));
+
+  // Save the outfit into the first free Look slot; if all are used, open My Looks.
+  const quickSave = () => {
+    const free = save.cosmetics.looks.findIndex((l) => l === null);
+    if (free < 0) {
+      setTab('looks');
+      say('All your Look slots are full. Pick one to replace.');
+      return;
+    }
+    saveLook(free);
+    setCheer((c) => c + 1);
+    say('Saved to My Looks!');
+  };
 
   const lookAction = (c: CosmeticCollection) => {
     const progress = collectionProgress(save, c.id);
@@ -100,7 +128,7 @@ export default function WardrobeScreen() {
   };
 
   return (
-    <Screen scroll>
+    <Screen scroll scrollRef={scrollRef}>
       <View style={styles.header}>
         <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace(routes.pet))} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} style={styles.back}>
           <Text style={styles.backText}>‹</Text>
@@ -132,25 +160,38 @@ export default function WardrobeScreen() {
         label={`${pet.name}${previewItem ? `, trying on the ${cosmeticName(previewItem)}` : previewLook ? `, trying on the ${previewLook.name} look` : ''}`}
       />
 
-      {preview ? (
+      {previewLook ? (
         <View style={styles.tryOn} accessibilityLiveRegion="polite">
-          <Text style={styles.tryTitle}>
-            Trying on {previewItem ? cosmeticName(previewItem) : `the ${previewLook?.name} look`}
-          </Text>
-          {previewItem && <TryOnDetail entry={entries.find((e) => e.item.id === previewItem.id)} />}
+          <Text style={styles.tryTitle}>Trying on the {previewLook.name} look</Text>
           <View style={styles.tryActions}>
             <Button variant="ghost" label="Stop trying on" onPress={() => setPreview(null)} style={styles.tryButton} />
-            {previewItem && entries.find((e) => e.item.id === previewItem.id)?.state === 'buyable' && (
-              <Button variant="secondary" label="See in the shop" onPress={() => router.navigate(routes.shop as Href)} style={styles.tryButton} />
-            )}
           </View>
         </View>
-      ) : wearingLook ? (
-        <View style={styles.wearing} accessible accessibilityLabel={`Wearing the ${wearingLook.name} look`}>
-          <CollectionBadge badge={wearingLook.badge} size={22} />
-          <Text style={styles.wearingText}>Wearing the {wearingLook.name} look</Text>
-        </View>
-      ) : null}
+      ) : detailEntry ? (
+        <PieceDetail entry={detailEntry} acquiredAt={save.inventory.items[detailEntry.item.id]?.acquiredAt ?? null} trying={Boolean(previewItem)}>
+          <View style={styles.tryActions}>
+            <Button
+              variant="ghost"
+              label={previewItem ? 'Stop trying on' : 'Done'}
+              onPress={() => {
+                setPreview(null);
+                setFocusId(null);
+              }}
+              style={styles.tryButton}
+            />
+            {detailEntry.state === 'buyable' && <Button variant="secondary" label="See in the shop" onPress={() => router.navigate(routes.shop as Href)} style={styles.tryButton} />}
+          </View>
+        </PieceDetail>
+      ) : (
+        <OutfitCard
+          equipped={equipped}
+          wearingLook={wearingLook}
+          favoriteReactionId={save.cosmetics.reactions.equipped}
+          onPlayFavorite={() => save.cosmetics.reactions.equipped && previewReaction(save.cosmetics.reactions.equipped)}
+          onSave={quickSave}
+          onPiece={setFocusId}
+        />
+      )}
 
       <StyleTabs value={tab} onChange={setTab} />
 
@@ -271,18 +312,6 @@ export default function WardrobeScreen() {
   );
 }
 
-function TryOnDetail({ entry }: { entry: WardrobeEntry | undefined }) {
-  if (!entry) return null;
-  const { item } = entry;
-  const text =
-    entry.state === 'buyable'
-      ? `In the shop for ${item.price} coins.`
-      : item.unlock && entry.progress
-        ? `${describeUnlock(item.unlock)} · ${describeProgress(item.unlock, entry.progress)}`
-        : '';
-  return text ? <Text style={styles.tryBody}>{text}</Text> : null;
-}
-
 interface Group {
   id: string;
   collection: CosmeticCollection | null;
@@ -329,11 +358,8 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.label },
   tryOn: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.xs, borderWidth: 2, borderColor: colors.primarySoft },
   tryTitle: { ...typography.heading, fontSize: 18 },
-  tryBody: { ...typography.body, fontSize: 15, color: colors.textMuted },
   tryActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
   tryButton: { flexGrow: 1, flexBasis: 140 },
-  wearing: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'center', backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
-  wearingText: { fontWeight: '800', fontSize: 13, color: colors.text },
   filters: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
   filter: { minHeight: 40, paddingHorizontal: spacing.md, borderRadius: radius.pill, justifyContent: 'center', backgroundColor: colors.surfaceMuted },
   filterActive: { backgroundColor: colors.ink },

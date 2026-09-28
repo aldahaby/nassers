@@ -382,3 +382,20 @@ Full design: [`COSMETICS.md`](COSMETICS.md) §7–15. Summary:
 - **UI:** Wardrobe (`app/wardrobe.tsx`) with `StyleStage` + `StyleTabs`; collection lookbooks at
   `app/collection/[id].tsx`; `StyleCelebrationModal` for completions outside a session; developer
   Fit Lab at `app/dev/fit-lab.tsx`.
+
+## 14. Art direction (materials, crests, auras, Moss Club)
+
+Full design: [`ART_DIRECTION.md`](ART_DIRECTION.md). Summary:
+
+- **Materials:** `ui/pet/materials.tsx` holds one flat-SVG recipe per material family; drawings map
+  to a family via `ART_MATERIAL` (`config/cosmetics.ts`, also `art.material`).
+- **Crests:** `ui/pet/crest.tsx` owns the sprout/flame (`CRESTS`) and per-head-drawing behaviour
+  (`HEAD_FIT`: `under` / `over` / `lift` + `faceEdge`); `PetArt` places the crest via `crestPlacement`.
+- **Auras:** `AURA_FRAME` + `auraSpotsFor` in `ui/pet/auras.tsx`; tested in
+  `ui/__tests__/artDirection.test.ts`.
+- **Moss Club** is data (`MOSS_CLUB_ITEMS`, a `COLLECTION_LIST` entry, the `firefly-hello` reaction).
+  Personalities are data in `config/reactions.ts`. No save-schema change (still v6).
+- **Provenance:** `provenanceOf` in `core/cosmetics/cosmeticsService.ts` (a union ready for future
+  achievement sources); copy in `features/wardrobe/cosmeticCopy.ts`.
+- **UI:** `features/style/OutfitCard.tsx`, `PieceDetail.tsx`; `StyleStage` is the dressing-room set;
+  the Fit Lab adds a creative board, hats × crests and grayscale.

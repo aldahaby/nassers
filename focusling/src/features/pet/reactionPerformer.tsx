@@ -207,21 +207,21 @@ export function ReactionEffect({ performance, fx, size, reducedMotion }: { perfo
       // Fireflies drift up one side (asymmetric, like the Moss Club aura) and blink.
       // Reduce Motion: they appear in place and fade, no drifting.
       pieces = [
-        [0.36, -0.12, 0],
-        [0.46, -0.3, 1],
-        [0.3, -0.42, 2],
-        [-0.4, -0.26, 3],
+        [0.3, 0.06, 0],
+        [0.38, -0.1, 1],
+        [0.24, -0.2, 2],
+        [-0.34, -0.02, 3],
       ].map(([dx, dy, i]) =>
         piece(
           i!,
           c.x + s * dx!,
           c.y + s * dy!,
-          18 + (i! % 2) * 4,
+          Math.round(s * (i! % 2 ? 0.1 : 0.12)),
           i! % 2 ? -4 : 5,
-          -s * 0.08,
+          -s * 0.06,
           <G>
-            <Circle cx={12} cy={12} r={9} fill="#E9F27A" opacity={0.35} />
-            <Circle cx={12} cy={12} r={4.2} fill="#F6FB9E" stroke="#6E9B4E" strokeWidth={1} />
+            <Circle cx={12} cy={12} r={10} fill="#E9F27A" opacity={0.4} />
+            <Circle cx={12} cy={12} r={4.6} fill="#F6FB9E" stroke="#6E9B4E" strokeWidth={1.2} />
           </G>,
         ),
       );

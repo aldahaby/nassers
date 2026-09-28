@@ -211,15 +211,18 @@ collection or the wrong slot, and reactions that don't point back at their colle
 
 Most slots stack. An item can list wearable slots it **excludes**: equipping either side quietly
 takes the other off (`withEquipped` in `cosmeticsService`). The Wardrobe says so gently ("Swapped out
-the Winner’s Rosette so it fits."). No warnings, no constraint engine. Current rule: the Racing Scarf's
-knot sits where a charm hangs, so the scarf excludes `charm`. One item per slot already prevents two
-hats or two pairs of glasses.
+the Winner’s Rosette so it fits."). No warnings, no constraint engine. Exclusions are only for a
+**real visual overlap**: the Acorn Satchel's strap crosses the charm, so it excludes `charm` (tested as
+the only exclusion). The Racing Scarf was re-tied at the side in the art-direction pass and now wears
+with any charm. One item per slot already prevents two hats or two pairs of glasses.
 
 **Visibility audit.** Face items are translucent (lens opacity 0.5–0.78; the registry test enforces a
 minimum of 0.45 so lenses stay visible) so eyes always read through; the classic Cool Shades lenses were made translucent too. Auras
 sit outside the face and were shrunk so they support the pet instead of competing with it. The
-Racer Goggles sit up on the forehead, leaving the eyes clear. Hats cover the Sproutling sprout and
-Emberling flame, the way hats do; the body colour, silhouette, wings and tail stay visible.
+Racer Goggles sit up on the forehead, leaving the eyes clear. **Hats never hide the Sproutling sprout
+or the Emberling flame**: crests are lifted through closed hats or drawn over open ones
+(`ui/pet/crest.tsx`, [`ART_DIRECTION.md`](ART_DIRECTION.md) §3). Auras follow the framing rule in
+`ART_DIRECTION.md` §4.
 
 ## 10. Fit overrides (species × growth stage)
 
@@ -233,7 +236,8 @@ limited to ±12 units and 0.8–1.25× by test.
 ## 11. Reactions
 
 Short pet behaviours (1–3 s), not clothing: `config/reactions.ts`. Starter: **Wave, Happy Hop,
-Sleepy, Cool Pose**. Collection: **Star Twirl, Pixel Pop, Dream Float, Victory Lap**.
+Sleepy, Cool Pose**. Collection: **Star Twirl, Pixel Pop, Dream Float, Victory Lap, Firefly Hello**.
+Each belongs to a presentation-only personality family (Calm, Hype, Dreamy, Cool; `ART_DIRECTION.md` §7).
 
 - **State:** `cosmetics.reactions.unlocked` and `equipped` (the favourite; defaults to Happy Hop).
   Locked reactions can be **previewed** but never equipped (`equipReaction` → `locked`).
@@ -250,12 +254,18 @@ Sleepy, Cool Pose**. Collection: **Star Twirl, Pixel Pop, Dream Float, Victory L
 
 ## 12. Wardrobe and completion UX
 
-- Wardrobe: large pet on a spotlight (tinted with a collection's colour when you wear or try on its
-  Look) → segmented **Pieces · Looks · Collections · Reactions** → slot chips (horizontal scroll) →
-  pieces grouped by collection with badge and x / y progress.
-- Collection page (`/collection/[id]`): badge, line, the pet in the curated Look (toggle to your own
-  outfit), progress, "Wear the look", the Reaction with Preview, every piece and how it's earned,
-  the room accent.
+- Wardrobe as a **dressing room** — pet first, outfit second, inventory third: a large pet on a tinted
+  set with a floor (the collection's colour when you wear or try on its Look) → the **outfit card**
+  ("The Moss Club look" / "Your remix", worn pieces as chips, the favourite's personality with Play,
+  quick **Save look**) → segmented **Pieces · Looks · Collections · Reactions** → slot chips → pieces
+  grouped by collection. Tapping a piece scrolls back to the pet and shows a **piece detail** panel
+  (collection, material, provenance).
+- **Provenance** (`provenanceOf` + `describeProvenance`): owned pieces say how and when they arrived
+  ("Earned after 5 completed focus sessions · 28 Sep", "Bought with 55 focus coins"); others say how
+  to get them. Shown on piece details, collection pages and the completion reveal.
+- Collection page (`/collection/[id]`) as a **lookbook**: badge, line, the pet in the curated Look on
+  the collection's set (toggle to your own outfit), progress, "Wear the look", the Reaction with
+  Preview, **The look** strip, every piece with its detail and provenance, the room accent.
 - Completion: in the session summary, after new pieces, a single **"{COLLECTION} COMPLETE"** card
   ("You collected the full … look. Unlocked: … reaction" · Try reaction · Wear the look), then one
   "Next" line. Outside a session (buying the last piece) the same card appears in a calm sheet.

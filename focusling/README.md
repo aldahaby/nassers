@@ -113,6 +113,16 @@ logic, local persistence, and a mock Screen Time service.
   species/growth-stage fit overrides, and a developer Fit Lab.
 - Home: Wardrobe is the primary customisation action; Items and Shop are compact secondary buttons.
 
+**Art direction pass:** details in `docs/ART_DIRECTION.md`.
+- A Materials Bible (jelly, smoked, chrome, pearl, fabric, knit, glossy plastic, holographic, fuzzy,
+  wood) with upgraded art across every collection.
+- Species-aware headwear: hats never hide the Sproutling's sprout or the Emberling's flame; tested
+  eye clearance for every species and stage; auras frame the pet instead of covering it.
+- **Moss Club**, a new original collection (7 pieces, badge, Look, the calm *Firefly Hello* reaction).
+- The Wardrobe as a dressing room (pet first, outfit card, piece details with provenance such as
+  "Earned after 5 completed focus sessions"), collection lookbooks and personality families
+  (Calm, Hype, Dreamy, Cool) for reactions. Still v1 vector art; see the illustrator handoff.
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,

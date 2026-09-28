@@ -2,7 +2,7 @@ import { router, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { PET_FOCUS_LINES, PET_NEW_ITEM_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
-import { REACTION_TAP_EVERY } from '@/config/reactions';
+import { getReaction, PERSONALITY_TAP_LINES, REACTION_TAP_EVERY } from '@/config/reactions';
 import { PET_SPECIES } from '@/config/pets';
 import { favoriteReaction, getOwnedListings, getStageDefinitionById, type ShopListing } from '@/core';
 import { usePetSpeech } from '@/features/inventory/usePetSpeech';
@@ -114,13 +114,21 @@ export function PetHomeScreen({ variant }: Props) {
   const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
 
   const handleTap = useCallback(() => {
+    let performs = false;
     if (!activeSession && favorite) {
       const next = taps + 1;
       setTaps(next);
-      if (next % REACTION_TAP_EVERY === 0) setPerformance({ reactionId: favorite, key: next });
+      performs = next % REACTION_TAP_EVERY === 0;
+      if (performs) setPerformance({ reactionId: favorite, key: next });
     }
     const gained = petPet();
-    const line = activeSession ? pickRandom(PET_FOCUS_LINES) : pickRandom(PET_TAP_LINES[mood]);
+    // When it performs, it talks in its personality's voice (presentation only).
+    const personality = performs && favorite ? getReaction(favorite)?.personality : undefined;
+    const line = activeSession
+      ? pickRandom(PET_FOCUS_LINES)
+      : personality
+        ? pickRandom(PERSONALITY_TAP_LINES[personality])
+        : pickRandom(PET_TAP_LINES[mood]);
     say(gained > 0 ? `${line ?? ''}  +${gained} 💖` : (line ?? null));
   }, [petPet, activeSession, mood, say, favorite, taps]);
 

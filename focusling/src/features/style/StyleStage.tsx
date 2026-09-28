@@ -22,14 +22,18 @@ interface Props {
   maxSize?: number;
 }
 
-/** The big pet preview shared by the Wardrobe and collection pages. */
-export function StyleStage({ pet, stage, mood, equipped, tint, bubble = null, reaction = null, onReactionStart, performance, cheerKey, label, maxSize = 280 }: Props) {
+/**
+ * The dressing-room set shared by the Wardrobe and collection pages: pet first,
+ * big, on a softly tinted backdrop with a floor, so outfits read like a lookbook.
+ */
+export function StyleStage({ pet, stage, mood, equipped, tint, bubble = null, reaction = null, onReactionStart, performance, cheerKey, label, maxSize = 340 }: Props) {
   const { width } = useWindowDimensions();
-  const size = Math.min(maxSize, width * 0.66);
-  const spot = size * getStageDefinitionById(stage).scale * 1.3;
+  const size = Math.min(maxSize, width * 0.8);
+  const spot = size * getStageDefinitionById(stage).scale * 1.2;
   return (
-    <View style={styles.stage}>
-      <View style={[styles.spotlight, { width: spot, height: spot, borderRadius: spot / 2, backgroundColor: tint ?? colors.stage }]} />
+    <View style={[styles.stage, { backgroundColor: tint ?? colors.stage, minHeight: size + 24 }]}>
+      <View style={[styles.floor, { width: size * 0.9, height: size * 0.1, borderRadius: size }]} />
+      <View style={[styles.spotlight, { width: spot, height: spot, borderRadius: spot / 2 }]} />
       <SpeechBubble text={bubble} />
       <PetReactionStage
         speciesId={pet.speciesId}
@@ -48,6 +52,7 @@ export function StyleStage({ pet, stage, mood, equipped, tint, bubble = null, re
 }
 
 const styles = StyleSheet.create({
-  stage: { alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
-  spotlight: { position: 'absolute' },
+  stage: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 28, overflow: 'hidden' },
+  spotlight: { position: 'absolute', backgroundColor: '#FFFFFF', opacity: 0.45 },
+  floor: { position: 'absolute', bottom: 18, backgroundColor: '#000000', opacity: 0.05 },
 });

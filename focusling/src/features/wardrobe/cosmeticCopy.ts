@@ -1,6 +1,6 @@
 import { cosmeticName } from '@/config/cosmetics';
 import { ACCESSORY_SLOTS } from '@/config/shopCatalog';
-import type { AccessorySlot, ShopItem, UnlockProgress, UnlockRule } from '@/core';
+import { provenanceOf, type AccessorySlot, type Provenance, type ShopItem, type UnlockProgress, type UnlockRule } from '@/core';
 import { plural } from '@/utils/format';
 
 export { cosmeticName };
@@ -28,11 +28,50 @@ export function describeProgress(rule: UnlockRule, progress: UnlockProgress): st
   return `${progress.current} of ${progress.target}`;
 }
 
-/** How an owned item was obtained, for the reveal ("Earned: …"). */
+/** A finished milestone in the past tense, e.g. "Earned after 5 completed focus sessions". */
+export function describeMilestone(rule: UnlockRule): string {
+  switch (rule.kind) {
+    case 'sessions':
+      return rule.count === 1 ? 'Earned after your first completed focus session' : `Earned after ${rule.count} completed focus sessions`;
+    case 'focusMinutes':
+      return rule.minutes % 60 === 0 ? `Earned after ${plural(rule.minutes / 60, 'hour')} of focus` : `Earned after ${rule.minutes} minutes of focus`;
+    case 'missions':
+      return `Earned after ${plural(rule.count, 'completed mission')}`;
+    case 'dayStreak':
+      return `Earned by focusing ${rule.days} days in a row`;
+    case 'stage':
+      return rule.stage === 'young' ? 'Earned when your Focusling first grew up' : `Earned when your Focusling reached ${rule.stage[0]!.toUpperCase()}${rule.stage.slice(1)}`;
+  }
+}
+
+const DATE = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+
+/**
+ * Provenance line for an owned piece: how it was earned, and when. For pieces
+ * not owned yet, use describeUnlock / the shop price instead.
+ */
+export function describeProvenance(provenance: Provenance, { withDate = true } = {}): string {
+  const when = withDate && provenance.acquiredAt ? ` · ${DATE(provenance.acquiredAt)}` : '';
+  switch (provenance.kind) {
+    case 'starter':
+      return `Every Focusling starts with one${when}`;
+    case 'milestone':
+      return `${describeMilestone(provenance.rule)}${when}`;
+    case 'coins':
+      return `Bought with ${plural(provenance.price, 'focus coin')}${when}`;
+  }
+}
+
+/** How an owned item was obtained, for the reveal. */
 export function describeEarned(item: ShopItem): string {
+  return describeProvenance(provenanceOf(item), { withDate: false });
+}
+
+/** How to get a piece that isn't owned yet. */
+export function describeHowToGet(item: ShopItem): string {
+  if (item.source === 'earned' && item.unlock) return describeUnlock(item.unlock);
   if (item.source === 'starter') return 'Every Focusling starts with one';
-  if (item.source === 'earned' && item.unlock) return `Earned: ${describeUnlock(item.unlock).toLowerCase()}`;
-  return 'From the shop';
+  return `In the shop for ${plural(item.price, 'focus coin')}`;
 }
 
 export function slotName(slot: AccessorySlot): string {
