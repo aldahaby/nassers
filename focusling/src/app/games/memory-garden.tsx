@@ -70,7 +70,7 @@ export default function MemoryGardenScreen() {
   return (
     <GameFrame title="Memory Garden" progress={`${found} of ${MEMORY_GARDEN.pairs} pairs found`}>
       <View style={styles.petArea}>
-        <AnimatedPet speciesId={pet.speciesId} stage={progression.stage} mood={mood} size={Math.min(110, height * 0.13)} cheerKey={cheerKey} accessibilityLabel={pet.name} />
+        <AnimatedPet speciesId={pet.speciesId} stage={progression.stage} mood={mood} size={Math.min(150, height * 0.17)} cheerKey={cheerKey} accessibilityLabel={pet.name} />
         <Text style={styles.line} accessibilityLiveRegion="polite">
           {result ? `${pet.name} loved that!` : line}
         </Text>

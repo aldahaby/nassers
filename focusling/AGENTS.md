@@ -47,5 +47,8 @@ Docs: https://docs.expo.dev/eas/index.md
 - Screens call store actions (`src/state/`); they never mutate the save directly.
 - OS integrations go behind interfaces in `src/services/` and are chosen in `src/services/index.ts`.
 - Add tests in `src/core/__tests__/` for any rule change. Run `npm test`, `npm run typecheck`, `npm run lint`.
-- See `docs/ARCHITECTURE.md`.
+- See `docs/ARCHITECTURE.md`. Family Mode, Missions and Play: `docs/FAMILY_MODE.md`.
+- Family Mode is local-only. Don't add analytics, ads, accounts, remote tracking or any monitoring of the child (messages, browsing, location, screenshots, activity logs). Any cloud Family Mode needs a separate privacy/security/legal review first.
+- Developer shortcuts (including the Parent Gate shortcut) must stay hidden and store-refused when Developer tools are off.
+- Games follow the Calm Play rule in `docs/FAMILY_MODE.md`: finite, no timers or speed-ups, no loot boxes, equal exit buttons, respect Reduce Motion.
 - Native protection code: `modules/focusling-protection/ios` (Swift) and `targets/*` (extensions). `FocuslingSharedState.swift` copies must stay identical (a test checks this). Keep `src/config/protectionVectors.json` as the shared source of truth for detection policy behaviour.

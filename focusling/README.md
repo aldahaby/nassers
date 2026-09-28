@@ -74,7 +74,22 @@ logic, local persistence, and a mock Screen Time service.
   one cleanup path, reconciliation, Protection settings screen, Developer Mode native panel.
 - Device test plan: `docs/IOS_DEVICE_TEST_PLAN.md`.
 
+**Milestone 5 (Family Mode, Missions, Calm Play):** details in `docs/FAMILY_MODE.md`.
+- Onboarding asks "Who is Focusling for?": *For me* (the app as before) or *For my child*. Existing
+  saves migrate to *For me* and skip the question.
+- Family Mode (local, one device, one child): parent PIN (salted hash, throttled), child nickname,
+  pet, first mission, then **Child View** (Pet, Missions, Play, Shop). The **Parent Gate** leads to
+  the **Parent Dashboard** (today's focus totals, current mission, honest protection state, the
+  child's pet), mission management and parent settings. No monitoring, no accounts, nothing leaves
+  the device.
+- Missions in both modes: focus minutes, session count, scheduled focus; six presets (Wind Down is
+  marked unavailable until native protection can verify it) and a custom editor. Paid once per
+  occurrence, missed missions are never punished.
+- Play: Memory Garden (4 pairs, no timer) and Toy Toss (5 tosses, constant speed) with the real pet,
+  a 10-coin daily play cap, and an optional "after a mission" parent setting.
+- Developer tools for modes, gate, missions and play (hidden and refused when off).
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,
-`shopCatalog.ts`.
+`shopCatalog.ts`, `missions.ts`, `play.ts`, `family.ts`.

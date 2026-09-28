@@ -85,16 +85,23 @@ focusling/
 ├── src/
 │   ├── app/                         # routes
 │   │   ├── _layout.tsx              # root: hydrate save, loading/error gate, lifecycle
-│   │   ├── index.tsx                # redirect → onboarding or tabs
-│   │   ├── onboarding/              # welcome → how-it-works → choose → name
-│   │   └── (tabs)/                  # Pet (home), Focus, Shop, Stats, Settings
+│   │   ├── index.tsx                # redirect → onboarding, tabs, child view or parent area
+│   │   ├── onboarding/              # welcome → who → (self: how-it-works | family: intro, PIN, nickname) → choose → name → (family: first mission)
+│   │   ├── (tabs)/                  # Self mode: Pet (home), Focus, Shop, Stats, Settings
+│   │   ├── (child)/                 # Family Child View: Pet, Missions, Play, Shop (+ hidden Focus)
+│   │   ├── parent/                  # Parent Dashboard, Missions, Settings (behind parent-gate)
+│   │   ├── parent-gate.tsx          # PIN gate
+│   │   ├── missions.tsx, play.tsx   # Self mode Missions and Play
+│   │   └── games/                   # memory-garden, toy-toss
 │   ├── config/
 │   │   ├── economy.ts               # coin/XP formulas' constants
 │   │   ├── progression.ts           # level curve, growth stages
 │   │   ├── petCare.ts               # happiness/health gains, decay, floors
 │   │   ├── focus.ts                 # durations, streak rules, retention
 │   │   ├── pets.ts                  # the 3 starter species
-│   │   ├── shopCatalog.ts           # 13 shop items
+│   │   ├── shopCatalog.ts           # shop items
+│   │   ├── missions.ts, play.ts     # mission presets/rewards, play economy
+│   │   ├── family.ts                # parent gate settings
 │   │   ├── petLines.ts              # things the pet says
 │   │   └── distractingApps.ts       # sample block targets for the mock
 │   ├── core/
@@ -105,6 +112,7 @@ focusling/
 │   │   ├── focus/                   # session creation and timing
 │   │   ├── inventory/               # buy / equip / feed / play
 │   │   ├── streaks/                 # day + session streaks with freezes
+│   │   ├── family/, missions/, play/ # milestone 5 rules (see FAMILY_MODE.md)
 │   │   ├── game/                    # cross-service actions (end session, refresh…)
 │   │   ├── save/                    # new save factory, schema migrations
 │   │   ├── shared/                  # dates, ids, Result type, math
@@ -115,7 +123,7 @@ focusling/
 │   │   └── index.ts                 # composition root
 │   ├── state/                       # store factory, app store, selector hooks
 │   ├── hooks/                       # useGameLifecycle, useNow
-│   ├── features/                    # pet/ and onboarding/ composites
+│   ├── features/                    # screen composites (pet, focus, shop, missions, play, family, settings…)
 │   ├── ui/                          # theme, components, pet art, room, icons
 │   └── utils/
 └── app.json, package.json, tsconfig.json, eslint.config.js
@@ -311,3 +319,25 @@ latest-wins for settings). `profile.id` is already generated for that.
 - Item art: accessories and decorations are drawn once (`ui/pet/accessories.tsx`,
   `ui/room/decorations.tsx`), and shop icons crop that same art. Toys and food live in
   `ui/items/toyFoodArt.tsx`.
+
+## 11. Family Mode, Missions and Play (milestone 5)
+
+Full design: [`FAMILY_MODE.md`](FAMILY_MODE.md). Architecture summary:
+
+- **Save v4** adds `mode` (`self` | `family`), `family` (PIN record, child nickname, play settings),
+  `missions` (definitions + per-occurrence progress) and `play` (today's play totals, recent round
+  IDs). Migration 3 fills defaults; existing saves become `self`.
+- **Pure core modules:** `core/family/` (PIN hashing, throttling, setup), `core/missions/`
+  (progress from completed sessions, once-per-occurrence rewards, validation), `core/play/`
+  (Memory Garden and Toy Toss rules, capped idempotent round rewards, play access),
+  `core/protection/describe.ts` (honest dashboard state), `core/game/debugDay.ts`.
+- **Mission rewards are part of `endSession`**, so focus reward, mission progress and mission
+  reward are one state transition, persisted together.
+- **Routing:** `(tabs)` is Self mode, `(child)` is Child View, `parent/` is the parent area behind
+  `parent-gate`. Shared screens live in `features/` (`PetHomeScreen`, `FocusScreen`, `ShopScreen`)
+  with thin route files; `useAppRoutes()` gives mode-correct targets. `familyView` is in-memory, so
+  every start opens Child View.
+- **Developer actions** are guarded twice: hidden in UI and refused in the store (`devOnly`) unless
+  Developer tools are on.
+- `Screen` caps content width (640 pt, or 1120 pt for the dashboard) so tablets get a centred column.
+

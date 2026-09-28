@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { GameRoundResult } from '@/core';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { Button, Card, colors, spacing, typography } from '@/ui';
-import { rewardLine } from './playCopy';
+import { capReachedLine, rewardLine } from './playCopy';
 
 interface Props {
   title: string;
@@ -25,6 +25,7 @@ export function RoundSummary({ title, detail, result, petName, onPlayAgain }: Pr
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.detail}>{detail}</Text>
         <Text style={styles.reward}>{rewardLine(result, petName)}</Text>
+        {result.capReached && (result.coins > 0 || result.happiness > 0) && <Text style={styles.detail}>{capReachedLine(petName)}</Text>}
       </View>
       <View style={styles.actions}>
         <Button variant="secondary" label="Play again" onPress={onPlayAgain} style={styles.action} />

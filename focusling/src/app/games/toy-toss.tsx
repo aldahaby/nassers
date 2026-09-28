@@ -113,7 +113,7 @@ export default function ToyTossScreen() {
   if (!play.access.open && !result) return <Redirect href={routes.play as Href} />;
   const { pet, progression, mood } = view;
   const catches = countCatches(results);
-  const petSize = Math.min(130, height * 0.16);
+  const petSize = Math.min(180, height * 0.22);
   const travel = Math.max(0, laneWidth - TOY_SIZE);
   const zoneWidth = travel * TOY_TOSS.goodWithin * 2 + TOY_SIZE;
 
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   tossCatch: { backgroundColor: '#DDF6E8', borderColor: '#9AD9B3' },
   tossMiss: { backgroundColor: colors.surfaceMuted },
   tossMark: { fontWeight: '900', color: colors.text },
-  stage: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: spacing.md, minHeight: 240 },
+  stage: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, minHeight: 240 },
   line: { ...typography.body, fontWeight: '700', color: colors.primaryDark, textAlign: 'center', minHeight: 44 },
   lane: { width: '100%', maxWidth: 560, height: TOY_SIZE + 12, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted, justifyContent: 'center' },
   zone: { position: 'absolute', top: 0, bottom: 0, borderRadius: radius.pill, backgroundColor: '#E4F6EA', borderWidth: 2, borderColor: '#BFE3CB', borderStyle: 'dashed' },
