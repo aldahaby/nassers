@@ -195,6 +195,18 @@ Two finite mini-games using the child's actual pet: **Memory Garden** and **Toy 
 > A Focusling game must be finite, slow, quiet and optional. It ends on its own in 1–3 minutes,
 > never measures speed, never speeds up, never hides a prize, and never asks for "one more".
 
+What that rules out, always:
+
+- **No endless gameplay.** Every round has a fixed end.
+- **No loot boxes** or random prizes.
+- **No ad-driven loops.** There are no ads, rewarded videos or "watch to continue".
+- **No escalating speed** or difficulty ramps inside a round.
+- **No reward farming.** Rounds pay small fixed amounts, each round pays once, and play coins stop at
+  the daily cap.
+- **Daily coin cap** (10 by default, `PLAY_ECONOMY.dailyCoinCap`).
+- **Focus remains the main progression source.** One 30-minute session is worth more than a whole
+  day of capped play (enforced by `balance.test.ts`).
+
 Concretely:
 
 - **Finite:** Memory Garden ends when 4 pairs are found; Toy Toss is exactly 5 tosses.

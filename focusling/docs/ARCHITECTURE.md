@@ -322,7 +322,13 @@ latest-wins for settings). `profile.id` is already generated for that.
 
 ## 11. Family Mode, Missions and Play (milestone 5)
 
-Full design: [`FAMILY_MODE.md`](FAMILY_MODE.md). Architecture summary:
+Full design: [`FAMILY_MODE.md`](FAMILY_MODE.md).
+
+> **Local-only.** No analytics SDKs, advertising, cloud child profiles, remote tracking or
+> third-party behavioural tracking. Any future cloud-connected Family Mode must receive a separate
+> privacy/security/legal design review before implementation.
+
+Architecture summary:
 
 - **Save v4** adds `mode` (`self` | `family`), `family` (PIN record, child nickname, play settings),
   `missions` (definitions + per-occurrence progress) and `play` (today's play totals, recent round
