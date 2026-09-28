@@ -9,7 +9,13 @@ import type { AccessorySlot } from './inventory';
 export type ReactionId = string;
 
 /** How a pet reaction is performed. Each style has a full and a Reduce Motion rendering. */
-export type ReactionStyle = 'wave' | 'hop' | 'sleepy' | 'cool' | 'twirl' | 'pixel-pop' | 'dream-float' | 'victory-lap';
+export type ReactionStyle = 'wave' | 'hop' | 'sleepy' | 'cool' | 'twirl' | 'pixel-pop' | 'dream-float' | 'victory-lap' | 'firefly';
+
+/**
+ * A presentation-only grouping of reactions: how the pet expresses itself.
+ * No stats, no bonuses, no quiz; it only changes copy and grouping.
+ */
+export type PersonalityId = 'calm' | 'hype' | 'dreamy' | 'cool';
 
 export type ReactionUnlock = { kind: 'starter' } | { kind: 'collection'; collectionId: string };
 
@@ -18,6 +24,7 @@ export interface ReactionDef {
   name: string;
   description: string;
   style: ReactionStyle;
+  personality: PersonalityId;
   unlock: ReactionUnlock;
   /** Full-motion length. Reduce Motion versions are shorter or equal. */
   durationMs: number;

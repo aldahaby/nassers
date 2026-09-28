@@ -60,6 +60,12 @@ export interface ItemFit {
   rotate?: number;
 }
 
+/**
+ * Material families from the Focusling Materials Bible (docs/ART_DIRECTION.md).
+ * Each has one rendering recipe in `ui/pet/materials.tsx`.
+ */
+export type MaterialFamily = 'jelly' | 'chrome' | 'pearl' | 'fabric' | 'knit' | 'plastic' | 'holo' | 'fuzzy' | 'wood';
+
 /** Where an item's artwork came from, and whether it is final. */
 export interface ItemCredit {
   designer: string;
@@ -97,7 +103,7 @@ export interface ShopItem {
   /** Collection id (see `config/cosmetics.ts`). */
   collection?: string;
   /** Shared artwork key (defaults to the item id), its colourway and optional fit overrides. */
-  art?: { key: string; palette?: ItemPalette; fit?: ItemFit[] };
+  art?: { key: string; palette?: ItemPalette; fit?: ItemFit[]; material?: MaterialFamily };
   /**
    * Wearable slots this item can't be worn with (e.g. a long scarf covers where a
    * charm hangs). Equipping either side quietly takes the other off.

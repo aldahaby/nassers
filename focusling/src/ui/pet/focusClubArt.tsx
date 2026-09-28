@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import type { ItemPalette } from '@/core';
+import { MaterialShape, Specular, Stitch } from './materials';
 import type { PetAnatomy } from './anatomy';
 
 type Art = (a: PetAnatomy, p: ItemPalette) => ReactElement;
@@ -30,7 +31,11 @@ function Cord({ neckY, color }: { neckY: number; color: string }) {
   return <Path d={`M76 ${neckY - 4} Q100 ${neckY + 9} 124 ${neckY - 4}`} stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />;
 }
 
-export function charm(shape: (x: number, y: number, s: number, p: ItemPalette) => ReactElement): Art {
+/**
+ * A charm on its cord. `gloss` adds the shared plastic/enamel highlight, so
+ * every glossy charm catches light the same way (pearl and fabric charms opt out).
+ */
+export function charm(shape: (x: number, y: number, s: number, p: ItemPalette) => ReactElement, { gloss = true } = {}): Art {
   return function CharmArt({ neckY }, p) {
     const cx = 100;
     const cy = neckY + 11;
@@ -40,6 +45,7 @@ export function charm(shape: (x: number, y: number, s: number, p: ItemPalette) =
         <Path d={`M100 ${neckY + 3} L100 ${cy - 8}`} stroke={p.secondary} strokeWidth={1.8} strokeLinecap="round" />
         <Circle cx={100} cy={neckY + 3} r={1.8} fill={p.secondary} />
         {shape(cx, cy, 8, p)}
+        {gloss && <Specular x={cx - 3.2} y={cy - 3.4} rx={2.6} ry={1.4} opacity={0.9} />}
       </G>
     );
   };
@@ -61,33 +67,40 @@ export const FOCUS_CLUB_ART: Record<string, Art> = {
       <G>
         <Path d={`M${L} ${eyeY - 4} L${100 - headHalfWidth + 2} ${eyeY - 6}`} stroke={p.secondary} strokeWidth={4} strokeLinecap="round" />
         <Path d={`M${R} ${eyeY - 4} L${100 + headHalfWidth - 2} ${eyeY - 6}`} stroke={p.secondary} strokeWidth={4} strokeLinecap="round" />
-        <Path d={lens} fill={p.primary} opacity={p.opacity ?? 0.75} />
-        <Path d={lens} fill="none" stroke={p.secondary} strokeWidth={2.5} strokeLinejoin="round" />
-        <Path d={`M${L + 10} ${top + 6} Q${L + 26} ${top + 2} ${L + 40} ${top + 5}`} stroke={p.accent} strokeWidth={3.5} strokeLinecap="round" fill="none" opacity={0.9} />
-        <Circle cx={R - 12} cy={bottom - 7} r={2.2} fill={p.accent} opacity={0.9} />
+        {/* Jelly: gradient body, bright rim, a big soft specular and a darker lower lip. */}
+        <MaterialShape family="jelly" d={lens} p={p} rimWidth={2.5} />
+        <Path d={`M${L + 6} ${bottom - 3} Q100 ${bottom + 1} ${R - 6} ${bottom - 3}`} stroke={p.secondary} strokeWidth={2} strokeLinecap="round" fill="none" opacity={0.45} />
+        <Specular x={L + 20} y={top + 7} rx={10} ry={3.6} rotate={-8} />
+        <Specular x={R - 12} y={bottom - 8} rx={2.6} ry={2.6} rotate={0} opacity={0.9} />
       </G>
     );
   },
   'cloud-cap': ({ headTop: h }, p) => (
     <G>
+      {/* Fabric: matte panels, stitched seams, an embroidered patch, a soft fold shadow. */}
       <Path d={`M56 ${h + 22} C56 ${h - 20} 144 ${h - 20} 144 ${h + 22} Z`} fill={p.primary} />
-      <Path d={`M78 ${h + 21} C76 ${h + 2} 84 ${h - 9} 100 ${h - 11}`} stroke={p.secondary} strokeWidth={1.6} fill="none" opacity={0.6} />
-      <Path d={`M122 ${h + 21} C124 ${h + 2} 116 ${h - 9} 100 ${h - 11}`} stroke={p.secondary} strokeWidth={1.6} fill="none" opacity={0.6} />
+      <Path d={`M118 ${h - 6} C136 ${h - 2} 144 ${h + 10} 144 ${h + 22} L124 ${h + 22} C124 ${h + 10} 122 ${h + 2} 118 ${h - 6} Z`} fill="#000000" opacity={0.12} />
+      <Stitch d={`M78 ${h + 21} C76 ${h + 2} 84 ${h - 8} 100 ${h - 10}`} color={p.secondary} />
+      <Stitch d={`M122 ${h + 21} C124 ${h + 2} 116 ${h - 8} 100 ${h - 10}`} color={p.secondary} />
       <G>
         <Circle cx={93} cy={h + 8} r={5.5} fill={p.accent} />
         <Circle cx={100} cy={h + 4} r={7} fill={p.accent} />
         <Circle cx={107.5} cy={h + 8} r={5.5} fill={p.accent} />
         <Rect x={88} y={h + 7} width={25} height={6.5} rx={3.2} fill={p.accent} />
+        <Stitch d={`M88.5 ${h + 13} L112.5 ${h + 13}`} color={p.secondary} width={1} />
       </G>
       <Path d={`M44 ${h + 25} Q100 ${h + 11} 156 ${h + 25} Q100 ${h + 38} 44 ${h + 25} Z`} fill={p.secondary} />
-      <Path d={`M52 ${h + 25} Q100 ${h + 15} 148 ${h + 25}`} stroke={p.primary} strokeWidth={1.4} fill="none" opacity={0.55} />
+      <Stitch d={`M52 ${h + 26} Q100 ${h + 17} 148 ${h + 26}`} color={p.primary} />
       <Circle cx={100} cy={h - 9} r={4.5} fill={p.secondary} />
+      <Specular x={98.6} y={h - 10.4} rx={1.6} ry={1} opacity={0.6} />
     </G>
   ),
   'charm-harness': ({ neckY: n }, p) => (
     <G>
+      {/* Fabric strap (stitched both edges) with glossy enamel pins. */}
       <Path d={`M60 ${n - 7} Q100 ${n + 12} 140 ${n - 7}`} stroke={p.primary} strokeWidth={10} fill="none" strokeLinecap="round" />
-      <Path d={`M62 ${n - 7} Q100 ${n + 10} 138 ${n - 7}`} stroke={p.secondary} strokeWidth={1.6} fill="none" strokeDasharray="3 3" strokeLinecap="round" />
+      <Stitch d={`M61 ${n - 10.5} Q100 ${n + 8.5} 139 ${n - 10.5}`} color={p.secondary} width={1} />
+      <Stitch d={`M61 ${n - 3.5} Q100 ${n + 15.5} 139 ${n - 3.5}`} color={p.secondary} width={1} />
       <Circle cx={77} cy={n + 1} r={5.2} fill="#FFD166" stroke="#E8A93A" strokeWidth={1.2} />
       <Path d={starPath(77, n + 1, 3.4)} fill="#FFF6D6" />
       <Circle cx={92} cy={n + 4.5} r={5.2} fill="#FF6FA3" stroke="#D94680" strokeWidth={1.2} />
@@ -96,6 +109,9 @@ export const FOCUS_CLUB_ART: Record<string, Art> = {
       <Path d={`M105.6 ${n + 4} Q108 ${n + 7} 110.4 ${n + 4}`} stroke="#1F6B42" strokeWidth={1.2} fill="none" strokeLinecap="round" />
       <Circle cx={123} cy={n + 1} r={5.2} fill="#BFE3FF" stroke="#7FBFEF" strokeWidth={1.2} />
       <Path d={boltPath(123, n + 1, 3.4)} fill="#5B3A4E" />
+      {[77, 92, 108, 123].map((x, i) => (
+        <Specular key={x} x={x - 2} y={n + (i === 1 || i === 2 ? 2.5 : -1)} rx={1.8} ry={1} opacity={0.9} />
+      ))}
     </G>
   ),
   'mood-charm-star': charm((x, y, s, p) => (

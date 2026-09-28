@@ -31,7 +31,7 @@ const BADGES: Record<string, () => ReactElement> = {
   'badge-dreamwave': () => (
     <G>
       <Circle cx={24} cy={24} r={22} fill="#F6EEFF" stroke="#CDB8FF" strokeWidth={2} />
-      <Path d="M27 10 A14 14 0 1 0 27 38 A11 11 0 1 1 27 10 Z" fill="#FFD867" stroke="#7E62D6" strokeWidth={1.6} />
+      <Path d="M27 10 A14 14 0 1 0 27 38 A17.5 17.5 0 0 1 27 10 Z" fill="#FFD867" stroke="#7E62D6" strokeWidth={1.6} />
       <Path d={starPath(33, 16, 4)} fill="#FF9CC8" />
       <Circle cx={36} cy={30} r={2} fill="#BDE4FF" />
     </G>
@@ -45,6 +45,20 @@ const BADGES: Record<string, () => ReactElement> = {
       <Rect x={12} y={12} width={2.5} height={26} fill="#2A2A33" />
       <Path d="M16 36 L40 36" stroke="#2E5BD6" strokeWidth={2.5} strokeLinecap="round" />
       <Path d="M22 40 L38 40" stroke="#FF8A3D" strokeWidth={2.5} strokeLinecap="round" />
+    </G>
+  ),
+  'badge-moss-club': () => (
+    <G>
+      {/* An organic, slightly lopsided pebble instead of a perfect circle. */}
+      <Path d="M24 2 C38 2 47 12 46 26 C45 39 36 46 23 46 C10 46 2 37 2 24 C2 11 11 2 24 2 Z" fill="#EEF2E0" stroke="#6E9B4E" strokeWidth={2} />
+      <Path d="M10 40 C14 32 22 30 30 33 C36 35 40 38 42 40 C34 44 18 45 10 40 Z" fill="#6E9B4E" />
+      <Path d="M20 36 L20 26" stroke="#F4E9D2" strokeWidth={5} strokeLinecap="round" />
+      <Path d="M9 27 C9 17 31 17 31 27 Z" fill="#C8553D" />
+      <Circle cx={15} cy={23} r={2} fill="#F4E9D2" />
+      <Circle cx={23} cy={21} r={1.6} fill="#F4E9D2" />
+      <Circle cx={27} cy={25} r={1.2} fill="#F4E9D2" />
+      <Circle cx={37} cy={13} r={5} fill="#E9F27A" opacity={0.4} />
+      <Circle cx={37} cy={13} r={2.4} fill="#E9F27A" stroke="#6E9B4E" strokeWidth={0.8} />
     </G>
   ),
 };

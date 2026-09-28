@@ -1,4 +1,4 @@
-import type { AccessorySlot, ItemCredit, ItemFit, ItemPalette, UnlockRule } from '@/core/models';
+import type { AccessorySlot, ItemCredit, ItemFit, ItemPalette, MaterialFamily, UnlockRule } from '@/core/models';
 import { ECONOMY } from './economy';
 import type { CatalogItem } from './shopCatalog';
 
@@ -33,6 +33,67 @@ export const COLORWAYS = {
   sunny: { primary: '#FFD166', secondary: '#E8A93A', accent: '#FFF6D6' },
   lilac: { primary: '#C9B8FF', secondary: '#7B5CFF', accent: '#FFFFFF' },
 } satisfies Record<string, ItemPalette>;
+
+/**
+ * The material each drawing is rendered in (the Materials Bible,
+ * docs/ART_DIRECTION.md). One drawing = one material, so every colourway
+ * shares it. The art layer uses the same recipe for every item of a family.
+ */
+export const ART_MATERIAL: Record<string, MaterialFamily> = {
+  // Classic shop pieces
+  'acc-cap': 'fabric',
+  'acc-sunglasses': 'jelly',
+  'acc-headphones': 'plastic',
+  'acc-flower-crown': 'fabric',
+  'acc-golden-crown': 'chrome',
+  'acc-bow-tie': 'fabric',
+  // Focus Club
+  'gummy-visor': 'jelly',
+  'cloud-cap': 'fabric',
+  'charm-harness': 'fabric',
+  'mood-charm-star': 'plastic',
+  'mood-charm-heart': 'jelly',
+  'mood-charm-bolt': 'plastic',
+  'mood-charm-planet': 'pearl',
+  // Midnight Arcade
+  'pixel-beanie': 'knit',
+  'scanline-visor': 'jelly',
+  'arcade-headset': 'plastic',
+  'tech-collar': 'chrome',
+  'dpad-charm': 'plastic',
+  // Dreamwave
+  'heart-shades': 'jelly',
+  'moon-charm': 'pearl',
+  'crescent-headband': 'holo',
+  'cloud-beret': 'fuzzy',
+  'pearl-collar': 'pearl',
+  // Cloud Racer
+  'racing-cap': 'fabric',
+  'aero-shades': 'holo',
+  'racing-scarf': 'fabric',
+  'winner-rosette': 'fabric',
+  'racer-goggles': 'chrome',
+  // Moss Club
+  'leaf-beanie': 'knit',
+  'acorn-specs': 'wood',
+  'moss-scarf': 'fuzzy',
+  'acorn-satchel': 'fabric',
+  'toadstool-charm': 'wood',
+  'ladybug-pin': 'plastic',
+};
+
+/** Player-facing material names (shown on item details). */
+export const MATERIAL_LABEL: Record<MaterialFamily, string> = {
+  jelly: 'Jelly',
+  chrome: 'Chrome',
+  pearl: 'Pearl',
+  fabric: 'Fabric',
+  knit: 'Knit',
+  plastic: 'Glossy plastic',
+  holo: 'Holographic',
+  fuzzy: 'Fuzzy',
+  wood: 'Wood',
+};
 
 const ORIGINAL_V1: ItemCredit = { designer: 'Focusling', rights: 'original', art: 'v1' };
 
@@ -69,7 +130,7 @@ function cosmetic(spec: CosmeticSpec): CatalogItem {
     source,
     unlock: source === 'earned' ? (obtain as UnlockRule) : undefined,
     collection: spec.collection ?? 'focus-club',
-    art: { key: spec.artKey, palette: spec.palette, fit: spec.fit },
+    art: { key: spec.artKey, palette: spec.palette, fit: spec.fit, material: ART_MATERIAL[spec.artKey] },
     colorway: spec.colorway,
     excludes: spec.excludes,
     credit: ORIGINAL_V1,
@@ -93,6 +154,18 @@ function roomAccent(spec: { id: string; name: string; description: string; slot:
     credit: ORIGINAL_V1,
   };
 }
+
+/**
+ * Fit overrides, shared by every colourway of a drawing. Babies have bigger eyes
+ * (PetFace scales them ~1.18×), so eyewear opens up a little at that stage and
+ * brimmed caps ride a little higher. Everything else fits from the anatomy
+ * anchors alone; crest handling (sprout, flame) is in `ui/pet/crest.tsx`.
+ */
+const FIT = {
+  babyEyewear: [{ stage: 'baby', scale: 1.08 }],
+  babyHearts: [{ stage: 'baby', scale: 1.12, dy: 1 }],
+  babyBrim: [{ stage: 'baby', dy: -2 }],
+} satisfies Record<string, ItemFit[]>;
 
 /**
  * Focus Club: the first cosmetic collection. The earned path is ordered so a new
@@ -137,6 +210,7 @@ export const FOCUS_CLUB_ITEMS: readonly CatalogItem[] = [
     description: 'An oversized cap with a stitched cloud. Two hours of focus earns it.',
     slot: 'head',
     artKey: 'cloud-cap',
+    fit: FIT.babyBrim,
     palette: COLORWAYS.plum,
     obtain: { kind: 'focusMinutes', minutes: 120 },
   }),
@@ -203,6 +277,7 @@ export const FOCUS_CLUB_ITEMS: readonly CatalogItem[] = [
     description: 'The cap in frosty blue. Twenty finished sessions.',
     slot: 'head',
     artKey: 'cloud-cap',
+    fit: FIT.babyBrim,
     palette: COLORWAYS.frost,
     obtain: { kind: 'sessions', count: 20 },
   }),
@@ -238,16 +313,6 @@ export const FOCUS_CLUB_ITEMS: readonly CatalogItem[] = [
     obtain: { price: 28 },
   }),
 ];
-
-/**
- * Fit overrides, shared by every colourway of a drawing. Babies have bigger eyes
- * (PetFace scales them ~1.18×), so eyewear opens up a little at that stage.
- * Everything else fits from the anatomy anchors alone.
- */
-const FIT = {
-  babyEyewear: [{ stage: 'baby', scale: 1.08 }],
-  babyHearts: [{ stage: 'baby', scale: 1.12, dy: 1 }],
-} satisfies Record<string, ItemFit[]>;
 
 // ── Midnight Arcade: retro arcade nights × streetwear ─────────────────────────
 
@@ -304,13 +369,35 @@ const CR = {
 } satisfies Record<string, ItemPalette>;
 
 export const CLOUD_RACER_ITEMS: readonly CatalogItem[] = [
-  cosmetic({ id: 'cr-cap', name: 'Racing Cap', description: 'A cream racing cap with a checker panel and a winged-cloud patch.', slot: 'head', artKey: 'racing-cap', palette: CR.cream, colorway: 'Cream', collection: 'cloud-racer', obtain: { kind: 'sessions', count: 12 } }),
+  cosmetic({ id: 'cr-cap', name: 'Racing Cap', description: 'A cream racing cap with a checker panel and a winged-cloud patch.', slot: 'head', artKey: 'racing-cap', fit: FIT.babyBrim, palette: CR.cream, colorway: 'Cream', collection: 'cloud-racer', obtain: { kind: 'sessions', count: 12 } }),
   cosmetic({ id: 'cr-shades', name: 'Aero Shades', description: 'Wraparound shades with a speed stripe. Tinted, not blacked out.', slot: 'face', artKey: 'aero-shades', fit: FIT.babyEyewear, palette: CR.aero, collection: 'cloud-racer', obtain: { kind: 'focusMinutes', minutes: 360 } }),
-  cosmetic({ id: 'cr-scarf', name: 'Racing Scarf', description: 'A wind-blown scarf with checker ends. Its knot sits where a charm would hang.', slot: 'neck', artKey: 'racing-scarf', palette: CR.scarf, collection: 'cloud-racer', excludes: ['charm'], obtain: { kind: 'missions', count: 10 } }),
+  cosmetic({ id: 'cr-scarf', name: 'Racing Scarf', description: 'A wind-blown scarf with checker ends, knotted to one side so a charm still fits.', slot: 'neck', artKey: 'racing-scarf', palette: CR.scarf, collection: 'cloud-racer', obtain: { kind: 'missions', count: 10 } }),
   cosmetic({ id: 'cr-badge', name: 'Winner’s Rosette', description: 'A ribbon rosette with a star. No numbers, just a win.', slot: 'charm', artKey: 'winner-rosette', palette: CR.rosette, collection: 'cloud-racer', obtain: { kind: 'sessions', count: 25 } }),
   cosmetic({ id: 'cr-aura', name: 'Speed Lines', description: 'Streaks and little dust puffs, like you just pulled in.', slot: 'aura', artKey: 'aura-speed', palette: CR.speed, collection: 'cloud-racer', obtain: { kind: 'focusMinutes', minutes: 900 } }),
   cosmetic({ id: 'cr-goggles', name: 'Racer Goggles', description: 'Retro goggles pushed up on the head.', slot: 'head', artKey: 'racer-goggles', palette: CR.goggles, collection: 'cloud-racer', obtain: { price: 70 } }),
-  cosmetic({ id: 'cr-cap-cobalt', name: 'Racing Cap', description: 'The racing cap in cobalt.', slot: 'head', artKey: 'racing-cap', palette: CR.cobalt, colorway: 'Cobalt', collection: 'cloud-racer', obtain: { price: 45 } }),
+  cosmetic({ id: 'cr-cap-cobalt', name: 'Racing Cap', description: 'The racing cap in cobalt.', slot: 'head', artKey: 'racing-cap', fit: FIT.babyBrim, palette: CR.cobalt, colorway: 'Cobalt', collection: 'cloud-racer', obtain: { price: 45 } }),
+];
+
+// ── Moss Club: forest streetwear × a tiny magical creature ───────────────────
+
+const MC = {
+  moss: { primary: '#6E9B4E', secondary: '#2F4A2E', accent: '#F4E9D2' },
+  amber: { primary: '#E9B44C', secondary: '#A9744F', accent: '#FFF4D6', opacity: 0.55 },
+  fuzz: { primary: '#8DB86B', secondary: '#4E7A3A', accent: '#F4E9D2' },
+  satchel: { primary: '#A9744F', secondary: '#6B4630', accent: '#F4E9D2' },
+  toadstool: { primary: '#C8553D', secondary: '#F4E9D2', accent: '#A9744F' },
+  ladybug: { primary: '#D8402F', secondary: '#2A2A33', accent: '#FFFFFF' },
+  firefly: { primary: '#E9F27A', secondary: '#6E9B4E', accent: '#FFFBE0' },
+} satisfies Record<string, ItemPalette>;
+
+export const MOSS_CLUB_ITEMS: readonly CatalogItem[] = [
+  cosmetic({ id: 'mc-beanie', name: 'Leaf-Knit Beanie', description: 'A cosy knit beanie with a leaf sewn on. It leaves room for a sprout or a flame.', slot: 'head', artKey: 'leaf-beanie', palette: MC.moss, collection: 'moss-club', obtain: { kind: 'sessions', count: 15 } }),
+  cosmetic({ id: 'mc-specs', name: 'Acorn Specs', description: 'Round wooden frames with warm amber lenses. Eyes still shine through.', slot: 'face', artKey: 'acorn-specs', fit: FIT.babyEyewear, palette: MC.amber, collection: 'moss-club', obtain: { kind: 'focusMinutes', minutes: 720 } }),
+  cosmetic({ id: 'mc-scarf', name: 'Moss Scarf', description: 'A fuzzy scarf with one tail longer than the other.', slot: 'neck', artKey: 'moss-scarf', palette: MC.fuzz, collection: 'moss-club', obtain: { kind: 'missions', count: 12 } }),
+  cosmetic({ id: 'mc-satchel', name: 'Acorn Satchel', description: 'A tiny satchel on a cross-body strap. The strap sits where a charm would hang.', slot: 'neck', artKey: 'acorn-satchel', palette: MC.satchel, collection: 'moss-club', excludes: ['charm'], obtain: { price: 55 } }),
+  cosmetic({ id: 'mc-toadstool', name: 'Toadstool Charm', description: 'A little carved toadstool on a cord.', slot: 'charm', artKey: 'toadstool-charm', palette: MC.toadstool, collection: 'moss-club', obtain: { kind: 'dayStreak', days: 10 } }),
+  cosmetic({ id: 'mc-ladybug', name: 'Ladybug Pin', description: 'A shiny ladybug pinned just off-centre.', slot: 'charm', artKey: 'ladybug-pin', palette: MC.ladybug, collection: 'moss-club', obtain: { price: 35 } }),
+  cosmetic({ id: 'mc-aura', name: 'Firefly Glow', description: 'A few fireflies drifting on one side, like a quiet evening.', slot: 'aura', artKey: 'aura-firefly', palette: MC.firefly, collection: 'moss-club', obtain: { kind: 'focusMinutes', minutes: 1200 } }),
 ];
 
 /** One lightweight matching room accent per new collection. */
@@ -326,6 +413,7 @@ export const COLLECTION_ITEMS: readonly CatalogItem[] = [
   ...MIDNIGHT_ARCADE_ITEMS,
   ...DREAMWAVE_ITEMS,
   ...CLOUD_RACER_ITEMS,
+  ...MOSS_CLUB_ITEMS,
   ...ROOM_ACCENTS,
 ];
 

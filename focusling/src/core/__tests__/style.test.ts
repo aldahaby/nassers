@@ -44,8 +44,8 @@ function session(save: GameSave, planned: number, at: number, outcome: 'complete
 }
 
 describe('collection registry', () => {
-  it('registers four permanent, first-party collections with unique ids', () => {
-    expect(COLLECTION_LIST.map((c) => c.id)).toEqual(['focus-club', 'midnight-arcade', 'dreamwave', 'cloud-racer']);
+  it('registers five permanent, first-party collections with unique ids', () => {
+    expect(COLLECTION_LIST.map((c) => c.id)).toEqual(['focus-club', 'midnight-arcade', 'dreamwave', 'cloud-racer', 'moss-club']);
     for (const c of COLLECTION_LIST) {
       expect(c.availability).toEqual({ kind: 'permanent' });
       expect(c.origin.kind).toBe('first-party');
@@ -54,7 +54,7 @@ describe('collection registry', () => {
   });
 
   it('each new collection has 6–8 wearable pieces with real silhouette variety', () => {
-    for (const id of ['midnight-arcade', 'dreamwave', 'cloud-racer']) {
+    for (const id of ['midnight-arcade', 'dreamwave', 'cloud-racer', 'moss-club']) {
       const ids = collectionItemIds(id);
       expect(ids.length).toBeGreaterThanOrEqual(6);
       expect(ids.length).toBeLessThanOrEqual(8);
@@ -192,16 +192,36 @@ describe('Looks', () => {
 });
 
 describe('compatibility', () => {
-  it('equipping the racing scarf quietly takes off a charm, and vice versa', () => {
-    let save = own(fresh(), ['cr-scarf', 'cr-badge']);
+  it('equipping the acorn satchel quietly takes off a charm, and vice versa (its strap crosses the charm)', () => {
+    let save = own(fresh(), ['mc-satchel', 'cr-badge']);
     save = unwrap(equipItem(save, 'cr-badge'));
-    expect(conflictsFor(save.inventory.equipped, 'cr-scarf')).toEqual(['cr-badge']);
-    save = unwrap(equipItem(save, 'cr-scarf'));
-    expect(save.inventory.equipped).toMatchObject({ neck: 'cr-scarf' });
+    expect(conflictsFor(save.inventory.equipped, 'mc-satchel')).toEqual(['cr-badge']);
+    save = unwrap(equipItem(save, 'mc-satchel'));
+    expect(save.inventory.equipped).toMatchObject({ neck: 'mc-satchel' });
     expect(save.inventory.equipped.charm).toBeUndefined();
     save = unwrap(equipItem(save, 'fc-charm-star'));
     expect(save.inventory.equipped).toMatchObject({ charm: 'fc-charm-star' });
     expect(save.inventory.equipped.neck).toBeUndefined();
+  });
+
+  it('the racing scarf ties at the side now, so it wears with a charm', () => {
+    let save = own(fresh(), ['cr-scarf', 'cr-badge']);
+    save = unwrap(equipItem(unwrap(equipItem(save, 'cr-badge')), 'cr-scarf'));
+    expect(save.inventory.equipped).toMatchObject({ neck: 'cr-scarf', charm: 'cr-badge' });
+  });
+
+  it('exclusions are rare: only pieces with a real visual overlap carry one', () => {
+    const excluding = COLLECTION_ITEMS.filter((i) => (i.excludes ?? []).length > 0).map((i) => i.id);
+    expect(excluding).toEqual(['mc-satchel']);
+  });
+
+  it('a cross-collection remix wears together with no conflicts and no set bonus', () => {
+    const remix = { head: 'dw-beret', face: 'ma-visor', neck: 'cr-scarf', charm: 'dw-charm', aura: 'mc-aura' };
+    let save = own(fresh(), Object.values(remix));
+    const before = { ...save.pet!.stats };
+    save = wearOutfit(save, remix);
+    expect(save.inventory.equipped).toMatchObject(remix);
+    expect(save.pet!.stats).toEqual(before); // stat-neutral: a remix is never worse than a full set
   });
 
   it('non-conflicting slots stack as before', () => {
@@ -212,6 +232,32 @@ describe('compatibility', () => {
 
   it('only wearable slots are ever excluded', () => {
     for (const item of COLLECTION_ITEMS) for (const slot of item.excludes ?? []) expect(WEARABLE_SLOTS).toContain(slot);
+  });
+});
+
+describe('moss club', () => {
+  it('has 7 original pieces across every slot, with a Look and a calm reaction', () => {
+    const ids = collectionItemIds('moss-club');
+    expect(ids).toHaveLength(7);
+    const c = getCollection('moss-club')!;
+    for (const id of Object.values(c.featuredLook)) expect(ids).toContain(id);
+    expect(getReaction(c.reaction)).toMatchObject({ id: 'firefly-hello', personality: 'calm', unlock: { kind: 'collection', collectionId: 'moss-club' } });
+  });
+
+  it('is earned by visible milestones or focus coins, never randomly', () => {
+    for (const id of collectionItemIds('moss-club')) {
+      const item = getShopItem(id)!;
+      if (item.source === 'earned') expect(item.unlock).toBeDefined();
+      else expect(item.source === 'shop' && item.price > 0).toBe(true);
+    }
+  });
+
+  it('completing it unlocks Firefly Hello once', () => {
+    let save = own(fresh(), collectionItemIds('moss-club'));
+    const result = checkCollections(save);
+    expect(result.save.cosmetics.completedCollections).toContain('moss-club');
+    expect(result.save.cosmetics.reactions.unlocked).toContain('firefly-hello');
+    expect(checkCollections(result.save).save.cosmetics.reactions.unlocked.filter((r) => r === 'firefly-hello')).toHaveLength(1);
   });
 });
 

@@ -1,11 +1,26 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import type { ItemPalette } from '@/core';
 import { motion, useNativeDriver } from '@/ui/theme';
 import { sparklePath } from './focusClubArt';
 
-type Spot = { x: number; y: number; s: number };
+export type Spot = { x: number; y: number; s: number };
+
+/**
+ * Aura composition rule (docs/ART_DIRECTION.md): an aura frames the pet, it
+ * never sits on it. Every particle centre lies outside the "pet ellipse" (body,
+ * face and worn pieces), no particle enters the crest column above the head
+ * (sprout, flame, hats), and every particle stays inside the 200×200 box.
+ * Tested for every aura layout in `ui/__tests__/artRegistry.test.ts`.
+ */
+export const AURA_FRAME = {
+  pet: { cx: 100, cy: 120, rx: 72, ry: 68 },
+  crest: { x1: 78, x2: 122, yMax: 72 },
+  box: { min: 0, max: 200 },
+  /** Particle box = 24 × spot scale × this (pet units). */
+  particleScale: 1.45,
+} as const;
 
 /** Where aura particles sit around the pet, in the pet's 200×200 space (clear of the face). */
 const SPOTS: readonly Spot[] = [
@@ -13,25 +28,43 @@ const SPOTS: readonly Spot[] = [
   { x: 170, y: 64, s: 0.85 },
   { x: 20, y: 132, s: 0.75 },
   { x: 180, y: 124, s: 1 },
-  { x: 52, y: 38, s: 0.7 },
-  { x: 150, y: 30, s: 0.8 },
+  { x: 34, y: 36, s: 0.7 },
+  { x: 168, y: 32, s: 0.8 },
 ];
 
 type Particle = (p: ItemPalette, i: number) => ReactElement;
 
 /** Speed lines trail behind (left) with a couple of puffs ahead. */
 const SPEED_SPOTS: readonly Spot[] = [
-  { x: 18, y: 88, s: 1.1 },
-  { x: 14, y: 128, s: 1 },
+  { x: 20, y: 88, s: 1.1 },
+  { x: 19, y: 128, s: 1 },
   { x: 26, y: 162, s: 0.9 },
   { x: 184, y: 150, s: 0.75 },
   { x: 40, y: 50, s: 0.8 },
   { x: 180, y: 96, s: 0.7 },
 ];
 
+/** Fireflies gather on one side (controlled asymmetry), with one stray on the other. */
+const FIREFLY_SPOTS: readonly Spot[] = [
+  { x: 172, y: 72, s: 1 },
+  { x: 182, y: 112, s: 0.8 },
+  { x: 160, y: 32, s: 0.85 },
+  { x: 178, y: 152, s: 0.7 },
+  { x: 26, y: 100, s: 0.75 },
+];
+
+/** Pixel hearts: fewer, smaller hearts so the pet stays the focus. */
+const HEART_SPOTS: readonly Spot[] = [
+  { x: 30, y: 76, s: 0.9 },
+  { x: 172, y: 62, s: 0.75 },
+  { x: 180, y: 128, s: 0.85 },
+  { x: 36, y: 38, s: 0.6 },
+];
+
 /** Auras that need their own layout. */
-const AURA_SPOTS: Record<string, readonly Spot[]> = { 'aura-speed': SPEED_SPOTS };
-const spotsFor = (key: string) => AURA_SPOTS[key] ?? SPOTS;
+const AURA_SPOTS: Record<string, readonly Spot[]> = { 'aura-speed': SPEED_SPOTS, 'aura-firefly': FIREFLY_SPOTS, 'aura-pixel-hearts': HEART_SPOTS };
+export const auraSpotsFor = (key: string): readonly Spot[] => AURA_SPOTS[key] ?? SPOTS;
+const spotsFor = auraSpotsFor;
 
 /** One particle drawn in a local 24×24 box. */
 const PARTICLES: Record<string, Particle> = {
@@ -85,9 +118,20 @@ const PARTICLES: Record<string, Particle> = {
     ) : (
       <Path d={sparklePath(12, 12, 8)} fill={p.primary} stroke={p.secondary} strokeWidth={1} />
     ),
+  'aura-firefly': (p, i) => (
+    <G>
+      {/* A soft glow, a bright tail and two tiny wings: flat shapes, no blur. */}
+      <Circle cx={12} cy={13} r={10.5} fill={p.primary} opacity={0.22} />
+      <Circle cx={12} cy={13} r={6.8} fill={p.primary} opacity={0.4} />
+      <Ellipse cx={9} cy={8.5} rx={3.2} ry={2} fill="#FFFFFF" opacity={0.75} transform="rotate(-30 9 8.5)" />
+      <Ellipse cx={15} cy={8.5} rx={3.2} ry={2} fill="#FFFFFF" opacity={0.75} transform="rotate(30 15 8.5)" />
+      <Circle cx={12} cy={14} r={4.2} fill={i % 2 ? p.accent : p.primary} stroke={p.secondary} strokeWidth={1.1} />
+      <Circle cx={12} cy={9.6} r={1.8} fill={p.secondary} />
+    </G>
+  ),
   'aura-pixel-hearts': (p) => (
     <G>
-      {/* A 5×5 pixel heart. */}
+      {/* A 5×5 pixel heart, 3-unit cells (about 15 units wide), centred. */}
       {[
         [1, 0], [3, 0],
         [0, 1], [1, 1], [2, 1], [3, 1], [4, 1],
@@ -95,7 +139,7 @@ const PARTICLES: Record<string, Particle> = {
         [1, 3], [2, 3], [3, 3],
         [2, 4],
       ].map(([x, y]) => (
-        <Rect key={`${x}-${y}`} x={2 + x! * 4} y={3 + y! * 4} width={4} height={4} fill={x === 1 && y === 1 ? p.accent : p.primary} />
+        <Rect key={`${x}-${y}`} x={4.5 + x! * 3} y={4.5 + y! * 3} width={3} height={3} fill={x === 1 && y === 1 ? p.accent : p.primary} />
       ))}
     </G>
   ),
@@ -164,7 +208,7 @@ export function AuraLayer({ artKey, palette, size, animated, dim = false }: Laye
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: dim ? 0.55 : 1 }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {spots.map((spot, i) => {
         // Kept small so the aura supports the pet instead of competing with it.
-        const box = 24 * spot.s * unit * 1.45;
+        const box = 24 * spot.s * unit * AURA_FRAME.particleScale;
         return (
           <Animated.View
             key={i}

@@ -1,6 +1,7 @@
 import { Circle, Ellipse, G, Path } from 'react-native-svg';
 import type { GrowthStage, PetSpeciesId } from '@/core';
 import type { PetSpecies } from '@/config/pets';
+import { STAGE_RANK } from './crest';
 
 interface Props {
   speciesId: PetSpeciesId;
@@ -8,9 +9,7 @@ interface Props {
   stage: GrowthStage;
 }
 
-const STAGE_RANK: Record<GrowthStage, number> = { baby: 0, young: 1, adult: 2, evolved: 3 };
-
-/** Body silhouette and species features. Features grow with the stage. */
+/** Body silhouette and species features. Features grow with the stage. Crests are drawn by PetCrest. */
 export function PetBody({ speciesId, palette, stage }: Props) {
   const rank = STAGE_RANK[stage];
   switch (speciesId) {
@@ -65,36 +64,9 @@ function CloudlingBody({ palette, rank }: BodyProps) {
 }
 
 function SproutlingBody({ palette, rank }: BodyProps) {
-  const leaf = 12 + rank * 5;
+  // The sprout is a crest (ui/pet/crest.tsx), placed by PetArt around headwear.
   return (
     <G>
-      {/* Sprout on top: a stem, then leaves that grow per stage. */}
-      <Path d="M100 70 C100 60 101 52 103 46" stroke={palette.accent} strokeWidth={4} strokeLinecap="round" fill="none" />
-      <Path
-        d={`M103 48 C${103 + leaf} ${48 - leaf * 0.9} ${103 + leaf * 2} ${48 - leaf * 0.3} ${103 + leaf * 1.9} ${48 + leaf * 0.1} C${103 + leaf * 1.3} ${48 + leaf * 0.5} ${108} ${50} 103 48 Z`}
-        fill={palette.accent}
-      />
-      {rank >= 1 && (
-        <Path
-          d={`M101 52 C${101 - leaf} ${52 - leaf * 0.9} ${101 - leaf * 2} ${52 - leaf * 0.3} ${101 - leaf * 1.9} ${52 + leaf * 0.1} C${101 - leaf * 1.3} ${52 + leaf * 0.5} ${96} ${54} 101 52 Z`}
-          fill={palette.bodyShade}
-        />
-      )}
-      {rank >= 3 && (
-        // Evolved: a bloom at the tip.
-        <G>
-          {[0, 72, 144, 216, 288].map((angle) => (
-            <Circle
-              key={angle}
-              cx={103 + Math.cos((angle * Math.PI) / 180) * 7}
-              cy={42 + Math.sin((angle * Math.PI) / 180) * 7}
-              r={6}
-              fill="#FFB3C7"
-            />
-          ))}
-          <Circle cx={103} cy={42} r={5} fill="#FFD166" />
-        </G>
-      )}
       <Feet color={palette.bodyShade} />
       <Path
         d="M100 64 C136 64 158 92 158 124 C158 156 134 174 100 174 C66 174 42 156 42 124 C42 92 64 64 100 64 Z"
@@ -120,7 +92,6 @@ function SproutlingBody({ palette, rank }: BodyProps) {
 }
 
 function EmberlingBody({ palette, rank }: BodyProps) {
-  const flame = 10 + rank * 6;
   const flameColor = rank >= 3 ? '#FFE27A' : palette.accent;
   return (
     <G>
@@ -133,12 +104,7 @@ function EmberlingBody({ palette, rank }: BodyProps) {
         d="M100 58 C112 76 158 96 158 130 C158 158 134 174 100 174 C66 174 42 158 42 130 C42 96 88 76 100 58 Z"
         fill={palette.body}
       />
-      {/* Flame tuft on the head. */}
-      <Path
-        d={`M100 ${66 - flame} C${108 + flame * 0.3} ${72 - flame * 0.4} ${112} 72 106 80 C104 74 101 72 100 72 C99 72 96 74 94 80 C88 72 ${92 - flame * 0.3} ${72 - flame * 0.4} 100 ${66 - flame} Z`}
-        fill={flameColor}
-      />
-      {rank >= 1 && <Path d={`M100 ${72 - flame * 0.5} C104 70 104 76 100 80 C96 76 96 70 100 ${72 - flame * 0.5} Z`} fill="#FFF3C4" />}
+      {/* The flame tuft is a crest (ui/pet/crest.tsx), placed by PetArt around headwear. */}
       <Path
         d="M44 142 C52 162 72 174 100 174 C128 174 148 162 156 142 C146 158 126 166 100 166 C74 166 54 158 44 142 Z"
         fill={palette.bodyShade}

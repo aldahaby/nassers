@@ -24,6 +24,7 @@ const FACE: Record<ReactionStyle, Exclude<FaceExpression, 'blink'>> = {
   'pixel-pop': 'wink',
   'dream-float': 'sleepy',
   'victory-lap': 'delighted',
+  firefly: 'delighted',
 };
 
 export interface Performance {
@@ -101,6 +102,10 @@ export function useReactionPerformer(size: number, reducedMotion: boolean, onHop
           case 'dream-float':
             Animated.sequence([t(y, -s * 0.09, 800, Easing.inOut(Easing.sin)), Animated.delay(500), t(y, 0, 800, Easing.inOut(Easing.sin))]).start();
             Animated.sequence([t(rotate, 0.4, 700), t(rotate, -0.4, 700), t(rotate, 0, 600)]).start();
+            break;
+          case 'firefly':
+            // A slow, small wave: calmer than Wave, so the fireflies carry it.
+            Animated.sequence([t(rotate, 0.5, 400), t(rotate, -0.4, 500), t(rotate, 0.3, 450), t(rotate, 0, 400)]).start();
             break;
           case 'victory-lap':
             Animated.sequence([
@@ -196,6 +201,29 @@ export function ReactionEffect({ performance, fx, size, reducedMotion }: { perfo
         [0.36, 0.16],
       ].map(([dx, dy], i) =>
         piece(i, c.x + s * dx!, c.y + s * dy!, 16 + (i % 2) * 6, 0, -8, i % 2 ? <Path d={sparklePath(12, 12, 10)} fill="#CDB8FF" /> : <Circle cx={12} cy={12} r={6} fill="#FFC4E1" opacity={0.8} />),
+      );
+      break;
+    case 'firefly':
+      // Fireflies drift up one side (asymmetric, like the Moss Club aura) and blink.
+      // Reduce Motion: they appear in place and fade, no drifting.
+      pieces = [
+        [0.36, -0.12, 0],
+        [0.46, -0.3, 1],
+        [0.3, -0.42, 2],
+        [-0.4, -0.26, 3],
+      ].map(([dx, dy, i]) =>
+        piece(
+          i!,
+          c.x + s * dx!,
+          c.y + s * dy!,
+          18 + (i! % 2) * 4,
+          i! % 2 ? -4 : 5,
+          -s * 0.08,
+          <G>
+            <Circle cx={12} cy={12} r={9} fill="#E9F27A" opacity={0.35} />
+            <Circle cx={12} cy={12} r={4.2} fill="#F6FB9E" stroke="#6E9B4E" strokeWidth={1} />
+          </G>,
+        ),
       );
       break;
     case 'victory-lap':

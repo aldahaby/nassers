@@ -48,9 +48,20 @@ const ICONS: Record<ReactionStyle, () => ReactElement> = {
       <Rect x={6} y={34} width={6} height={6} fill="#FF4FD8" />
     </G>
   ),
+  firefly: () => (
+    <G>
+      <Path d="M8 40 Q14 26 24 30 Q30 32 28 40 Z" fill="#6E9B4E" />
+      <Path d="M20 34 Q24 28 30 30" stroke="#2F4A2E" strokeWidth={1.4} fill="none" strokeLinecap="round" />
+      <Circle cx={34} cy={14} r={6} fill="#E9F27A" opacity={0.45} />
+      <Circle cx={34} cy={14} r={3} fill="#E9F27A" stroke="#6E9B4E" strokeWidth={1} />
+      <Circle cx={18} cy={12} r={4} fill="#E9F27A" opacity={0.35} />
+      <Circle cx={18} cy={12} r={2} fill="#E9F27A" />
+      <Circle cx={40} cy={28} r={1.8} fill="#E9F27A" />
+    </G>
+  ),
   'dream-float': () => (
     <G>
-      <Path d="M27 8 A10 10 0 1 0 27 28 A8 8 0 1 1 27 8 Z" fill="#FFD867" stroke="#7E62D6" strokeWidth={1.6} />
+      <Path d="M27 8 A10 10 0 1 0 27 28 A12.5 12.5 0 0 1 27 8 Z" fill="#FFD867" stroke="#7E62D6" strokeWidth={1.6} />
       <Circle cx={14} cy={36} r={6} fill="#FFFFFF" stroke="#BDE4FF" strokeWidth={1.5} />
       <Circle cx={22} cy={33} r={7.5} fill="#FFFFFF" stroke="#BDE4FF" strokeWidth={1.5} />
       <Circle cx={30} cy={37} r={5} fill="#FFFFFF" stroke="#BDE4FF" strokeWidth={1.5} />

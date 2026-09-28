@@ -66,6 +66,20 @@ export const COLLECTION_LIST: readonly CosmeticCollection[] = [
     origin: { kind: 'first-party', designer: 'Focusling' },
     order: 3,
   },
+  {
+    id: 'moss-club',
+    name: 'Moss Club',
+    tagline: 'Grown slowly, worn softly.',
+    description: 'Forest streetwear for a tiny magical creature: a leaf-knit beanie, acorn specs, a fuzzy moss scarf and fireflies.',
+    theme: 'forest streetwear, cosy tactile, organic asymmetry; moss, forest, mushroom red, cream, warm wood, firefly yellow',
+    palette: { primary: '#6E9B4E', secondary: '#C8553D', accent: '#E9F27A', ink: '#2F4A2E', wash: '#EEF2E0' },
+    badge: 'badge-moss-club',
+    featuredLook: { head: 'mc-beanie', face: 'mc-specs', neck: 'mc-scarf', charm: 'mc-ladybug', aura: 'mc-aura' },
+    reaction: 'firefly-hello',
+    availability: { kind: 'permanent' },
+    origin: { kind: 'first-party', designer: 'Focusling' },
+    order: 4,
+  },
 ];
 
 const BY_ID = new Map(COLLECTION_LIST.map((c) => [c.id, c]));

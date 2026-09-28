@@ -39,7 +39,7 @@ export const DECORATION_ART: Record<string, () => ReactElement> = {
   'dw-room-lamp': () => (
     <G>
       <Circle cx={306} cy={156} r={38} fill="#CDB8FF" opacity={0.25} />
-      <Path d="M316 128 A30 30 0 1 0 316 188 A24 24 0 1 1 316 128 Z" fill="#FFF1C9" stroke="#9C82E8" strokeWidth={3} strokeLinejoin="round" />
+      <Path d="M316 128 A30 30 0 1 0 316 188 A38 38 0 0 1 316 128 Z" fill="#FFF1C9" stroke="#9C82E8" strokeWidth={3} strokeLinejoin="round" />
       <Circle cx={324} cy={150} r={3} fill="#FFC4E1" />
       <Circle cx={330} cy={166} r={2} fill="#BDE4FF" />
       <Rect x={300} y={186} width={8} height={40} rx={3} fill="#9C82E8" />

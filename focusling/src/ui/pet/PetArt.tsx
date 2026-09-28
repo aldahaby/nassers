@@ -7,6 +7,7 @@ import { getShopItem } from '@/config/shopCatalog';
 import { ACCESSORY_LAYER_ORDER, fitTransform, resolveAccessoryArt, slotAnchor } from './accessories';
 import { AuraLayer } from './auras';
 import { ANATOMY } from './anatomy';
+import { CRESTS, CrestOpening, crestPlacement, PetCrest } from './crest';
 import { PetBody } from './PetBody';
 import { PetFace, type FaceExpression } from './PetFace';
 
@@ -37,24 +38,39 @@ export const PetArt = memo(function PetArt({
   const species = PET_SPECIES[speciesId];
   const anatomy = ANATOMY[speciesId];
   const auraItem = equipped?.aura ? getShopItem(equipped.aura) : undefined;
+  const layers = ACCESSORY_LAYER_ORDER.map((slot) => {
+    const itemId = equipped?.[slot];
+    const resolved = itemId ? resolveAccessoryArt(itemId) : null;
+    return resolved ? { slot, resolved, transform: fitTransform(resolved.fit, speciesId, stage, slotAnchor(slot, anatomy)) } : null;
+  });
+  const head = layers.find((l) => l?.slot === 'head');
+  // Species crest (sprout, flame): placed around whatever is on the head.
+  const crest = crestPlacement(speciesId, stage, head?.resolved.key, anatomy);
+  const crestLayer = CRESTS[speciesId]?.layer;
+  const crestArt = <PetCrest species={speciesId} palette={species.palette} stage={stage} />;
 
   const art = (
     <Svg width={size} height={size} viewBox="0 0 200 200">
       <Ellipse cx={100} cy={182} rx={52} ry={8} fill="#000000" opacity={0.08} />
       {stage === 'evolved' && <EvolvedAura />}
+      {crest?.mode === 'under' && crestLayer === 'behind' && crestArt}
       <PetBody speciesId={speciesId} palette={species.palette} stage={stage} />
+      {crest?.mode === 'under' && crestLayer === 'front' && crestArt}
       <PetFace anatomy={anatomy} mood={mood} stage={stage} expression={expression} cheekColor={species.palette.cheek} />
-      {ACCESSORY_LAYER_ORDER.map((slot) => {
-        const itemId = equipped?.[slot];
-        const resolved = itemId ? resolveAccessoryArt(itemId) : null;
-        if (!resolved) return null;
-        const transform = fitTransform(resolved.fit, speciesId, stage, slotAnchor(slot, anatomy));
-        return (
-          <G key={slot} transform={transform}>
-            {resolved.render(anatomy, resolved.palette)}
+      {layers.map((layer) =>
+        layer ? (
+          <G key={layer.slot} transform={layer.transform}>
+            {layer.resolved.render(anatomy, layer.resolved.palette)}
           </G>
-        );
-      })}
+        ) : null,
+      )}
+      {crest?.mode === 'over' && crestArt}
+      {crest?.mode === 'lift' && crest.opening && (
+        <G transform={head?.transform}>
+          <CrestOpening species={speciesId} x={crest.opening.x} y={crest.opening.y} palette={species.palette} />
+          <G transform={crest.transform}>{crestArt}</G>
+        </G>
+      )}
     </Svg>
   );
   if (!auraItem?.art) return art;
