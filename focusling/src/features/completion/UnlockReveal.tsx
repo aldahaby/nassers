@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getShopItem } from '@/config/shopCatalog';
-import { nextUnlock } from '@/core';
+import { getCollection } from '@/config/collections';
+import { collectionProgress, nextUnlock } from '@/core';
+import { CollectionCompleteCard } from '@/features/style/CollectionCompleteCard';
 import { cosmeticName, describeEarned, describeProgress, describeUnlock } from '@/features/wardrobe/cosmeticCopy';
 import { useGameStore } from '@/state';
 import { Button, ItemArt, TabIcon, colors, motion, radius, spacing, typography, useNativeDriver } from '@/ui';
@@ -18,6 +20,9 @@ interface Props {
   onWear: () => void;
   /** Show the "next up" line (completed sessions only). */
   showNext: boolean;
+  /** Collections this session completed (shown after new items). */
+  completedCollections?: string[];
+  onTryReaction?: (reactionId: string) => void;
 }
 
 /**
@@ -25,7 +30,7 @@ interface Props {
  * earned, and offers "Wear it" or "Later". Quick and skippable (it's just a card
  * in the summary); Reduce Motion gets a fade.
  */
-export function UnlockReveal({ unlocked, petName, delay, reducedMotion, onWear, showNext }: Props) {
+export function UnlockReveal({ unlocked, petName, delay, reducedMotion, onWear, showNext, completedCollections = [], onTryReaction }: Props) {
   const save = useGameStore((s) => s.save);
   const equipped = useGameStore((s) => s.save?.inventory.equipped);
   const { equip, markItemsSeen } = useGameStore.getState();
@@ -45,6 +50,8 @@ export function UnlockReveal({ unlocked, petName, delay, reducedMotion, onWear, 
   }, [delay, pop, reducedMotion, sparkle]);
 
   const next = save && showNext ? nextUnlock(save) : null;
+  const nextCollection = next?.item.collection ? getCollection(next.item.collection) : undefined;
+  const nextProgress = save && nextCollection ? collectionProgress(save, nextCollection.id) : null;
   const items = unlocked.map((id) => getShopItem(id)).filter((i) => i !== undefined);
 
   const wear = (id: string) => {
@@ -121,6 +128,9 @@ export function UnlockReveal({ unlocked, petName, delay, reducedMotion, onWear, 
           )}
         </Animated.View>
       )}
+      {completedCollections.map((id) => (
+        <CollectionCompleteCard key={id} collectionId={id} onTryReaction={(r) => onTryReaction?.(r)} onWearLook={onWear} />
+      ))}
       {next?.item.unlock && (
         <View style={styles.next} accessible accessibilityLabel={`Next: ${cosmeticName(next.item)}. ${describeUnlock(next.item.unlock)}, ${describeProgress(next.item.unlock, next.progress)}.`}>
           <View style={styles.nextArt}>
@@ -128,6 +138,7 @@ export function UnlockReveal({ unlocked, petName, delay, reducedMotion, onWear, 
           </View>
           <Text style={styles.nextText}>
             Next: <Text style={styles.nextName}>{cosmeticName(next.item)}</Text>
+            {nextCollection ? ` · ${nextCollection.name} ${nextProgress!.owned}/${nextProgress!.total}` : ''}
             {'\n'}
             {describeUnlock(next.item.unlock)} · {describeProgress(next.item.unlock, next.progress)}
           </Text>

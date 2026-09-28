@@ -1,5 +1,7 @@
 import type { Id, Timestamp } from './common';
+import type { GrowthStage, PetSpeciesId } from './pet';
 import type { GameSave } from './save';
+import type { ReactionId } from './style';
 
 export type ShopCategory = 'toy' | 'accessory' | 'food' | 'decoration';
 
@@ -43,6 +45,21 @@ export interface ItemPalette {
   opacity?: number;
 }
 
+/**
+ * A fit adjustment for one species and/or growth stage, applied around the
+ * item's slot anchor. Most items need none: anchors handle every species.
+ */
+export interface ItemFit {
+  species?: PetSpeciesId;
+  stage?: GrowthStage;
+  /** Pet-space units (the pet is drawn in a 200×200 box). */
+  dx?: number;
+  dy?: number;
+  scale?: number;
+  /** Degrees. */
+  rotate?: number;
+}
+
 /** Where an item's artwork came from, and whether it is final. */
 export interface ItemCredit {
   designer: string;
@@ -79,8 +96,13 @@ export interface ShopItem {
   unlock?: UnlockRule;
   /** Collection id (see `config/cosmetics.ts`). */
   collection?: string;
-  /** Shared artwork key (defaults to the item id) and its colourway. */
-  art?: { key: string; palette?: ItemPalette };
+  /** Shared artwork key (defaults to the item id), its colourway and optional fit overrides. */
+  art?: { key: string; palette?: ItemPalette; fit?: ItemFit[] };
+  /**
+   * Wearable slots this item can't be worn with (e.g. a long scarf covers where a
+   * charm hangs). Equipping either side quietly takes the other off.
+   */
+  excludes?: AccessorySlot[];
   /** Colourway name shown after the item name, e.g. "Frost". */
   colorway?: string;
   credit?: ItemCredit;
@@ -89,6 +111,8 @@ export interface ShopItem {
 /** A saved outfit: what goes in each wearable slot. */
 export interface SavedLook {
   id: Id;
+  /** Player-chosen name; defaults to "Look 1" etc. */
+  name?: string;
   equipped: Partial<Record<AccessorySlot, Id>>;
   savedAt: Timestamp;
 }
@@ -99,6 +123,13 @@ export interface CosmeticsState {
   newItemIds: Id[];
   /** Up to `COSMETICS.maxLooks` saved outfits; `null` = empty slot. */
   looks: (SavedLook | null)[];
+  /** Collections whose completion has been recorded (and rewarded) once. */
+  completedCollections: string[];
+  reactions: {
+    unlocked: ReactionId[];
+    /** The favourite the pet uses on its own (tap, session end, completion). */
+    equipped: ReactionId | null;
+  };
 }
 
 /** An owned item. */

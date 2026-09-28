@@ -9,7 +9,7 @@ type Art = (a: PetAnatomy, p: ItemPalette) => ReactElement;
 export const sparklePath = (x: number, y: number, s: number) =>
   `M${x} ${y - s} Q${x + s * 0.18} ${y - s * 0.18} ${x + s} ${y} Q${x + s * 0.18} ${y + s * 0.18} ${x} ${y + s} Q${x - s * 0.18} ${y + s * 0.18} ${x - s} ${y} Q${x - s * 0.18} ${y - s * 0.18} ${x} ${y - s} Z`;
 
-const starPath = (x: number, y: number, r: number) => {
+export const starPath = (x: number, y: number, r: number) => {
   const pts: string[] = [];
   for (let i = 0; i < 10; i += 1) {
     const a = (Math.PI / 5) * i - Math.PI / 2;
@@ -19,10 +19,10 @@ const starPath = (x: number, y: number, r: number) => {
   return `M${pts.join(' L')} Z`;
 };
 
-const heartPath = (x: number, y: number, s: number) =>
+export const heartPath = (x: number, y: number, s: number) =>
   `M${x} ${y + s * 0.9} C${x - s * 1.3} ${y - s * 0.1} ${x - s * 0.7} ${y - s * 1.1} ${x} ${y - s * 0.35} C${x + s * 0.7} ${y - s * 1.1} ${x + s * 1.3} ${y - s * 0.1} ${x} ${y + s * 0.9} Z`;
 
-const boltPath = (x: number, y: number, s: number) =>
+export const boltPath = (x: number, y: number, s: number) =>
   `M${x + s * 0.2} ${y - s} L${x - s * 0.6} ${y + s * 0.15} L${x - s * 0.02} ${y + s * 0.15} L${x - s * 0.25} ${y + s} L${x + s * 0.65} ${y - s * 0.2} L${x + s * 0.05} ${y - s * 0.2} Z`;
 
 /** A thin cord that a charm hangs from, so it never floats. */
@@ -30,7 +30,7 @@ function Cord({ neckY, color }: { neckY: number; color: string }) {
   return <Path d={`M76 ${neckY - 4} Q100 ${neckY + 9} 124 ${neckY - 4}`} stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />;
 }
 
-function charm(shape: (x: number, y: number, s: number, p: ItemPalette) => ReactElement): Art {
+export function charm(shape: (x: number, y: number, s: number, p: ItemPalette) => ReactElement): Art {
   return function CharmArt({ neckY }, p) {
     const cx = 100;
     const cy = neckY + 11;

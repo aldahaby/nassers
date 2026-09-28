@@ -86,6 +86,10 @@ export interface SessionSummary {
   missionCompletions: MissionCompletion[];
   /** Cosmetics this session unlocked (each granted exactly once). */
   unlockedItems: Id[];
+  /** Collections this session completed (celebrated exactly once). */
+  completedCollections: string[];
+  /** Reactions unlocked by those completions. */
+  unlockedReactions: string[];
 }
 
 /** Live view of the running session, derived from timestamps on every tick. */

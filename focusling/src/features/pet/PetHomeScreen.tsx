@@ -2,8 +2,9 @@ import { router, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { PET_FOCUS_LINES, PET_NEW_ITEM_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
+import { REACTION_TAP_EVERY } from '@/config/reactions';
 import { PET_SPECIES } from '@/config/pets';
-import { getOwnedListings, getStageDefinitionById, type ShopListing } from '@/core';
+import { favoriteReaction, getOwnedListings, getStageDefinitionById, type ShopListing } from '@/core';
 import { usePetSpeech } from '@/features/inventory/usePetSpeech';
 import { MissionCard } from '@/features/missions/MissionCard';
 import { MissionCelebrationCard } from '@/features/missions/MissionCelebrationCard';
@@ -107,11 +108,21 @@ export function PetHomeScreen({ variant }: Props) {
     return () => clearTimeout(timer);
   }, [celebration]);
 
+  // Every few taps (outside focus) the pet performs its favourite reaction.
+  const favorite = useGameStore((s) => (s.save ? favoriteReaction(s.save) : null));
+  const [taps, setTaps] = useState(0);
+  const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
+
   const handleTap = useCallback(() => {
+    if (!activeSession && favorite) {
+      const next = taps + 1;
+      setTaps(next);
+      if (next % REACTION_TAP_EVERY === 0) setPerformance({ reactionId: favorite, key: next });
+    }
     const gained = petPet();
     const line = activeSession ? pickRandom(PET_FOCUS_LINES) : pickRandom(PET_TAP_LINES[mood]);
     say(gained > 0 ? `${line ?? ''}  +${gained} 💖` : (line ?? null));
-  }, [petPet, activeSession, mood, say]);
+  }, [petPet, activeSession, mood, say, favorite, taps]);
 
   if (!view) return null;
   const { pet, progression } = view;
@@ -137,6 +148,7 @@ export function PetHomeScreen({ variant }: Props) {
           onReactionStart={onReactionStart}
           onPress={handleTap}
           cheerKey={cheerKey}
+          performance={activeSession ? null : performance}
           accessibilityLabel={`${pet.name}, ${stageLabel} ${PET_SPECIES[pet.speciesId].name}. Feeling ${mood}.`}
         />
       </RoomScene>

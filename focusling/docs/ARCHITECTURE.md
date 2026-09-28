@@ -361,3 +361,24 @@ Full design: [`COSMETICS.md`](COSMETICS.md). Summary:
   order neck → charm → face → head, with auras on an overlay that animates only when allowed.
 - Motion and success colours are now theme tokens (`motion`, `colors.success*`, `colors.stage`).
 
+
+## 13. Style system (collections, Looks, Reactions)
+
+Full design: [`COSMETICS.md`](COSMETICS.md) §7–15. Summary:
+
+- **Save v6** adds `cosmetics.completedCollections` and `cosmetics.reactions { unlocked, equipped }`;
+  saved Looks gain an optional `name`. Migration 5 keeps every owned/equipped piece and Look.
+- **Data:** `config/collections.ts` (`CosmeticCollection`: identity, palette, badge, `featuredLook`,
+  `reaction`, optional `roomAccent`, `availability`, `origin`), `config/reactions.ts`, items in
+  `config/cosmetics.ts` (`collection`, `excludes`, `art.fit`). Types in `core/models/style.ts`.
+- **Rules:** `core/cosmetics/cosmeticsService.ts` — `processStyleRewards` (unlocks, then one-time
+  collection completion + reaction), `withEquipped` (compatibility), `wearOutfit` /
+  `wearCollectionLook` / personal Looks, `equipReaction`. Runs in `endSession`, after purchases and on
+  launch. Dev helpers in `core/game/debugStyle.ts` (store-refused unless Developer tools are on).
+- **Rendering:** `PetArt` applies per-item fit transforms (`fitTransform` around `slotAnchor`);
+  collection art in `ui/pet/styleArt.tsx`; reactions in `features/pet/reactionPerformer.tsx`,
+  performed through `PetReactionStage` (`performance` prop). Pets on unfocused screens pause their
+  idle loops (`AnimatedPet paused`).
+- **UI:** Wardrobe (`app/wardrobe.tsx`) with `StyleStage` + `StyleTabs`; collection lookbooks at
+  `app/collection/[id].tsx`; `StyleCelebrationModal` for completions outside a session; developer
+  Fit Lab at `app/dev/fit-lab.tsx`.

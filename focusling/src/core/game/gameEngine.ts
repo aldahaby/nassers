@@ -15,7 +15,7 @@ import {
   isSessionDue,
   type FocusError,
 } from '../focus/focusSessionService';
-import { grantUnlocks } from '../cosmetics/cosmeticsService';
+import { processStyleRewards } from '../cosmetics/cosmeticsService';
 import { getEquippedBonuses } from '../inventory/inventoryService';
 import { applyDecay, applyStatDelta, petThePet, sessionStatDelta } from '../pet/petCareService';
 import { diffProgression } from '../progression/progressionService';
@@ -196,11 +196,11 @@ export function endSession(
   const missions = applySessionToMissions(next, finished, now);
   const withMissions = { ...missions.save, missions: pruneMissionProgress(missions.save.missions, now) };
   // Cosmetic unlocks see the same final state (sessions, minutes, missions, stage).
-  const unlocks = grantUnlocks(withMissions, now);
+  const style = processStyleRewards(withMissions, now);
   return ok({
-    save: unlocks.save,
+    save: style.save,
     reward,
-    summary: summarizeSession(save, unlocks.save, reward, getEndsAt(session), now, missions.completions, unlocks.unlocked),
+    summary: summarizeSession(save, style.save, reward, getEndsAt(session), now, missions.completions, style),
   });
 }
 

@@ -99,7 +99,21 @@ logic, local persistence, and a mock Screen Time service.
 - An equip beat (land → hop → sparkle) and twinkling auras, all toned down for Reduce Motion and
   still during focus sessions.
 
+**Style system (collections, Looks, Reactions):** details in `docs/COSMETICS.md` §7–15.
+- Three original collections with their own silhouette language: **Midnight Arcade** (pixel beanie,
+  scanline visor, tech collar, pixel burst), **Dreamwave** (crescent headband, heart shades, pearls,
+  moon charm, dream aura) and **Cloud Racer** (racing cap, aero shades, wind-blown scarf, rosette,
+  speed lines): 21 pieces plus one matching room accent each. Permanent, no FOMO.
+- Collection progress and a one-time completion that unlocks the collection's **Reaction**.
+- Reactions (Wave, Happy Hop, Sleepy, Cool Pose, Star Twirl, Pixel Pop, Dream Float, Victory Lap)
+  with a favourite the pet uses after sessions and on the occasional tap, never during focus; each
+  has a Reduce Motion version.
+- Redesigned Wardrobe (Pieces · Looks · Collections · Reactions), collection lookbook pages, curated
+  collection Looks separate from three personal (renameable) Looks, gentle compatibility swaps,
+  species/growth-stage fit overrides, and a developer Fit Lab.
+- Home: Wardrobe is the primary customisation action; Items and Shop are compact secondary buttons.
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,
-`shopCatalog.ts`, `cosmetics.ts`, `missions.ts`, `play.ts`, `family.ts`.
+`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`.

@@ -133,3 +133,155 @@ All accessory art, including the classic items, is **v1 in-house SVG drawn in co
 (`credit.art: 'v1'`). It matches the pet's own vector style and ships fine, but the research's art
 prompts (cute-streetwear capsule, gummy materials) are written for an illustrator pass. Replacing
 art keeps the same art keys and anatomy anchors, so no logic changes.
+
+---
+
+# Style System (collections, Looks, Reactions)
+
+Milestone goal: two people can own the same Cloudling and make their Focuslings feel completely
+different, visually and behaviourally. **Design rule: even fully customised, the pet must be
+instantly recognisable as a Focusling** (eyes, face, silhouette, expressions stay readable).
+
+## 7. Collections
+
+A collection is a small, art-directed drop with its own silhouette language, a curated Look and
+one completion Reaction. Definitions: `config/collections.ts` (`CosmeticCollection`, types in
+`core/models/style.ts`). Membership is declared on each item (`collection: 'midnight-arcade'` in
+`config/cosmetics.ts`); `collectionItemIds()` derives the member list, and a test checks every item
+points at a registered collection.
+
+| Collection | Line | Silhouette language | Look | Reaction |
+|---|---|---|---|---|
+| Focus Club | *Where every Focusling starts.* | soft, gummy, cute streetwear | Cloud Cap · Plum, Gummy Visor · Frost, Mood Charm · Star, Sparkle Aura | Star Twirl |
+| Midnight Arcade | *Focus after dark.* | angular, pixel-stepped, glowing dots (plum, navy, violet, icy cyan) | Pixel Beanie, Scanline Visor, Tech Collar, Pixel Burst | Pixel Pop |
+| Dreamwave | *Soft colours, big dreams.* | round, glossy, bobbing celestial shapes (lavender, pink, pearl, baby blue) | Crescent Headband, Heart Shades, Moon Charm, Dream Aura | Dream Float |
+| Cloud Racer | *Built for the long run.* | sleek, swept, checkered, wind-blown (cream, racing red, cobalt, charcoal) | Racing Cap, Aero Shades, Racing Scarf, Speed Lines | Victory Lap |
+
+**Pieces and how they're earned** (all visible in the Wardrobe; nothing random, nothing expires):
+
+| Midnight Arcade | | Dreamwave | | Cloud Racer | |
+|---|---|---|---|---|---|
+| Pixel Beanie (head) | 5 sessions | Heart Shades · Pink (face) | 8 sessions | Racing Cap · Cream (head) | 12 sessions |
+| Scanline Visor · Ice (face) | 3 h focus | Moon Charm (charm) | 4 h focus | Aero Shades (face) | 6 h focus |
+| D-Pad Charm (charm) | 3 missions | Crescent Headband (head) | 7 missions | Racing Scarf (neck) | 10 missions |
+| Tech Collar (neck) | 5-day streak | Dream Aura (aura) | 7-day streak | Winner’s Rosette (charm) | 25 sessions |
+| Pixel Burst (aura) | 8 h focus | Cloud Beret (head) | grown up (Adult) | Speed Lines (aura) | 15 h focus |
+| Arcade Headset (head) | 60 coins | Pearl Collar (neck) | 45 coins | Racer Goggles (head) | 70 coins |
+| Scanline Visor · Neon (face) | 40 coins | Heart Shades · Baby Blue (face) | 40 coins | Racing Cap · Cobalt (head) | 45 coins |
+
+Streak pieces use the **best** streak ever reached, so a broken streak never takes progress away.
+Focus-minute pieces count actual focused minutes, including sessions ended early; session pieces
+count only completed sessions (both tested).
+
+**Room accents** (one lightweight piece each, Shop decorations, not part of completion): Pixel Lamp,
+Moon Lamp, Racing Pennant. A collection references its accent via `roomAccent`.
+
+**Progress and completion.** `collectionProgress()` → owned / total (room accents excluded).
+`checkCollections()` records a completion **once** in `cosmetics.completedCollections` and unlocks
+the collection's Reaction. It runs after sessions (in `endSession`), after purchases (buying the last
+coin piece), and on launch. Completion awards no currency, no stats: only the Reaction.
+
+### Creating a collection
+
+1. Register it in `COLLECTION_LIST` (id, name, one-line tagline, description, palette, badge key,
+   `featuredLook`, `reaction`, optional `roomAccent`, `availability: { kind: 'permanent' }`,
+   `origin: { kind: 'first-party', designer }`).
+2. Add its pieces to `config/cosmetics.ts` with `collection: '<id>'` (and add the array to
+   `COLLECTION_ITEMS`).
+3. Draw new silhouettes in `ui/pet/styleArt.tsx` (+ icon crops), auras in `ui/pet/auras.tsx`, the badge
+   in `ui/style/CollectionBadge.tsx`.
+4. Register its Reaction in `config/reactions.ts` (`unlock: { kind: 'collection', collectionId }`) and,
+   if it's a new style, render it in `features/pet/reactionPerformer.tsx`.
+5. Check it in the Fit Lab (Developer tools → Open Fit Lab): every species × stage.
+
+The registry tests (`core/__tests__/style.test.ts`, `ui/__tests__/artRegistry.test.ts`) catch missing
+drawings, icons, badges, palettes, credit, invalid fit data, Looks using pieces from another
+collection or the wrong slot, and reactions that don't point back at their collection.
+
+## 8. Looks
+
+- **Collection Looks** are data (`featuredLook`). "Wear look" sets the wearable slots to exactly the
+  Look's owned pieces (`wearCollectionLook`). If pieces are missing you can **Try on** the Look for free.
+  They never use a personal slot.
+- **My Looks** are three personal slots (`cosmetics.looks`): save the current outfit, wear, replace,
+  rename (≤ 20 chars) or delete. Wearing a Look skips unknown, legacy or unowned ids gracefully.
+- After wearing any Look, individual pieces can still be changed.
+
+## 9. Compatibility
+
+Most slots stack. An item can list wearable slots it **excludes**: equipping either side quietly
+takes the other off (`withEquipped` in `cosmeticsService`). The Wardrobe says so gently ("Swapped out
+the Winner’s Rosette so it fits."). No warnings, no constraint engine. Current rule: the Racing Scarf's
+knot sits where a charm hangs, so the scarf excludes `charm`. One item per slot already prevents two
+hats or two pairs of glasses.
+
+**Visibility audit.** Face items are translucent (lens opacity 0.5–0.78; the registry test enforces a
+minimum of 0.45 so lenses stay visible) so eyes always read through; the classic Cool Shades lenses were made translucent too. Auras
+sit outside the face and were shrunk so they support the pet instead of competing with it. The
+Racer Goggles sit up on the forehead, leaving the eyes clear. Hats cover the Sproutling sprout and
+Emberling flame, the way hats do; the body colour, silhouette, wings and tail stay visible.
+
+## 10. Fit overrides (species × growth stage)
+
+Every drawing is placed from `ANATOMY[species]` anchors, so most pieces need nothing. An item may add
+`art.fit: ItemFit[]` entries `{ species?, stage?, dx?, dy?, scale?, rotate? }`. Matching entries are
+combined (most specific last) into one transform around the slot anchor (`fitTransform`,
+`slotAnchor` in `ui/pet/accessories.tsx`). Current overrides: eyewear opens up at the **Baby** stage
+(babies have ~1.18× eyes): Scanline Visor and Aero Shades ×1.08, Heart Shades ×1.12. Overrides are
+limited to ±12 units and 0.8–1.25× by test.
+
+## 11. Reactions
+
+Short pet behaviours (1–3 s), not clothing: `config/reactions.ts`. Starter: **Wave, Happy Hop,
+Sleepy, Cool Pose**. Collection: **Star Twirl, Pixel Pop, Dream Float, Victory Lap**.
+
+- **State:** `cosmetics.reactions.unlocked` and `equipped` (the favourite; defaults to Happy Hop).
+  Locked reactions can be **previewed** but never equipped (`equipReaction` → `locked`).
+- **Rendering:** `features/pet/reactionPerformer.tsx`. Each style drives the pet's body (translate,
+  rotate, scale), sets a face (delighted, sleepy, wink) and draws one small effect (wave marks, z's,
+  a glint, stars, chunky pixels, pastel stars, speed lines). Every animation is a finite timing that
+  ends by itself.
+- **Reduce Motion:** same face and same effect, faded in place, with at most a 4% scale pulse; no
+  travel, spin or hop. Personality stays, movement goes.
+- **When it plays:** after a session ends (once), every 4th tap on the pet (`REACTION_TAP_EVERY`), on
+  preview in the Wardrobe or a collection page, and from "Try reaction" on a completion.
+  **Never during an active focus session**: the focus screen doesn't render reactions and taps during
+  a session don't trigger them.
+
+## 12. Wardrobe and completion UX
+
+- Wardrobe: large pet on a spotlight (tinted with a collection's colour when you wear or try on its
+  Look) → segmented **Pieces · Looks · Collections · Reactions** → slot chips (horizontal scroll) →
+  pieces grouped by collection with badge and x / y progress.
+- Collection page (`/collection/[id]`): badge, line, the pet in the curated Look (toggle to your own
+  outfit), progress, "Wear the look", the Reaction with Preview, every piece and how it's earned,
+  the room accent.
+- Completion: in the session summary, after new pieces, a single **"{COLLECTION} COMPLETE"** card
+  ("You collected the full … look. Unlocked: … reaction" · Try reaction · Wear the look), then one
+  "Next" line. Outside a session (buying the last piece) the same card appears in a calm sheet.
+
+## 13. Art and IP rules
+
+- Everything is **original Focusling IP**, drawn in-house as code vectors (`credit.rights: 'original'`,
+  `art: 'v1'`). No logos, real teams, brands, liveries, characters, celebrities or traced outfits;
+  broad archetypes only (arcade, celestial soft-pop, motorsport-inspired).
+- The Winner’s Rosette has no numbers; the Racing Cap's patch is an original winged cloud.
+- Any future non-original asset needs a documented licence before it ships.
+
+## 14. Future collaborations (boundary only, nothing built)
+
+`CosmeticCollection.origin` and `availability` are unions so a licensed collection can be added
+without changing first-party ones. A licensed collection would add:
+`origin: { kind: 'licensed', partner, attribution, licenceRef, territories, validFrom, validTo, postTermUse }`
+and possibly `availability: { kind: 'window', from, to, returns }`. Rules to keep: items obtained
+during the licence stay usable after it ends (`postTermUse`), attribution shows on the collection
+page, Child View never shows purchase prompts, and nothing time-limited ships without a separate
+product decision (Family Mode audiences).
+
+## 15. Ethical design
+
+- No random drops, loot boxes, gacha or hidden odds; every piece shows exactly how it's earned.
+- No rarity tiers; desire comes from collection identity ("the Midnight Arcade visor"), not colour codes.
+- No paid random rewards, no real money anywhere; coin pieces use coins earned by focusing.
+- No temporary FOMO: all current collections are permanent; no countdowns, rotations or scarcity.
+- Cosmetics are stat-neutral; completion rewards are Reactions (personality), not economy.

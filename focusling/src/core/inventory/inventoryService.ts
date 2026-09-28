@@ -1,4 +1,5 @@
 import { SHOP_ITEMS, getShopItem } from '@/config/shopCatalog';
+import { withEquipped } from '../cosmetics/cosmeticsService';
 import { combinePassiveBonuses } from '../economy/economyService';
 import { applyStatDelta } from '../pet/petCareService';
 import { MINUTE_MS } from '../shared/dates';
@@ -121,10 +122,8 @@ export function equipItem(save: GameSave, itemId: string): Result<GameSave, Inve
   if (!item) return fail('unknown-item');
   if (!item.equipSlot) return fail('not-equippable');
   if (!isOwned(save.inventory, itemId)) return fail('not-owned');
-  return ok({
-    ...save,
-    inventory: { ...save.inventory, equipped: { ...save.inventory.equipped, [item.equipSlot]: itemId } },
-  });
+  // Pieces that can't be worn together are swapped out quietly.
+  return ok({ ...save, inventory: { ...save.inventory, equipped: withEquipped(save.inventory.equipped, itemId) } });
 }
 
 export function unequipSlot(save: GameSave, slot: EquipSlot): GameSave {

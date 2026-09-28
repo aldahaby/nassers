@@ -4,7 +4,7 @@ import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
 import { PET_SPECIES } from '@/config/pets';
 import type { EquipSlot, GrowthStage, PetMood, PetSpeciesId } from '@/core';
 import { getShopItem } from '@/config/shopCatalog';
-import { ACCESSORY_LAYER_ORDER, resolveAccessoryArt } from './accessories';
+import { ACCESSORY_LAYER_ORDER, fitTransform, resolveAccessoryArt, slotAnchor } from './accessories';
 import { AuraLayer } from './auras';
 import { ANATOMY } from './anatomy';
 import { PetBody } from './PetBody';
@@ -47,7 +47,13 @@ export const PetArt = memo(function PetArt({
       {ACCESSORY_LAYER_ORDER.map((slot) => {
         const itemId = equipped?.[slot];
         const resolved = itemId ? resolveAccessoryArt(itemId) : null;
-        return resolved ? <G key={slot}>{resolved.render(anatomy, resolved.palette)}</G> : null;
+        if (!resolved) return null;
+        const transform = fitTransform(resolved.fit, speciesId, stage, slotAnchor(slot, anatomy));
+        return (
+          <G key={slot} transform={transform}>
+            {resolved.render(anatomy, resolved.palette)}
+          </G>
+        );
       })}
     </Svg>
   );

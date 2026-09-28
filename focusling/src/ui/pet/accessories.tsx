@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react';
 import { Circle, G, Path, Rect } from 'react-native-svg';
 import { getShopItem } from '@/config/shopCatalog';
-import type { AccessorySlot, ItemPalette } from '@/core';
+import type { AccessorySlot, GrowthStage, ItemFit, ItemPalette, PetSpeciesId } from '@/core';
 import type { PetAnatomy } from './anatomy';
 import { FOCUS_CLUB_ART, FOCUS_CLUB_ICON_VIEWBOX } from './focusClubArt';
+import { STYLE_ART, STYLE_ICON_VIEWBOX } from './styleArt';
 
 export type AccessoryArt = (a: PetAnatomy, palette: ItemPalette) => ReactElement;
 
@@ -27,8 +28,11 @@ const CLASSIC_ART: Record<string, AccessoryArt> = {
   'acc-sunglasses': ({ eyeY, eyeDx }) => (
     <G>
       <Path d={`M${100 - eyeDx - 13} ${eyeY - 6} L${100 + eyeDx + 13} ${eyeY - 6}`} stroke="#241B35" strokeWidth={3.5} strokeLinecap="round" />
-      <Rect x={100 - eyeDx - 14} y={eyeY - 9} width={28} height={20} rx={8} fill="#241B35" />
-      <Rect x={100 + eyeDx - 14} y={eyeY - 9} width={28} height={20} rx={8} fill="#241B35" />
+      {/* Dark tint, not opaque: the eyes still read through (character visibility rule). */}
+      <Rect x={100 - eyeDx - 14} y={eyeY - 9} width={28} height={20} rx={8} fill="#241B35" opacity={0.72} />
+      <Rect x={100 + eyeDx - 14} y={eyeY - 9} width={28} height={20} rx={8} fill="#241B35" opacity={0.72} />
+      <Rect x={100 - eyeDx - 14} y={eyeY - 9} width={28} height={20} rx={8} fill="none" stroke="#241B35" strokeWidth={2.5} />
+      <Rect x={100 + eyeDx - 14} y={eyeY - 9} width={28} height={20} rx={8} fill="none" stroke="#241B35" strokeWidth={2.5} />
       <Path d={`M${100 - eyeDx - 8} ${eyeY - 3} L${100 - eyeDx - 2} ${eyeY - 5}`} stroke="#8F7BFF" strokeWidth={3} strokeLinecap="round" />
       <Path d={`M${100 + eyeDx - 8} ${eyeY - 3} L${100 + eyeDx - 2} ${eyeY - 5}`} stroke="#8F7BFF" strokeWidth={3} strokeLinecap="round" />
     </G>
@@ -103,7 +107,7 @@ const CLASSIC_ART: Record<string, AccessoryArt> = {
   ),
 };
 
-export const ACCESSORY_ART: Record<string, AccessoryArt> = { ...CLASSIC_ART, ...FOCUS_CLUB_ART };
+export const ACCESSORY_ART: Record<string, AccessoryArt> = { ...CLASSIC_ART, ...FOCUS_CLUB_ART, ...STYLE_ART };
 
 /**
  * Draw order inside the pet: lower layers first, so a charm hangs over a collar
@@ -112,11 +116,47 @@ export const ACCESSORY_ART: Record<string, AccessoryArt> = { ...CLASSIC_ART, ...
 export const ACCESSORY_LAYER_ORDER: readonly Exclude<AccessorySlot, 'aura'>[] = ['neck', 'charm', 'face', 'head'];
 
 /** The drawing and palette for an item id, or null if it has no worn art. */
-export function resolveAccessoryArt(itemId: string): { render: AccessoryArt; palette: ItemPalette; key: string } | null {
+export function resolveAccessoryArt(itemId: string): { render: AccessoryArt; palette: ItemPalette; key: string; fit: ItemFit[] } | null {
   const item = getShopItem(itemId);
   const key = item?.art?.key ?? itemId;
   const render = ACCESSORY_ART[key];
-  return render ? { render, palette: item?.art?.palette ?? NEUTRAL, key } : null;
+  return render ? { render, palette: item?.art?.palette ?? NEUTRAL, key, fit: item?.art?.fit ?? [] } : null;
+}
+
+/** Where each wearable slot pivots for fit adjustments (pet space). */
+export function slotAnchor(slot: Exclude<AccessorySlot, 'aura'>, a: PetAnatomy): { x: number; y: number } {
+  switch (slot) {
+    case 'head':
+      return { x: 100, y: a.headTop + 10 };
+    case 'face':
+      return { x: 100, y: a.eyeY };
+    case 'neck':
+      return { x: 100, y: a.neckY };
+    case 'charm':
+      return { x: 100, y: a.neckY + 11 };
+  }
+}
+
+/**
+ * Combine the fit overrides that match this species and stage (most specific
+ * last) into one SVG transform around the slot anchor. Empty when none apply.
+ */
+export function fitTransform(fit: readonly ItemFit[], species: PetSpeciesId, stage: GrowthStage, anchor: { x: number; y: number }): string | undefined {
+  const matching = fit.filter((f) => (!f.species || f.species === species) && (!f.stage || f.stage === stage));
+  if (matching.length === 0) return undefined;
+  const sorted = [...matching].sort((a, b) => Number(!!a.species) + Number(!!a.stage) - (Number(!!b.species) + Number(!!b.stage)));
+  let dx = 0;
+  let dy = 0;
+  let scale = 1;
+  let rotate = 0;
+  for (const f of sorted) {
+    dx += f.dx ?? 0;
+    dy += f.dy ?? 0;
+    scale *= f.scale ?? 1;
+    rotate += f.rotate ?? 0;
+  }
+  const { x, y } = anchor;
+  return `translate(${dx} ${dy}) translate(${x} ${y}) rotate(${rotate}) scale(${scale}) translate(${-x} ${-y})`;
 }
 
 /**
@@ -125,6 +165,7 @@ export function resolveAccessoryArt(itemId: string): { render: AccessoryArt; pal
  */
 export const ACCESSORY_ICON_VIEWBOX: Record<string, string> = {
   ...FOCUS_CLUB_ICON_VIEWBOX,
+  ...STYLE_ICON_VIEWBOX,
   'acc-cap': '54 50 116 52',
   'acc-sunglasses': '62 90 76 42',
   'acc-headphones': '28 42 144 90',

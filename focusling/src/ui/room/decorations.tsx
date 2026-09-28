@@ -9,6 +9,9 @@ export const DECORATION_ICON_VIEWBOX: Record<string, string> = {
   'decor-beanbag': '250 168 104 82',
   'decor-cozy-rug': '62 238 236 52',
   'decor-aquarium': '14 150 106 100',
+  'ma-room-lamp': '30 128 70 112',
+  'dw-room-lamp': '268 120 76 120',
+  'cr-room-pennant': '220 24 116 72',
 };
 
 /**
@@ -16,6 +19,44 @@ export const DECORATION_ICON_VIEWBOX: Record<string, string> = {
  * each piece positions itself for its slot.
  */
 export const DECORATION_ART: Record<string, () => ReactElement> = {
+  // Collection room accents (v1, in-house). One per collection, kept small.
+  'ma-room-lamp': () => (
+    <G>
+      <Circle cx={64} cy={160} r={34} fill="#5CF0FF" opacity={0.18} />
+      {/* A stack of chunky pixels on a little stand. */}
+      {[
+        [52, 142, '#8B5CFF'], [64, 142, '#5CF0FF'], [76, 142, '#8B5CFF'],
+        [52, 154, '#5CF0FF'], [64, 154, '#FF4FD8'], [76, 154, '#5CF0FF'],
+        [52, 166, '#8B5CFF'], [64, 166, '#5CF0FF'], [76, 166, '#8B5CFF'],
+      ].map(([x, y, c]) => (
+        <Rect key={`${x}-${y}`} x={x as number} y={y as number} width={12} height={12} fill={c as string} />
+      ))}
+      <Rect x={50} y={140} width={40} height={40} fill="none" stroke="#1C2143" strokeWidth={3} />
+      <Rect x={66} y={180} width={8} height={48} fill="#1C2143" />
+      <Rect x={50} y={226} width={40} height={10} rx={3} fill="#1C2143" />
+    </G>
+  ),
+  'dw-room-lamp': () => (
+    <G>
+      <Circle cx={306} cy={156} r={38} fill="#CDB8FF" opacity={0.25} />
+      <Path d="M316 128 A30 30 0 1 0 316 188 A24 24 0 1 1 316 128 Z" fill="#FFF1C9" stroke="#9C82E8" strokeWidth={3} strokeLinejoin="round" />
+      <Circle cx={324} cy={150} r={3} fill="#FFC4E1" />
+      <Circle cx={330} cy={166} r={2} fill="#BDE4FF" />
+      <Rect x={300} y={186} width={8} height={40} rx={3} fill="#9C82E8" />
+      <Ellipse cx={304} cy={230} rx={22} ry={6} fill="#CDB8FF" />
+    </G>
+  ),
+  'cr-room-pennant': () => (
+    <G>
+      <Path d="M232 36 L324 50 L232 84 Z" fill="#FFF3DC" stroke="#2A2A33" strokeWidth={2.5} strokeLinejoin="round" />
+      {[0, 1, 2, 3].map((i) => (
+        <Rect key={i} x={234 + (i % 2) * 8} y={42 + i * 8} width={8} height={8} fill="#2A2A33" />
+      ))}
+      <Path d="M258 60 C258 52 268 50 272 56 C276 50 286 52 286 60 Z" fill="#E5402B" />
+      <Path d="M288 56 L300 52 M288 60 L302 60" stroke="#2E5BD6" strokeWidth={2.5} strokeLinecap="round" />
+      <Rect x={228} y={30} width={5} height={60} rx={2} fill="#2A2A33" />
+    </G>
+  ),
   'decor-star-garland': () => (
     <G>
       <Path d="M20 34 Q100 70 180 38 Q260 70 340 34" stroke="#C9A27A" strokeWidth={2} fill="none" />

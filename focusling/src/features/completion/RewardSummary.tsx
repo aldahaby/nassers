@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { EquipSlot, GrowthStage, PetSpeciesId, SessionSummary } from '@/core';
-import { AnimatedPet, Button, Card, Confetti, CountUpText, Screen, colors, radius, spacing, typography, useNativeDriver } from '@/ui';
+import { Button, Card, Confetti, CountUpText, Screen, colors, radius, spacing, typography, useNativeDriver } from '@/ui';
+import { favoriteReaction } from '@/core';
+import { PetReactionStage } from '@/features/pet/PetReactionStage';
+import { useGameStore } from '@/state';
 import { UnlockReveal } from './UnlockReveal';
 import { XpGainBar } from './XpGainBar';
 
@@ -39,24 +42,33 @@ export function RewardSummary({ summary, pet, continueLabel, onContinue, reduced
   ];
   const countStart = ROW_START_MS + rows.length * ROW_STAGGER_MS;
 
-  // The pet hops a few times on arrival, then settles.
+  // The pet hops on arrival, then performs its favourite reaction once.
   const [cheerKey, setCheerKey] = useState(0);
+  const favorite = useGameStore((s) => (s.save ? favoriteReaction(s.save) : null));
+  const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
   useEffect(() => {
-    if (!completed || reducedMotion) return;
-    const timers = [300, 1500, 2700].map((ms, i) => setTimeout(() => setCheerKey(i + 1), ms));
+    if (!completed) return;
+    const timers = reducedMotion ? [] : [300, 1300].map((ms, i) => setTimeout(() => setCheerKey(i + 1), ms));
+    if (favorite) timers.push(setTimeout(() => setPerformance({ reactionId: favorite, key: 1 }), reducedMotion ? 600 : 2400));
     return () => timers.forEach(clearTimeout);
+    // Only on arrival: the favourite chosen when the screen opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completed, reducedMotion]);
+  const tryReaction = (reactionId: string) => setPerformance((p) => ({ reactionId, key: (p?.key ?? 0) + 1 }));
 
   return (
     <View style={styles.flex}>
       <Screen scroll contentStyle={styles.content}>
-        <AnimatedPet
+        <PetReactionStage
           speciesId={pet.speciesId}
           stage={pet.stage}
           mood={completed ? 'joyful' : 'content'}
           equipped={pet.equipped}
           size={Math.min(170, width * 0.42)}
+          reaction={null}
+          onReactionStart={() => {}}
           cheerKey={cheerKey}
+          performance={performance}
           accessibilityLabel={`${pet.name}`}
         />
         <View style={styles.heading}>
@@ -91,6 +103,8 @@ export function RewardSummary({ summary, pet, continueLabel, onContinue, reduced
           delay={countStart}
           reducedMotion={reducedMotion}
           onWear={() => setCheerKey((k) => k + 1)}
+          onTryReaction={tryReaction}
+          completedCollections={summary.completedCollections}
           showNext={completed}
         />
 

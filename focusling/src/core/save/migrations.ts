@@ -78,6 +78,24 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
       schemaVersion: 5,
     };
   },
+  // v5 → v6: style system. Records collection completions and reactions (starter
+  // reactions for everyone; favourite = Happy Hop). Owned/equipped cosmetics and
+  // saved Looks are untouched. Completions already earned are recorded on load
+  // by checkCollections.
+  5: (save) => {
+    const cosmetics = (save.cosmetics ?? {}) as RawRecord;
+    return {
+      ...save,
+      cosmetics: {
+        newItemIds: [],
+        looks: [null, null, null],
+        ...cosmetics,
+        completedCollections: [],
+        reactions: { unlocked: ['wave', 'happy-hop', 'sleepy', 'cool-pose'], equipped: 'happy-hop' },
+      },
+      schemaVersion: 6,
+    };
+  },
 };
 
 export class SaveMigrationError extends Error {}

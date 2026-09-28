@@ -9,7 +9,7 @@ import type { MissionState } from './missions';
 import type { PlayStats } from './play';
 import type { DailyStats, LifetimeStats, StreakState } from './stats';
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export interface Wallet {
   coins: number;

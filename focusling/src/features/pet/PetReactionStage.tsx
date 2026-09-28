@@ -6,6 +6,7 @@ import { getShopItem, type ToyPlayStyle } from '@/config/shopCatalog';
 import type { EquipSlot, GrowthStage, PetMood, PetSpeciesId } from '@/core';
 import type { PetReaction } from '@/state';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { ReactionEffect, useReactionPerformer } from './reactionPerformer';
 import { AnimatedPet, ItemArt, colors, useNativeDriver } from '@/ui';
 
 interface Props {
@@ -21,6 +22,8 @@ interface Props {
   onPress?: () => void;
   /** Extra hop triggers from the parent (e.g. welcome back). */
   cheerKey?: number;
+  /** Perform a reaction (Wave, Pixel Pop…). Plays whenever `key` changes. Never used during focus. */
+  performance?: { reactionId: string; key: number } | null;
   accessibilityLabel?: string;
 }
 
@@ -53,6 +56,7 @@ export function PetReactionStage({
   onReactionStart,
   onPress,
   cheerKey: parentCheer = 0,
+  performance = null,
   accessibilityLabel,
 }: Props) {
   const focused = useIsFocused();
@@ -66,6 +70,14 @@ export function PetReactionStage({
   const [sparkle] = useState(() => new Animated.Value(0));
   const [land] = useState(() => new Animated.Value(0));
   const reducedMotion = useReducedMotion();
+  const hop = useCallback(() => setCheer((c) => c + 1), []);
+  const performer = useReactionPerformer(size, reducedMotion, hop);
+  const { play: playReaction } = performer;
+  useEffect(() => {
+    if (!performance?.key) return;
+    const timer = setTimeout(() => playReaction(performance.reactionId), 0);
+    return () => clearTimeout(timer);
+  }, [performance?.key, performance?.reactionId, playReaction]);
   const [bubbles] = useState(() => Array.from({ length: 9 }, () => new Animated.Value(0)));
 
   const later = useCallback((ms: number, fn: () => void) => {
@@ -206,7 +218,7 @@ export function PetReactionStage({
         ? 'eating'
         : 'delighted'
       : 'delighted'
-    : expression;
+    : (performer.face ?? expression);
   const propItem = playing && playing.style !== 'show' && playing.style !== 'bubbles' ? playing.reaction.itemId : null;
   const propSize = size * (playing?.style === 'hug' ? 0.46 : playing?.style === 'eat' ? 0.24 : 0.28);
   const landingItem = playing?.style === 'show' ? getShopItem(playing.reaction.itemId) : undefined;
@@ -215,6 +227,7 @@ export function PetReactionStage({
 
   return (
     <View style={{ width: size * 1.1, height: size * 1.1 }}>
+      <Animated.View style={{ transform: performer.transform }}>
       <Animated.View
         style={{
           transform: [
@@ -231,9 +244,14 @@ export function PetReactionStage({
           expression={faceExpression}
           cheerKey={cheer + parentCheer}
           onPress={onPress}
+          paused={!focused}
           accessibilityLabel={accessibilityLabel}
         />
       </Animated.View>
+      </Animated.View>
+      {performer.performing && (
+        <ReactionEffect key={performer.performing.run} performance={performer.performing} fx={performer.fx} size={size} reducedMotion={reducedMotion} />
+      )}
 
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         {propItem && (

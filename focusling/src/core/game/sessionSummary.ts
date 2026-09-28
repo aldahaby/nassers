@@ -40,7 +40,7 @@ export function summarizeSession(
   endsAt: Timestamp,
   now: Timestamp,
   missionCompletions: MissionCompletion[] = [],
-  unlockedItems: Id[] = [],
+  style: { unlocked: Id[]; completedCollections: string[]; unlockedReactions: string[] } = { unlocked: [], completedCollections: [], unlockedReactions: [] },
 ): SessionSummary {
   const session = before.focus.active!;
   const xpBefore = before.pet?.lifetimeXp ?? 0;
@@ -61,6 +61,8 @@ export function summarizeSession(
     celebration: pickCelebration(withProgression(reward, xpBefore, xpAfter), xpBefore, xpAfter),
     completedWhileAway: reward.outcome === 'completed' && now - endsAt >= AWAY_THRESHOLD_MS,
     missionCompletions,
-    unlockedItems,
+    unlockedItems: style.unlocked,
+    completedCollections: style.completedCollections,
+    unlockedReactions: style.unlockedReactions,
   };
 }

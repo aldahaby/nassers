@@ -1,4 +1,4 @@
-import type { ItemCredit, ItemPalette, UnlockRule } from '@/core/models';
+import type { AccessorySlot, ItemCredit, ItemFit, ItemPalette, UnlockRule } from '@/core/models';
 import { ECONOMY } from './economy';
 import type { CatalogItem } from './shopCatalog';
 
@@ -17,20 +17,6 @@ export const COSMETICS = {
   /** Saved outfit slots in the wardrobe. */
   maxLooks: 3,
 } as const;
-
-export interface CollectionDef {
-  id: string;
-  name: string;
-  tagline: string;
-}
-
-export const COLLECTIONS: Record<string, CollectionDef> = {
-  'focus-club': {
-    id: 'focus-club',
-    name: 'Focus Club',
-    tagline: 'Cute streetwear for a cloud that gets things done.',
-  },
-};
 
 /**
  * Colourway palettes. Seasonal references (2026: frosty blue, jade, plum,
@@ -54,12 +40,16 @@ interface CosmeticSpec {
   id: string;
   name: string;
   description: string;
-  slot: 'head' | 'face' | 'neck' | 'charm' | 'aura';
+  slot: AccessorySlot;
   artKey: string;
   palette?: ItemPalette;
   colorway?: string;
   /** Earned milestone, `starter`, or a coin price. */
   obtain: UnlockRule | 'starter' | { price: number };
+  /** Defaults to Focus Club. */
+  collection?: string;
+  fit?: ItemFit[];
+  excludes?: AccessorySlot[];
 }
 
 function cosmetic(spec: CosmeticSpec): CatalogItem {
@@ -78,9 +68,28 @@ function cosmetic(spec: CosmeticSpec): CatalogItem {
     equipSlot: spec.slot,
     source,
     unlock: source === 'earned' ? (obtain as UnlockRule) : undefined,
-    collection: 'focus-club',
-    art: { key: spec.artKey, palette: spec.palette },
+    collection: spec.collection ?? 'focus-club',
+    art: { key: spec.artKey, palette: spec.palette, fit: spec.fit },
     colorway: spec.colorway,
+    excludes: spec.excludes,
+    credit: ORIGINAL_V1,
+  };
+}
+
+/** A matching room accent for a collection: a Shop decoration, not part of completion. */
+function roomAccent(spec: { id: string; name: string; description: string; slot: 'wall' | 'floorLeft' | 'floorRight'; price: number; collection: string }): CatalogItem {
+  return {
+    id: spec.id,
+    name: spec.name,
+    description: spec.description,
+    category: 'decoration',
+    price: Math.max(1, Math.round(spec.price * ECONOMY.priceMultiplier)),
+    icon: '',
+    happinessBonus: 6,
+    healthBonus: 0,
+    consumable: false,
+    equipSlot: spec.slot,
+    collection: spec.collection,
     credit: ORIGINAL_V1,
   };
 }
@@ -228,6 +237,96 @@ export const FOCUS_CLUB_ITEMS: readonly CatalogItem[] = [
     palette: COLORWAYS.lilac,
     obtain: { price: 28 },
   }),
+];
+
+/**
+ * Fit overrides, shared by every colourway of a drawing. Babies have bigger eyes
+ * (PetFace scales them ~1.18×), so eyewear opens up a little at that stage.
+ * Everything else fits from the anatomy anchors alone.
+ */
+const FIT = {
+  babyEyewear: [{ stage: 'baby', scale: 1.08 }],
+  babyHearts: [{ stage: 'baby', scale: 1.12, dy: 1 }],
+} satisfies Record<string, ItemFit[]>;
+
+// ── Midnight Arcade: retro arcade nights × streetwear ─────────────────────────
+
+const MA = {
+  navy: { primary: '#1C2143', secondary: '#8B5CFF', accent: '#5CF0FF' },
+  plum: { primary: '#3B2150', secondary: '#5CF0FF', accent: '#FF4FD8' },
+  cyanGlass: { primary: '#5CF0FF', secondary: '#1C2143', accent: '#FFFFFF', opacity: 0.5 },
+  pinkGlass: { primary: '#FF4FD8', secondary: '#3B2150', accent: '#FFFFFF', opacity: 0.5 },
+  violet: { primary: '#8B5CFF', secondary: '#1C2143', accent: '#5CF0FF' },
+  burst: { primary: '#5CF0FF', secondary: '#8B5CFF', accent: '#FF4FD8' },
+} satisfies Record<string, ItemPalette>;
+
+export const MIDNIGHT_ARCADE_ITEMS: readonly CatalogItem[] = [
+  cosmetic({ id: 'ma-beanie', name: 'Pixel Beanie', description: 'A slouchy beanie with a pixel pom and a glowing trim.', slot: 'head', artKey: 'pixel-beanie', palette: MA.navy, collection: 'midnight-arcade', obtain: { kind: 'sessions', count: 5 } }),
+  cosmetic({ id: 'ma-visor', name: 'Scanline Visor', description: 'An angular glass visor with soft scanlines.', slot: 'face', artKey: 'scanline-visor', fit: FIT.babyEyewear, palette: MA.cyanGlass, colorway: 'Ice', collection: 'midnight-arcade', obtain: { kind: 'focusMinutes', minutes: 180 } }),
+  cosmetic({ id: 'ma-charm', name: 'D-Pad Charm', description: 'A tiny game-pad charm with glowing buttons.', slot: 'charm', artKey: 'dpad-charm', palette: MA.violet, collection: 'midnight-arcade', obtain: { kind: 'missions', count: 3 } }),
+  cosmetic({ id: 'ma-collar', name: 'Tech Collar', description: 'A sleek collar with a row of light-up pixels.', slot: 'neck', artKey: 'tech-collar', palette: MA.navy, collection: 'midnight-arcade', obtain: { kind: 'dayStreak', days: 5 } }),
+  cosmetic({ id: 'ma-aura', name: 'Pixel Burst', description: 'Chunky pixels and plus-signs blinking around.', slot: 'aura', artKey: 'aura-pixel-burst', palette: MA.burst, collection: 'midnight-arcade', obtain: { kind: 'focusMinutes', minutes: 480 } }),
+  cosmetic({ id: 'ma-headset', name: 'Arcade Headset', description: 'Chunky headphones with a little mic, for the high-score run.', slot: 'head', artKey: 'arcade-headset', palette: MA.plum, collection: 'midnight-arcade', obtain: { price: 60 } }),
+  cosmetic({ id: 'ma-visor-pink', name: 'Scanline Visor', description: 'The visor in neon pink.', slot: 'face', artKey: 'scanline-visor', fit: FIT.babyEyewear, palette: MA.pinkGlass, colorway: 'Neon', collection: 'midnight-arcade', obtain: { price: 40 } }),
+];
+
+// ── Dreamwave: dreamy Y2K × celestial soft-pop ────────────────────────────────
+
+const DW = {
+  lilac: { primary: '#CDB8FF', secondary: '#9C82E8', accent: '#FFF6EE' },
+  pearl: { primary: '#FFF6EE', secondary: '#CDB8FF', accent: '#FFC4E1' },
+  pinkGlass: { primary: '#FFB3D6', secondary: '#E07BB0', accent: '#FFFFFF', opacity: 0.62 },
+  blueGlass: { primary: '#A9DAFF', secondary: '#6FA9DE', accent: '#FFFFFF', opacity: 0.62 },
+  moon: { primary: '#FFD867', secondary: '#7E62D6', accent: '#FF9CC8' },
+  dream: { primary: '#CDB8FF', secondary: '#BDE4FF', accent: '#FFC4E1' },
+} satisfies Record<string, ItemPalette>;
+
+export const DREAMWAVE_ITEMS: readonly CatalogItem[] = [
+  cosmetic({ id: 'dw-shades', name: 'Heart Shades', description: 'Glossy heart-shaped glasses. Eyes still show through.', slot: 'face', artKey: 'heart-shades', fit: FIT.babyHearts, palette: DW.pinkGlass, colorway: 'Pink', collection: 'dreamwave', obtain: { kind: 'sessions', count: 8 } }),
+  cosmetic({ id: 'dw-charm', name: 'Moon Charm', description: 'A crescent moon with a little star.', slot: 'charm', artKey: 'moon-charm', palette: DW.moon, collection: 'dreamwave', obtain: { kind: 'focusMinutes', minutes: 240 } }),
+  cosmetic({ id: 'dw-headband', name: 'Crescent Headband', description: 'A headband with a bobbing moon and stars.', slot: 'head', artKey: 'crescent-headband', palette: DW.lilac, collection: 'dreamwave', obtain: { kind: 'missions', count: 7 } }),
+  cosmetic({ id: 'dw-aura', name: 'Dream Aura', description: 'Pastel stars and cloud puffs drifting by.', slot: 'aura', artKey: 'aura-dream', palette: DW.dream, collection: 'dreamwave', obtain: { kind: 'dayStreak', days: 7 } }),
+  cosmetic({ id: 'dw-beret', name: 'Cloud Beret', description: 'A pearly beret, soft as a cloud. Unlocks when your Focusling is grown up.', slot: 'head', artKey: 'cloud-beret', palette: DW.pearl, collection: 'dreamwave', obtain: { kind: 'stage', stage: 'adult' } }),
+  cosmetic({ id: 'dw-pearls', name: 'Pearl Collar', description: 'A string of pearls with a satin bow.', slot: 'neck', artKey: 'pearl-collar', palette: DW.pearl, collection: 'dreamwave', obtain: { price: 45 } }),
+  cosmetic({ id: 'dw-shades-blue', name: 'Heart Shades', description: 'The heart shades in baby blue.', slot: 'face', artKey: 'heart-shades', fit: FIT.babyHearts, palette: DW.blueGlass, colorway: 'Baby Blue', collection: 'dreamwave', obtain: { price: 40 } }),
+];
+
+// ── Cloud Racer: original motorsport style (no real teams, brands or liveries) ─
+
+const CR = {
+  cream: { primary: '#FFF3DC', secondary: '#E5402B', accent: '#2E5BD6' },
+  cobalt: { primary: '#2E5BD6', secondary: '#FFF3DC', accent: '#2A2A33' },
+  goggles: { primary: '#2A2A33', secondary: '#FF8A3D', accent: '#FFF3DC', opacity: 0.7 },
+  aero: { primary: '#FF8A3D', secondary: '#2A2A33', accent: '#FFF3DC', opacity: 0.66 },
+  scarf: { primary: '#E5402B', secondary: '#FFF3DC', accent: '#2A2A33' },
+  rosette: { primary: '#FF8A3D', secondary: '#E5402B', accent: '#FFF3DC' },
+  speed: { primary: '#FFF3DC', secondary: '#FF8A3D', accent: '#2E5BD6' },
+} satisfies Record<string, ItemPalette>;
+
+export const CLOUD_RACER_ITEMS: readonly CatalogItem[] = [
+  cosmetic({ id: 'cr-cap', name: 'Racing Cap', description: 'A cream racing cap with a checker panel and a winged-cloud patch.', slot: 'head', artKey: 'racing-cap', palette: CR.cream, colorway: 'Cream', collection: 'cloud-racer', obtain: { kind: 'sessions', count: 12 } }),
+  cosmetic({ id: 'cr-shades', name: 'Aero Shades', description: 'Wraparound shades with a speed stripe. Tinted, not blacked out.', slot: 'face', artKey: 'aero-shades', fit: FIT.babyEyewear, palette: CR.aero, collection: 'cloud-racer', obtain: { kind: 'focusMinutes', minutes: 360 } }),
+  cosmetic({ id: 'cr-scarf', name: 'Racing Scarf', description: 'A wind-blown scarf with checker ends. Its knot sits where a charm would hang.', slot: 'neck', artKey: 'racing-scarf', palette: CR.scarf, collection: 'cloud-racer', excludes: ['charm'], obtain: { kind: 'missions', count: 10 } }),
+  cosmetic({ id: 'cr-badge', name: 'Winner’s Rosette', description: 'A ribbon rosette with a star. No numbers, just a win.', slot: 'charm', artKey: 'winner-rosette', palette: CR.rosette, collection: 'cloud-racer', obtain: { kind: 'sessions', count: 25 } }),
+  cosmetic({ id: 'cr-aura', name: 'Speed Lines', description: 'Streaks and little dust puffs, like you just pulled in.', slot: 'aura', artKey: 'aura-speed', palette: CR.speed, collection: 'cloud-racer', obtain: { kind: 'focusMinutes', minutes: 900 } }),
+  cosmetic({ id: 'cr-goggles', name: 'Racer Goggles', description: 'Retro goggles pushed up on the head.', slot: 'head', artKey: 'racer-goggles', palette: CR.goggles, collection: 'cloud-racer', obtain: { price: 70 } }),
+  cosmetic({ id: 'cr-cap-cobalt', name: 'Racing Cap', description: 'The racing cap in cobalt.', slot: 'head', artKey: 'racing-cap', palette: CR.cobalt, colorway: 'Cobalt', collection: 'cloud-racer', obtain: { price: 45 } }),
+];
+
+/** One lightweight matching room accent per new collection. */
+export const ROOM_ACCENTS: readonly CatalogItem[] = [
+  roomAccent({ id: 'ma-room-lamp', name: 'Pixel Lamp', description: 'A chunky pixel lamp that glows cyan.', slot: 'floorLeft', price: 60, collection: 'midnight-arcade' }),
+  roomAccent({ id: 'dw-room-lamp', name: 'Moon Lamp', description: 'A crescent-moon night light.', slot: 'floorRight', price: 60, collection: 'dreamwave' }),
+  roomAccent({ id: 'cr-room-pennant', name: 'Racing Pennant', description: 'A checkered pennant with a winged cloud.', slot: 'wall', price: 50, collection: 'cloud-racer' }),
+];
+
+/** Every collection piece, in collection order. */
+export const COLLECTION_ITEMS: readonly CatalogItem[] = [
+  ...FOCUS_CLUB_ITEMS,
+  ...MIDNIGHT_ARCADE_ITEMS,
+  ...DREAMWAVE_ITEMS,
+  ...CLOUD_RACER_ITEMS,
+  ...ROOM_ACCENTS,
 ];
 
 /** Display name with colourway, e.g. "Gummy Visor · Frost". */

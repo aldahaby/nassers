@@ -2,7 +2,7 @@ import { Circle, Ellipse, G, Path } from 'react-native-svg';
 import type { GrowthStage, PetMood } from '@/core';
 import type { PetAnatomy } from './anatomy';
 
-export type FaceExpression = 'auto' | 'blink' | 'delighted' | 'focused' | 'eating';
+export type FaceExpression = 'auto' | 'blink' | 'delighted' | 'focused' | 'eating' | 'sleepy' | 'wink';
 
 interface Props {
   anatomy: PetAnatomy;
@@ -34,6 +34,22 @@ export function PetFace({ anatomy, mood, stage, expression, cheekColor }: Props)
           fill="none"
         />
       ));
+    }
+    if (expression === 'sleepy') {
+      // Peacefully closed, drooping lids.
+      return [leftX, rightX].map((x) => (
+        <Path key={x} d={`M${x - 8} ${eyeY + 1} Q${x} ${eyeY + 7} ${x + 8} ${eyeY + 1}`} stroke={INK} strokeWidth={4} strokeLinecap="round" fill="none" />
+      ));
+    }
+    if (expression === 'wink') {
+      // Left eye winks, right eye open and confident.
+      return [
+        <Path key="l" d={`M${leftX - 8} ${eyeY + 2} Q${leftX} ${eyeY - 6} ${leftX + 8} ${eyeY + 2}`} stroke={INK} strokeWidth={4.5} strokeLinecap="round" fill="none" />,
+        <G key="r">
+          <Ellipse cx={rightX} cy={eyeY} rx={7.5 * eyeScale} ry={9 * eyeScale} fill={INK} />
+          <Circle cx={rightX + 2.5} cy={eyeY - 3.5} r={3 * eyeScale} fill="#FFFFFF" />
+        </G>,
+      ];
     }
     if (expression === 'blink') {
       return [leftX, rightX].map((x) => (
@@ -72,6 +88,11 @@ export function PetFace({ anatomy, mood, stage, expression, cheekColor }: Props)
         </G>
       );
     }
+    if (expression === 'wink') {
+      // A little lopsided grin.
+      return <Path d={`M92 ${mouthY} Q101 ${mouthY + 7} 109 ${mouthY - 3}`} stroke={INK} strokeWidth={3.5} strokeLinecap="round" fill="none" />;
+    }
+    if (expression === 'sleepy') return <Ellipse cx={100} cy={mouthY + 2} rx={3.5} ry={3} fill={INK} />;
     if (expression === 'eating') {
       // Mid-chomp: a round open mouth.
       return <Ellipse cx={100} cy={mouthY + 3} rx={7} ry={6.5} fill={INK} />;

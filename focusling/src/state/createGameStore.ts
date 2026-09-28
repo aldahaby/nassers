@@ -3,9 +3,21 @@ import {
   adoptPet,
   applyLook,
   clearLook,
-  grantUnlocks,
+  debugClearOutfit,
+  debugCollectionAlmostDone,
+  debugResetCollections,
+  debugSetSpecies,
+  debugSetStage,
+  debugUnlockCollection,
+  debugUnlockReactions,
+  equipReaction,
   markItemsSeen,
+  processStyleRewards,
+  renameLook,
   saveLook,
+  wearCollectionLook,
+  type GrowthStage,
+  type PetSpeciesId as StylePetSpecies,
   addMission,
   chooseAppMode,
   completeFamilySetup,
@@ -101,6 +113,12 @@ export type PetReaction =
 
 export type FamilyView = 'child' | 'parent';
 
+/**
+ * A style moment shown outside the session summary (after a purchase, or from
+ * developer tools): a collection completed, or items revealed.
+ */
+export type StyleCelebration = { kind: 'collection'; collectionId: string } | { kind: 'items'; ids: string[] };
+
 export type ParentUnlockResult =
   | { ok: true }
   | { ok: false; reason: 'wrong'; attemptsBeforePause: number }
@@ -131,6 +149,7 @@ export interface GameStore {
   familyView: FamilyView;
   /** A mission finished outside a session (e.g. developer tools), to celebrate on the pet screen. */
   missionCelebration: MissionCompletion | null;
+  styleCelebration: StyleCelebration | null;
 
   hydrate(): Promise<void>;
   /** Apply decay and auto-complete due sessions. Safe to call often. */
@@ -169,9 +188,23 @@ export interface GameStore {
   debugDressUp(): void;
   /** Clear "New" badges for these items. */
   markItemsSeen(ids: string[]): void;
-  saveLook(index: number): void;
+  saveLook(index: number, name?: string): void;
   applyLook(index: number): void;
   clearLook(index: number): void;
+  renameLook(index: number, name: string): void;
+  wearCollectionLook(collectionId: string): void;
+  equipReaction(id: string): Result<null, 'unknown-reaction' | 'locked'>;
+  consumeStyleCelebration(): void;
+  debugUnlockCollection(collectionId: string): void;
+  debugCollectionAlmostDone(collectionId: string): void;
+  debugResetCollections(): void;
+  debugTriggerReveal(ids: string[]): void;
+  debugTriggerCollectionComplete(collectionId: string): void;
+  debugUnlockReactions(): void;
+  debugWearCollectionLook(collectionId: string): void;
+  debugClearOutfit(): void;
+  debugSetStage(stage: GrowthStage): void;
+  debugSetSpecies(speciesId: StylePetSpecies): void;
   resetProgress(): Promise<void>;
 
   // ── Focus protection ──
@@ -340,6 +373,7 @@ export function createGameStore(deps: GameStoreDeps) {
       interventionsThisSession: 0,
       familyView: 'child',
       missionCelebration: null,
+      styleCelebration: null,
 
       async hydrate() {
         if (get().status === 'loading') return;
@@ -349,7 +383,7 @@ export function createGameStore(deps: GameStoreDeps) {
           const base = loaded ?? createNewSave(now(), { debugToolsEnabled: deps.debugDefault });
           // Items added in an update (or milestones reached before cosmetics existed) are
           // granted quietly on launch; they show a "New" badge in the wardrobe.
-          const { save, completedSummary } = refreshSave(grantUnlocks(base, now()).save, now());
+          const { save, completedSummary } = refreshSave(processStyleRewards(base, now()).save, now());
           commit(save, { status: 'ready', lastSummary: completedSummary });
           if (completedSummary) void stopProtection(completedSummary.sessionId, 'completed');
           void get().refreshProtection();
@@ -417,7 +451,10 @@ export function createGameStore(deps: GameStoreDeps) {
       purchase(itemId) {
         const result = purchaseItem(requireSave(), itemId, now());
         if (!result.ok) return result;
-        commit(result.value.save);
+        // Buying the last piece of a collection completes it (once).
+        const style = processStyleRewards(result.value.save, now());
+        const completed = style.completedCollections[0];
+        commit(style.save, completed ? { styleCelebration: { kind: 'collection', collectionId: completed } } : {});
         return ok({ firstPurchase: result.value.firstPurchase, happinessGained: result.value.happinessGained });
       },
 
@@ -433,7 +470,39 @@ export function createGameStore(deps: GameStoreDeps) {
         const next = markItemsSeen(save, ids);
         if (next !== save) commit(next);
       },
-      saveLook: (index) => commit(saveLook(requireSave(), index, now())),
+      saveLook: (index, name) => commit(saveLook(requireSave(), index, now(), name)),
+      renameLook: (index, name) => commit(renameLook(requireSave(), index, name)),
+      wearCollectionLook: (collectionId) => commit(wearCollectionLook(requireSave(), collectionId)),
+      equipReaction(id) {
+        const result = equipReaction(requireSave(), id);
+        if (!result.ok) return result;
+        commit(result.value);
+        return ok(null);
+      },
+      consumeStyleCelebration: () => set({ styleCelebration: null }),
+      debugUnlockCollection(collectionId) {
+        devOnly((save) => {
+          const style = processStyleRewards(debugUnlockCollection(save, collectionId, now()), now());
+          if (style.completedCollections.includes(collectionId)) set({ styleCelebration: { kind: 'collection', collectionId } });
+          return style.save;
+        });
+      },
+      debugCollectionAlmostDone: (collectionId) => void devOnly((save) => debugCollectionAlmostDone(save, collectionId, now()).save),
+      debugResetCollections: () => void devOnly((save) => debugResetCollections(save)),
+      debugTriggerReveal: (ids) => void devOnly((save) => {
+        set({ styleCelebration: { kind: 'items', ids } });
+        return save;
+      }),
+      debugTriggerCollectionComplete: (collectionId) => void devOnly((save) => {
+        set({ styleCelebration: { kind: 'collection', collectionId } });
+        return save;
+      }),
+      debugUnlockReactions: () => void devOnly((save) => debugUnlockReactions(save)),
+      debugWearCollectionLook: (collectionId) =>
+        void devOnly((save) => wearCollectionLook(processStyleRewards(debugUnlockCollection(save, collectionId, now()), now()).save, collectionId)),
+      debugClearOutfit: () => void devOnly((save) => debugClearOutfit(save)),
+      debugSetStage: (stage) => void devOnly((save) => processStyleRewards(debugSetStage(save, stage), now()).save),
+      debugSetSpecies: (speciesId) => void devOnly((save) => debugSetSpecies(save, speciesId)),
       applyLook: (index) => commit(applyLook(requireSave(), index)),
       clearLook: (index) => commit(clearLook(requireSave(), index)),
       unequipItem: (itemId) => commit(unequipItem(requireSave(), itemId)),
@@ -507,7 +576,7 @@ export function createGameStore(deps: GameStoreDeps) {
         await writeChain;
         await deps.saveRepository.clear();
         const fresh = createNewSave(now(), { debugToolsEnabled: get().save?.profile.settings.debugToolsEnabled });
-        commit(fresh, { lastSummary: null, pendingWelcome: null, petReaction: null, familyView: 'child', missionCelebration: null });
+        commit(fresh, { lastSummary: null, pendingWelcome: null, petReaction: null, familyView: 'child', missionCelebration: null, styleCelebration: null });
       },
 
       updateProtection(patch) {

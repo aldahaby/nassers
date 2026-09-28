@@ -19,6 +19,8 @@ interface Props {
   calm?: boolean;
   /** Each change (after the first render) plays the happy hop-and-hearts reaction. */
   cheerKey?: number;
+  /** Stop idle loops (off-screen or hidden). Reactions still play when unpaused. */
+  paused?: boolean;
   onPress?: () => void;
   accessibilityLabel?: string;
 }
@@ -38,6 +40,7 @@ export function AnimatedPet({
   expression = 'auto',
   calm = false,
   cheerKey,
+  paused = false,
   onPress,
   accessibilityLabel,
 }: Props) {
@@ -56,7 +59,7 @@ export function AnimatedPet({
   const bobHeight = calm ? -3 : -6;
 
   useEffect(() => {
-    if (reducedMotion) {
+    if (reducedMotion || paused) {
       bob.setValue(0);
       return;
     }
@@ -68,9 +71,10 @@ export function AnimatedPet({
     );
     loop.start();
     return () => loop.stop();
-  }, [bob, idleMs, reducedMotion]);
+  }, [bob, idleMs, reducedMotion, paused]);
 
   useEffect(() => {
+    if (paused) return;
     let timeout: ReturnType<typeof setTimeout>;
     const schedule = () => {
       timeout = setTimeout(() => {
@@ -83,7 +87,7 @@ export function AnimatedPet({
     };
     schedule();
     return () => clearTimeout(timeout);
-  }, []);
+  }, [paused]);
 
   useEffect(() => () => {
     if (delightTimer.current) clearTimeout(delightTimer.current);
@@ -160,7 +164,7 @@ export function AnimatedPet({
           expression={face}
           equipped={equipped}
           size={artSize}
-          auraAnimated={!reducedMotion && !calm}
+          auraAnimated={!reducedMotion && !calm && !paused}
           auraDim={calm}
         />
       </Animated.View>

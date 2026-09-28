@@ -6,6 +6,7 @@ import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { useGameStore } from '@/state';
 import { Button, Card, typography } from '@/ui';
 import { FamilyDevTools } from './FamilyDevTools';
+import { StyleDevTools } from './StyleDevTools';
 import { devStyles } from './devStyles';
 
 /** Shortcuts for testing progression, sessions and items. Hidden unless the setting is on. */
@@ -56,6 +57,7 @@ export function DeveloperTools() {
       />
       {message && <Text style={styles.muted}>{message}</Text>}
       <FamilyDevTools />
+      <StyleDevTools />
       <ProtectionDebugPanel />
     </Card>
   );

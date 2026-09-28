@@ -17,3 +17,5 @@ export * from './components/ProgressRing';
 export * from './items/ItemArt';
 export * from './components/AnimatedNumber';
 export * from './icons/CoinIcon';
+export * from './style/CollectionBadge';
+export * from './style/ReactionIcon';

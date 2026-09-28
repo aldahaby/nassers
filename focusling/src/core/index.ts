@@ -22,3 +22,4 @@ export * from './protection/describe';
 export * from './game/debugDay';
 export { emptyDailyStats } from './game/dailyStats';
 export * from './cosmetics';
+export * from './game/debugStyle';

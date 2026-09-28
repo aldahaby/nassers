@@ -1,5 +1,5 @@
 import type { AccessorySlot, DecorationSlot, EquipSlot, ShopCategory, ShopItem } from '@/core/models';
-import { FOCUS_CLUB_ITEMS } from './cosmetics';
+import { COLLECTION_ITEMS } from './cosmetics';
 import { ECONOMY } from './economy';
 
 /**
@@ -283,7 +283,7 @@ const SHOP_ITEMS_BASE: readonly CatalogItem[] = [
 ];
 
 /** Everything in the game: the classic shop items plus cosmetic collections. */
-export const CATALOG: readonly CatalogItem[] = [...SHOP_ITEMS_BASE, ...FOCUS_CLUB_ITEMS];
+export const CATALOG: readonly CatalogItem[] = [...SHOP_ITEMS_BASE, ...COLLECTION_ITEMS];
 
 export const SHOP_CATEGORIES: readonly { id: ShopCategory; label: string }[] = [
   { id: 'accessory', label: 'Accessories' },
