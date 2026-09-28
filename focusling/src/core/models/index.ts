@@ -10,3 +10,4 @@ export * from './family';
 export * from './missions';
 export * from './play';
 export * from './style';
+export * from './room';

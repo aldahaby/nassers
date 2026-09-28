@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { Animated, StyleSheet, Text, type ViewStyle } from 'react-native';
+import type { SoundId } from '@/config/sounds';
+import { Pressable } from './Pressable';
 import { colors, radius, spacing, useNativeDriver } from '@/ui/theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -12,10 +14,12 @@ interface Props {
   icon?: string;
   style?: ViewStyle;
   accessibilityHint?: string;
+  /** Override the press sound (primary buttons "bloop", others "tap"; null = silent, e.g. when the action plays its own cue). */
+  sound?: SoundId | null;
 }
 
 /** Chunky, springy game-style button. */
-export function Button({ label, onPress, variant = 'primary', disabled = false, icon, style, accessibilityHint }: Props) {
+export function Button({ label, onPress, variant = 'primary', disabled = false, icon, style, accessibilityHint, sound }: Props) {
   const scale = useState(() => new Animated.Value(1))[0];
   const press = (to: number) => Animated.spring(scale, { toValue: to, friction: 5, tension: 300, useNativeDriver }).start();
   const v = VARIANTS[variant];
@@ -24,6 +28,7 @@ export function Button({ label, onPress, variant = 'primary', disabled = false, 
     <Animated.View style={[{ transform: [{ scale }] }, style]}>
       <Pressable
         onPress={onPress}
+        sound={sound === undefined ? (variant === 'primary' ? 'primary' : BACK_LABEL.test(label) ? 'back' : 'tap') : sound}
         onPressIn={() => press(0.95)}
         onPressOut={() => press(1)}
         disabled={disabled}
@@ -40,6 +45,8 @@ export function Button({ label, onPress, variant = 'primary', disabled = false, 
     </Animated.View>
   );
 }
+
+const BACK_LABEL = /^(back|close|cancel|not now|stop trying on)\b/i;
 
 const VARIANTS: Record<Variant, { bg: string; fg: string; edge: string }> = {
   primary: { bg: colors.primary, fg: colors.white, edge: colors.primaryDark },

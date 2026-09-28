@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { CHILD_NICKNAME_MAX_LENGTH } from '@/config/family';
 import type { PlayAccess } from '@/core';
 import { ParentHeader } from '@/features/family/ParentHeader';
@@ -9,7 +9,7 @@ import { DeveloperTools } from '@/features/settings/DeveloperTools';
 import { ResetCard } from '@/features/settings/ResetCard';
 import { SettingRow } from '@/features/settings/SettingRow';
 import { useGameStore } from '@/state';
-import { Button, Card, Screen, colors, radius, spacing, typography } from '@/ui';
+import { Button, Card, Screen, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 const PLAY_OPTIONS: readonly { value: PlayAccess; title: string; body: string }[] = [
   { value: 'always', title: 'Always available', body: 'Games can be played any time.' },
@@ -88,7 +88,7 @@ export default function ParentSettingsScreen() {
 
       <Card>
         <SettingRow label="Haptics" value={settings.hapticsEnabled} onChange={(v) => updateSettings({ hapticsEnabled: v })} />
-        <SettingRow label="Sounds" value={settings.soundEnabled} onChange={(v) => updateSettings({ soundEnabled: v })} />
+        <SettingRow label="Sound Effects" value={settings.soundEnabled} onChange={(v) => updateSettings({ soundEnabled: v })} />
         <SettingRow label="Developer tools" value={settings.debugToolsEnabled} onChange={(v) => updateSettings({ debugToolsEnabled: v })} />
       </Card>
 

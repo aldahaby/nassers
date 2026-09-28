@@ -45,6 +45,7 @@ export function createNewSave(now: Timestamp, options: { debugToolsEnabled?: boo
     missions: createMissionState(),
     play: createPlayStats(),
     cosmetics: createCosmeticsState(),
+    room: { color: null },
   };
   // Starter cosmetics, so the wardrobe is never empty.
   return grantUnlocks(save, now).save;

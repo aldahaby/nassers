@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { FocuslingProtectionNative } from '@/services/protection/nativeModule';
-import { Button, colors, radius, spacing, typography } from '@/ui';
+import { Button, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 const LABELS = ['instagram_reels', 'instagram_home', 'instagram_dm', 'instagram_post', 'instagram_profile', 'other'] as const;
 

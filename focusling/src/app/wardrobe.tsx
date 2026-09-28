@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { COLLECTION_LIST } from '@/config/collections';
 import { getShopItem } from '@/config/shopCatalog';
 import {
@@ -27,7 +27,7 @@ import { cosmeticName, describeProgress, describeUnlock, slotName } from '@/feat
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useEquipped, useGameStore, usePetView } from '@/state';
-import { Button, CollectionBadge, PetArt, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
+import { Button, CollectionBadge, PetArt, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 type Filter = 'all' | AccessorySlot;
 const FILTERS: readonly Filter[] = ['all', ...WEARABLE_SLOTS];
@@ -255,6 +255,7 @@ export default function WardrobeScreen() {
                     {canWear ? (
                       <Button
                         label="Wear look"
+                        sound="equip"
                         onPress={() => {
                           setPreview(null);
                           wearCollectionLook(c.id);

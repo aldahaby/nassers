@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { getReaction } from '@/config/reactions';
+import { REACTION_SOUNDS } from '@/config/sounds';
+import { playSound } from '@/services/audio';
 import type { ReactionStyle } from '@/core';
 import { useNativeDriver } from '@/ui';
 import { sparklePath, starPath } from '@/ui/pet/focusClubArt';
@@ -17,14 +19,14 @@ import type { FaceExpression } from '@/ui/pet/PetFace';
 
 const FACE: Record<ReactionStyle, Exclude<FaceExpression, 'blink'>> = {
   wave: 'delighted',
-  hop: 'delighted',
+  hop: 'excited',
   sleepy: 'sleepy',
   cool: 'wink',
-  twirl: 'delighted',
+  twirl: 'excited',
   'pixel-pop': 'wink',
   'dream-float': 'sleepy',
-  'victory-lap': 'delighted',
-  firefly: 'delighted',
+  'victory-lap': 'proud',
+  firefly: 'curious',
 };
 
 export interface Performance {
@@ -62,6 +64,8 @@ export function useReactionPerformer(size: number, reducedMotion: boolean, onHop
       fx.setValue(0);
       runs.current += 1;
       setPerforming({ style: def.style, run: runs.current });
+      // A short accent with the first beat of the motion (never during focus: the service refuses).
+      playSound(REACTION_SOUNDS[def.style]);
       const later = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
       const t = (v: Animated.Value, toValue: number, duration: number, easing = Easing.inOut(Easing.quad)) =>
         Animated.timing(v, { toValue, duration, easing, useNativeDriver });

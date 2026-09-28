@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { ShopListing } from '@/core';
-import { CoinIcon, ItemArt, colors, radius, shadow, spacing } from '@/ui';
+import { CoinIcon, ItemArt, colors, radius, shadow, spacing, Pressable } from '@/ui';
 
 interface Props {
   listing: ShopListing;

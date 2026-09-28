@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { FOCUS_CONFIG } from '@/config/focus';
-import { colors, radius, spacing, typography } from '@/ui';
+import { colors, radius, spacing, typography, Pressable } from '@/ui';
 
 interface Props {
   minutes: number;

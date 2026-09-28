@@ -19,3 +19,4 @@ export * from './components/AnimatedNumber';
 export * from './icons/CoinIcon';
 export * from './style/CollectionBadge';
 export * from './style/ReactionIcon';
+export * from './components/Pressable';

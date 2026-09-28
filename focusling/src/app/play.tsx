@@ -1,8 +1,8 @@
 import { Redirect, router } from 'expo-router';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { PlayHub } from '@/features/play/PlayHub';
 import { useAppMode } from '@/state';
-import { Screen, colors, spacing, typography } from '@/ui';
+import { Screen, colors, spacing, typography, Pressable } from '@/ui';
 
 /** Self mode Play (Family Mode uses the Child View tab). */
 export default function PlayScreen() {

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '@/ui';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, typography, Pressable } from '@/ui';
 
 /** Back-to-dashboard header for parent sub-screens. */
 export function ParentHeader({ title, subtitle }: { title: string; subtitle?: string }) {

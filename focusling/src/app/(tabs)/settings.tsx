@@ -17,7 +17,7 @@ export default function SettingsScreen() {
       <Text style={typography.title}>Settings</Text>
       <Card>
         <SettingRow label="Haptics" value={settings.hapticsEnabled} onChange={(v) => updateSettings({ hapticsEnabled: v })} />
-        <SettingRow label="Sounds" value={settings.soundEnabled} onChange={(v) => updateSettings({ soundEnabled: v })} />
+        <SettingRow label="Sound Effects" value={settings.soundEnabled} onChange={(v) => updateSettings({ soundEnabled: v })} />
         <SettingRow
           label="Developer tools"
           value={settings.debugToolsEnabled}

@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { CatalogItem } from '@/config/shopCatalog';
-import { ItemArt, colors, radius, spacing, typography } from '@/ui';
+import { ItemArt, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 export interface RowAction {
   label: string;

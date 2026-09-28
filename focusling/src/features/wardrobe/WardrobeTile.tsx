@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { WardrobeEntry } from '@/core';
-import { CoinIcon, ItemArt, TabIcon, colors, radius, spacing } from '@/ui';
+import { CoinIcon, ItemArt, TabIcon, colors, radius, spacing, Pressable } from '@/ui';
 import { describeProgress, tileLabel } from './cosmeticCopy';
 
 interface Props {
@@ -19,6 +19,8 @@ export function WardrobeTile({ entry, isNew, trying, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
+      // Wearing a piece "lands" it on the pet; taking it off is a soft pup; trying on is a select.
+      sound={state === 'owned' ? 'equip' : state === 'equipped' ? 'back' : 'select'}
       accessibilityRole="button"
       accessibilityState={{ selected: state === 'equipped' || trying }}
       accessibilityLabel={tileLabel(item, state, progress)}

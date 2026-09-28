@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ShopListing } from '@/core';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useGameStore } from '@/state';
-import { ItemArt, TabIcon, colors, radius, shadow, spacing, type TabIconName } from '@/ui';
+import { ItemArt, TabIcon, colors, radius, shadow, spacing, type TabIconName, Pressable } from '@/ui';
 
 interface Props {
   /** Owned toys and food, for one-tap use. */

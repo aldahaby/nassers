@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { playSound } from '@/services/audio';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { getShopItem } from '@/config/shopCatalog';
 import { getCollection } from '@/config/collections';
 import { collectionProgress, nextUnlock } from '@/core';
 import { CollectionCompleteCard } from '@/features/style/CollectionCompleteCard';
 import { cosmeticName, describeEarned, describeProgress, describeUnlock } from '@/features/wardrobe/cosmeticCopy';
 import { useGameStore } from '@/state';
-import { Button, ItemArt, TabIcon, colors, motion, radius, spacing, typography, useNativeDriver } from '@/ui';
+import { Button, ItemArt, TabIcon, colors, motion, radius, spacing, typography, useNativeDriver, Pressable } from '@/ui';
 import { sparklePath } from '@/ui/pet/focusClubArt';
 import Svg, { Path } from 'react-native-svg';
 
@@ -37,6 +38,13 @@ export function UnlockReveal({ unlocked, petName, delay, reducedMotion, onWear, 
   const [pop] = useState(() => new Animated.Value(reducedMotion ? 1 : 0));
   const [sparkle] = useState(() => new Animated.Value(0));
   const [later, setLater] = useState(false);
+
+  // The magical flourish lands with the pop (same moment with or without motion).
+  useEffect(() => {
+    if (unlocked.length === 0) return;
+    const t = setTimeout(() => playSound('unlock'), reducedMotion ? Math.min(delay, 300) : delay);
+    return () => clearTimeout(t);
+  }, [delay, reducedMotion, unlocked.length]);
 
   useEffect(() => {
     if (reducedMotion) return;

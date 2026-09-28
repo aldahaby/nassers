@@ -8,8 +8,9 @@ import type { AppMode, FamilySettings } from './family';
 import type { MissionState } from './missions';
 import type { PlayStats } from './play';
 import type { DailyStats, LifetimeStats, StreakState } from './stats';
+import type { RoomState } from './room';
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 export interface Wallet {
   coins: number;
@@ -48,4 +49,6 @@ export interface GameSave {
   play: PlayStats;
   /** Wardrobe extras: "new" badges and saved looks. Ownership lives in `inventory`. */
   cosmetics: CosmeticsState;
+  /** Room colour (free). Added in schema 7. */
+  room: RoomState;
 }

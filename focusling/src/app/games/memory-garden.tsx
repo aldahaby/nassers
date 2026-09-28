@@ -1,6 +1,6 @@
 import { Redirect, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { MEMORY_GARDEN } from '@/config/play';
 import { getShopItem } from '@/config/shopCatalog';
 import { createMemoryDeck, flipCard, hideMismatch, isMemoryComplete, pairsFound, type GameRoundResult, type MemoryState } from '@/core';
@@ -8,7 +8,7 @@ import { GameFrame } from '@/features/play/GameFrame';
 import { RoundSummary } from '@/features/play/RoundSummary';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useGameStore, usePetView, usePlayToday } from '@/state';
-import { AnimatedPet, ItemArt, colors, radius, shadow, spacing, typography } from '@/ui';
+import { AnimatedPet, ItemArt, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
 const MATCH_LINES = ['A pair!', 'You found them!', 'Nice matching.', 'Two of a kind!'] as const;
 const newSeed = () => Math.floor(Math.random() * 2 ** 31);

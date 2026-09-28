@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ProtectionMode } from '@/core';
 import {
   MODE_LABEL,
@@ -10,7 +10,7 @@ import {
 } from '@/features/protection/protectionCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useGameStore, useIsChildView } from '@/state';
-import { Button, Card, Screen, colors, radius, spacing, typography } from '@/ui';
+import { Button, Card, Screen, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 const MODES: readonly ProtectionMode[] = ['none', 'selective', 'wholeApp'];
 const MODE_HELP: Record<ProtectionMode, string> = {

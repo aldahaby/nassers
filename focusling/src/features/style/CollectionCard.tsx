@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { CosmeticCollection, GrowthStage, PetSpeciesId } from '@/core';
-import { CollectionBadge, PetArt, TabIcon, colors, radius, spacing, typography } from '@/ui';
+import { CollectionBadge, PetArt, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 interface Props {
   collection: CosmeticCollection;

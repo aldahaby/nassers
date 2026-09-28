@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { AppMode } from '@/core';
 import { OnboardingStep } from '@/features/onboarding/OnboardingStep';
 import { useOnboardingProgress } from '@/features/onboarding/flow';
 import { useGameStore } from '@/state';
-import { colors, radius, shadow, spacing, typography } from '@/ui';
+import { colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
 const OPTIONS: readonly { mode: AppMode; icon: string; title: string; body: string }[] = [
   { mode: 'self', icon: '🙋', title: 'For me', body: 'I want help spending less time scrolling.' },

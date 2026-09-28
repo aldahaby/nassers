@@ -1,12 +1,12 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { PET_NAME_MAX_LENGTH, PET_SPECIES } from '@/config/pets';
 import type { PetSpeciesId } from '@/core';
 import { OnboardingStep } from '@/features/onboarding/OnboardingStep';
 import { useOnboardingProgress } from '@/features/onboarding/flow';
 import { useGameStore } from '@/state';
-import { AnimatedPet, colors, radius, spacing, typography } from '@/ui';
+import { AnimatedPet, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 function isSpecies(value: unknown): value is PetSpeciesId {
   return typeof value === 'string' && value in PET_SPECIES;

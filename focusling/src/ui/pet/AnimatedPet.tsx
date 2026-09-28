@@ -28,8 +28,9 @@ interface Props {
 const HEART_COUNT = 3;
 
 /**
- * The living pet: idles with a gentle bob and breath, blinks at random, and
- * squishes, hops and puffs out hearts when tapped.
+ * The living pet: idles with a gentle bob and breath, blinks at random, now and
+ * then glances or wiggles its crest, and squishes, hops and puffs out hearts
+ * when tapped.
  */
 export function AnimatedPet({
   speciesId,
@@ -49,6 +50,9 @@ export function AnimatedPet({
   const hop = useState(() => new Animated.Value(0))[0];
   const hearts = useState(() => Array.from({ length: HEART_COUNT }, () => new Animated.Value(0)))[0];
   const [blinking, setBlinking] = useState(false);
+  const [gaze, setGaze] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [crestPhase, setCrestPhase] = useState(0);
+  const idleTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [delighted, setDelighted] = useState(false);
   const delightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Reduce Motion: no idle bob, no hop or squish; reactions are a face change and fading hearts.
@@ -89,6 +93,48 @@ export function AnimatedPet({
     return () => clearTimeout(timeout);
   }, [paused]);
 
+  const later = useCallback((ms: number, fn: () => void) => {
+    idleTimers.current.push(setTimeout(fn, ms));
+  }, []);
+
+  /** Leaf settle / flame flicker: a few quick poses, then rest. Silent. */
+  const wiggleCrest = useCallback(() => {
+    [1, 2, 1, 0].forEach((phase, i) => later(i * 150, () => setCrestPhase(phase)));
+  }, [later]);
+
+  // Idle life, with natural pauses: now and then a glance, a double blink or a
+  // crest wiggle. Never during focus (calm) or when hidden; Reduce Motion keeps
+  // only the glance and blinks. Idle is always silent.
+  useEffect(() => {
+    if (paused || calm) return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const moments = reducedMotion ? ['glance', 'blink2'] : ['glance', 'blink2', 'crest', 'glance'];
+    const schedule = () => {
+      timeout = setTimeout(() => {
+        const moment = moments[Math.floor(Math.random() * moments.length)];
+        if (moment === 'glance') {
+          const side = Math.random() < 0.5 ? -1 : 1;
+          setGaze({ x: side * 2.2, y: Math.random() < 0.5 ? -1 : 0.6 });
+          later(1100, () => setGaze(undefined));
+        } else if (moment === 'blink2') {
+          setBlinking(true);
+          later(120, () => setBlinking(false));
+          later(260, () => setBlinking(true));
+          later(380, () => setBlinking(false));
+        } else {
+          wiggleCrest();
+        }
+        schedule();
+      }, 4200 + Math.random() * 3800);
+    };
+    schedule();
+    return () => {
+      clearTimeout(timeout);
+      idleTimers.current.forEach(clearTimeout);
+      idleTimers.current = [];
+    };
+  }, [paused, calm, reducedMotion, later, wiggleCrest]);
+
   useEffect(() => () => {
     if (delightTimer.current) clearTimeout(delightTimer.current);
   }, []);
@@ -117,9 +163,10 @@ export function AnimatedPet({
     ]).start();
 
     setDelighted(true);
+    if (!reducedMotion) wiggleCrest();
     if (delightTimer.current) clearTimeout(delightTimer.current);
     delightTimer.current = setTimeout(() => setDelighted(false), 1000);
-  }, [hearts, hop, squish, reducedMotion]);
+  }, [hearts, hop, squish, reducedMotion, wiggleCrest]);
 
   const handlePress = useCallback(() => {
     react();
@@ -166,6 +213,8 @@ export function AnimatedPet({
           size={artSize}
           auraAnimated={!reducedMotion && !calm && !paused}
           auraDim={calm}
+          gaze={gaze}
+          crestPhase={crestPhase}
         />
       </Animated.View>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>

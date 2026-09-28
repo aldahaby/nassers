@@ -5,8 +5,9 @@ import { FOCUS_CONFIG } from '@/config/focus';
 import type { ProtectionStartError } from '@/core';
 import { ProtectionSummaryRow } from '@/features/protection/ProtectionSummaryRow';
 import { isSelectiveFailure, startErrorMessage } from '@/features/protection/protectionCopy';
-import { useEquipped, useGameStore, useIsChildView, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
+import { useEquipped, useGameStore, useRoomColor, useIsChildView, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
 import { AnimatedPet, Button, Card, Screen, colors, radius, spacing, typography } from '@/ui';
+import { roomPalette } from '@/ui/room/roomPalette';
 import { DurationPicker } from './DurationPicker';
 import { FocusDevPanel } from './FocusDevPanel';
 import { RewardTiles } from './RewardTiles';
@@ -15,6 +16,7 @@ import { RewardTiles } from './RewardTiles';
 export function FocusSetup() {
   const view = usePetView();
   const equipped = useEquipped();
+  const roomColor = useRoomColor();
   const startFocus = useGameStore((s) => s.startFocus);
   const childView = useIsChildView();
   const debug = useDebugToolsEnabled();
@@ -49,7 +51,7 @@ export function FocusSetup() {
   return (
     <Screen scroll>
       <View style={styles.hero}>
-        <View style={[styles.petStage, { width: Math.min(220, width * 0.55), height: Math.min(220, width * 0.55) }]}>
+        <View style={[styles.petStage, { width: Math.min(220, width * 0.55), height: Math.min(220, width * 0.55), backgroundColor: roomPalette(roomColor).wall }]}>
           <AnimatedPet
             speciesId={pet.speciesId}
             stage={progression.stage}
@@ -110,6 +112,8 @@ export function FocusSetup() {
         label={starting ? 'Starting protection…' : 'Start Focus'}
         icon="⏳"
         onPress={() => void start()}
+        // The session's own calm Focus Start cue plays instead of a button sound.
+        sound={null}
         disabled={starting}
         accessibilityHint={`Starts a ${minutes} minute session`}
       />
@@ -123,7 +127,6 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: spacing.xs },
   petStage: {
     borderRadius: radius.pill,
-    backgroundColor: colors.roomWall,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,

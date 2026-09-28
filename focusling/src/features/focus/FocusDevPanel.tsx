@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { getProgression } from '@/core';
 import { services } from '@/services';
 import { useGameStore } from '@/state';
-import { Button, colors, radius, spacing, typography } from '@/ui';
+import { Button, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 /**
  * Shortcuts for testing the focus loop. Rendered only when the "Developer tools"

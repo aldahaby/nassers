@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { getRemainingMs, type FocusSession } from '@/core';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
-import { colors, radius, spacing } from '@/ui';
+import { colors, radius, spacing, Pressable } from '@/ui';
 import { formatCountdown } from '@/utils/format';
 
 /** Shown on the pet screen while a focus session is running. */

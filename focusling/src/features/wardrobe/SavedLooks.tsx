@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { LOOK_NAME_MAX_LENGTH, lookName } from '@/core';
 import { useGameStore, usePetView } from '@/state';
-import { PetArt, TabIcon, colors, radius, spacing, typography } from '@/ui';
+import { PetArt, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 /**
  * My Looks: three personal outfit slots (separate from collection Looks).
@@ -43,6 +43,7 @@ export function SavedLooks({ onWear }: { onWear?: () => void }) {
           ) : (
             <Pressable
               key={i}
+              sound="confirm"
               onPress={() => {
                 saveLook(i);
                 setSelected(i);

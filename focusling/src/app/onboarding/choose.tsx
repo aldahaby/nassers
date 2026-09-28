@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { PET_SPECIES, STARTER_SPECIES_ORDER } from '@/config/pets';
 import type { PetSpeciesId } from '@/core';
 import { useGameStore } from '@/state';
 import { OnboardingStep } from '@/features/onboarding/OnboardingStep';
 import { useOnboardingProgress } from '@/features/onboarding/flow';
-import { PetArt, colors, radius, shadow, spacing, typography } from '@/ui';
+import { PetArt, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
 export default function ChoosePetScreen() {
   const [selected, setSelected] = useState<PetSpeciesId | null>(null);

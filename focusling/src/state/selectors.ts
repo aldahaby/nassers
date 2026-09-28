@@ -133,3 +133,8 @@ export function useTodayStats() {
     return daily?.[key] ?? emptyDailyStats(key);
   }, [daily, now]);
 }
+
+/** The user's free room colour (null = default Focusling room). */
+export function useRoomColor(): string | null {
+  return useGameStore((s) => s.save?.room?.color ?? null);
+}

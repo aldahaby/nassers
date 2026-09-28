@@ -1,12 +1,12 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { COLLECTION_LIST } from '@/config/collections';
 import { CATALOG } from '@/config/shopCatalog';
 import { PET_SPECIES, STARTER_SPECIES_ORDER } from '@/config/pets';
 import type { AccessorySlot, GrowthStage } from '@/core';
 import { useDebugToolsEnabled } from '@/state';
-import { PetArt, Screen, colors, radius, spacing, typography } from '@/ui';
+import { PetArt, Screen, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 type Outfit = Partial<Record<AccessorySlot, string>>;
 interface BoardLook {

@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react';
-import { Circle, Ellipse, G, Path } from 'react-native-svg';
+import { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg';
 import type { GrowthStage, PetSpeciesId } from '@/core';
 import type { PetSpecies } from '@/config/pets';
+import { mix } from '@/ui/color';
+import { useArtScope } from './artScope';
 import type { PetAnatomy } from './anatomy';
 
 /**
@@ -33,49 +35,112 @@ export interface CrestDef {
   height: (rank: number) => number;
   /** Drawn before the body (grows from behind the head) or after it. */
   layer: 'behind' | 'front';
-  render: (palette: Palette, rank: number) => ReactElement;
+  /** `phase` 0 rests; 1 and 2 are the two idle/tap wiggle poses. */
+  render: (palette: Palette, rank: number, phase?: number, scope?: string) => ReactElement;
 }
 
-function Sprout(palette: Palette, rank: number) {
-  const leaf = 12 + rank * 5;
+/** A leaf from (x, y) of length `len`, pointing along `dir` (1 right, -1 left). */
+function leafPath(x: number, y: number, len: number, dir: 1 | -1) {
+  const d = dir;
+  return `M${x} ${y} C${x + d * len} ${y - len * 0.9} ${x + d * len * 2} ${y - len * 0.3} ${x + d * len * 1.9} ${y + len * 0.1} C${x + d * len * 1.3} ${y + len * 0.5} ${x + d * 5} ${y + 2} ${x} ${y} Z`;
+}
+
+function Leaf({ x, y, len, dir, fill, id, rank }: { x: number; y: number; len: number; dir: 1 | -1; fill: string; id: string; rank: number }) {
+  const d = dir;
   return (
     <G>
-      {/* Sprout on top: a stem, then leaves that grow per stage. */}
-      <Path d="M100 70 C100 60 101 52 103 46" stroke={palette.accent} strokeWidth={4} strokeLinecap="round" fill="none" />
-      <Path
-        d={`M103 48 C${103 + leaf} ${48 - leaf * 0.9} ${103 + leaf * 2} ${48 - leaf * 0.3} ${103 + leaf * 1.9} ${48 + leaf * 0.1} C${103 + leaf * 1.3} ${48 + leaf * 0.5} ${108} ${50} 103 48 Z`}
-        fill={palette.accent}
-      />
-      {rank >= 1 && (
+      <Path d={leafPath(x, y, len, dir)} fill={`url(#${id})`} />
+      {/* Midrib, then side veins once the leaf has grown. */}
+      <Path d={`M${x + d * 2} ${y} Q${x + d * len} ${y - len * 0.38} ${x + d * len * 1.75} ${y - len * 0.02}`} stroke="#FFFFFF" strokeWidth={1.3} strokeLinecap="round" fill="none" opacity={0.55} />
+      {rank >= 2 && (
         <Path
-          d={`M101 52 C${101 - leaf} ${52 - leaf * 0.9} ${101 - leaf * 2} ${52 - leaf * 0.3} ${101 - leaf * 1.9} ${52 + leaf * 0.1} C${101 - leaf * 1.3} ${52 + leaf * 0.5} ${96} ${54} 101 52 Z`}
-          fill={palette.bodyShade}
+          d={`M${x + d * len * 0.7} ${y - len * 0.28} l${d * len * 0.12} ${-len * 0.22} M${x + d * len * 1.15} ${y - len * 0.22} l${d * len * 0.14} ${-len * 0.2} M${x + d * len * 0.9} ${y - len * 0.26} l${d * len * 0.06} ${len * 0.18}`}
+          stroke="#FFFFFF"
+          strokeWidth={0.9}
+          strokeLinecap="round"
+          opacity={0.4}
         />
       )}
-      {rank >= 3 && (
-        // Evolved: a bloom at the tip.
-        <G>
-          {[0, 72, 144, 216, 288].map((angle) => (
-            <Circle key={angle} cx={103 + Math.cos((angle * Math.PI) / 180) * 7} cy={42 + Math.sin((angle * Math.PI) / 180) * 7} r={6} fill="#FFB3C7" />
-          ))}
-          <Circle cx={103} cy={42} r={5} fill="#FFD166" />
-        </G>
-      )}
+      <Path d={leafPath(x, y, len, dir)} fill="none" stroke={fill} strokeWidth={0.8} opacity={0.5} />
     </G>
   );
 }
 
-function Flame(palette: Palette, rank: number) {
-  const flame = 10 + rank * 6;
-  const flameColor = rank >= 3 ? '#FFE27A' : palette.accent;
+function Sprout(palette: Palette, rank: number, phase = 0, sc = '') {
+  const leaf = 12 + rank * 5;
+  // Idle "settling": the leaves tilt a few degrees around the stem tip.
+  const sway = phase === 1 ? 5 : phase === 2 ? -4 : 0;
+  const front = mix(palette.accent, '#FFFFFF', 0.35);
+  const back = palette.bodyShade;
   return (
     <G>
-      {/* Flame tuft on the head. */}
-      <Path
-        d={`M100 ${66 - flame} C${108 + flame * 0.3} ${72 - flame * 0.4} ${112} 72 106 80 C104 74 101 72 100 72 C99 72 96 74 94 80 C88 72 ${92 - flame * 0.3} ${72 - flame * 0.4} 100 ${66 - flame} Z`}
-        fill={flameColor}
-      />
-      {rank >= 1 && <Path d={`M100 ${72 - flame * 0.5} C104 70 104 76 100 80 C96 76 96 70 100 ${72 - flame * 0.5} Z`} fill="#FFF3C4" />}
+      <Defs>
+        <LinearGradient id={`cr-leaf-f-${rank}${sc}`} x1="0" y1="1" x2="1" y2="0">
+          <Stop offset="0" stopColor={palette.accent} />
+          <Stop offset="1" stopColor={front} />
+        </LinearGradient>
+        <LinearGradient id={`cr-leaf-b-${rank}${sc}`} x1="1" y1="1" x2="0" y2="0">
+          <Stop offset="0" stopColor={mix(back, '#000000', 0.08)} />
+          <Stop offset="1" stopColor={mix(back, '#FFFFFF', 0.25)} />
+        </LinearGradient>
+      </Defs>
+      {/* Stem grows out of the head, with a light edge. */}
+      <Path d="M100 70 C100 60 101 52 103 46" stroke={palette.accent} strokeWidth={4.2} strokeLinecap="round" fill="none" />
+      <Path d="M99 66 C99.4 59 100.2 53 101.6 48" stroke="#FFFFFF" strokeWidth={1.1} strokeLinecap="round" fill="none" opacity={0.5} />
+      <G transform={`rotate(${sway} 103 48)`}>
+        {rank >= 1 && <Leaf x={101} y={52} len={leaf} dir={-1} fill={back} id={`cr-leaf-b-${rank}${sc}`} rank={rank} />}
+        <Leaf x={103} y={48} len={leaf} dir={1} fill={palette.accent} id={`cr-leaf-f-${rank}${sc}`} rank={rank} />
+        {rank === 0 && <Circle cx={102} cy={45} r={2.6} fill={front} />}
+        {rank === 2 && <Path d="M103 47 C101 41 105 38 108 40" stroke={palette.accent} strokeWidth={1.6} strokeLinecap="round" fill="none" />}
+        {rank >= 3 && (
+          // Evolved: a bloom at the tip, and leaf edges that softly glow.
+          <G>
+            <Path d={leafPath(103, 48, leaf, 1)} fill="none" stroke="#FFF7C2" strokeWidth={1.4} opacity={0.7} />
+            {[0, 72, 144, 216, 288].map((angle) => (
+              <Circle key={angle} cx={103 + Math.cos((angle * Math.PI) / 180) * 7} cy={42 + Math.sin((angle * Math.PI) / 180) * 7} r={6} fill="#FFB3C7" />
+            ))}
+            {[36, 108, 180, 252, 324].map((angle) => (
+              <Circle key={angle} cx={103 + Math.cos((angle * Math.PI) / 180) * 4.5} cy={42 + Math.sin((angle * Math.PI) / 180) * 4.5} r={2.4} fill="#FFD6E2" />
+            ))}
+            <Circle cx={103} cy={42} r={4.4} fill="#FFD166" />
+            <Circle cx={101.8} cy={40.8} r={1.4} fill="#FFFFFF" opacity={0.8} />
+          </G>
+        )}
+      </G>
+    </G>
+  );
+}
+
+/** The flame tuft path (tip at 66 − flame), with a tip offset for flicker. */
+function flamePath(flame: number, lean: number) {
+  return `M${100 + lean} ${66 - flame} C${108 + flame * 0.3} ${72 - flame * 0.4} ${112} 72 106 80 C104 74 101 72 100 72 C99 72 96 74 94 80 C88 72 ${92 - flame * 0.3} ${72 - flame * 0.4} ${100 + lean} ${66 - flame} Z`;
+}
+
+function Flame(palette: Palette, rank: number, phase = 0, sc = '') {
+  const flame = 10 + rank * 6;
+  // Idle flicker: the tip leans a touch, then settles.
+  const lean = phase === 1 ? 2.5 : phase === 2 ? -2 : 0;
+  const gold = rank >= 3 ? '#FFE27A' : palette.accent;
+  const outer = mix(palette.bodyShade, '#FF5A2E', 0.45);
+  const layer = (scale: number) => `translate(100 80) scale(${scale}) translate(-100 -80)`;
+  return (
+    <G>
+      <Defs>
+        <LinearGradient id={`cr-flame-${rank}${sc}`} x1="0" y1="1" x2="0" y2="0">
+          <Stop offset="0" stopColor={outer} />
+          <Stop offset="1" stopColor={gold} />
+        </LinearGradient>
+      </Defs>
+      {rank >= 3 &&
+        // Evolved: two small flamelets beside the crest.
+        [-1, 1].map((side) => (
+          <Path key={side} d={flamePath(8, 0)} transform={`translate(${side * 12} 3) rotate(${side * 22} 100 80) translate(100 80) scale(0.62) translate(-100 -80)`} fill={`url(#cr-flame-${rank}${sc})`} opacity={0.9} />
+        ))}
+      {/* Three layers: warm outer, gold middle, cream core. */}
+      <Path d={flamePath(flame, lean)} fill={`url(#cr-flame-${rank}${sc})`} />
+      <Path d={flamePath(flame, lean * 0.7)} transform={layer(0.68)} fill={gold} />
+      {rank >= 1 && <Path d={flamePath(flame, lean * 0.5)} transform={layer(0.4)} fill="#FFF3C4" />}
+      <Path d={`M${97 + lean * 0.3} ${70 - flame * 0.55} Q${96} ${72 - flame * 0.2} 97 76`} stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" fill="none" opacity={0.55} />
     </G>
   );
 }
@@ -164,25 +229,56 @@ export function crestPlacement(species: PetSpeciesId, stage: GrowthStage, headKe
 }
 
 /** The crest itself, drawn in place (callers wrap it for `lift`). */
-export function PetCrest({ species, palette, stage }: { species: PetSpeciesId; palette: Palette; stage: GrowthStage }) {
+export function PetCrest({ species, palette, stage, phase = 0 }: { species: PetSpeciesId; palette: Palette; stage: GrowthStage; phase?: number }) {
   const crest = CRESTS[species];
-  return crest ? crest.render(palette, STAGE_RANK[stage]) : null;
+  const scope = useArtScope();
+  return crest ? crest.render(palette, STAGE_RANK[stage], phase, scope) : null;
 }
 
-/** The little opening a lifted crest grows out of: a stitched grommet (sprout) or a vent (flame). */
+/**
+ * The opening a lifted crest grows out of. Sprouts come through a brass eyelet
+ * (a ringed grommet with a highlight); flames through a heat vent with a warm
+ * glow and a stitched surround.
+ */
 export function CrestOpening({ species, x, y, palette }: { species: PetSpeciesId; x: number; y: number; palette: Palette }) {
+  const sc = useArtScope();
   if (species === 'emberling') {
     return (
       <G>
-        <Ellipse cx={x} cy={y} rx={9} ry={3.2} fill="#000000" opacity={0.28} />
-        <Ellipse cx={x} cy={y - 0.4} rx={6.5} ry={2} fill={palette.accent} opacity={0.55} />
+        <Defs>
+          <RadialGradient id={`cr-vent${sc}`} cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor="#FFE27A" stopOpacity={0.95} />
+            <Stop offset="0.6" stopColor={palette.accent} stopOpacity={0.6} />
+            <Stop offset="1" stopColor={palette.bodyShade} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Ellipse cx={x} cy={y} rx={13} ry={4.6} fill={`url(#cr-vent${sc})`} />
+        <Ellipse cx={x} cy={y} rx={8.5} ry={2.8} fill="#6B2A12" opacity={0.55} />
+        <Ellipse cx={x} cy={y} rx={10.5} ry={3.8} fill="none" stroke="#FFFFFF" strokeWidth={0.9} strokeDasharray="1.8 1.6" opacity={0.7} />
       </G>
     );
   }
   return (
     <G>
-      <Ellipse cx={x} cy={y} rx={6.5} ry={2.6} fill="#000000" opacity={0.25} />
-      <Ellipse cx={x} cy={y} rx={6.5} ry={2.6} fill="none" stroke="#FFFFFF" strokeWidth={0.9} strokeDasharray="1.6 1.4" opacity={0.8} />
+      <Ellipse cx={x} cy={y + 0.6} rx={8} ry={3.3} fill="#000000" opacity={0.18} />
+      <Ellipse cx={x} cy={y} rx={7.4} ry={3} fill="#E0B45A" />
+      <Ellipse cx={x} cy={y} rx={4.6} ry={1.8} fill="#4A3A22" />
+      <Path d={`M${x - 6} ${y - 1} Q${x - 2} ${y - 3} ${x + 3} ${y - 2.6}`} stroke="#FFF3C4" strokeWidth={1} strokeLinecap="round" fill="none" />
     </G>
   );
+}
+
+/**
+ * Cloudling under a closed hat: soft cloud tufts puff out from under the brim
+ * on both sides, so the silhouette still reads as a cloud, not a flat cap.
+ */
+export function CloudTufts({ headTop: h, palette }: { headTop: number; palette: Palette }) {
+  const tuft = (x: number, dir: 1 | -1) => (
+    <G key={x}>
+      <Circle cx={x} cy={h + 26} r={8.5} fill={palette.body} />
+      <Circle cx={x + dir * 7} cy={h + 30} r={6.5} fill={palette.body} />
+      <Path d={`M${x - 5 * dir} ${h + 21} Q${x} ${h + 18} ${x + 5 * dir} ${h + 21}`} stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" fill="none" opacity={0.6} />
+    </G>
+  );
+  return <G>{[tuft(58, -1), tuft(142, 1)]}</G>;
 }

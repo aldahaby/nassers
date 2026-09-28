@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SoundBridge } from '@/features/sound/SoundBridge';
 import { StyleCelebrationModal } from '@/features/style/StyleCelebrationModal';
 import { useGameLifecycle } from '@/hooks/useGameLifecycle';
 import { useGameStore } from '@/state';
@@ -31,6 +32,7 @@ export default function RootLayout() {
           <Stack.Screen name="protection" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="missions" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="wardrobe" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="room-studio" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="collection/[id]" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="play" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="games/memory-garden" options={{ animation: 'fade', gestureEnabled: false }} />
@@ -44,6 +46,7 @@ export default function RootLayout() {
         </Stack>
       )}
       {status === 'ready' && <StyleCelebrationModal />}
+      {status === 'ready' && <SoundBridge />}
     </SafeAreaProvider>
   );
 }

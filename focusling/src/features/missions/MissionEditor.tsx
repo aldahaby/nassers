@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   AVAILABLE_MISSION_TYPES,
   MISSION_LIMITS,
@@ -8,7 +8,7 @@ import {
   MISSION_TYPE_LABELS,
 } from '@/config/missions';
 import type { MissionDraft, MissionError, MissionRecurrence, MissionRewardLevel, MissionType } from '@/core';
-import { Button, Card, colors, radius, spacing, typography } from '@/ui';
+import { Button, Card, colors, radius, spacing, typography, Pressable } from '@/ui';
 import { formatMinuteOfDay } from '@/utils/format';
 import { DAY_LETTERS, DAY_NAMES, describeGoal } from './missionCopy';
 

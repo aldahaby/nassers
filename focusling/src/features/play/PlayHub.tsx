@@ -1,10 +1,10 @@
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { MEMORY_GARDEN, TOY_TOSS } from '@/config/play';
 import type { GameId } from '@/core';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useDebugToolsEnabled, useGameStore, usePetView, usePlayToday } from '@/state';
-import { AnimatedPet, Button, Card, ItemArt, colors, radius, shadow, spacing, typography } from '@/ui';
+import { AnimatedPet, Button, Card, ItemArt, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 import { capReachedLine, lockedLine } from './playCopy';
 
 const minCoins = Math.min(...TOY_TOSS.coinsByCatches);

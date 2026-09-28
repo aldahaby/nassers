@@ -1,9 +1,9 @@
 import { router, type Href } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
-import { colors, radius, spacing, typography } from '@/ui';
+import { colors, radius, spacing, typography, Pressable } from '@/ui';
 
 interface Props {
   title: string;

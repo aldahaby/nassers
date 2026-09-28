@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { MissionView } from '@/core';
-import { CoinIcon, colors, radius, shadow, spacing, typography } from '@/ui';
+import { CoinIcon, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 import { describeGoal, describeProgress, describeReward, formatRecurrence } from './missionCopy';
 
 interface Props {

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useGameStore } from '@/state';
-import { colors, radius, spacing, typography } from '@/ui';
+import { colors, radius, spacing, typography, Pressable } from '@/ui';
 import { MODE_LABEL } from './protectionCopy';
 
 /** One calm line on the focus setup screen; details live on the Protection screen. */

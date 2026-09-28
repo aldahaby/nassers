@@ -1,13 +1,27 @@
 import type { ColorValue } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-export type TabIconName = 'pet' | 'focus' | 'shop' | 'stats' | 'settings' | 'missions' | 'play' | 'wardrobe' | 'bag' | 'lock' | 'check' | 'collections' | 'reactions' | 'looks' | 'plus';
+export type TabIconName = 'pet' | 'focus' | 'shop' | 'stats' | 'settings' | 'missions' | 'play' | 'wardrobe' | 'bag' | 'lock' | 'check' | 'collections' | 'reactions' | 'looks' | 'plus' | 'palette' | 'sound' | 'soundOff';
 
 /** Simple original line icons for the tab bar. */
 export function TabIcon({ name, color, size = 26 }: { name: TabIconName; color: ColorValue; size?: number }) {
   const stroke = { stroke: color, strokeWidth: 2.2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
+      {name === 'palette' && (
+        <>
+          <Path d="M12 4 C7 4 4 7.5 4 11.5 C4 15.5 7 19 11 19 C12.6 19 13 18 12.4 16.9 C11.8 15.8 12.6 14.6 14 14.6 L16 14.6 C18.4 14.6 20 13 20 10.8 C20 7 16.5 4 12 4 Z" {...stroke} />
+          <Circle cx={8.5} cy={10.5} r={1.3} fill={color} />
+          <Circle cx={12} cy={8} r={1.3} fill={color} />
+          <Circle cx={15.5} cy={10} r={1.3} fill={color} />
+        </>
+      )}
+      {(name === 'sound' || name === 'soundOff') && (
+        <>
+          <Path d="M4 10 L7.5 10 L12 6 L12 18 L7.5 14 L4 14 Z" {...stroke} />
+          {name === 'sound' ? <Path d="M15.5 9.5 Q17.5 12 15.5 14.5 M18 7.5 Q21.5 12 18 16.5" {...stroke} /> : <Path d="M15.5 9.5 L20.5 14.5 M20.5 9.5 L15.5 14.5" {...stroke} />}
+        </>
+      )}
       {name === 'pet' && (
         <>
           <Path d="M12 4 C17 4 20 8 20 13 C20 17.5 16.5 20 12 20 C7.5 20 4 17.5 4 13 C4 8 7 4 12 4 Z" {...stroke} />

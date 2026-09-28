@@ -1,6 +1,7 @@
 import { DEFAULT_PROTECTION } from '@/config/protection';
 import { getShopItem } from '@/config/shopCatalog';
 import { CURRENT_SCHEMA_VERSION, type GameSave } from '../models';
+import { normalizeRoomColor } from '../room/roomService';
 
 type RawSave = Record<string, unknown>;
 type RawRecord = Record<string, unknown>;
@@ -96,6 +97,8 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
       schemaVersion: 6,
     };
   },
+  // v6 → v7: room identity. Everyone starts in the default room; nothing else changes.
+  6: (save) => ({ ...save, room: { color: null }, schemaVersion: 7 }),
 };
 
 export class SaveMigrationError extends Error {}
@@ -129,5 +132,6 @@ export function migrateSave(raw: unknown): GameSave {
   if (!save.profile || !save.wallet || !save.inventory || !save.focus || !save.stats || !save.streak) {
     throw new SaveMigrationError('Save is missing required sections');
   }
-  return sanitizeEquipped(save as unknown as GameSave);
+  const room = (save.room ?? {}) as RawRecord;
+  return sanitizeEquipped({ ...(save as unknown as GameSave), room: { color: normalizeRoomColor(room.color) } });
 }

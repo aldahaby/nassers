@@ -1,6 +1,6 @@
 import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { getCollection } from '@/config/collections';
 import { getReaction } from '@/config/reactions';
 import { getShopItem } from '@/config/shopCatalog';
@@ -12,7 +12,7 @@ import { WardrobeTile } from '@/features/wardrobe/WardrobeTile';
 import { cosmeticName } from '@/features/wardrobe/cosmeticCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useEquipped, useGameStore, usePetView } from '@/state';
-import { Button, CollectionBadge, ItemArt, ReactionIcon, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
+import { Button, CollectionBadge, ItemArt, ReactionIcon, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 /**
  * One collection as a lookbook: the pet in the curated Look on the
@@ -127,6 +127,7 @@ export default function CollectionScreen() {
       {lookOwned === lookIds.length ? (
         <Button
           label={`Wear the ${collection.name} look`}
+          sound="equip"
           onPress={() => {
             wearCollectionLook(collection.id);
             setShowLook(false);

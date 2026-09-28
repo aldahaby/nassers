@@ -88,6 +88,7 @@ import {
   type SessionSummary,
   type UserSettings,
   type XpPrimeTarget,
+  setRoomColor,
 } from '@/core';
 import { DETECTION_POLICY } from '@/config/protection';
 import type { FocusProtectionService, ProtectionEndReason, ProtectionEvent, SaveRepository } from '@/services';
@@ -176,6 +177,8 @@ export interface GameStore {
   dismissSummary(): void;
   consumeWelcome(): void;
   updateSettings(patch: Partial<UserSettings>): void;
+  /** Free room colour (null = default room). Allowed in Self Mode and Child View; no gate. */
+  setRoomColor(color: string | null): void;
   debugGrant(grant: { coins?: number; xp?: number }): void;
   /** Put the pet 1 XP short of a milestone. */
   debugPrimeXp(target: XpPrimeTarget): void;
@@ -545,6 +548,10 @@ export function createGameStore(deps: GameStoreDeps) {
 
       consumeWelcome() {
         set({ pendingWelcome: null });
+      },
+
+      setRoomColor(color) {
+        commit(setRoomColor(requireSave(), color));
       },
 
       updateSettings(patch) {

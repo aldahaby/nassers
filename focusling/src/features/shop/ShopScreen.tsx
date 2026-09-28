@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SHOP_CATEGORIES } from '@/config/shopCatalog';
 import { getShopListings, type ShopCategory } from '@/core';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
@@ -8,7 +8,7 @@ import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { ItemCard } from '@/features/shop/ItemCard';
 import { ItemDetailSheet } from '@/features/shop/ItemDetailSheet';
 import { useCoins, useDebugToolsEnabled, useGameStore, usePetView } from '@/state';
-import { AnimatedNumber, CoinIcon, Screen, TabIcon, colors, radius, shadow, spacing, typography } from '@/ui';
+import { AnimatedNumber, CoinIcon, Screen, TabIcon, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
 /** The shop: browse by category, tap an item for details. Nothing is bought from the grid. */
 export default function ShopScreen() {

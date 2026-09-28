@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { previewAbandon, type AbandonPreview } from '@/core';
 import {
   useActiveSessionProgress,
@@ -9,7 +9,7 @@ import {
   usePetView,
   useSessionStreak,
 } from '@/state';
-import { AnimatedPet, Card, ConfirmDialog, ProgressRing, Screen, colors, spacing, typography } from '@/ui';
+import { AnimatedPet, Card, ConfirmDialog, ProgressRing, Screen, colors, spacing, typography, Pressable } from '@/ui';
 import { formatClockTime, formatCountdown, plural } from '@/utils/format';
 import { ProtectionNoticeCard } from '@/features/protection/ProtectionNoticeCard';
 import { ProtectionStatusPill } from '@/features/protection/ProtectionStatusPill';

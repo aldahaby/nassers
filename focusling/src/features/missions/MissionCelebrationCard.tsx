@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { playSound } from '@/services/audio';
+import { StyleSheet, Text, View } from 'react-native';
 import type { MissionCompletion } from '@/core';
-import { colors, radius, spacing, typography } from '@/ui';
+import { colors, radius, spacing, typography, Pressable } from '@/ui';
 
 interface Props {
   completion: MissionCompletion;
@@ -10,6 +12,10 @@ interface Props {
 
 /** Calm mission celebration: one line, the reward, and a thank-you. No confetti. */
 export function MissionCelebrationCard({ completion, petName, onDismiss }: Props) {
+  // A warm resolve as the card appears (once per card).
+  useEffect(() => {
+    playSound('confirm');
+  }, []);
   return (
     <View style={styles.card} accessibilityRole="alert" accessibilityLiveRegion="polite">
       <View style={styles.text}>

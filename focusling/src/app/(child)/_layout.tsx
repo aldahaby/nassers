@@ -1,5 +1,6 @@
 import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
+import { playSound } from '@/services/audio';
 import { useSessionCompleteRedirect } from '@/hooks/useSessionCompleteRedirect';
 import { useGameStore } from '@/state';
 import { TabIcon, colors, type TabIconName } from '@/ui';
@@ -27,6 +28,8 @@ export default function ChildLayout() {
 
   return (
     <Tabs
+      // A light "plip" when switching tabs (the tab bar is outside our Pressable).
+      screenListeners={{ tabPress: () => void playSound('nav') }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

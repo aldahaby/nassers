@@ -1,6 +1,6 @@
 import { router, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { PET_FOCUS_LINES, PET_NEW_ITEM_LINES, PET_TAP_LINES, PET_WELCOME_BACK_LINES } from '@/config/petLines';
 import { getReaction, PERSONALITY_TAP_LINES, REACTION_TAP_EVERY } from '@/config/reactions';
 import { PET_SPECIES } from '@/config/pets';
@@ -14,17 +14,19 @@ import { ItemsBar } from '@/features/pet/ItemsBar';
 import { PetReactionStage } from '@/features/pet/PetReactionStage';
 import { PetTopBar } from '@/features/pet/PetTopBar';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
+import { playSound } from '@/services/audio';
 import {
   useActiveSession,
   useCoins,
   useCurrentMission,
   useEquipped,
+  useRoomColor,
   useGameStore,
   usePetView,
   usePlayToday,
   useStreakDays,
 } from '@/state';
-import { Button, Card, RoomScene, Screen, SpeechBubble, colors, radius, shadow, spacing, typography } from '@/ui';
+import { Button, Card, RoomScene, Screen, SpeechBubble, colors, radius, shadow, spacing, typography, Pressable, TabIcon } from '@/ui';
 import { pickRandom } from '@/utils/format';
 
 /** Most toys/snacks shown for one-tap use under the pet. */
@@ -41,6 +43,7 @@ export function PetHomeScreen({ variant }: Props) {
   const coins = useCoins();
   const streakDays = useStreakDays();
   const equipped = useEquipped();
+  const roomColor = useRoomColor();
   const activeSession = useActiveSession();
   const mission = useCurrentMission();
   const play = usePlayToday();
@@ -121,6 +124,9 @@ export function PetHomeScreen({ variant }: Props) {
       performs = next % REACTION_TAP_EVERY === 0;
       if (performs) setPerformance({ reactionId: favorite, key: next });
     }
+    // One soft species cue for an ordinary tap (the reaction brings its own accent).
+    // Rate-limited centrally, never escalating, and silent during focus.
+    if (!performs && view) playSound(`pet-${view.pet.speciesId}`);
     const gained = petPet();
     // When it performs, it talks in its personality's voice (presentation only).
     const personality = performs && favorite ? getReaction(favorite)?.personality : undefined;
@@ -130,7 +136,7 @@ export function PetHomeScreen({ variant }: Props) {
         ? pickRandom(PERSONALITY_TAP_LINES[personality])
         : pickRandom(PET_TAP_LINES[mood]);
     say(gained > 0 ? `${line ?? ''}  +${gained} 💖` : (line ?? null));
-  }, [petPet, activeSession, mood, say, favorite, taps]);
+  }, [petPet, activeSession, mood, say, favorite, taps, view]);
 
   if (!view) return null;
   const { pet, progression } = view;
@@ -143,7 +149,19 @@ export function PetHomeScreen({ variant }: Props) {
     <Screen scroll>
       <PetTopBar coins={coins} streakDays={streakDays} level={progression.level} />
 
-      <RoomScene equipped={equipped} height={Math.min(petSize * 1.3, 420)}>
+      <RoomScene
+        equipped={equipped}
+        roomColor={roomColor}
+        height={Math.min(petSize * 1.3, 420)}
+        corner={
+          activeSession ? null : (
+            <Pressable onPress={() => router.push('/room-studio' as Href)} style={styles.roomChip} accessibilityRole="button" accessibilityLabel="Room Studio" accessibilityHint="Choose your room colour">
+              <TabIcon name="palette" color={colors.primaryDark} size={18} />
+              <Text style={styles.roomChipText}>Room</Text>
+            </Pressable>
+          )
+        }
+      >
         <SpeechBubble text={bubble} />
         <PetReactionStage
           speciesId={pet.speciesId}
@@ -240,6 +258,8 @@ function EntryTile({ icon, title, detail, onPress }: { icon: string; title: stri
 
 const styles = StyleSheet.create({
   identity: { alignItems: 'center', gap: 2, marginTop: -spacing.sm },
+  roomChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.88)' },
+  roomChipText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
   name: { ...typography.title },
   subtitle: { ...typography.label, color: colors.textMuted },
   emptyMission: { gap: spacing.sm },

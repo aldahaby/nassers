@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg';
 import type { ItemPalette, MaterialFamily } from '@/core';
+import { currentArtScope, useArtScope } from './artScope';
 
 /**
  * The Focusling Materials Bible, as code. Every cosmetic is drawn in one of a
@@ -24,11 +25,13 @@ import type { ItemPalette, MaterialFamily } from '@/core';
  */
 
 const hash = (p: ItemPalette) => `${p.primary}${p.secondary}${p.accent}`.replace(/[^0-9a-z]/gi, '');
-export const materialId = (family: string, p: ItemPalette, variant = '') => `fm-${family}${variant}-${hash(p)}`;
+const idIn = (scope: string, family: string, p: ItemPalette, variant = '') => `fm-${family}${variant}-${hash(p)}${scope}`;
+/** Gradient id for inline `url(#…)` use inside art functions (uses the drawing's current scope). */
+export const materialId = (family: string, p: ItemPalette, variant = '') => idIn(currentArtScope(), family, p, variant);
 
 /** Gradient definitions a material needs; place once inside the item's <G>. */
 export function MaterialDefs({ family, p }: { family: MaterialFamily | 'smoked'; p: ItemPalette }) {
-  const id = materialId(family, p);
+  const id = idIn(useArtScope(), family, p);
   switch (family) {
     case 'jelly':
       return (
@@ -105,8 +108,8 @@ export function MaterialDefs({ family, p }: { family: MaterialFamily | 'smoked';
   }
 }
 
-export const fillFor = (family: MaterialFamily | 'smoked', p: ItemPalette) =>
-  family === 'fabric' || family === 'knit' || family === 'fuzzy' || family === 'wood' ? p.primary : `url(#${materialId(family, p)})`;
+const matte = (family: MaterialFamily | 'smoked') => family === 'fabric' || family === 'knit' || family === 'fuzzy' || family === 'wood';
+export const fillFor = (family: MaterialFamily | 'smoked', p: ItemPalette) => (matte(family) ? p.primary : `url(#${materialId(family, p)})`);
 
 /** A specular highlight: the single most important "this is glossy" cue. */
 export function Specular({ x, y, rx, ry, rotate = -25, opacity = 0.85 }: { x: number; y: number; rx: number; ry: number; rotate?: number; opacity?: number }) {
@@ -167,13 +170,14 @@ export function MaterialShape({
   rimWidth?: number;
   opacity?: number;
 }): ReactElement {
+  const scope = useArtScope();
   const translucent = family === 'jelly' || family === 'smoked';
   const alpha = opacity ?? (translucent ? (p.opacity ?? 0.7) : 1);
   return (
     <G>
       <MaterialDefs family={family} p={p} />
-      <Path d={d} fill={fillFor(family, p)} opacity={alpha} />
-      {family === 'pearl' && <Path d={d} fill={`url(#${materialId('pearl', p)}-sheen)`} />}
+      <Path d={d} fill={matte(family) ? p.primary : `url(#${idIn(scope, family, p)})`} opacity={alpha} />
+      {family === 'pearl' && <Path d={d} fill={`url(#${idIn(scope, 'pearl', p)}-sheen)`} />}
       {rim && <Path d={d} fill="none" stroke={family === 'jelly' ? p.secondary : family === 'chrome' ? '#5B6270' : p.secondary} strokeWidth={rimWidth} strokeLinejoin="round" />}
     </G>
   );

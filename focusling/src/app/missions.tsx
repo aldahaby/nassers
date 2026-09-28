@@ -1,8 +1,8 @@
 import { Redirect, router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { MissionManager } from '@/features/missions/MissionManager';
 import { useAppMode } from '@/state';
-import { Button, Screen, colors, spacing, typography } from '@/ui';
+import { Button, Screen, colors, spacing, typography, Pressable } from '@/ui';
 
 /** Self mode missions: pick templates or make your own. */
 export default function MissionsScreen() {

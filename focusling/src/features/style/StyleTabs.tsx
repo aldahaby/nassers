@@ -1,5 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { TabIcon, colors, radius, type TabIconName } from '@/ui';
+import { StyleSheet, Text, View } from 'react-native';
+import { TabIcon, colors, radius, type TabIconName, Pressable } from '@/ui';
 
 export type StyleTab = 'pieces' | 'looks' | 'collections' | 'reactions';
 

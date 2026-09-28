@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { MISSION_REWARD_LEVELS, type MissionPreset } from '@/config/missions';
-import { colors, radius, shadow, spacing, typography } from '@/ui';
+import { colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 import { formatRecurrence } from './missionCopy';
 
 interface Props {

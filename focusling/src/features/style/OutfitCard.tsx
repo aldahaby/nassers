@@ -1,9 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { getPersonality, getReaction } from '@/config/reactions';
 import { getShopItem } from '@/config/shopCatalog';
 import { WEARABLE_SLOTS, type CosmeticCollection, type EquipSlot } from '@/core';
 import { cosmeticName, slotName } from '@/features/wardrobe/cosmeticCopy';
-import { CollectionBadge, ItemArt, ReactionIcon, TabIcon, colors, radius, spacing, typography } from '@/ui';
+import { CollectionBadge, ItemArt, ReactionIcon, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 interface Props {
   equipped: Partial<Record<EquipSlot, string>>;
@@ -34,7 +34,7 @@ export function OutfitCard({ equipped, wearingLook, favoriteReactionId, onPlayFa
           {title}
         </Text>
         {pieces.length > 0 && (
-          <Pressable onPress={onSave} style={styles.save} accessibilityRole="button" accessibilityLabel="Save this outfit as a Look" hitSlop={6}>
+          <Pressable onPress={onSave} sound="confirm" style={styles.save} accessibilityRole="button" accessibilityLabel="Save this outfit as a Look" hitSlop={6}>
             <TabIcon name="plus" color={colors.primaryDark} size={14} />
             <Text style={styles.saveText}>Save look</Text>
           </Pressable>

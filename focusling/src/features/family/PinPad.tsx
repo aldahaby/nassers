@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { PARENT_GATE } from '@/config/family';
-import { colors, shadow, spacing } from '@/ui';
+import { colors, shadow, spacing, Pressable } from '@/ui';
 
 interface Props {
   value: string;

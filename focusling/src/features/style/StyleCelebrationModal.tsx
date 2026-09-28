@@ -1,11 +1,12 @@
 import { usePathname } from 'expo-router';
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { UnlockReveal } from '@/features/completion/UnlockReveal';
 import { PetReactionStage } from '@/features/pet/PetReactionStage';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { playSound } from '@/services/audio';
 import { useEquipped, useGameStore, usePetView } from '@/state';
-import { colors, radius, spacing, typography } from '@/ui';
+import { colors, radius, spacing, typography, Pressable } from '@/ui';
 import { CollectionCompleteCard } from './CollectionCompleteCard';
 
 /**
@@ -22,6 +23,12 @@ export function StyleCelebrationModal() {
   const { width } = useWindowDimensions();
   const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
   const [cheer, setCheer] = useState(0);
+
+  // A collection completion gets the flourish here; single unlocks get it from UnlockReveal.
+  const completing = Boolean(celebration && 'collectionId' in celebration && celebration.collectionId && !pathname.startsWith('/session-complete'));
+  useEffect(() => {
+    if (completing) playSound('unlock');
+  }, [completing]);
 
   // The session summary shows its own reveal.
   if (!celebration || !view || pathname.startsWith('/session-complete')) return null;

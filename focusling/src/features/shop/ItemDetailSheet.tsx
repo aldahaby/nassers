@@ -1,24 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Modal, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { getShopItem, type CatalogItem } from '@/config/shopCatalog';
 import { estimateSessionsToAfford, toyCooldownRemainingMs, AFFORD_HINT_SESSION_MINUTES } from '@/core';
 import { useNow } from '@/hooks/useNow';
+import { playSound } from '@/services/audio';
 import { useCoins, useEquipped, useGameStore, usePetView } from '@/state';
-import {
-  AnimatedNumber,
-  Button,
-  CoinIcon,
-  Confetti,
-  ItemArt,
-  PetArt,
-  RoomScene,
-  colors,
-  radius,
-  shadow,
-  spacing,
-  typography,
-  useNativeDriver,
-} from '@/ui';
+import { AnimatedNumber, Button, CoinIcon, Confetti, ItemArt, PetArt, RoomScene, colors, radius, shadow, spacing, typography, useNativeDriver, Pressable } from '@/ui';
 import { plural } from '@/utils/format';
 import { BONUS_CAP_NOTE, itemEffects, itemKindLabel, ownedStatus } from './itemCopy';
 
@@ -71,10 +58,12 @@ function SheetBody({ item, onClose, onShowPet }: { item: CatalogItem; onClose: (
   const buy = () => {
     const result = purchase(item.id);
     if (!result.ok) {
+      playSound('unavailable');
       setError(result.error === 'insufficient-coins' ? 'Not enough coins yet.' : 'That item could not be bought.');
       return;
     }
     setError(null);
+    playSound('purchase');
     setPhase({ kind: 'purchased', firstPurchase: result.value.firstPurchase, spent: item.price });
   };
 
@@ -137,7 +126,7 @@ function SheetBody({ item, onClose, onShowPet }: { item: CatalogItem; onClose: (
         {error && <Text style={styles.error}>{error}</Text>}
         {phase.kind === 'purchased' ? (
           <>
-            <Button label={useLabel} onPress={use} />
+            <Button label={useLabel} onPress={use} sound={item.equipSlot ? 'equip' : 'primary'} />
             <Button label="Keep shopping" variant="ghost" onPress={onClose} />
           </>
         ) : (
@@ -167,6 +156,7 @@ function SheetBody({ item, onClose, onShowPet }: { item: CatalogItem; onClose: (
                   }
                   variant={isOwned ? 'secondary' : 'primary'}
                   onPress={buy}
+                  sound={null}
                   disabled={!affordable}
                   accessibilityHint={affordable ? undefined : 'You need more coins to buy this item'}
                 />
@@ -210,7 +200,7 @@ function Preview({
     const room = { ...equipped, [item.equipSlot]: item.id };
     return (
       <View style={styles.roomPreview}>
-        <RoomScene equipped={room} height={170}>
+        <RoomScene equipped={room} roomColor={useGameStore.getState().save?.room.color ?? null} height={170}>
           <PetArt speciesId={speciesId} stage={stage} mood={mood} equipped={equipped} size={96} />
         </RoomScene>
       </View>
