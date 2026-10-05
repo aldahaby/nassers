@@ -10,3 +10,5 @@ export {
   type PurchaseResult,
 } from './createGameStore';
 export * from './selectors';
+export { createEntitlementStore, effectiveEntitlement, type EntitlementStore } from './entitlementStore';
+export { useEntitlementStore, useCapabilities, useEntitlement } from './entitlements';

@@ -118,6 +118,14 @@ const PARTICLES: Record<string, Particle> = {
     ) : (
       <Path d={sparklePath(12, 12, 8)} fill={p.primary} stroke={p.secondary} strokeWidth={1} />
     ),
+  'aura-aurora': (p, i) => (
+    <G>
+      {/* Soft aurora ribbons: two flowing strokes and a faint glow, no blur. */}
+      <Path d="M3 15 C7 7 12 17 16 9 C18 6 20 7 21 8" stroke={p.primary} strokeWidth={4.5} strokeLinecap="round" fill="none" opacity={0.5} />
+      <Path d="M3 17 C8 10 12 19 17 12 C19 9.5 20.5 10 21.5 11" stroke={i % 2 ? p.accent : p.secondary} strokeWidth={2.2} strokeLinecap="round" fill="none" opacity={0.85} />
+      <Circle cx={18} cy={6} r={1.4} fill="#FFFFFF" opacity={0.9} />
+    </G>
+  ),
   'aura-firefly': (p, i) => (
     <G>
       {/* A soft glow, a bright tail and two tiny wings: flat shapes, no blur. */}

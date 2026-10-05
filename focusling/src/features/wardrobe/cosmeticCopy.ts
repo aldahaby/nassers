@@ -59,6 +59,8 @@ export function describeProvenance(provenance: Provenance, { withDate = true } =
       return `${describeMilestone(provenance.rule)}${when}`;
     case 'coins':
       return `Bought with ${plural(provenance.price, 'focus coin')}${when}`;
+    case 'premium':
+      return 'Included with Focusling Premium';
   }
 }
 
@@ -71,6 +73,7 @@ export function describeEarned(item: ShopItem): string {
 export function describeHowToGet(item: ShopItem): string {
   if (item.source === 'earned' && item.unlock) return describeUnlock(item.unlock);
   if (item.source === 'starter') return 'Every Focusling starts with one';
+  if (item.source === 'premium') return 'Included with Focusling Premium. Try it on any time.';
   return `In the shop for ${plural(item.price, 'focus coin')}`;
 }
 
@@ -86,6 +89,10 @@ export function tileLabel(item: ShopItem, state: string, progress: UnlockProgres
       return `${base} Wearing. Double tap to take it off.`;
     case 'owned':
       return `${base} Owned. Double tap to wear.`;
+    case 'included':
+      return `${base} Included with Premium. Double tap to wear.`;
+    case 'premium':
+      return `${base} Premium piece. Double tap to try it on.`;
     case 'buyable':
       return `${base} In the shop for ${item.price} coins. Double tap to try it on.`;
     default:

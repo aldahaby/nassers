@@ -4,13 +4,17 @@ import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Re
 import type { DecorationSlot, EquipSlot } from '@/core';
 import { radius } from '@/ui/theme';
 import { DECORATION_ART } from './decorations';
+import { getRoomTheme } from '@/config/roomThemes';
 import { roomPalette } from './roomPalette';
+import { ThemeFloor, ThemeWall } from './roomThemes';
 
 interface Props {
   equipped: Partial<Record<EquipSlot, string>>;
   height: number;
   /** The user's room colour (null/undefined = the default Focusling room). */
   roomColor?: string | null;
+  /** A room theme id to render (callers pass one only when the person may use it). */
+  theme?: string | null;
   /** Optional control pinned to the room's bottom-right corner (e.g. the Room Studio entry). */
   corner?: ReactNode;
   children: ReactNode;
@@ -25,8 +29,9 @@ const DECOR_SLOTS: readonly DecorationSlot[] = ['wall', 'floorCenter', 'floorLef
  * Hierarchy: pet first, then outfit, then room, then decorations, so the room
  * stays quiet: flat shapes, one soft wall-to-floor shade, a halo behind the pet.
  */
-export function RoomScene({ equipped, height, roomColor, corner, children }: Props) {
-  const p = roomPalette(roomColor);
+export function RoomScene({ equipped, height, roomColor, theme: themeId, corner, children }: Props) {
+  const theme = getRoomTheme(themeId);
+  const p = roomPalette(theme ? theme.base : roomColor);
   const sc = useId().replace(/[^a-zA-Z0-9]/g, '');
   const night = p.tone === 'dark';
   return (
@@ -45,6 +50,7 @@ export function RoomScene({ equipped, height, roomColor, corner, children }: Pro
         <Rect x={0} y={0} width={360} height={300} fill={p.wall} />
         {/* Soft shade where the wall meets the floor: a hint of depth, not 3D. */}
         <Rect x={0} y={170} width={360} height={56} fill={`url(#room-depth${sc})`} />
+        {theme && <ThemeWall theme={theme} p={p} />}
         {/* Window: day sky in light rooms, a calm night sky in dark ones (static). */}
         <G>
           <Rect x={132} y={70} width={96} height={76} rx={14} fill={p.sky} />
@@ -69,6 +75,7 @@ export function RoomScene({ equipped, height, roomColor, corner, children }: Pro
         <Ellipse cx={180} cy={196} rx={112} ry={92} fill={`url(#room-halo${sc})`} />
         <Rect x={0} y={228} width={360} height={72} fill={p.floor} />
         <Rect x={0} y={224} width={360} height={8} fill={p.floorEdge} />
+        {theme && <ThemeFloor theme={theme} p={p} />}
         {/* A soft pool of light where the pet stands, so it reads as the centre of the room. */}
         <Ellipse cx={180} cy={262} rx={120} ry={26} fill={p.spotlight} opacity={p.spotlightOpacity} />
         {DECOR_SLOTS.map((slot) => {

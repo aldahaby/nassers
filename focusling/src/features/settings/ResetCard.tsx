@@ -9,8 +9,11 @@ export function ResetCard() {
   const [confirming, setConfirming] = useState(false);
   return (
     <Card>
-      <Text style={typography.heading}>Start over</Text>
-      <Text style={styles.muted}>Erases the pet, coins, items, missions, stats and family settings on this device.</Text>
+      <Text style={typography.heading}>Erase local data</Text>
+      <Text style={styles.muted}>
+        Erases the pet, coins, items, missions, stats and family settings stored on this device. Focusling has no account or server copy, so this can’t be undone. A Premium
+        subscription is with Apple and isn’t affected; cancel it in Manage subscription.
+      </Text>
       {confirming ? (
         <View style={styles.grid}>
           <Button variant="ghost" label="Cancel" onPress={() => setConfirming(false)} style={styles.cell} />

@@ -105,8 +105,8 @@ interface CosmeticSpec {
   artKey: string;
   palette?: ItemPalette;
   colorway?: string;
-  /** Earned milestone, `starter`, or a coin price. */
-  obtain: UnlockRule | 'starter' | { price: number };
+  /** Earned milestone, `starter`, a coin price, or `premium` (included with Premium, never sold for coins). */
+  obtain: UnlockRule | 'starter' | { price: number } | 'premium';
   /** Defaults to Focus Club. */
   collection?: string;
   fit?: ItemFit[];
@@ -115,7 +115,7 @@ interface CosmeticSpec {
 
 function cosmetic(spec: CosmeticSpec): CatalogItem {
   const obtain = spec.obtain;
-  const source = obtain === 'starter' ? 'starter' : 'price' in obtain ? 'shop' : 'earned';
+  const source = obtain === 'starter' ? 'starter' : obtain === 'premium' ? 'premium' : 'price' in obtain ? 'shop' : 'earned';
   return {
     id: spec.id,
     name: spec.name,
@@ -129,6 +129,7 @@ function cosmetic(spec: CosmeticSpec): CatalogItem {
     equipSlot: spec.slot,
     source,
     unlock: source === 'earned' ? (obtain as UnlockRule) : undefined,
+    access: source === 'premium' ? 'premium' : undefined,
     collection: spec.collection ?? 'focus-club',
     art: { key: spec.artKey, palette: spec.palette, fit: spec.fit, material: ART_MATERIAL[spec.artKey] },
     colorway: spec.colorway,
@@ -400,6 +401,36 @@ export const MOSS_CLUB_ITEMS: readonly CatalogItem[] = [
   cosmetic({ id: 'mc-aura', name: 'Firefly Glow', description: 'A few fireflies drifting on one side, like a quiet evening.', slot: 'aura', artKey: 'aura-firefly', palette: MC.firefly, collection: 'moss-club', obtain: { kind: 'focusMinutes', minutes: 1200 } }),
 ];
 
+// ── Nightglow (Premium): celestial, cozy neon — moonlit pearls and aurora light ─
+
+const NG = {
+  visor: { primary: '#B9A8FF', secondary: '#3B2B7A', accent: '#BFF3FF', opacity: 0.62 },
+  beret: { primary: '#2B2D5E', secondary: '#8E7CF0', accent: '#FFE38A' },
+  pearls: { primary: '#EAF4FF', secondary: '#8FA6F5', accent: '#FFD6F0' },
+  charm: { primary: '#FFE38A', secondary: '#2B2D5E', accent: '#BFF3FF' },
+  band: { primary: '#5B5FC7', secondary: '#1E2150', accent: '#FFE38A' },
+  aurora: { primary: '#9FF3D9', secondary: '#B9A8FF', accent: '#FFD6F0' },
+} satisfies Record<string, ItemPalette>;
+
+/**
+ * The first Premium collection: included with Premium, previewable by everyone,
+ * never sold for coins and never added to inventory (docs/PREMIUM.md).
+ */
+export const NIGHTGLOW_ITEMS: readonly CatalogItem[] = [
+  cosmetic({ id: 'ng-headband', name: 'Nightglow Halo', description: 'A midnight band with a moon and a star bobbing above.', slot: 'head', artKey: 'crescent-headband', palette: NG.band, collection: 'nightglow', obtain: 'premium' }),
+  cosmetic({ id: 'ng-beret', name: 'Starlit Beret', description: 'A deep-night beret, soft as dusk, with a gold glint.', slot: 'head', artKey: 'cloud-beret', palette: NG.beret, collection: 'nightglow', obtain: 'premium' }),
+  cosmetic({ id: 'ng-visor', name: 'Aurora Visor', description: 'A lilac jelly visor with a cool aurora shimmer. Eyes still glow through.', slot: 'face', artKey: 'gummy-visor', palette: NG.visor, collection: 'nightglow', obtain: 'premium' }),
+  cosmetic({ id: 'ng-pearls', name: 'Opal Pearls', description: 'Pearls that catch pink and blue like moonlight on water.', slot: 'neck', artKey: 'pearl-collar', palette: NG.pearls, collection: 'nightglow', obtain: 'premium' }),
+  cosmetic({ id: 'ng-charm', name: 'Lantern Moon', description: 'A golden crescent charm with a tiny glowing star.', slot: 'charm', artKey: 'moon-charm', palette: NG.charm, collection: 'nightglow', obtain: 'premium' }),
+  cosmetic({ id: 'ng-aura', name: 'Aurora Veil', description: 'Soft ribbons of aurora light drifting around your Focusling.', slot: 'aura', artKey: 'aura-aurora', palette: NG.aurora, collection: 'nightglow', obtain: 'premium' }),
+];
+
+/** Premium curated Looks beyond the collection's own (Premium pieces mixed with free ones). */
+export const PREMIUM_LOOKS: readonly { id: string; name: string; featuredLook: Partial<Record<AccessorySlot, string>> }[] = [
+  { id: 'starlit-remix', name: 'Starlit Remix', featuredLook: { head: 'ng-beret', face: 'dw-shades', neck: 'ng-pearls', charm: 'ng-charm', aura: 'ng-aura' } },
+  { id: 'aurora-arcade', name: 'Aurora Arcade', featuredLook: { head: 'ma-headset', face: 'ng-visor', neck: 'ma-collar', aura: 'ng-aura' } },
+];
+
 /** One lightweight matching room accent per new collection. */
 export const ROOM_ACCENTS: readonly CatalogItem[] = [
   roomAccent({ id: 'ma-room-lamp', name: 'Pixel Lamp', description: 'A chunky pixel lamp that glows cyan.', slot: 'floorLeft', price: 60, collection: 'midnight-arcade' }),
@@ -414,6 +445,7 @@ export const COLLECTION_ITEMS: readonly CatalogItem[] = [
   ...DREAMWAVE_ITEMS,
   ...CLOUD_RACER_ITEMS,
   ...MOSS_CLUB_ITEMS,
+  ...NIGHTGLOW_ITEMS,
   ...ROOM_ACCENTS,
 ];
 

@@ -1,4 +1,5 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
+import { getCollection } from '@/config/collections';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SHOP_CATEGORIES } from '@/config/shopCatalog';
@@ -7,8 +8,8 @@ import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { ItemCard } from '@/features/shop/ItemCard';
 import { ItemDetailSheet } from '@/features/shop/ItemDetailSheet';
-import { useCoins, useDebugToolsEnabled, useGameStore, usePetView } from '@/state';
-import { AnimatedNumber, CoinIcon, Screen, TabIcon, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
+import { useCapabilities, useCoins, useDebugToolsEnabled, useGameStore, useIsChildView, usePetView } from '@/state';
+import { AnimatedNumber, CoinIcon, PetArt, PremiumMark, Screen, TabIcon, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
 /** The shop: browse by category, tap an item for details. Nothing is bought from the grid. */
 export default function ShopScreen() {
@@ -19,6 +20,9 @@ export default function ShopScreen() {
   const [category, setCategory] = useState<ShopCategory>('accessory');
   const [selected, setSelected] = useState<string | null>(null);
   const routes = useAppRoutes();
+  const childView = useIsChildView();
+  const caps = useCapabilities();
+  const nightglow = getCollection('nightglow');
 
   const listings = useMemo(
     () => (inventory ? getShopListings(inventory).filter((l) => l.category === category) : []),
@@ -63,6 +67,24 @@ export default function ShopScreen() {
           <Text style={styles.inventoryChevron}>›</Text>
         </Pressable>
       </View>
+
+      {/* One quiet Premium shelf (never in Child View): a preview, not a prompt. */}
+      {!childView && nightglow && (
+        <Pressable
+          style={styles.premiumShelf}
+          onPress={() => router.push(`/collection/${nightglow.id}` as Href)}
+          accessibilityRole="button"
+          accessibilityLabel={`${nightglow.name}, a Premium collection. ${caps.canUsePremiumCollections ? 'Included with your Premium.' : 'Try it on for free.'}`}
+        >
+          <PetArt speciesId={view.pet.speciesId} stage={view.progression.stage} mood="content" equipped={nightglow.featuredLook} size={64} />
+          <View style={styles.linkText}>
+            <PremiumMark compact />
+            <Text style={styles.premiumTitle}>{nightglow.name}</Text>
+            <Text style={styles.linkSub}>{caps.canUsePremiumCollections ? 'Included with Premium' : 'Try it on for free'}</Text>
+          </View>
+          <Text style={styles.premiumChevron}>›</Text>
+        </Pressable>
+      )}
 
       <View style={styles.tabs} accessibilityRole="tablist">
         {SHOP_CATEGORIES.map((c) => {
@@ -116,6 +138,9 @@ const styles = StyleSheet.create({
   inventoryLink: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md },
   inventoryLabel: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
   inventoryChevron: { fontSize: 22, fontWeight: '900', color: colors.primaryDark },
+  premiumShelf: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: '#F0EBFF', borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  premiumTitle: { fontSize: 16, fontWeight: '800', color: '#3A2A80' },
+  premiumChevron: { fontSize: 22, fontWeight: '900', color: '#5A3FC0' },
   tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: radius.pill, padding: 4 },
   tab: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.pill, alignItems: 'center' },
   tabActive: { backgroundColor: colors.surface },

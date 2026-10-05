@@ -9,7 +9,7 @@ const fresh = (): GameSave => adoptPet(createNewSave(T0), 'cloudling', 'Nimbus',
 
 describe('room colour', () => {
   it('new saves start in the default room', () => {
-    expect(createNewSave(T0).room).toEqual({ color: null });
+    expect(createNewSave(T0).room).toEqual({ color: null, theme: null });
   });
 
   it('accepts any valid colour (stored uppercase), free and without any gate', () => {
@@ -43,14 +43,14 @@ describe('room colour', () => {
   });
 });
 
-describe('v6 → v7 migration', () => {
-  it('adds the default room and keeps everything else', () => {
+describe('v6 → v8 migration', () => {
+  it('adds the default room (and an empty theme) and keeps everything else', () => {
     const current = fresh();
     const v6 = JSON.parse(JSON.stringify({ ...current, schemaVersion: 6 })) as Record<string, unknown>;
     delete v6.room;
     const migrated = migrateSave(v6);
-    expect(migrated.schemaVersion).toBe(7);
-    expect(migrated.room).toEqual({ color: null });
+    expect(migrated.schemaVersion).toBe(8);
+    expect(migrated.room).toEqual({ color: null, theme: null });
     expect(migrated.pet).toEqual(current.pet);
     expect(migrated.inventory).toEqual(current.inventory);
     expect(migrated.cosmetics).toEqual(current.cosmetics);

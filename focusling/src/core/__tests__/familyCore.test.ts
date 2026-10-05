@@ -101,7 +101,7 @@ describe('v3 → v4 migration', () => {
     delete v3.daily['2026-09-25'].missionCoinsEarned;
 
     const migrated = migrateSave(v3);
-    expect(migrated).toMatchObject({ schemaVersion: 7, mode: 'self', family: null, missions: { items: [], progress: {} } });
+    expect(migrated).toMatchObject({ schemaVersion: 8, mode: 'self', family: null, missions: { items: [], progress: {} } });
     expect(migrated.pet).toEqual(current.pet);
     expect(migrated.wallet).toEqual(current.wallet);
     expect(migrated.inventory).toEqual(current.inventory);

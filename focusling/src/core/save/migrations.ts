@@ -99,6 +99,9 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
   },
   // v6 → v7: room identity. Everyone starts in the default room; nothing else changes.
   6: (save) => ({ ...save, room: { color: null }, schemaVersion: 7 }),
+  // v7 → v8: Premium groundwork. Adds an (empty) room theme preference. No
+  // entitlement is ever stored in the save; owned items and equipment are untouched.
+  7: (save) => ({ ...save, room: { ...((save.room as RawRecord) ?? { color: null }), theme: null }, schemaVersion: 8 }),
 };
 
 export class SaveMigrationError extends Error {}
@@ -108,7 +111,9 @@ function sanitizeEquipped(save: GameSave): GameSave {
   const equipped: GameSave['inventory']['equipped'] = {};
   for (const [slot, itemId] of Object.entries(save.inventory.equipped)) {
     const item = itemId ? getShopItem(itemId) : undefined;
-    if (item && item.equipSlot === slot && (save.inventory.items[item.id]?.quantity ?? 0) > 0) {
+    // Premium pieces aren't owned; they stay equipped and are shown only while
+    // Premium is active (see effectiveEquipped). Owned items are kept as before.
+    if (item && item.equipSlot === slot && ((save.inventory.items[item.id]?.quantity ?? 0) > 0 || item.access === 'premium')) {
       equipped[slot as keyof typeof equipped] = item.id;
     }
   }
@@ -133,5 +138,8 @@ export function migrateSave(raw: unknown): GameSave {
     throw new SaveMigrationError('Save is missing required sections');
   }
   const room = (save.room ?? {}) as RawRecord;
-  return sanitizeEquipped({ ...(save as unknown as GameSave), room: { color: normalizeRoomColor(room.color) } });
+  return sanitizeEquipped({
+    ...(save as unknown as GameSave),
+    room: { color: normalizeRoomColor(room.color), theme: typeof room.theme === 'string' ? room.theme : null },
+  });
 }

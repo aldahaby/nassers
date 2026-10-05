@@ -89,7 +89,13 @@ import {
   type UserSettings,
   type XpPrimeTarget,
   setRoomColor,
+  setRoomTheme,
+  wearOutfit,
+  capabilitiesFor,
+  FREE_ENTITLEMENT,
+  type Capabilities,
 } from '@/core';
+import { getRoomTheme } from '@/config/roomThemes';
 import { DETECTION_POLICY } from '@/config/protection';
 import type { FocusProtectionService, ProtectionEndReason, ProtectionEvent, SaveRepository } from '@/services';
 
@@ -99,6 +105,11 @@ export interface GameStoreDeps {
   now?: () => number;
   /** Default for the debug-tools setting on a brand-new save. */
   debugDefault?: boolean;
+  /**
+   * Current product capabilities (from the entitlement store, never the save).
+   * Used only to let Premium pieces/themes be worn or chosen. Defaults to Free.
+   */
+  capabilities?: () => Capabilities;
 }
 
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -179,6 +190,10 @@ export interface GameStore {
   updateSettings(patch: Partial<UserSettings>): void;
   /** Free room colour (null = default room). Allowed in Self Mode and Child View; no gate. */
   setRoomColor(color: string | null): void;
+  /** Room theme (Premium themes need Premium at the time of choosing; null clears). */
+  setRoomTheme(themeId: string | null): void;
+  /** Wear an arbitrary outfit (e.g. a curated Premium Look), skipping pieces the person can't use. */
+  wearOutfitPreview(outfit: Partial<Record<'head' | 'face' | 'neck' | 'charm' | 'aura', string>>): void;
   debugGrant(grant: { coins?: number; xp?: number }): void;
   /** Put the pet 1 XP short of a milestone. */
   debugPrimeXp(target: XpPrimeTarget): void;
@@ -267,6 +282,7 @@ export interface GameStore {
  */
 export function createGameStore(deps: GameStoreDeps) {
   const now = deps.now ?? Date.now;
+  const caps = deps.capabilities ?? (() => capabilitiesFor(FREE_ENTITLEMENT, { childView: false, storeAvailable: false }));
   let writeChain: Promise<void> = Promise.resolve();
   let reactionId = 0;
 
@@ -462,7 +478,7 @@ export function createGameStore(deps: GameStoreDeps) {
       },
 
       equip(itemId, options) {
-        const result = applyResult(equipItem(requireSave(), itemId));
+        const result = applyResult(equipItem(requireSave(), itemId, caps()));
         if (result.ok && options?.showOnPet) set({ petReaction: { id: nextReactionId(), kind: 'equip', itemId } });
         return result;
       },
@@ -475,7 +491,7 @@ export function createGameStore(deps: GameStoreDeps) {
       },
       saveLook: (index, name) => commit(saveLook(requireSave(), index, now(), name)),
       renameLook: (index, name) => commit(renameLook(requireSave(), index, name)),
-      wearCollectionLook: (collectionId) => commit(wearCollectionLook(requireSave(), collectionId)),
+      wearCollectionLook: (collectionId) => commit(wearCollectionLook(requireSave(), collectionId, caps())),
       equipReaction(id) {
         const result = equipReaction(requireSave(), id);
         if (!result.ok) return result;
@@ -506,7 +522,7 @@ export function createGameStore(deps: GameStoreDeps) {
       debugClearOutfit: () => void devOnly((save) => debugClearOutfit(save)),
       debugSetStage: (stage) => void devOnly((save) => processStyleRewards(debugSetStage(save, stage), now()).save),
       debugSetSpecies: (speciesId) => void devOnly((save) => debugSetSpecies(save, speciesId)),
-      applyLook: (index) => commit(applyLook(requireSave(), index)),
+      applyLook: (index) => commit(applyLook(requireSave(), index, caps())),
       clearLook: (index) => commit(clearLook(requireSave(), index)),
       unequipItem: (itemId) => commit(unequipItem(requireSave(), itemId)),
 
@@ -552,6 +568,20 @@ export function createGameStore(deps: GameStoreDeps) {
 
       setRoomColor(color) {
         commit(setRoomColor(requireSave(), color));
+      },
+
+      setRoomTheme(themeId) {
+        commit(
+          setRoomTheme(requireSave(), themeId, {
+            known: (id) => Boolean(getRoomTheme(id)),
+            premium: (id) => getRoomTheme(id)?.access === 'premium',
+            entitled: caps().canUsePremiumRoomThemes,
+          }),
+        );
+      },
+
+      wearOutfitPreview(outfit) {
+        commit(wearOutfit(requireSave(), outfit, caps()));
       },
 
       updateSettings(patch) {

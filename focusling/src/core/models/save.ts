@@ -10,7 +10,7 @@ import type { PlayStats } from './play';
 import type { DailyStats, LifetimeStats, StreakState } from './stats';
 import type { RoomState } from './room';
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 export interface Wallet {
   coins: number;
@@ -49,6 +49,6 @@ export interface GameSave {
   play: PlayStats;
   /** Wardrobe extras: "new" badges and saved looks. Ownership lives in `inventory`. */
   cosmetics: CosmeticsState;
-  /** Room colour (free). Added in schema 7. */
+  /** Room colour (free, schema 7) and chosen theme (schema 8). */
   room: RoomState;
 }

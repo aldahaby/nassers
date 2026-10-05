@@ -11,8 +11,8 @@ import { StyleStage } from '@/features/style/StyleStage';
 import { WardrobeTile } from '@/features/wardrobe/WardrobeTile';
 import { cosmeticName } from '@/features/wardrobe/cosmeticCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
-import { useEquipped, useGameStore, usePetView } from '@/state';
-import { Button, CollectionBadge, ItemArt, ReactionIcon, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
+import { useCapabilities, useEquipped, useGameStore, useIsChildView, usePetView } from '@/state';
+import { Button, CollectionBadge, ItemArt, PremiumMark, ReactionIcon, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 /**
  * One collection as a lookbook: the pet in the curated Look on the
@@ -35,16 +35,19 @@ export default function CollectionScreen() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
   const [cheer, setCheer] = useState(0);
-  const entries = useMemo(() => (save && collection ? getWardrobe(save).filter((e) => e.item.collection === collection.id) : []), [save, collection]);
+  const caps = useCapabilities();
+  const childView = useIsChildView();
+  const entries = useMemo(() => (save && collection ? getWardrobe(save, caps).filter((e) => e.item.collection === collection.id) : []), [save, collection, caps]);
 
   if (!collection) return <Redirect href="/wardrobe" />;
   if (!view || !save) return null;
   const { pet, progression } = view;
   const progress = collectionProgress(save, collection.id);
-  const reaction = getReaction(collection.reaction);
+  const reaction = collection.reaction ? getReaction(collection.reaction) : undefined;
   const reactionUnlocked = reaction ? isReactionUnlocked(save, reaction.id) : false;
   const lookIds = Object.values(collection.featuredLook).filter(Boolean) as string[];
-  const lookOwned = lookIds.filter((i) => (save.inventory.items[i]?.quantity ?? 0) > 0).length;
+  const premium = collection.access === 'premium';
+  const lookOwned = premium ? (caps.canUsePremiumCollections ? lookIds.length : 0) : lookIds.filter((i) => (save.inventory.items[i]?.quantity ?? 0) > 0).length;
   const accent = collection.roomAccent ? getShopItem(collection.roomAccent) : undefined;
   const accentOwned = accent ? (save.inventory.items[accent.id]?.quantity ?? 0) > 0 : false;
   const columns = width >= 900 ? 5 : width >= 640 ? 4 : 3;
@@ -59,7 +62,7 @@ export default function CollectionScreen() {
       unequipItem(item.id);
       return;
     }
-    if (state === 'owned') {
+    if (state === 'owned' || state === 'included') {
       setShowLook(false);
       setTryItem(null);
       equip(item.id, { showOnPet: true });
@@ -101,6 +104,16 @@ export default function CollectionScreen() {
         label={`${pet.name}${showLook ? ` in the ${collection.name} look` : ''}${tryItem ? `, trying on ${cosmeticName(getShopItem(tryItem)!)}` : ''}`}
       />
 
+      {premium ? (
+        <View style={styles.progress}>
+          <View style={styles.progressTop}>
+            <PremiumMark label="Included with Premium" />
+            <Pressable onPress={() => setShowLook((v) => !v)} accessibilityRole="button" accessibilityLabel={showLook ? 'Show my outfit' : 'Show the curated look'} hitSlop={8}>
+              <Text style={styles.toggle}>{showLook ? 'Show my outfit' : 'Show the look'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
       <View style={styles.progress} accessible accessibilityLabel={`${progress.owned} of ${progress.total} collected${progress.complete ? ', complete' : ''}`}>
         <View style={styles.progressTop}>
           {progress.complete ? (
@@ -121,6 +134,7 @@ export default function CollectionScreen() {
           <View style={[styles.fill, { width: `${Math.round((progress.owned / Math.max(1, progress.total)) * 100)}%`, backgroundColor: collection.palette.primary }]} />
         </View>
       </View>
+      )}
 
       <Text style={styles.description}>{collection.description}</Text>
 
@@ -135,6 +149,11 @@ export default function CollectionScreen() {
             setCheer((c) => c + 1);
           }}
         />
+      ) : premium ? (
+        <View style={styles.premiumRow}>
+          <Text style={styles.lookHint}>Try every piece on {pet.name} for free. Wearing them is included with Focusling Premium.</Text>
+          {!childView && <Button variant="secondary" label="See Premium" onPress={() => router.push('/premium' as Href)} />}
+        </View>
       ) : (
         <Text style={styles.lookHint}>
           The curated look uses {lookIds.length} pieces · you have {lookOwned}. Collect them all to wear it in one tap.
@@ -216,6 +235,7 @@ function stripLookSlots<T extends Record<string, unknown>>(equipped: T): T {
 }
 
 const styles = StyleSheet.create({
+  premiumRow: { gap: spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   back: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
   backText: { fontSize: 34, fontWeight: '700', color: colors.primaryDark, marginTop: -4 },

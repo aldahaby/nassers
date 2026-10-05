@@ -1,12 +1,15 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { FOCUS_CONFIG } from '@/config/focus';
 import type { ProtectionStartError } from '@/core';
+import { MissionCard } from '@/features/missions/MissionCard';
 import { ProtectionSummaryRow } from '@/features/protection/ProtectionSummaryRow';
 import { isSelectiveFailure, startErrorMessage } from '@/features/protection/protectionCopy';
-import { useEquipped, useGameStore, useRoomColor, useIsChildView, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
-import { AnimatedPet, Button, Card, Screen, colors, radius, spacing, typography } from '@/ui';
+import { useAppRoutes } from '@/hooks/useAppRoutes';
+import { useCurrentMission, useEquipped, useGameStore, useRoomColor, useRoomTheme, useIsChildView, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
+import { AnimatedPet, Button, Card, Pressable, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
+import { getRoomTheme } from '@/config/roomThemes';
 import { roomPalette } from '@/ui/room/roomPalette';
 import { DurationPicker } from './DurationPicker';
 import { FocusDevPanel } from './FocusDevPanel';
@@ -17,9 +20,12 @@ export function FocusSetup() {
   const view = usePetView();
   const equipped = useEquipped();
   const roomColor = useRoomColor();
+  const roomTheme = useRoomTheme();
   const startFocus = useGameStore((s) => s.startFocus);
   const childView = useIsChildView();
   const debug = useDebugToolsEnabled();
+  const mission = useCurrentMission();
+  const routes = useAppRoutes();
   const { width } = useWindowDimensions();
 
   const [minutes, setMinutes] = useState<number>(FOCUS_CONFIG.defaultMinutes);
@@ -51,7 +57,7 @@ export function FocusSetup() {
   return (
     <Screen scroll>
       <View style={styles.hero}>
-        <View style={[styles.petStage, { width: Math.min(220, width * 0.55), height: Math.min(220, width * 0.55), backgroundColor: roomPalette(roomColor).wall }]}>
+        <View style={[styles.petStage, { width: Math.min(220, width * 0.55), height: Math.min(220, width * 0.55), backgroundColor: roomPalette(getRoomTheme(roomTheme)?.base ?? roomColor).wall }]}>
           <AnimatedPet
             speciesId={pet.speciesId}
             stage={progression.stage}
@@ -91,6 +97,22 @@ export function FocusSetup() {
         </Text>
       </Card>
 
+      {/* Missions live with Focus: today's goal, or a quiet way to set one. */}
+      {mission ? (
+        <MissionCard view={mission} compact onPress={() => router.navigate(routes.missions as Href)} accessibilityHint="Opens missions" />
+      ) : (
+        !childView && (
+          <Pressable onPress={() => router.navigate(routes.missions as Href)} style={styles.missionRow} accessibilityRole="button" accessibilityLabel="Missions. Set a small daily goal for bonus coins.">
+            <TabIcon name="missions" color={colors.primaryDark} size={20} />
+            <View style={styles.missionText}>
+              <Text style={styles.missionTitle}>Missions</Text>
+              <Text style={styles.missionDetail}>Set a small daily goal for bonus coins</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        )
+      )}
+
       {/* In Child View, protection is a parent setting and isn't shown here. */}
       {!childView && <ProtectionSummaryRow />}
 
@@ -124,6 +146,11 @@ export function FocusSetup() {
 }
 
 const styles = StyleSheet.create({
+  missionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 56, paddingHorizontal: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface },
+  missionText: { flex: 1 },
+  missionTitle: { ...typography.heading, fontSize: 16 },
+  missionDetail: { ...typography.label, fontSize: 13 },
+  chevron: { fontSize: 22, fontWeight: '900', color: colors.textMuted },
   hero: { alignItems: 'center', gap: spacing.xs },
   petStage: {
     borderRadius: radius.pill,

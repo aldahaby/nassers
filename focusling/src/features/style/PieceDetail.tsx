@@ -4,7 +4,7 @@ import { getCollection } from '@/config/collections';
 import { ART_MATERIAL, MATERIAL_LABEL } from '@/config/cosmetics';
 import { provenanceOf, type WardrobeEntry } from '@/core';
 import { cosmeticName, describeHowToGet, describeProgress, describeProvenance } from '@/features/wardrobe/cosmeticCopy';
-import { CollectionBadge, ItemArt, TabIcon, colors, radius, spacing, typography } from '@/ui';
+import { CollectionBadge, ItemArt, PremiumMark, TabIcon, colors, radius, spacing, typography } from '@/ui';
 
 /**
  * One piece, up close: its name, collection, material and provenance
@@ -12,10 +12,11 @@ import { CollectionBadge, ItemArt, TabIcon, colors, radius, spacing, typography 
  */
 export function PieceDetail({ entry, acquiredAt, trying, children }: { entry: WardrobeEntry; acquiredAt: number | null; trying: boolean; children?: ReactNode }) {
   const { item, state, progress } = entry;
-  const owned = state === 'owned' || state === 'equipped';
+  const owned = state === 'owned' || state === 'equipped' || state === 'included';
+  const premium = item.access === 'premium';
   const collection = item.collection ? getCollection(item.collection) : undefined;
   const material = item.art?.key ? ART_MATERIAL[item.art.key] : undefined;
-  const provenance = owned ? describeProvenance(provenanceOf(item, acquiredAt)) : describeHowToGet(item);
+  const provenance = owned && !premium ? describeProvenance(provenanceOf(item, acquiredAt)) : describeHowToGet(item);
   const progressText = !owned && item.unlock && progress ? describeProgress(item.unlock, progress) : null;
 
   return (
@@ -25,7 +26,7 @@ export function PieceDetail({ entry, acquiredAt, trying, children }: { entry: Wa
           <ItemArt itemId={item.id} size={52} />
         </View>
         <View style={styles.text}>
-          <Text style={styles.kicker}>{trying ? 'Trying on' : state === 'equipped' ? 'Wearing' : owned ? 'In your wardrobe' : 'Not yours yet'}</Text>
+          <Text style={styles.kicker}>{trying ? 'Trying on' : state === 'equipped' ? 'Wearing' : state === 'included' ? 'Included with Premium' : owned ? 'In your wardrobe' : premium ? 'Premium piece' : 'Not yours yet'}</Text>
           <Text style={styles.name}>{cosmeticName(item)}</Text>
           <View style={styles.meta}>
             {collection && (
@@ -34,6 +35,7 @@ export function PieceDetail({ entry, acquiredAt, trying, children }: { entry: Wa
                 <Text style={styles.tagText}>{collection.name}</Text>
               </View>
             )}
+            {premium && <PremiumMark compact />}
             {material && (
               <View style={styles.tag}>
                 <Text style={styles.tagText}>{MATERIAL_LABEL[material]}</Text>

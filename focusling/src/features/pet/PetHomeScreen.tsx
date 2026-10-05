@@ -17,16 +17,18 @@ import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { playSound } from '@/services/audio';
 import {
   useActiveSession,
+  useCapabilities,
   useCoins,
   useCurrentMission,
   useEquipped,
   useRoomColor,
+  useRoomTheme,
   useGameStore,
   usePetView,
   usePlayToday,
   useStreakDays,
 } from '@/state';
-import { Button, Card, RoomScene, Screen, SpeechBubble, colors, radius, shadow, spacing, typography, Pressable, TabIcon } from '@/ui';
+import { Button, Card, PremiumGlyph, RoomScene, Screen, SpeechBubble, colors, radius, shadow, spacing, typography, Pressable, TabIcon } from '@/ui';
 import { pickRandom } from '@/utils/format';
 
 /** Most toys/snacks shown for one-tap use under the pet. */
@@ -44,10 +46,12 @@ export function PetHomeScreen({ variant }: Props) {
   const streakDays = useStreakDays();
   const equipped = useEquipped();
   const roomColor = useRoomColor();
+  const roomTheme = useRoomTheme();
   const activeSession = useActiveSession();
   const mission = useCurrentMission();
   const play = usePlayToday();
   const routes = useAppRoutes();
+  const premium = useCapabilities().canUsePremiumCollections;
   const petPet = useGameStore((s) => s.petPet);
   const { width } = useWindowDimensions();
   const welcomeBack = useGameStore((s) => s.pendingWelcome);
@@ -152,6 +156,7 @@ export function PetHomeScreen({ variant }: Props) {
       <RoomScene
         equipped={equipped}
         roomColor={roomColor}
+        theme={roomTheme}
         height={Math.min(petSize * 1.3, 420)}
         corner={
           activeSession ? null : (
@@ -196,7 +201,12 @@ export function PetHomeScreen({ variant }: Props) {
         <Button label="Start focusing" icon="⏳" onPress={() => router.navigate(routes.focus)} />
       )}
 
-      {mission ? (
+      {/* Self mode keeps Home calm: missions live in Focus, Play has its own tab. */}
+      {!child && mission && mission.status !== 'complete' && (
+        <MissionCard view={mission} compact onPress={() => router.navigate(routes.missions as Href)} accessibilityHint="Opens missions" />
+      )}
+
+      {child && (mission ? (
         <MissionCard view={mission} compact onPress={() => router.navigate(routes.missions as Href)} accessibilityHint="Opens missions" />
       ) : (
         <Card style={styles.emptyMission}>
@@ -208,8 +218,9 @@ export function PetHomeScreen({ variant }: Props) {
           </Text>
           {!child && <Button label="Choose a mission" variant="secondary" onPress={() => router.navigate(routes.missions as Href)} />}
         </Card>
-      )}
+      ))}
 
+      {child && (
       <View style={styles.entries}>
         <EntryTile
           icon="🎯"
@@ -224,8 +235,16 @@ export function PetHomeScreen({ variant }: Props) {
           onPress={() => router.navigate(routes.play as Href)}
         />
       </View>
+      )}
 
       <PetStatsCard stats={pet.stats} progression={progression} />
+
+      {!child && !premium && (
+        <Pressable onPress={() => router.push('/premium' as Href)} style={styles.premiumLink} accessibilityRole="button" accessibilityLabel="Focusling Premium" accessibilityHint="Room themes, Premium Looks and collections. Focus stays free.">
+          <PremiumGlyph size={12} />
+          <Text style={styles.premiumLinkText}>Premium: room themes, Looks and more</Text>
+        </Pressable>
+      )}
 
       {child && (
         <Pressable
@@ -280,6 +299,8 @@ const styles = StyleSheet.create({
   tileText: { flex: 1 },
   tileTitle: { ...typography.heading, fontSize: 17 },
   tileDetail: { ...typography.label, fontSize: 12 },
+  premiumLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, alignSelf: 'center', paddingHorizontal: spacing.md },
+  premiumLinkText: { ...typography.label, color: '#5A3FC0' },
   grownUps: { alignSelf: 'center', minHeight: 44, paddingHorizontal: spacing.lg, justifyContent: 'center' },
   grownUpsText: { ...typography.label, color: colors.textMuted },
 });

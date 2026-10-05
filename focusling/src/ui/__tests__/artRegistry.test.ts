@@ -65,7 +65,7 @@ describe('cosmetic art registry', () => {
   it('every collection has a badge, a valid reaction and (if any) a drawn room accent', () => {
     for (const c of COLLECTION_LIST) {
       expect([c.id, hasBadge(c.badge)]).toEqual([c.id, true]);
-      expect(getReaction(c.reaction)).toBeDefined();
+      if (c.access !== 'premium') expect(getReaction(c.reaction!)).toBeDefined();
       if (c.roomAccent) {
         expect(DECORATION_ART[c.roomAccent]).toBeDefined();
         expect(DECORATION_ICON_VIEWBOX[c.roomAccent]).toBeDefined();

@@ -5,9 +5,11 @@ import { CHILD_NICKNAME_MAX_LENGTH } from '@/config/family';
 import type { PlayAccess } from '@/core';
 import { ParentHeader } from '@/features/family/ParentHeader';
 import { PinPad } from '@/features/family/PinPad';
+import { PremiumStatusCard } from '@/features/premium/PremiumStatusCard';
 import { DeveloperTools } from '@/features/settings/DeveloperTools';
 import { ResetCard } from '@/features/settings/ResetCard';
 import { SettingRow } from '@/features/settings/SettingRow';
+import { TrustCard } from '@/features/settings/TrustCard';
 import { useGameStore } from '@/state';
 import { Button, Card, Screen, colors, radius, spacing, typography, Pressable } from '@/ui';
 
@@ -80,6 +82,9 @@ export default function ParentSettingsScreen() {
 
       <ChangePinCard />
 
+      {/* Purchases live here, behind the parent PIN; Child View never offers them. */}
+      <PremiumStatusCard />
+
       <Card>
         <Text style={typography.heading}>Protection</Text>
         <Text style={styles.muted}>Choose what protection runs during focus sessions.</Text>
@@ -92,6 +97,7 @@ export default function ParentSettingsScreen() {
         <SettingRow label="Developer tools" value={settings.debugToolsEnabled} onChange={(v) => updateSettings({ debugToolsEnabled: v })} />
       </Card>
 
+      <TrustCard />
       {settings.debugToolsEnabled && <DeveloperTools />}
       <ResetCard />
       <Button

@@ -4,7 +4,9 @@ import { combinePassiveBonuses } from '../economy/economyService';
 import { applyStatDelta } from '../pet/petCareService';
 import { MINUTE_MS } from '../shared/dates';
 import { fail, ok, type Result } from '../shared/result';
+import { canWear } from '../entitlements/entitlementService';
 import type {
+  Capabilities,
   CareOutcome,
   EquipSlot,
   GameSave,
@@ -117,11 +119,15 @@ export function purchaseItem(save: GameSave, itemId: string, now: Timestamp): Re
 }
 
 /** Wear or place an owned item. Replaces whatever was in the same slot. */
-export function equipItem(save: GameSave, itemId: string): Result<GameSave, InventoryError> {
+/**
+ * Wear or place an item. Owned items always work. Premium pieces (never owned)
+ * work only when `caps` says the person currently has Premium.
+ */
+export function equipItem(save: GameSave, itemId: string, caps?: Capabilities): Result<GameSave, InventoryError> {
   const item = getShopItem(itemId);
   if (!item) return fail('unknown-item');
   if (!item.equipSlot) return fail('not-equippable');
-  if (!isOwned(save.inventory, itemId)) return fail('not-owned');
+  if (!isOwned(save.inventory, itemId) && !(caps && canWear(save, item, caps))) return fail('not-owned');
   // Pieces that can't be worn together are swapped out quietly.
   return ok({ ...save, inventory: { ...save.inventory, equipped: withEquipped(save.inventory.equipped, itemId) } });
 }

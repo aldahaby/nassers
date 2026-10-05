@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { CosmeticCollection, GrowthStage, PetSpeciesId } from '@/core';
-import { CollectionBadge, PetArt, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
+import { CollectionBadge, PetArt, PremiumMark, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 interface Props {
   collection: CosmeticCollection;
@@ -14,12 +14,13 @@ interface Props {
 /** A collection in the browser: badge, identity line, progress, and the pet in its Look. */
 export function CollectionCard({ collection, owned, total, complete, pet, onPress }: Props) {
   const { palette } = collection;
+  const premium = collection.access === 'premium';
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.card, { backgroundColor: palette.wash }, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${collection.name}. ${collection.tagline} ${owned} of ${total} collected${complete ? ', complete' : ''}.`}
+      accessibilityLabel={`${collection.name}. ${collection.tagline} ${premium ? 'Included with Premium.' : `${owned} of ${total} collected${complete ? ', complete' : ''}.`}`}
     >
       <View style={styles.text}>
         <View style={styles.titleRow}>
@@ -31,7 +32,12 @@ export function CollectionCard({ collection, owned, total, complete, pet, onPres
         <Text style={styles.tagline} numberOfLines={2}>
           {collection.tagline}
         </Text>
-        <View style={styles.progressRow}>
+        {premium ? (
+          <View style={styles.progressRow}>
+            <PremiumMark label="Included with Premium" compact />
+          </View>
+        ) : (
+          <View style={styles.progressRow}>
           {complete ? (
             <View style={styles.done}>
               <TabIcon name="check" color={colors.success} size={14} />
@@ -45,7 +51,8 @@ export function CollectionCard({ collection, owned, total, complete, pet, onPres
           <View style={styles.track} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <View style={[styles.fill, { width: `${Math.round((owned / Math.max(1, total)) * 100)}%`, backgroundColor: palette.primary }]} />
           </View>
-        </View>
+          </View>
+        )}
       </View>
       <View style={styles.preview}>
         <PetArt speciesId={pet.speciesId} stage={pet.stage} mood="content" equipped={collection.featuredLook} size={96} />

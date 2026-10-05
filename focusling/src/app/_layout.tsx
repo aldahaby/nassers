@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { EntitlementBridge } from '@/features/premium/EntitlementBridge';
 import { SoundBridge } from '@/features/sound/SoundBridge';
 import { StyleCelebrationModal } from '@/features/style/StyleCelebrationModal';
 import { useGameLifecycle } from '@/hooks/useGameLifecycle';
@@ -33,8 +34,8 @@ export default function RootLayout() {
           <Stack.Screen name="missions" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="wardrobe" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="room-studio" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="premium" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="collection/[id]" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="play" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="games/memory-garden" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="games/toy-toss" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="parent-gate" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
@@ -47,6 +48,7 @@ export default function RootLayout() {
       )}
       {status === 'ready' && <StyleCelebrationModal />}
       {status === 'ready' && <SoundBridge />}
+      {status === 'ready' && <EntitlementBridge />}
     </SafeAreaProvider>
   );
 }

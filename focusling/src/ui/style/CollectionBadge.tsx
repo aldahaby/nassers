@@ -61,6 +61,15 @@ const BADGES: Record<string, () => ReactElement> = {
       <Circle cx={37} cy={13} r={2.4} fill="#E9F27A" stroke="#6E9B4E" strokeWidth={0.8} />
     </G>
   ),
+  'badge-nightglow': () => (
+    <G>
+      <Rect x={2} y={2} width={44} height={44} rx={14} fill="#1E2150" />
+      <Path d="M6 34 C14 24 22 38 30 28 C34 23 39 24 42 26" stroke="#9FF3D9" strokeWidth={3} strokeLinecap="round" fill="none" opacity={0.85} />
+      <Path d="M6 38 C14 30 22 42 30 33 C34 29 39 30 42 31" stroke="#B9A8FF" strokeWidth={2} strokeLinecap="round" fill="none" opacity={0.8} />
+      <Path d="M26 9 A9 9 0 1 0 26 27 A11 11 0 0 1 26 9 Z" fill="#FFE38A" />
+      <Path d={starPath(35, 12, 3.4)} fill="#FFFFFF" />
+    </G>
+  ),
 };
 
 export function hasBadge(key: string): boolean {

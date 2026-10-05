@@ -44,8 +44,9 @@ function session(save: GameSave, planned: number, at: number, outcome: 'complete
 }
 
 describe('collection registry', () => {
-  it('registers five permanent, first-party collections with unique ids', () => {
-    expect(COLLECTION_LIST.map((c) => c.id)).toEqual(['focus-club', 'midnight-arcade', 'dreamwave', 'cloud-racer', 'moss-club']);
+  it('registers five free collections and one Premium collection, all permanent and first-party', () => {
+    expect(COLLECTION_LIST.map((c) => c.id)).toEqual(['focus-club', 'midnight-arcade', 'dreamwave', 'cloud-racer', 'moss-club', 'nightglow']);
+    expect(COLLECTION_LIST.filter((c) => c.access === 'premium').map((c) => c.id)).toEqual(['nightglow']);
     for (const c of COLLECTION_LIST) {
       expect(c.availability).toEqual({ kind: 'permanent' });
       expect(c.origin.kind).toBe('first-party');
@@ -85,10 +86,11 @@ describe('collection registry', () => {
   });
 
   it('each collection unlocks its own distinct reaction', () => {
-    const reactions = COLLECTION_LIST.map((c) => c.reaction);
+    const free = COLLECTION_LIST.filter((c) => c.access !== 'premium');
+    const reactions = free.map((c) => c.reaction);
     expect(new Set(reactions).size).toBe(reactions.length);
-    for (const c of COLLECTION_LIST) {
-      expect(getReaction(c.reaction)?.unlock).toEqual({ kind: 'collection', collectionId: c.id });
+    for (const c of free) {
+      expect(getReaction(c.reaction!)?.unlock).toEqual({ kind: 'collection', collectionId: c.id });
     }
   });
 
@@ -241,7 +243,7 @@ describe('moss club', () => {
     expect(ids).toHaveLength(7);
     const c = getCollection('moss-club')!;
     for (const id of Object.values(c.featuredLook)) expect(ids).toContain(id);
-    expect(getReaction(c.reaction)).toMatchObject({ id: 'firefly-hello', personality: 'calm', unlock: { kind: 'collection', collectionId: 'moss-club' } });
+    expect(getReaction(c.reaction!)).toMatchObject({ id: 'firefly-hello', personality: 'calm', unlock: { kind: 'collection', collectionId: 'moss-club' } });
   });
 
   it('is earned by visible milestones or focus coins, never randomly', () => {
@@ -341,7 +343,7 @@ describe('v5 → v6 migration', () => {
     v5.inventory.equipped = { face: 'fc-visor-frost', head: 'acc-cap' };
     v5.cosmetics = { newItemIds: ['fc-visor-frost'], looks: [{ id: 'l1', equipped: { face: 'fc-visor-frost' }, savedAt: 1 }, null, null] };
     const migrated = migrateSave(v5);
-    expect(migrated.schemaVersion).toBe(7);
+    expect(migrated.schemaVersion).toBe(8);
     expect(migrated.cosmetics).toMatchObject({
       newItemIds: ['fc-visor-frost'],
       looks: [{ id: 'l1', equipped: { face: 'fc-visor-frost' } }, null, null],

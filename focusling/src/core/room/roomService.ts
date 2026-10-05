@@ -18,3 +18,13 @@ export function setRoomColor(save: GameSave, color: string | null): GameSave {
   if (save.room.color === next) return save;
   return { ...save, room: { ...save.room, color: next } };
 }
+
+/**
+ * Choose a room theme (null clears it). Premium themes need `entitled` at the
+ * time of choosing; free themes (none yet) always work. Unknown ids are ignored.
+ */
+export function setRoomTheme(save: GameSave, themeId: string | null, opts: { known: (id: string) => boolean; premium: (id: string) => boolean; entitled: boolean }): GameSave {
+  if (themeId !== null && (!opts.known(themeId) || (opts.premium(themeId) && !opts.entitled))) return save;
+  if (save.room.theme === themeId) return save;
+  return { ...save, room: { ...save.room, theme: themeId } };
+}

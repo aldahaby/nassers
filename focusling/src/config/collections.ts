@@ -80,6 +80,20 @@ export const COLLECTION_LIST: readonly CosmeticCollection[] = [
     origin: { kind: 'first-party', designer: 'Focusling' },
     order: 4,
   },
+  {
+    id: 'nightglow',
+    name: 'Nightglow',
+    tagline: 'For long, calm evenings.',
+    description: 'A Premium collection of moonlit pearls, a starlit beret, an aurora visor and soft aurora light.',
+    theme: 'celestial, cozy neon; midnight indigo, opal, lilac, lantern gold, aurora mint',
+    palette: { primary: '#5B5FC7', secondary: '#B9A8FF', accent: '#FFE38A', ink: '#1E2150', wash: '#E6E4FA' },
+    badge: 'badge-nightglow',
+    featuredLook: { head: 'ng-headband', face: 'ng-visor', neck: 'ng-pearls', charm: 'ng-charm', aura: 'ng-aura' },
+    access: 'premium',
+    availability: { kind: 'permanent' },
+    origin: { kind: 'first-party', designer: 'Focusling' },
+    order: 5,
+  },
 ];
 
 const BY_ID = new Map(COLLECTION_LIST.map((c) => [c.id, c]));

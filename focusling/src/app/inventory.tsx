@@ -10,7 +10,7 @@ import { ownedStatus } from '@/features/shop/itemCopy';
 import { ItemDetailSheet } from '@/features/shop/ItemDetailSheet';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
-import { useEquipped, useRoomColor, useGameStore, usePetView } from '@/state';
+import { useEquipped, useRoomColor, useRoomTheme, useGameStore, usePetView } from '@/state';
 import { Button, Card, RoomScene, Screen, SpeechBubble, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 const EMPTY_COPY: Record<ShopCategory, string> = {
@@ -25,6 +25,7 @@ export default function InventoryScreen() {
   const view = usePetView();
   const equipped = useEquipped();
   const roomColor = useRoomColor();
+  const roomTheme = useRoomTheme();
   const save = useGameStore((s) => s.save);
   const reaction = useGameStore((s) => s.petReaction);
   const { equip, unequipItem, play, feed, consumePetReaction } = useGameStore.getState();
@@ -66,7 +67,7 @@ export default function InventoryScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <RoomScene equipped={equipped} roomColor={roomColor} height={petSize * 1.45}>
+      <RoomScene equipped={equipped} roomColor={roomColor} theme={roomTheme} height={petSize * 1.45}>
         <SpeechBubble text={bubble} />
         <PetReactionStage
           speciesId={pet.speciesId}

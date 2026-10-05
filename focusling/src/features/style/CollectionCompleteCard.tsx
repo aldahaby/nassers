@@ -19,7 +19,7 @@ export function CollectionCompleteCard({ collectionId, onTryReaction, onWearLook
   const collection = getCollection(collectionId);
   const { wearCollectionLook } = useGameStore.getState();
   if (!collection) return null;
-  const reaction = getReaction(collection.reaction);
+  const reaction = collection.reaction ? getReaction(collection.reaction) : undefined;
   const { palette } = collection;
 
   return (

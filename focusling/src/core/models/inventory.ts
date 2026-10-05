@@ -1,3 +1,4 @@
+import type { ContentAccess } from './entitlement';
 import type { Id, Timestamp } from './common';
 import type { GrowthStage, PetSpeciesId } from './pet';
 import type { GameSave } from './save';
@@ -26,7 +27,7 @@ export interface PassiveBonus {
  * (Future provenance such as seasonal, creator or licensed capsules would add
  * values here; none involve randomness.)
  */
-export type ItemSource = 'shop' | 'starter' | 'earned';
+export type ItemSource = 'shop' | 'starter' | 'earned' | 'premium';
 
 /** A predictable milestone that unlocks an earned item. Progress is always shown. */
 export type UnlockRule =
@@ -112,6 +113,15 @@ export interface ShopItem {
   /** Colourway name shown after the item name, e.g. "Frost". */
   colorway?: string;
   credit?: ItemCredit;
+  /**
+   * Access tier (defaults to free). Premium pieces are included with Premium:
+   * never sold for coins, never added to inventory, always previewable.
+   */
+  access?: ContentAccess;
+  /** Can be tried on before it is available (defaults to true). */
+  previewable?: boolean;
+  /** `retired` items stay usable for owners but are no longer offered. Defaults to available. */
+  availability?: 'available' | 'retired';
 }
 
 /** A saved outfit: what goes in each wearable slot. */

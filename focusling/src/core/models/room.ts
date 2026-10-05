@@ -10,4 +10,10 @@
 export interface RoomState {
   /** Base room colour as #RRGGBB, or null for the default room. */
   color: string | null;
+  /**
+   * Chosen Premium room theme id (schema 8), or null. It is a preference, not
+   * ownership: it renders only while Premium is active; otherwise the room
+   * colour shows. Nothing is lost if Premium lapses.
+   */
+  theme: string | null;
 }

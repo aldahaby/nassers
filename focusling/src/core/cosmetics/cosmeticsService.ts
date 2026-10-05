@@ -3,10 +3,12 @@ import { COSMETICS } from '@/config/cosmetics';
 import { DEFAULT_REACTION, getReaction, STARTER_REACTIONS } from '@/config/reactions';
 import { CATALOG, EARNED_ITEMS, getShopItem } from '@/config/shopCatalog';
 import { fail, ok, type Result } from '../shared/result';
+import { canWear, itemAccess } from '../entitlements/entitlementService';
 import { getProgression } from '../progression/progressionService';
 import { createId } from '../shared/ids';
 import type {
   AccessorySlot,
+  Capabilities,
   CosmeticsState,
   GameSave,
   Id,
@@ -50,12 +52,14 @@ export function isWearable(item: ShopItem): boolean {
 export type Provenance =
   | { kind: 'starter'; acquiredAt: Timestamp | null }
   | { kind: 'milestone'; rule: UnlockRule; acquiredAt: Timestamp | null }
-  | { kind: 'coins'; price: number; acquiredAt: Timestamp | null };
+  | { kind: 'coins'; price: number; acquiredAt: Timestamp | null }
+  | { kind: 'premium'; acquiredAt: null };
 
 export function provenanceOf(item: ShopItem, acquiredAt: Timestamp | null = null): Provenance {
   const source = itemSource(item);
   if (source === 'starter') return { kind: 'starter', acquiredAt };
   if (source === 'earned' && item.unlock) return { kind: 'milestone', rule: item.unlock, acquiredAt };
+  if (source === 'premium') return { kind: 'premium', acquiredAt: null };
   return { kind: 'coins', price: item.price, acquiredAt };
 }
 
@@ -157,9 +161,9 @@ export function lookName(look: SavedLook, index: number): string {
 }
 
 /** Wear a saved look. Wearable slots not in the look are cleared; room decor is untouched. */
-export function applyLook(save: GameSave, index: number): GameSave {
+export function applyLook(save: GameSave, index: number, caps?: Capabilities): GameSave {
   const look = save.cosmetics.looks[index];
-  return look ? wearOutfit(save, look.equipped) : save;
+  return look ? wearOutfit(save, look.equipped, caps) : save;
 }
 
 /**
@@ -167,13 +171,14 @@ export function applyLook(save: GameSave, index: number): GameSave {
  * (unknown, legacy or unowned ids are skipped), conflicts resolved in slot
  * order. Room decor is untouched.
  */
-export function wearOutfit(save: GameSave, outfit: Partial<Record<AccessorySlot, Id>>): GameSave {
+export function wearOutfit(save: GameSave, outfit: Partial<Record<AccessorySlot, Id>>, caps?: Capabilities): GameSave {
   let equipped = { ...save.inventory.equipped };
   for (const slot of WEARABLE_SLOTS) delete equipped[slot];
   for (const slot of WEARABLE_SLOTS) {
     const id = outfit[slot];
     const item = id ? getShopItem(id) : undefined;
-    if (id && item?.equipSlot === slot && (save.inventory.items[id]?.quantity ?? 0) > 0) equipped = withEquipped(equipped, id);
+    // Owned pieces, plus Premium pieces while Premium is active.
+    if (id && item?.equipSlot === slot && ((save.inventory.items[id]?.quantity ?? 0) > 0 || (caps && canWear(save, item, caps)))) equipped = withEquipped(equipped, id);
   }
   return { ...save, inventory: { ...save.inventory, equipped } };
 }
@@ -232,9 +237,27 @@ export function collectionProgress(save: GameSave, collectionId: string): Collec
 }
 
 /** Wear a collection's curated Look (the owned pieces of it). Personal Looks are untouched. */
-export function wearCollectionLook(save: GameSave, collectionId: string): GameSave {
+export function wearCollectionLook(save: GameSave, collectionId: string, caps?: Capabilities): GameSave {
   const collection = getCollection(collectionId);
-  return collection ? wearOutfit(save, collection.featuredLook) : save;
+  return collection ? wearOutfit(save, collection.featuredLook, caps) : save;
+}
+
+/**
+ * What the pet actually shows: saved equipment minus Premium pieces the person
+ * can't currently use. Nothing is deleted, so pieces reappear if Premium returns.
+ */
+export function effectiveEquipped(save: GameSave, caps: Capabilities): GameSave['inventory']['equipped'] {
+  let changed = false;
+  const next = { ...save.inventory.equipped };
+  for (const slot of WEARABLE_SLOTS) {
+    const id = next[slot];
+    const item = id ? getShopItem(id) : undefined;
+    if (id && item && itemAccess(item) === 'premium' && !canWear(save, item, caps)) {
+      delete next[slot];
+      changed = true;
+    }
+  }
+  return changed ? next : save.inventory.equipped;
 }
 
 export interface StyleRewards {
@@ -260,10 +283,12 @@ export function checkCollections(save: GameSave): Omit<StyleRewards, 'unlocked'>
   const completed: string[] = [];
   const unlockedReactions: ReactionId[] = [];
   for (const collection of COLLECTION_LIST) {
+    // Premium collections are included with Premium, not collected: no completion.
+    if (collection.access === 'premium') continue;
     if (save.cosmetics.completedCollections.includes(collection.id)) continue;
     if (!collectionProgress(save, collection.id).complete) continue;
     completed.push(collection.id);
-    if (!reactions.unlocked.includes(collection.reaction)) {
+    if (collection.reaction && !reactions.unlocked.includes(collection.reaction)) {
       reactions = { ...reactions, unlocked: [...reactions.unlocked, collection.reaction] };
       unlockedReactions.push(collection.reaction);
     }
@@ -318,7 +343,11 @@ export function clearLook(save: GameSave, index: number): GameSave {
   return { ...save, cosmetics: { ...save.cosmetics, looks } };
 }
 
-export type WardrobeState = 'equipped' | 'owned' | 'earnable' | 'buyable';
+/**
+ * - included: a Premium piece the person can wear now (Premium active)
+ * - premium: a Premium piece to preview; wearing it needs Premium
+ */
+export type WardrobeState = 'equipped' | 'owned' | 'earnable' | 'buyable' | 'included' | 'premium';
 
 export interface WardrobeEntry {
   item: ShopItem;
@@ -329,13 +358,25 @@ export interface WardrobeEntry {
 }
 
 /** Every wearable with its state: collection pieces first, then classic shop accessories. */
-export function getWardrobe(save: GameSave): WardrobeEntry[] {
+export function getWardrobe(save: GameSave, caps?: Capabilities): WardrobeEntry[] {
   const wearables = CATALOG.filter(isWearable);
   const ordered = [...wearables.filter((i) => i.collection), ...wearables.filter((i) => !i.collection)];
   return ordered.map((item) => {
     const owned = (save.inventory.items[item.id]?.quantity ?? 0) > 0;
-    const equipped = owned && save.inventory.equipped[item.equipSlot!] === item.id;
-    const state: WardrobeState = equipped ? 'equipped' : owned ? 'owned' : itemSource(item) === 'shop' ? 'buyable' : 'earnable';
+    const premium = itemAccess(item) === 'premium';
+    const wearable = owned || (premium && !!caps && canWear(save, item, caps));
+    const equipped = wearable && save.inventory.equipped[item.equipSlot!] === item.id;
+    const state: WardrobeState = equipped
+      ? 'equipped'
+      : owned
+        ? 'owned'
+        : premium
+          ? wearable
+            ? 'included'
+            : 'premium'
+          : itemSource(item) === 'shop'
+            ? 'buyable'
+            : 'earnable';
     return {
       item,
       state,

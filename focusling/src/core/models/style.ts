@@ -67,8 +67,10 @@ export interface CosmeticCollection {
   badge: string;
   /** The curated outfit. Separate from the player's personal saved Looks. */
   featuredLook: Partial<Record<AccessorySlot, Id>>;
-  /** Unlocked once, when every piece of the collection is owned. */
-  reaction: ReactionId;
+  /** Unlocked once, when every piece of a free collection is owned. Premium collections have none. */
+  reaction?: ReactionId;
+  /** Free collections are earned/bought; Premium ones are included with Premium (defaults to free). */
+  access?: 'free' | 'premium';
   /** Optional matching room decoration (sold in the Shop; not part of completion). */
   roomAccent?: Id;
   availability: CollectionAvailability;

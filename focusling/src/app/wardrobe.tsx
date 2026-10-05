@@ -2,6 +2,7 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { COLLECTION_LIST } from '@/config/collections';
+import { PREMIUM_LOOKS } from '@/config/cosmetics';
 import { getShopItem } from '@/config/shopCatalog';
 import {
   collectionProgress,
@@ -26,12 +27,12 @@ import { WardrobeTile } from '@/features/wardrobe/WardrobeTile';
 import { cosmeticName, describeProgress, describeUnlock, slotName } from '@/features/wardrobe/cosmeticCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useEquipped, useGameStore, usePetView } from '@/state';
-import { Button, CollectionBadge, PetArt, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
+import { useCapabilities, useEquipped, useGameStore, useIsChildView, usePetView } from '@/state';
+import { Button, CollectionBadge, PetArt, PremiumMark, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 type Filter = 'all' | AccessorySlot;
 const FILTERS: readonly Filter[] = ['all', ...WEARABLE_SLOTS];
-type Preview = { kind: 'item'; itemId: string } | { kind: 'look'; collectionId: string } | null;
+type Preview = { kind: 'item'; itemId: string } | { kind: 'look'; collectionId: string } | { kind: 'premiumLook'; lookId: string } | null;
 
 /**
  * The Wardrobe as a dressing room: pet first (a big stage), outfit second
@@ -44,7 +45,9 @@ export default function WardrobeScreen() {
   const equipped = useEquipped();
   const save = useGameStore((s) => s.save);
   const reaction = useGameStore((s) => s.petReaction);
-  const { equip, unequipItem, consumePetReaction, markItemsSeen, wearCollectionLook, saveLook } = useGameStore.getState();
+  const { equip, unequipItem, consumePetReaction, markItemsSeen, wearCollectionLook, wearOutfitPreview, saveLook } = useGameStore.getState();
+  const caps = useCapabilities();
+  const childView = useIsChildView();
   const { bubble, say, sayForReaction } = usePetSpeech();
   const routes = useAppRoutes();
   const { width } = useWindowDimensions();
@@ -63,14 +66,19 @@ export default function WardrobeScreen() {
   const [newOnOpen] = useState(() => useGameStore.getState().save?.cosmetics.newItemIds ?? []);
   useEffect(() => () => markItemsSeen(newOnOpen), [markItemsSeen, newOnOpen]);
 
-  const entries = useMemo(() => (save ? getWardrobe(save) : []), [save]);
+  const entries = useMemo(() => (save ? getWardrobe(save, caps) : []), [save, caps]);
   const next = useMemo(() => (save ? nextUnlock(save) : null), [save]);
   if (!view || !save) return null;
   const { pet, progression } = view;
 
   // What the preview pet wears: the outfit, or a try-on on top of it.
   const previewItem = preview?.kind === 'item' ? getShopItem(preview.itemId) : undefined;
-  const previewLook = preview?.kind === 'look' ? COLLECTION_LIST.find((c) => c.id === preview.collectionId) : undefined;
+  const previewLook =
+    preview?.kind === 'look'
+      ? COLLECTION_LIST.find((c) => c.id === preview.collectionId)
+      : preview?.kind === 'premiumLook'
+        ? PREMIUM_LOOKS.map((l) => ({ ...l, palette: getCollectionPalette('nightglow') })).find((l) => l.id === preview.lookId)
+        : undefined;
   const shown = previewItem
     ? withEquipped(equipped, previewItem.id)
     : previewLook
@@ -79,8 +87,10 @@ export default function WardrobeScreen() {
   const wearingLook = COLLECTION_LIST.find((c) => sameOutfit(equipped, c.featuredLook));
   const stageTint = (previewLook ?? wearingLook)?.palette.wash;
   const columns = width >= 900 ? 6 : width >= 640 ? 5 : width >= 400 ? 4 : 3;
-  const completeCount = COLLECTION_LIST.filter((c) => collectionProgress(save, c.id).complete).length;
-  const owned = entries.filter((e) => e.state === 'owned' || e.state === 'equipped').length;
+  const freeCollections = COLLECTION_LIST.filter((c) => c.access !== 'premium');
+  const completeCount = freeCollections.filter((c) => collectionProgress(save, c.id).complete).length;
+  const owned = entries.filter((e) => e.state === 'owned' || (e.state === 'equipped' && e.item.access !== 'premium')).length;
+  const seePremium = () => router.push('/premium' as Href);
 
   const onTile = (entry: WardrobeEntry) => {
     const { item, state } = entry;
@@ -91,7 +101,7 @@ export default function WardrobeScreen() {
       unequipItem(item.id);
       return;
     }
-    if (state === 'owned') {
+    if (state === 'owned' || state === 'included') {
       setPreview(null);
       setFocusId(item.id);
       const swapped = conflictsFor(equipped, item.id).map((id) => getShopItem(id)?.name).filter(Boolean);
@@ -122,6 +132,10 @@ export default function WardrobeScreen() {
 
   const lookAction = (c: CosmeticCollection) => {
     const progress = collectionProgress(save, c.id);
+    if (c.access === 'premium') {
+      const lookSize = Object.keys(c.featuredLook).length;
+      return { progress, ownedLook: caps.canUsePremiumCollections ? lookSize : 0, lookSize, canWear: caps.canUsePremiumCollections };
+    }
     const ownedLook = Object.values(c.featuredLook).filter((id) => id && (save.inventory.items[id]?.quantity ?? 0) > 0).length;
     const lookSize = Object.keys(c.featuredLook).length;
     return { progress, ownedLook, lookSize, canWear: ownedLook === lookSize };
@@ -138,7 +152,7 @@ export default function WardrobeScreen() {
             Wardrobe
           </Text>
           <Text style={styles.subtitle}>
-            {owned === 1 ? '1 piece' : `${owned} pieces`} · {completeCount} of {COLLECTION_LIST.length} collections complete
+            {owned === 1 ? '1 piece' : `${owned} pieces`} · {completeCount} of {freeCollections.length} collections complete
           </Text>
         </View>
       </View>
@@ -163,8 +177,10 @@ export default function WardrobeScreen() {
       {previewLook ? (
         <View style={styles.tryOn} accessibilityLiveRegion="polite">
           <Text style={styles.tryTitle}>Trying on the {previewLook.name} look</Text>
+          {preview?.kind === 'premiumLook' && <Text style={styles.lookSub}>A Premium Look. Try it on as long as you like.</Text>}
           <View style={styles.tryActions}>
             <Button variant="ghost" label="Stop trying on" onPress={() => setPreview(null)} style={styles.tryButton} />
+            {preview?.kind === 'premiumLook' && !childView && <Button variant="secondary" label="See Premium" onPress={seePremium} style={styles.tryButton} />}
           </View>
         </View>
       ) : detailEntry ? (
@@ -180,6 +196,7 @@ export default function WardrobeScreen() {
               style={styles.tryButton}
             />
             {detailEntry.state === 'buyable' && <Button variant="secondary" label="See in the shop" onPress={() => router.navigate(routes.shop as Href)} style={styles.tryButton} />}
+            {detailEntry.state === 'premium' && !childView && <Button variant="secondary" label="See Premium" onPress={seePremium} style={styles.tryButton} />}
           </View>
         </PieceDetail>
       ) : (
@@ -250,7 +267,14 @@ export default function WardrobeScreen() {
                     <CollectionBadge badge={c.badge} size={22} />
                     <Text style={[styles.lookName, { color: c.palette.ink }]}>{c.name}</Text>
                   </View>
-                  <Text style={styles.lookSub}>{canWear ? 'Ready to wear' : `${ownedLook} of ${lookSize} pieces owned`}</Text>
+                  {c.access === 'premium' ? (
+                    <View style={styles.lookTitleRow}>
+                      <PremiumMark compact />
+                      <Text style={styles.lookSub}>{canWear ? 'Included' : 'Try it on free'}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.lookSub}>{canWear ? 'Ready to wear' : `${ownedLook} of ${lookSize} pieces owned`}</Text>
+                  )}
                   <View style={styles.lookButtons}>
                     {canWear ? (
                       <Button
@@ -271,6 +295,35 @@ export default function WardrobeScreen() {
               </View>
             );
           })}
+          <View style={styles.lookTitleRow}>
+            <Text style={styles.sectionTitle}>Premium Looks</Text>
+            <PremiumMark compact />
+          </View>
+          {PREMIUM_LOOKS.map((l) => (
+            <View key={l.id} style={[styles.lookCard, styles.premiumLookCard]}>
+              <PetArt speciesId={pet.speciesId} stage={progression.stage} mood="content" equipped={l.featuredLook} size={84} />
+              <View style={styles.lookText}>
+                <Text style={styles.lookName}>{l.name}</Text>
+                <Text style={styles.lookSub}>{caps.canUseAdvancedCustomization ? 'Included with Premium' : 'Try it on free'}</Text>
+                <View style={styles.lookButtons}>
+                  {caps.canUseAdvancedCustomization ? (
+                    <Button
+                      label="Wear look"
+                      sound="equip"
+                      onPress={() => {
+                        setPreview(null);
+                        wearOutfitPreview(l.featuredLook);
+                        setCheer((k) => k + 1);
+                      }}
+                      style={styles.lookButton}
+                    />
+                  ) : (
+                    <Button variant="secondary" label="Try on" onPress={() => setPreview({ kind: 'premiumLook', lookId: l.id })} style={styles.lookButton} />
+                  )}
+                </View>
+              </View>
+            </View>
+          ))}
         </View>
       )}
 
@@ -328,6 +381,18 @@ function groupByCollection(entries: WardrobeEntry[]): Group[] {
 function GroupHeader({ group, save }: { group: Group; save: NonNullable<ReturnType<typeof useGameStore.getState>['save']> }) {
   if (!group.collection) return <Text style={styles.groupTitle}>Classic shop</Text>;
   const c = group.collection;
+  if (c.access === 'premium') {
+    return (
+      <Pressable onPress={() => router.push(`/collection/${c.id}` as Href)} style={styles.groupHeader} accessibilityRole="button" accessibilityLabel={`${c.name}, included with Premium. Open collection.`}>
+        <CollectionBadge badge={c.badge} size={26} />
+        <Text style={[styles.groupTitle, { color: c.palette.ink }]}>{c.name}</Text>
+        <View style={styles.groupCount}>
+          <PremiumMark compact />
+        </View>
+        <Text style={styles.groupChevron}>›</Text>
+      </Pressable>
+    );
+  }
   const p = collectionProgress(save, c.id);
   return (
     <Pressable onPress={() => router.push(`/collection/${c.id}` as Href)} style={styles.groupHeader} accessibilityRole="button" accessibilityLabel={`${c.name}, ${p.owned} of ${p.total} collected. Open collection.`}>
@@ -339,6 +404,10 @@ function GroupHeader({ group, save }: { group: Group; save: NonNullable<ReturnTy
       <Text style={styles.groupChevron}>›</Text>
     </Pressable>
   );
+}
+
+function getCollectionPalette(id: string) {
+  return COLLECTION_LIST.find((c) => c.id === id)!.palette;
 }
 
 function stripWearables<T extends Record<string, unknown>>(equipped: T): T {
@@ -381,6 +450,7 @@ const styles = StyleSheet.create({
   lookSub: { ...typography.label },
   lookButtons: { flexDirection: 'row', gap: spacing.sm, marginTop: 2 },
   lookButton: { flexGrow: 1 },
+  premiumLookCard: { backgroundColor: '#F0EBFF' },
   hint: { ...typography.body, fontSize: 14, color: colors.textMuted },
   next: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.primarySoft },
   nextText: { ...typography.body, fontSize: 14, flex: 1, color: colors.primaryDark },

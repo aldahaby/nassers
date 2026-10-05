@@ -1,7 +1,8 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { EquipSlot, GrowthStage, Pet, PetMood } from '@/core';
 import { PetReactionStage } from '@/features/pet/PetReactionStage';
-import { useRoomColor, type PetReaction } from '@/state';
+import { getRoomTheme } from '@/config/roomThemes';
+import { useRoomColor, useRoomTheme, type PetReaction } from '@/state';
 import { roomPalette } from '@/ui/room/roomPalette';
 import { getStageDefinitionById } from '@/core';
 import { SpeechBubble } from '@/ui';
@@ -32,7 +33,9 @@ export function StyleStage({ pet, stage, mood, equipped, tint, bubble = null, re
   const size = Math.min(maxSize, width * 0.8);
   const spot = size * getStageDefinitionById(stage).scale * 1.2;
   // With no collection tint, the stage is the pet's own room colour.
-  const room = roomPalette(useRoomColor());
+  const theme = getRoomTheme(useRoomTheme());
+  const roomColor = useRoomColor();
+  const room = roomPalette(theme ? theme.base : roomColor);
   return (
     <View style={[styles.stage, { backgroundColor: tint ?? room.wall, minHeight: size + 24 }]}>
       <View style={[styles.floor, { width: size * 0.9, height: size * 0.1, borderRadius: size }]} />

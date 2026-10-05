@@ -12,3 +12,4 @@ export * from './play';
 export * from './style';
 export * from './room';
 export type * from './future';
+export * from './entitlement';

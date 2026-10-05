@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { WardrobeEntry } from '@/core';
-import { CoinIcon, ItemArt, TabIcon, colors, radius, spacing, Pressable } from '@/ui';
+import { CoinIcon, ItemArt, TabIcon, colors, radius, spacing, Pressable, PremiumMark } from '@/ui';
 import { describeProgress, tileLabel } from './cosmeticCopy';
 
 interface Props {
@@ -13,14 +13,14 @@ interface Props {
 /** One collectible. State is shown by icon + text, never colour alone. */
 export function WardrobeTile({ entry, isNew, trying, onPress }: Props) {
   const { item, state, progress } = entry;
-  const locked = state === 'earnable' || state === 'buyable';
+  const locked = state === 'earnable' || state === 'buyable' || state === 'premium';
   const ratio = progress ? progress.current / Math.max(1, progress.target) : 0;
 
   return (
     <Pressable
       onPress={onPress}
       // Wearing a piece "lands" it on the pet; taking it off is a soft pup; trying on is a select.
-      sound={state === 'owned' ? 'equip' : state === 'equipped' ? 'back' : 'select'}
+      sound={state === 'owned' || state === 'included' ? 'equip' : state === 'equipped' ? 'back' : 'select'}
       accessibilityRole="button"
       accessibilityState={{ selected: state === 'equipped' || trying }}
       accessibilityLabel={tileLabel(item, state, progress)}
@@ -43,6 +43,8 @@ export function WardrobeTile({ entry, isNew, trying, onPress }: Props) {
           </>
         )}
         {state === 'owned' && <Text style={styles.statusText}>Tap to wear</Text>}
+        {state === 'included' && <Text style={styles.statusText}>Tap to wear</Text>}
+        {state === 'premium' && <PremiumMark compact />}
         {state === 'buyable' && (
           <>
             <CoinIcon size={13} />

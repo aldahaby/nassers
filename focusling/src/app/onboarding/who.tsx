@@ -6,12 +6,13 @@ import { useOnboardingProgress } from '@/features/onboarding/flow';
 import { useGameStore } from '@/state';
 import { colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
-const OPTIONS: readonly { mode: AppMode; icon: string; title: string; body: string }[] = [
-  { mode: 'self', icon: '🙋', title: 'For me', body: 'I want help spending less time scrolling.' },
-  { mode: 'family', icon: '👨‍👧', title: 'For my child', body: 'I want to help my child build healthier screen habits.' },
-];
+const SELF = { mode: 'self' as AppMode, icon: '🙋', title: 'For me', body: 'I want help spending less time scrolling.' };
+const FAMILY = { mode: 'family' as AppMode, title: 'For my child', body: 'Set up Family Mode with a parent PIN on this device.' };
 
-/** The onboarding branch: self-improvement or a parent setting up Family Mode. */
+/**
+ * The onboarding branch. Focusling leads with "For me"; Family Mode stays one
+ * clear (smaller) step away for parents setting it up for a child.
+ */
 export default function WhoScreen() {
   const chooseMode = useGameStore((s) => s.chooseMode);
   const progress = useOnboardingProgress('who');
@@ -24,23 +25,32 @@ export default function WhoScreen() {
   return (
     <OnboardingStep {...progress} actionLabel="" onAction={() => {}} hideAction>
       <Text style={styles.title}>Who is Focusling for?</Text>
-      <View style={styles.list} accessibilityRole="radiogroup">
-        {OPTIONS.map((option) => (
-          <Pressable
-            key={option.mode}
-            onPress={() => pick(option.mode)}
-            accessibilityRole="button"
-            accessibilityLabel={`${option.title}. ${option.body}`}
-            style={({ pressed }) => [styles.option, shadow, pressed && styles.pressed]}
-          >
-            <Text style={styles.icon}>{option.icon}</Text>
-            <View style={styles.text}>
-              <Text style={typography.heading}>{option.title}</Text>
-              <Text style={styles.body}>{option.body}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
-        ))}
+      <View style={styles.list} >
+        <Pressable
+          onPress={() => pick(SELF.mode)}
+          accessibilityRole="button"
+          accessibilityLabel={`${SELF.title}. ${SELF.body}`}
+          style={({ pressed }) => [styles.option, shadow, pressed && styles.pressed]}
+        >
+          <Text style={styles.icon}>{SELF.icon}</Text>
+          <View style={styles.text}>
+            <Text style={typography.heading}>{SELF.title}</Text>
+            <Text style={styles.body}>{SELF.body}</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => pick(FAMILY.mode)}
+          accessibilityRole="button"
+          accessibilityLabel={`${FAMILY.title}. ${FAMILY.body}`}
+          style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+        >
+          <View style={styles.text}>
+            <Text style={styles.secondaryTitle}>{FAMILY.title}</Text>
+            <Text style={styles.secondaryBody}>{FAMILY.body}</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
       </View>
     </OnboardingStep>
   );
@@ -60,6 +70,9 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'transparent',
   },
+  secondary: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 64, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.lg, borderWidth: 2, borderColor: colors.border },
+  secondaryTitle: { ...typography.heading, fontSize: 16 },
+  secondaryBody: { ...typography.body, fontSize: 14, color: colors.textMuted },
   pressed: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   icon: { fontSize: 36 },
   text: { flex: 1, gap: 4 },

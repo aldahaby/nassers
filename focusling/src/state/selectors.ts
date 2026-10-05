@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import { useCapabilities } from './entitlements';
 import { PLAY_ECONOMY } from '@/config/play';
 import {
+  effectiveEquipped,
   emptyDailyStats,
   estimateReward,
   getCurrentMission,
@@ -40,8 +42,21 @@ export function useStreakDays(): number {
   return streak ? getEffectiveStreakDays(streak, toDateKey(now)) : 0;
 }
 
+/**
+ * What the pet shows: the saved outfit minus Premium pieces the person can't
+ * currently use (nothing is deleted; they come back with Premium).
+ */
 export function useEquipped() {
-  return useGameStore((s) => s.save?.inventory.equipped) ?? EMPTY_EQUIPPED;
+  const save = useGameStore((s) => s.save);
+  const caps = useCapabilities();
+  return useMemo(() => (save ? effectiveEquipped(save, caps) : EMPTY_EQUIPPED), [save, caps]);
+}
+
+/** The room theme to render: only while Premium themes are available to this person. */
+export function useRoomTheme(): string | null {
+  const theme = useGameStore((s) => s.save?.room?.theme ?? null);
+  const caps = useCapabilities();
+  return caps.canUsePremiumRoomThemes ? theme : null;
 }
 
 export function useEquippedBonuses() {

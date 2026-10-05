@@ -23,4 +23,5 @@ export * from './game/debugDay';
 export { emptyDailyStats } from './game/dailyStats';
 export * from './cosmetics';
 export * from './room';
+export * from './entitlements';
 export * from './game/debugStyle';

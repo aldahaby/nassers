@@ -159,7 +159,7 @@ describe('v4 → v5 migration', () => {
     v4.inventory = { items: { 'acc-cap': { itemId: 'acc-cap', acquiredAt: 1, quantity: 1, lastUsedAt: null } }, equipped: { head: 'acc-cap' } };
     v4.daily = { '2026-09-27': { ...Object.values(base.daily)[0], date: '2026-09-27', focusMinutes: 0, sessionsCompleted: 0, sessionsAbandoned: 0, coinsEarned: 0, xpEarned: 0, missionsCompleted: 2, missionCoinsEarned: 20 } };
     const migrated = migrateSave(v4);
-    expect(migrated.schemaVersion).toBe(7);
+    expect(migrated.schemaVersion).toBe(8);
     expect(migrated.cosmetics).toMatchObject({ newItemIds: [], looks: [null, null, null] });
     expect(migrated.stats.missionsCompleted).toBe(2);
     expect(migrated.inventory.equipped).toEqual({ head: 'acc-cap' });
