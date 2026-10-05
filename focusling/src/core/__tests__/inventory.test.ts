@@ -158,7 +158,7 @@ describe('inventory debug tools', () => {
     const start = rich();
     const all = debugUnlockAll(start, T0);
     expect(all.wallet.coins).toBe(1000);
-    expect(Object.keys(all.inventory.items)).toHaveLength(CATALOG.length);
+    expect(Object.keys(all.inventory.items)).toHaveLength(CATALOG.filter((i) => i.access !== 'premium').length);
     expect(all.inventory.items['food-cookie']?.quantity).toBe(5);
     expect(all.stats.itemsPurchased).toBe(0);
 
@@ -172,7 +172,7 @@ describe('inventory debug tools', () => {
     expect(Object.keys(dressed.inventory.equipped).sort()).toEqual(['aura', 'charm', 'face', 'floorCenter', 'floorLeft', 'floorRight', 'head', 'neck', 'wall']);
     const bare = debugResetEquipped(dressed);
     expect(bare.inventory.equipped).toEqual({});
-    expect(Object.keys(bare.inventory.items)).toHaveLength(CATALOG.length);
+    expect(Object.keys(bare.inventory.items)).toHaveLength(CATALOG.filter((i) => i.access !== 'premium').length);
 
     expect(debugClearInventory(dressed).inventory).toEqual({ items: {}, equipped: {} });
   });

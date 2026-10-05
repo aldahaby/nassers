@@ -29,6 +29,7 @@ function forgetCompletion(save: GameSave, collectionIds: readonly string[]): Gam
 
 /** Own every piece of a collection (completion is then recorded by checkCollections). */
 export function debugUnlockCollection(save: GameSave, collectionId: string, now: Timestamp): GameSave {
+  if (getCollection(collectionId)?.access === 'premium') return save; // Premium is never owned
   return withOwned(save, collectionItemIds(collectionId), now);
 }
 
@@ -37,6 +38,7 @@ export function debugUnlockCollection(save: GameSave, collectionId: string, now:
  * The missing piece is a coin piece when there is one, so it can be bought.
  */
 export function debugCollectionAlmostDone(save: GameSave, collectionId: string, now: Timestamp): { save: GameSave; missing: Id | null } {
+  if (getCollection(collectionId)?.access === 'premium') return { save, missing: null };
   const ids = collectionItemIds(collectionId);
   const missing = ids.find((id) => (getShopItem(id)?.source ?? 'shop') === 'shop') ?? ids[ids.length - 1] ?? null;
   let next = forgetCompletion(withOwned(save, ids.filter((id) => id !== missing), now), [collectionId]);

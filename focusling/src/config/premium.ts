@@ -18,7 +18,7 @@ export const PREMIUM_PRODUCT_IDS: readonly string[] = [PREMIUM_PRODUCTS.monthly,
 
 /** What Premium adds (shown on the Premium screen; all expression, no focus advantage). */
 export const PREMIUM_INCLUDES: readonly { title: string; body: string }[] = [
-  { title: 'Extra collections', body: 'Complete Premium collections, starting with Nightglow, with more drops over time.' },
+  { title: 'Extra collections', body: 'Complete Premium collections, starting with Nightglow.' },
   { title: 'Premium Looks', body: 'Curated outfits built from Premium pieces.' },
   { title: 'Room themes', body: 'Whole-room treatments with their own walls, floors and atmosphere.' },
   { title: 'Ambient effects', body: 'Special auras like Aurora Veil.' },

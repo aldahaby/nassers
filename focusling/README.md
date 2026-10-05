@@ -131,7 +131,19 @@ logic, local persistence, and a mock Screen Time service.
 - **Bubbly micro-sounds:** original synthesised UI sounds with one semantic palette, focus-session
   silence rules, rapid-tap protection, a Sound Effects setting and a developer Audio Lab. No music.
 
+**Premium foundation:** details in `docs/PREMIUM.md`.
+- Consumer-first tabs: Pet / Focus / Shop / Play / Settings, with missions inside Focus. Family Mode
+  is unchanged and still offered in onboarding.
+- One entitlement system (capabilities, never `isPremium`), a StoreKit 2 module (written, **not yet
+  compiled or tested on a device**), a web/dev mock store and an "unavailable" fallback. Premium is
+  never stored in the save.
+- Premium content: the Nightglow collection, two Premium Looks, four room themes and the Aurora Veil
+  aura. Everything can be previewed on your own pet for free; room colour stays free.
+- A single Premium screen, Settings trust surfaces (Premium status, Restore, Manage, privacy, terms,
+  support, version, local data erase) and Premium QA tools behind Developer tools.
+- Native iPhone checks still to run: `docs/NATIVE_IPHONE_TEST_PLAN.md`.
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,
-`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`, `room.ts`, `sounds.ts`.
+`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`, `room.ts`, `roomThemes.ts`, `sounds.ts`, `premium.ts`, `legal.ts`.

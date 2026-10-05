@@ -6,6 +6,8 @@ import { capabilitiesFor, canWear, FREE_ENTITLEMENT, isPremiumTier, itemAccess }
 import { effectiveEquipped, getWardrobe, wearCollectionLook, wearOutfit, checkCollections, collectionProgress } from '../cosmetics/cosmeticsService';
 import { equipItem, purchaseItem } from '../inventory/inventoryService';
 import { adoptPet } from '../game/gameEngine';
+import { debugDressUp, debugOwnOneOfEach, debugUnlockAll } from '../game/debugTools';
+import { debugUnlockCollection } from '../game/debugStyle';
 import { setRoomColor, setRoomTheme } from '../room/roomService';
 import { createNewSave } from '../save/createNewSave';
 import { migrateSave } from '../save/migrations';
@@ -136,6 +138,15 @@ describe('wearing Premium pieces', () => {
     const worn = wearCollectionLook(fresh(), 'nightglow', PREMIUM);
     expect(checkCollections(worn).completedCollections).not.toContain('nightglow');
     expect(collectionProgress(worn, 'nightglow').owned).toBe(0);
+  });
+});
+
+describe('developer shortcuts never own Premium', () => {
+  it('unlock all / one of each / dress up / unlock collection skip Premium pieces', () => {
+    for (const save of [debugUnlockAll(fresh(), T0), debugOwnOneOfEach(fresh(), T0), debugDressUp(fresh(), T0), debugUnlockCollection(fresh(), 'nightglow', T0)]) {
+      for (const id of PREMIUM_IDS) expect(save.inventory.items[id]).toBeUndefined();
+      for (const id of Object.values(save.inventory.equipped)) expect(getShopItem(id!)?.access ?? 'free').toBe('free');
+    }
   });
 });
 

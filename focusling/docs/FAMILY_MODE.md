@@ -14,8 +14,8 @@ The first onboarding question is **"Who is Focusling for?"**
 
 | Choice | Mode | What happens |
 |---|---|---|
-| For me: "I want help spending less time scrolling." | `self` | The existing single-user app (Pet, Focus, Shop, Stats, Settings tabs). Missions and Play open from the pet screen, so no new tabs. |
-| For my child: "I want to help my child build healthier screen habits." | `family` | Parent setup, then the device is handed to the child in **Child View**. |
+| For me (offered first): "I want help spending less time scrolling." | `self` | The single-user app (Pet, Focus, Shop, Play, Settings tabs). Missions open from Focus; the active mission also shows on the pet screen. |
+| For my child (smaller second option): "Set up Family Mode with a parent PIN on this device." | `family` | Parent setup, then the device is handed to the child in **Child View**. |
 
 `GameSave.mode` stores the choice. Saves from before this milestone migrate to `mode: 'self'` with
 their onboarding already complete, so existing users never see the question (schema v3 → v4, see

@@ -295,3 +295,13 @@ product decision (Family Mode audiences).
 - No paid random rewards, no real money anywhere; coin pieces use coins earned by focusing.
 - No temporary FOMO: all current collections are permanent; no countdowns, rotations or scarcity.
 - Cosmetics are stat-neutral; completion rewards are Reactions (personality), not economy.
+
+## 16. Premium content
+
+Items and collections carry `access: 'free' | 'premium'` (default free). Premium pieces use
+`obtain: 'premium'` in `config/cosmetics.ts` (source `premium`), are never sold for coins, never
+earned and never added to the inventory: they're *included* while the person has Premium and can be
+tried on by anyone. Premium collections (currently **Nightglow**) have no completion reward or
+reaction and never count toward "collections complete". Premium Looks live in `PREMIUM_LOOKS`.
+Wardrobe states add `included` (Premium, entitled) and `premium` (preview only). Policy details,
+including what happens when a subscription ends: [`PREMIUM.md`](PREMIUM.md) §3.
