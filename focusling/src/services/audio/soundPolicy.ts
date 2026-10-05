@@ -23,7 +23,7 @@ export class SoundGate {
     const def = getSound(id);
     if (ctx.focusActive && !SOUND_RULES.focusAllowed.includes(id)) return null;
     const last = this.lastBySound.get(id) ?? -Infinity;
-    if (now - last < SOUND_RULES.retriggerMs) return null;
+    if (now - last < (def.retriggerMs ?? SOUND_RULES.retriggerMs)) return null;
     if (def.group === 'pet' && now - this.lastPet < SOUND_RULES.petMinMs) return null;
     this.recent = this.recent.filter((t) => now - t < SOUND_RULES.burstWindowMs);
     // Focus and reward cues are never dropped by the burst cap; UI chatter is.

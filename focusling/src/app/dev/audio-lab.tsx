@@ -1,7 +1,7 @@
 import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { SOUNDS, type SoundGroup, type SoundId } from '@/config/sounds';
+import { SOUND_RULES, SOUNDS, VOICES_PER_CUE, type SoundGroup, type SoundId } from '@/config/sounds';
 import { SettingRow } from '@/features/settings/SettingRow';
 import { soundService } from '@/services/audio';
 import { useDebugToolsEnabled, useGameStore } from '@/state';
@@ -74,7 +74,7 @@ export default function AudioLab() {
               <View style={styles.meta}>
                 <Text style={styles.name}>{s.label}</Text>
                 <Text style={styles.detail}>
-                  {s.id} · assets/sfx/{s.file}.wav · {s.durationMs} ms · level {Math.round(s.volume * 100)}% · {s.status}
+                  {s.id} · assets/sfx/{s.file}.wav · {s.durationMs} ms · level {Math.round(s.volume * 100)}% · retrigger ≥{s.retriggerMs ?? SOUND_RULES.retriggerMs} ms · {VOICES_PER_CUE} voice · {s.status}
                 </Text>
                 <Text style={styles.feeling}>{s.feeling}</Text>
               </View>

@@ -51,11 +51,16 @@ export interface SoundDef {
   volume: number;
   status: 'placeholder' | 'final';
   provenance: string;
+  /** Minimum ms before this cue can restart (defaults to SOUND_RULES.retriggerMs). */
+  retriggerMs?: number;
 }
+
+/** Every cue has exactly one voice: replaying restarts it, it never stacks. */
+export const VOICES_PER_CUE = 1;
 
 const GENERATED = 'Original, synthesised for Focusling by tools/sfx/generate.py (sine, sweep, soft noise and pluck models; no samples or third-party audio).';
 
-const def = (id: SoundId, label: string, feeling: string, group: SoundGroup, durationMs: number, volume: number): SoundDef => ({
+const def = (id: SoundId, label: string, feeling: string, group: SoundGroup, durationMs: number, volume: number, retriggerMs?: number): SoundDef => ({
   id,
   label,
   feeling,
@@ -65,6 +70,7 @@ const def = (id: SoundId, label: string, feeling: string, group: SoundGroup, dur
   volume,
   status: 'placeholder',
   provenance: GENERATED,
+  retriggerMs,
 });
 
 export const SOUNDS: readonly SoundDef[] = [
@@ -75,13 +81,13 @@ export const SOUNDS: readonly SoundDef[] = [
   def('toggle-on', 'Toggle On', 'a tiny rising bubble', 'ui', 114, 0.32),
   def('toggle-off', 'Toggle Off', 'a tiny falling bubble', 'ui', 114, 0.3),
   def('select', 'Select', 'a soft pop with a tiny sparkle', 'ui', 144, 0.34),
-  def('equip', 'Equip', 'a bloop as the piece lands, plus a little sparkle', 'reward', 269, 0.4),
-  def('confirm', 'Save / Confirm', 'a warm double bubble, resolved', 'reward', 309, 0.4),
-  def('unlock', 'Unlock / New item', 'a small magical bubbly flourish', 'reward', 660, 0.42),
-  def('purchase', 'Purchase (focus coins)', 'a soft, original two-note "tink", never a casino jingle', 'reward', 320, 0.36),
+  def('equip', 'Equip', 'a bloop as the piece lands, plus a little sparkle', 'reward', 269, 0.4, 200),
+  def('confirm', 'Save / Confirm', 'a warm double bubble, resolved', 'reward', 309, 0.4, 250),
+  def('unlock', 'Unlock / New item', 'a small magical bubbly flourish', 'reward', 660, 0.42, 600),
+  def('purchase', 'Purchase (focus coins)', 'a soft, original two-note "tink", never a casino jingle', 'reward', 320, 0.36, 250),
   def('unavailable', 'Unavailable', 'a very gentle, muted "bonk"', 'ui', 120, 0.24),
-  def('focus-start', 'Focus Start', 'a calm, intentional short cue', 'focus', 529, 0.34),
-  def('focus-complete', 'Focus Complete', 'a warm, satisfying resolve', 'focus', 780, 0.42),
+  def('focus-start', 'Focus Start', 'a calm, intentional short cue', 'focus', 529, 0.34, 500),
+  def('focus-complete', 'Focus Complete', 'a warm, satisfying resolve', 'focus', 780, 0.42, 700),
   def('pet-cloudling', 'Pet · Cloudling', 'a soft airy puff and bubble', 'pet', 169, 0.28),
   def('pet-sproutling', 'Pet · Sproutling', 'a tiny leaf pluck and bubble', 'pet', 169, 0.28),
   def('pet-emberling', 'Pet · Emberling', 'a tiny warm sparkle pop', 'pet', 180, 0.28),

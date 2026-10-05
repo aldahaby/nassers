@@ -88,7 +88,7 @@ Enforced in `SoundGate` (`src/services/audio/soundPolicy.ts`) and tested.
 Fast tapping must never become "POPPOPPOPPOP":
 
 - **One voice per sound:** replaying a sound restarts its player instead of stacking a new one.
-- **Retrigger floor:** the same sound can't restart within 70 ms.
+- **Retrigger floor:** the same sound can't restart within 70 ms; longer cues have their own floor in `config/sounds.ts` (equip 200 ms, confirm/purchase 250 ms, focus start 500 ms, unlock 600 ms, focus complete 700 ms), shown in the Audio Lab.
 - **Burst cap:** at most 2 UI sounds start in any 160 ms window (focus and reward cues are never dropped).
 - **Pet taps:** at most one species cue every 0.9 s, however fast; no escalation, no combos, no counters.
 - Visual feedback is never delayed or throttled: only audio is limited.
