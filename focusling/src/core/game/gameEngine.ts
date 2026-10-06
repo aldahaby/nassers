@@ -38,6 +38,7 @@ import type {
   RewardEstimate,
   SessionReward,
   SessionSummary,
+  StudyContext,
   Timestamp,
 } from '../models';
 
@@ -97,13 +98,14 @@ export function startSession(
   minutes: number,
   targets: BlockTarget[],
   now: Timestamp,
-  options: { protectionMode?: ProtectionMode; sessionId?: string } = {},
+  options: { protectionMode?: ProtectionMode; sessionId?: string; study?: StudyContext } = {},
 ): Result<GameSave, FocusError> {
   if (!save.pet) return fail('no-pet');
   if (save.focus.active) return fail('session-already-active');
   const created = createFocusSession(minutes, targets, now, options.protectionMode ?? 'none');
   if (!created.ok) return created;
-  const session = options.sessionId ? { ...created.value, id: options.sessionId } : created.value;
+  const withId = options.sessionId ? { ...created.value, id: options.sessionId } : created.value;
+  const session = options.study ? { ...withId, study: options.study } : withId;
   return ok({ ...save, focus: { ...save.focus, active: session } });
 }
 

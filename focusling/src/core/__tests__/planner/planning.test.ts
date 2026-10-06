@@ -3,7 +3,7 @@ import { applySourceUpdate, resolveConflict } from '../../planner/sourceAuthorit
 import { reconcileLmsCoursework } from '../../planner/lmsAdapters';
 import { dayKeyIn, fromWallClock, minuteOfDay, toWallClock } from '../../planner/time';
 import type { PlannerState } from '../../models';
-import { at, counterIds, DAY, HOUR, MON, TZ, withAssignment, withCourse } from './helpers';
+import { at, DAY, HOUR, MON, TZ, withAssignment, withCourse } from './helpers';
 
 const plansOf = (s: PlannerState, assignmentId: string, status?: string) => Object.values(s.plans).filter((p) => p.assignmentId === assignmentId && (!status || p.status === status)).sort((a, b) => a.plannedStartAt - b.plannedStartAt);
 const inAvailability = (s: PlannerState, ts: number, minutes: number) => {

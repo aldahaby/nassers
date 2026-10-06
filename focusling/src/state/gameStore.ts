@@ -1,6 +1,6 @@
 import type { Capabilities } from '@/core';
 import { capabilitiesFor, FREE_ENTITLEMENT } from '@/core';
-import { services } from '@/services';
+import { appClock, services } from '@/services';
 import { createGameStore } from './createGameStore';
 
 /** Late-bound so the entitlement store (which reads this store) can plug in without an import cycle. */
@@ -14,5 +14,6 @@ export const useGameStore = createGameStore({
   saveRepository: services.saveRepository,
   protection: services.protection,
   debugDefault: typeof __DEV__ !== 'undefined' ? __DEV__ : false,
+  now: appClock.now,
   capabilities: () => capabilitiesProvider(),
 });

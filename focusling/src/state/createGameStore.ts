@@ -81,6 +81,9 @@ import {
   type PetSpeciesId,
   type ProtectionSettings,
   type ProtectionStartError,
+  type ProtectionMode,
+  type ProtectionResult,
+  type StudyContext,
   type ProtectionStatus,
   type ReconcileNotice,
   type Result,
@@ -98,6 +101,20 @@ import {
 import { getRoomTheme } from '@/config/roomThemes';
 import { DETECTION_POLICY } from '@/config/protection';
 import type { FocusProtectionService, ProtectionEndReason, ProtectionEvent, SaveRepository } from '@/services';
+
+export interface StartFocusOptions {
+  study?: StudyContext;
+  /** Protection to request for this session (default: the student's Focus protection setting). */
+  protectionMode?: ProtectionMode;
+  /** Planner Start & Lock: study even if protection can't start (reported truthfully). */
+  continueWithoutProtection?: boolean;
+}
+
+export interface StartFocusOutcome {
+  sessionId: string;
+  protection: ProtectionResult;
+  protectionError: ProtectionStartError | null;
+}
 
 export interface GameStoreDeps {
   saveRepository: SaveRepository;
@@ -173,7 +190,13 @@ export interface GameStore {
    * Start a session. With protection on, native protection must confirm it is
    * running for this session ID before the game session begins.
    */
-  startFocus(minutes: number): Promise<Result<null, FocusError | ProtectionStartError>>;
+  /**
+   * Start the one study/focus timer. `study` attaches Studyling context (plan,
+   * course, start source). With `continueWithoutProtection`, a protection
+   * failure doesn't block studying: the session starts unprotected and the
+   * result says so (it is never reported as protected).
+   */
+  startFocus(minutes: number, options?: StartFocusOptions): Promise<Result<StartFocusOutcome, FocusError | ProtectionStartError>>;
   endFocus(outcome: FocusOutcome): Result<SessionReward, FocusError>;
   purchase(itemId: string): Result<PurchaseResult, InventoryError>;
   /** Wear/place an item. `showOnPet` queues a reaction for the pet screen. */
@@ -435,26 +458,39 @@ export function createGameStore(deps: GameStoreDeps) {
         return result.happinessGained;
       },
 
-      async startFocus(minutes) {
+      async startFocus(minutes, options = {}) {
         const before = requireSave();
-        const mode = before.protection.mode;
+        const requested: ProtectionMode = options.protectionMode ?? before.protection.mode;
         // Validate the game side first (duration, pet, no overlapping session).
-        const dryRun = startSession(before, minutes, [], now(), { protectionMode: mode });
+        const dryRun = startSession(before, minutes, [], now(), { protectionMode: requested });
         if (!dryRun.ok) return dryRun;
 
         const sessionId = createId('session');
-        if (mode !== 'none') {
-          const started = await startNativeProtection(sessionId, mode, now() + minutes * 60_000);
-          if (!started.ok) return started;
+        let mode = requested;
+        let protectionResult: ProtectionResult = requested === 'none' ? 'notRequested' : 'failed';
+        let protectionError: ProtectionStartError | undefined;
+        if (requested !== 'none') {
+          const started = await startNativeProtection(sessionId, requested, now() + minutes * 60_000);
+          if (started.ok) {
+            // Only the platform's own confirmation counts; the web/dev mock is a simulation.
+            protectionResult = started.value.platform === 'ios' ? 'activated' : 'simulated';
+          } else {
+            if (!options.continueWithoutProtection) return started;
+            protectionError = started.error;
+            mode = 'none';
+          }
         }
-        // The game session starts only after native confirmed protection.
-        const result = startSession(requireSave(), minutes, [], now(), { protectionMode: mode, sessionId });
+        const study: StudyContext | undefined = options.study
+          ? { ...options.study, protectionRequested: requested !== 'none', protectionResult, protectionMode: requested, ...(protectionError ? { protectionError } : {}) }
+          : { startSource: 'app', startContext: 'unscheduled', independentStart: true, protectionRequested: requested !== 'none', protectionResult, protectionMode: requested, ...(protectionError ? { protectionError } : {}) };
+        // The game session starts only after native answered (confirmed, or failed and the caller chose to continue).
+        const result = startSession(requireSave(), minutes, [], now(), { protectionMode: mode, sessionId, study });
         if (!result.ok) {
           if (mode !== 'none') await stopProtection(sessionId, 'error-recovery');
           return result;
         }
         commit(result.value, { protectionNotice: null, interventionsThisSession: 0 });
-        return ok(null);
+        return ok({ sessionId, protection: protectionResult, protectionError: protectionError ?? null });
       },
 
       endFocus(outcome) {
