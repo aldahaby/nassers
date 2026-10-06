@@ -10,12 +10,27 @@ import { colors, radius, spacing } from '@/ui';
 export function ProtectionStatusPill({ session }: { session: FocusSession }) {
   const status = useGameStore((s) => s.protection);
   const notice = useGameStore((s) => s.protectionNotice);
+  // Studyling Start & Lock: protection was asked for but didn't start. Say so plainly.
+  if (session.protectionMode === 'none' && session.study?.protectionRequested && session.study.protectionResult === 'failed') {
+    const label = 'Protection isn’t on for this session. Your study time still counts.';
+    return (
+      <View style={[styles.pill, styles.pending]} accessibilityRole="text" accessibilityLabel={label}>
+        <Text style={[styles.label, styles.pendingLabel]}>Not protected · {label}</Text>
+      </View>
+    );
+  }
   if (session.protectionMode === 'none' || notice) return null;
   const active = isProtectionActiveFor(status, session.id);
+  // The web/dev mock never blocks anything: never claim it did.
+  const simulated = status?.platform === 'mock';
   const label = active
-    ? session.protectionMode === 'selective'
-      ? 'Reels protection active'
-      : 'Instagram blocked for this session'
+    ? simulated
+      ? session.protectionMode === 'selective'
+        ? 'Reels protection simulated (nothing is blocked on this device)'
+        : 'Instagram block simulated (nothing is blocked on this device)'
+      : session.protectionMode === 'selective'
+        ? 'Reels protection active'
+        : 'Instagram blocked for this session'
     : 'Checking protection…';
   return (
     <View style={[styles.pill, !active && styles.pending]} accessibilityRole="text" accessibilityLabel={label}>

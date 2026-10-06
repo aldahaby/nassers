@@ -1,9 +1,9 @@
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { CelebrationView } from '@/features/completion/CelebrationView';
 import { RewardSummary } from '@/features/completion/RewardSummary';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useEquipped, useGameStore, useHomeHref, usePetView } from '@/state';
+import { useEquipped, useGameStore, useHomeHref, usePetView, usePlannerStore } from '@/state';
 
 /**
  * Shown whenever a session ends: the reward summary first, then (if earned)
@@ -24,6 +24,11 @@ export default function SessionCompleteScreen() {
 
   const finish = () => {
     useGameStore.getState().dismissSummary();
+    // Eligible study sessions get one brief retrieval offer before going home.
+    if (usePlannerStore.getState().planner?.pendingRetrieval) {
+      router.replace('/planner/retrieval' as Href);
+      return;
+    }
     // Pop back to the existing tabs (never push a second copy) and land on the pet.
     router.dismissTo(home === '/onboarding' ? '/' : home);
   };

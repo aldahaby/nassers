@@ -239,6 +239,13 @@ export function PetHomeScreen({ variant }: Props) {
 
       <PetStatsCard stats={pet.stats} progression={progression} />
 
+      {!child && (
+        <Pressable onPress={() => router.navigate(routes.play as Href)} style={styles.premiumLink} accessibilityRole="button" accessibilityLabel={`Play with ${pet.name}`} accessibilityHint="Calm mini-games">
+          <TabIcon name="play" color={colors.primaryDark} size={16} />
+          <Text style={[styles.premiumLinkText, { color: colors.primaryDark }]}>Play with {pet.name}</Text>
+        </Pressable>
+      )}
+
       {!child && !premium && (
         <Pressable onPress={() => router.push('/premium' as Href)} style={styles.premiumLink} accessibilityRole="button" accessibilityLabel="Focusling Premium" accessibilityHint="Room themes, Premium Looks and collections. Focus stays free.">
           <PremiumGlyph size={12} />

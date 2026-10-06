@@ -1,3 +1,4 @@
+import { appClock } from '@/services/clock';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { previewAbandon, type AbandonPreview } from '@/core';
@@ -67,7 +68,7 @@ export function ActiveSession() {
 
   const askToEnd = () => {
     const save = useGameStore.getState().save;
-    const preview = save ? previewAbandon(save, Date.now()) : null;
+    const preview = save ? previewAbandon(save, appClock.now()) : null;
     if (preview) setConfirm(preview);
   };
 

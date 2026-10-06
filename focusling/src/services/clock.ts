@@ -14,6 +14,10 @@ export const appClock = {
     offsetMs = ms;
     listeners.forEach((l) => l());
   },
+  /** Jump the app clock to an instant (Developer tools only). */
+  setTime(t: number, devToolsEnabled: boolean) {
+    appClock.setOffset(t - Date.now(), devToolsEnabled);
+  },
   subscribe(l: () => void) {
     listeners.add(l);
     return () => {

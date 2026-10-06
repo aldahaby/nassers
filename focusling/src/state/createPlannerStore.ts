@@ -155,6 +155,8 @@ export interface PlannerStoreState {
   recordRetrievalAttempt(itemId: Id, result: RetrievalResult): void;
   // Widget / Live Activity
   refreshWidget(): Promise<void>;
+  /** Re-check missed plans / reminder support, pending reminders and the widget. */
+  refresh(): Promise<void>;
   /** Planner QA: replace the whole document (Developer tools only; refused otherwise). */
   debugReplace(state: PlannerState, devToolsEnabled: boolean): void;
 }
@@ -497,6 +499,17 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
           pet,
         });
         await deps.widgets.publishSnapshot(snapshot);
+      },
+
+      async refresh() {
+        const planner = get().planner;
+        if (!planner) return;
+        const next = updateSupport(planner, now(), ids);
+        if (next !== planner) commit(next);
+        else {
+          await get().syncReminders();
+          await get().refreshWidget();
+        }
       },
 
       debugReplace(state, devToolsEnabled) {

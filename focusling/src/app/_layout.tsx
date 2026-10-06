@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PlannerBridge } from '@/features/planner/PlannerBridge';
 import { EntitlementBridge } from '@/features/premium/EntitlementBridge';
 import { SoundBridge } from '@/features/sound/SoundBridge';
 import { StyleCelebrationModal } from '@/features/style/StyleCelebrationModal';
 import { useGameLifecycle } from '@/hooks/useGameLifecycle';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useGameStore } from '@/state';
 import { ErrorView, LoadingView, colors } from '@/ui';
 
@@ -19,6 +21,9 @@ export default function RootLayout() {
     void hydrate();
   }, [hydrate]);
   useGameLifecycle();
+  // Planner screens: calm fades under Reduce Motion instead of sliding.
+  const reduced = useReducedMotion();
+  const slide = reduced ? ('fade' as const) : ('slide_from_right' as const);
 
   return (
     <SafeAreaProvider>
@@ -38,6 +43,14 @@ export default function RootLayout() {
           <Stack.Screen name="collection/[id]" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="games/memory-garden" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="games/toy-toss" options={{ animation: 'fade', gestureEnabled: false }} />
+          <Stack.Screen name="planner/import" options={{ animation: slide }} />
+          <Stack.Screen name="planner/review" options={{ animation: slide }} />
+          <Stack.Screen name="planner/manual" options={{ animation: slide }} />
+          <Stack.Screen name="planner/week" options={{ animation: slide }} />
+          <Stack.Screen name="planner/settings" options={{ animation: slide }} />
+          <Stack.Screen name="planner/assignment/[id]" options={{ animation: slide }} />
+          <Stack.Screen name="planner/retrieval" options={{ animation: 'fade', gestureEnabled: false }} />
+          <Stack.Screen name="planner/start" options={{ animation: 'fade' }} />
           <Stack.Screen name="parent-gate" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="parent" options={{ animation: 'fade' }} />
           <Stack.Screen
@@ -49,6 +62,7 @@ export default function RootLayout() {
       {status === 'ready' && <StyleCelebrationModal />}
       {status === 'ready' && <SoundBridge />}
       {status === 'ready' && <EntitlementBridge />}
+      {status === 'ready' && <PlannerBridge />}
     </SafeAreaProvider>
   );
 }

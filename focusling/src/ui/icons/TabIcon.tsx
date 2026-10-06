@@ -1,7 +1,7 @@
 import type { ColorValue } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-export type TabIconName = 'pet' | 'focus' | 'shop' | 'stats' | 'settings' | 'missions' | 'play' | 'wardrobe' | 'bag' | 'lock' | 'check' | 'collections' | 'reactions' | 'looks' | 'plus' | 'palette' | 'sound' | 'soundOff';
+export type TabIconName = 'pet' | 'focus' | 'shop' | 'stats' | 'settings' | 'missions' | 'play' | 'wardrobe' | 'bag' | 'lock' | 'check' | 'collections' | 'reactions' | 'looks' | 'plus' | 'palette' | 'sound' | 'soundOff' | 'planner' | 'book' | 'shield' | 'bell';
 
 /** Simple original line icons for the tab bar. */
 export function TabIcon({ name, color, size = 26 }: { name: TabIconName; color: ColorValue; size?: number }) {
@@ -48,6 +48,31 @@ export function TabIcon({ name, color, size = 26 }: { name: TabIconName; color: 
           <Rect x={4} y={12} width={4} height={8} rx={1.2} {...stroke} />
           <Rect x={10} y={7} width={4} height={13} rx={1.2} {...stroke} />
           <Rect x={16} y={4} width={4} height={16} rx={1.2} {...stroke} />
+        </>
+      )}
+      {name === 'planner' && (
+        <>
+          <Rect x={4} y={5.5} width={16} height={14.5} rx={3} {...stroke} />
+          <Path d="M4 10 L20 10 M8.5 3.5 L8.5 7 M15.5 3.5 L15.5 7" {...stroke} />
+          <Path d="M8 14 L10.5 16.3 L16 12.8" {...stroke} />
+        </>
+      )}
+      {name === 'book' && (
+        <>
+          <Path d="M12 6.5 C10 5 7 4.6 4.5 5.2 L4.5 18.4 C7 17.8 10 18.2 12 19.6 C14 18.2 17 17.8 19.5 18.4 L19.5 5.2 C17 4.6 14 5 12 6.5 Z" {...stroke} />
+          <Path d="M12 6.5 L12 19.5" {...stroke} />
+        </>
+      )}
+      {name === 'shield' && (
+        <>
+          <Path d="M12 3.8 L19 6.5 L19 11.5 C19 15.8 16 18.8 12 20.2 C8 18.8 5 15.8 5 11.5 L5 6.5 Z" {...stroke} />
+          <Path d="M9 12 L11.2 14.2 L15.2 10" {...stroke} />
+        </>
+      )}
+      {name === 'bell' && (
+        <>
+          <Path d="M6.5 16.5 L6.5 11 C6.5 7.8 9 5.5 12 5.5 C15 5.5 17.5 7.8 17.5 11 L17.5 16.5 L19 18 L5 18 Z" {...stroke} />
+          <Path d="M10.3 20.3 Q12 21.6 13.7 20.3" {...stroke} />
         </>
       )}
       {name === 'missions' && (

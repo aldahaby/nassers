@@ -5,13 +5,14 @@ import { playSound } from '@/services/audio';
 import { useGameStore } from '@/state';
 import { TabIcon, colors, type TabIconName } from '@/ui';
 
-// Consumer-first: Pet, Focus, Shop, Play. Missions live inside Focus; Stats waits
-// for its own milestone (the route stays, hidden from the bar).
+// Student-first (Studyling): Pet, Planner, Focus, Shop, Settings. Missions live
+// inside Focus; Play opens from the Pet screen; Stats waits for its own
+// milestone (both routes stay, hidden from the bar).
 const TABS: readonly { name: string; title: string; icon: TabIconName }[] = [
   { name: 'index', title: 'Pet', icon: 'pet' },
+  { name: 'planner', title: 'Planner', icon: 'planner' },
   { name: 'focus', title: 'Focus', icon: 'focus' },
   { name: 'shop', title: 'Shop', icon: 'shop' },
-  { name: 'play', title: 'Play', icon: 'play' },
   { name: 'settings', title: 'Settings', icon: 'settings' },
 ];
 
@@ -44,6 +45,7 @@ export default function TabsLayout() {
         />
       ))}
       <Tabs.Screen name="stats" options={{ href: null }} />
+      <Tabs.Screen name="play" options={{ href: null }} />
     </Tabs>
   );
 }
