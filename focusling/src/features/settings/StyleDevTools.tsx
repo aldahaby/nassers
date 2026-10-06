@@ -57,8 +57,8 @@ export function StyleDevTools() {
         <Button variant="secondary" label="Open Fit Lab" onPress={() => router.push('/dev/fit-lab' as Href)} style={styles.cell} />
         <Button variant="secondary" label="Character Lab" onPress={() => router.push('/dev/character-lab' as Href)} style={styles.cell} />
         <Button variant="secondary" label="Audio Lab" onPress={() => router.push('/dev/audio-lab' as Href)} style={styles.cell} />
-        <Button variant="secondary" label="Syllabus Lab" onPress={() => router.push('/dev/syllabus-lab' as Href)} style={styles.cell} />
-        <Button variant="secondary" label="Planner QA" onPress={() => router.push('/dev/planner-qa' as Href)} style={styles.cell} />
+        <Button variant="secondary" label="Syllabus Lab" onPress={() => router.navigate('/dev/syllabus-lab' as Href)} style={styles.cell} />
+        <Button variant="secondary" label="Planner QA" onPress={() => router.navigate('/dev/planner-qa' as Href)} style={styles.cell} />
       </View>
       {message && <Text style={styles.muted}>{message}</Text>}
     </View>

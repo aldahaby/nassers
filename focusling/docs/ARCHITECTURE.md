@@ -444,3 +444,27 @@ Full design and status: [`PREMIUM.md`](PREMIUM.md). Device checks: [`NATIVE_IPHO
 - **Screens:** `app/premium.tsx` (modal), Premium sections in Wardrobe, collection pages, Room
   Studio and Shop; `features/premium/PremiumStatusCard.tsx` (Settings and Parent settings),
   `features/settings/TrustCard.tsx`, `features/settings/PremiumDevTools.tsx`.
+
+## 17. Studyling Planner (student-first)
+
+Full design: [`STUDYLING_PLANNER.md`](STUDYLING_PLANNER.md) · privacy: [`PLANNER_PRIVACY.md`](PLANNER_PRIVACY.md) · evidence: [`PLANNER_EVIDENCE.md`](PLANNER_EVIDENCE.md).
+
+- **Core** (`core/planner/`, pure): `syllabusParser`, `syllabusImport` (draft/review/commit,
+  reconciliation), `sourceAuthority`, `plannerService` (manual entry, plan generation, capacity,
+  plan actions), `reminderPolicy` (desired reminders, diff, fading), `studySessions`,
+  `retrievalService`, `privacy` (classification, widget/Live Activity content, secret stripping),
+  `syncProvider` (local-only), `lmsAdapters` (fixtures), `time` (IANA zones via Intl),
+  `fixtures/syllabi.ts` (synthetic golden corpus). Models: `models/syllabus.ts`, `planner.ts`,
+  `retrieval.ts`. Config: `config/planner.ts`.
+- **Persistence:** separate planner document `studyling/planner/v1` (`plannerSchemaVersion` 1);
+  the game save stays v8. `FocusSession.study` (optional) carries study context on the one timer.
+- **State:** `state/createPlannerStore.ts` (+ `state/planner.ts` instance) watches the game store
+  to record finished sessions, drives Start & Lock through `startFocus(minutes, { study,
+  continueWithoutProtection })`, and keeps reminders/widget in sync.
+- **Services:** `notifications/` (expo-notifications; mock on web), `documents/` (picker +
+  on-device extraction), `widgets/` (App Group snapshot + Live Activity; mock on web),
+  `planner/` (repositories), `native/studylingNative.ts`, `clock.ts` (QA-only time shift).
+- **Native (UNTESTED):** `modules/studyling-native` (PDFKit, Vision, WidgetKit, ActivityKit),
+  `targets/widgets` (StudylingWidgets, `com.focusling.app.widgets`).
+- **UI:** `app/(tabs)/planner.tsx`, `app/planner/*`, `features/planner/*`, `app/dev/syllabus-lab.tsx`,
+  `app/dev/planner-qa.tsx`. Tabs: Pet / Planner / Focus / Shop / Settings.

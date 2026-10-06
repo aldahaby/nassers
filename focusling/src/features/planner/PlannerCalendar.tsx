@@ -82,7 +82,7 @@ function DayBody({ planner, day, now, compact = false }: { planner: PlannerState
     <Card style={compact ? styles.compactCard : undefined}>
       {plans.length === 0 && due.length === 0 && <Text style={styles.muted}>Nothing planned.</Text>}
       {plans.map((p) => (
-        <PlanRow key={p.id} planner={planner} plan={p} now={now} onPress={p.assignmentId ? () => router.push(`/planner/assignment/${p.assignmentId}` as Href) : undefined} />
+        <PlanRow key={p.id} planner={planner} plan={p} now={now} compact={compact} onPress={p.assignmentId ? () => router.push(`/planner/assignment/${p.assignmentId}` as Href) : undefined} />
       ))}
       {due.length > 0 && (
         <View style={styles.dueBlock}>

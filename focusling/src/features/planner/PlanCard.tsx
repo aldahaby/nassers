@@ -45,7 +45,7 @@ export function NextPlanCard({ planner, plan, now, emphasis = true }: { planner:
 }
 
 /** A compact plan row for lists (today, the week, an assignment's plan). */
-export function PlanRow({ planner, plan, now, onPress }: { planner: PlannerState; plan: SessionPlan; now: number; onPress?: () => void }) {
+export function PlanRow({ planner, plan, now, onPress, compact = false }: { planner: PlannerState; plan: SessionPlan; now: number; onPress?: () => void; compact?: boolean }) {
   const tz = planner.preferences.timezone;
   const course = planner.courses[plan.courseId];
   const assignment = plan.assignmentId ? planner.assignments[plan.assignmentId] : undefined;
@@ -54,13 +54,16 @@ export function PlanRow({ planner, plan, now, onPress }: { planner: PlannerState
     <Pressable
       onPress={onPress}
       disabled={!onPress}
-      style={styles.planRow}
+      style={compact ? styles.planCompact : styles.planRow}
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={`${formatClock(plan.plannedStartAt, tz)}, ${course?.code ?? course?.name ?? ''} ${assignment?.title ?? ''}, ${formatMinutes(plan.plannedMinutes)}${status ? `, ${status}` : ''}`}
     >
-      <View style={styles.time}>
-        <Text style={styles.timeText}>{formatClock(plan.plannedStartAt, tz)}</Text>
-        <Text style={styles.dayText}>{formatDay(plan.plannedStartAt, tz, now)}</Text>
+      <View style={compact ? undefined : styles.time}>
+        <Text style={styles.timeText}>
+          {formatClock(plan.plannedStartAt, tz)}
+          {compact ? ` · ${formatMinutes(plan.plannedMinutes)}` : ''}
+        </Text>
+        {!compact && <Text style={styles.dayText}>{formatDay(plan.plannedStartAt, tz, now)}</Text>}
       </View>
       <View style={styles.planText}>
         <CourseTag course={course} />
@@ -68,6 +71,7 @@ export function PlanRow({ planner, plan, now, onPress }: { planner: PlannerState
           {assignment?.title ?? 'Study block'}
         </Text>
       </View>
+      {!compact && (
       <View style={styles.planRight}>
         <Text style={styles.planMinutes}>{formatMinutes(plan.plannedMinutes)}</Text>
         {status && (
@@ -77,6 +81,7 @@ export function PlanRow({ planner, plan, now, onPress }: { planner: PlannerState
           </View>
         )}
       </View>
+      )}
     </Pressable>
   );
 }
@@ -87,6 +92,7 @@ const styles = StyleSheet.create({
   when: { ...typography.label, color: colors.primaryDark },
   title: { ...typography.heading },
   meta: { ...typography.label, marginTop: 2 },
+  planCompact: { gap: 2, paddingVertical: 6, minHeight: 44, borderBottomWidth: 1, borderColor: colors.border },
   planRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, minHeight: 56 },
   time: { width: 72 },
   timeText: { fontSize: 15, fontWeight: '900', color: colors.text, fontVariant: ['tabular-nums'] },

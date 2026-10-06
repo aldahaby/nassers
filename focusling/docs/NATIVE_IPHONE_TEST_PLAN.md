@@ -7,6 +7,51 @@ on a physical iPhone and recording the device, iOS version and build.
 Companion docs: `IOS_DEVICE_TEST_PLAN.md` (step-by-step selective Reels setup and the detection
 matrix), `IOS_SELECTIVE_BLOCKING_RESEARCH.md`, `PREMIUM.md`.
 
+## Status (update only after running on hardware)
+
+| Check | Status |
+|---|---|
+| PLANNER LOGIC VERIFIED (unit + browser tests) | PASS (Jest + web suite m12) |
+| IOS NATIVE BUILD COMPILES | UNTESTED |
+| PHYSICAL DEVICE INSTALL | UNTESTED |
+| WHOLE-APP PROTECTION VERIFIED | UNTESTED |
+| SELECTIVE PROTECTION VERIFIED | UNTESTED |
+| WIDGET VERIFIED | UNTESTED |
+| LIVE ACTIVITY VERIFIED | UNTESTED |
+| ONE-TAP PROTECTED START VERIFIED | UNTESTED |
+| PDF TEXT / ON-DEVICE OCR VERIFIED | UNTESTED |
+| LOCAL NOTIFICATIONS VERIFIED | UNTESTED |
+
+## EAS development build (once the Apple Developer membership is active)
+
+Run from `focusling/`. Never share Apple passwords or 2FA codes with anyone; EAS asks you directly.
+
+```bash
+npm ci
+npx expo-doctor
+npx eas-cli@latest login
+npx eas-cli@latest device:create          # register your iPhone (opens a profile link)
+npx eas-cli@latest build -p ios --profile development
+# install the build from the link on the iPhone, then:
+npx expo start --dev-client
+```
+
+`eas.json › build.development` has `developmentClient: true` and `distribution: "internal"`
+(checked). Add `"appleTeamId"` under `expo.ios` in `app.json` first (the targets plugin warns
+without it). The build includes 4 app extensions, declared automatically by `@bacons/apple-targets`
+(`expo config --type prebuild` shows them under `extra.eas.build.experimental.ios.appExtensions`):
+
+| Target | Bundle id | Entitlements |
+|---|---|---|
+| App | `com.focusling.app` | Family Controls, App Group `group.com.focusling.app` |
+| StudylingWidgets (widget + Live Activity) | `com.focusling.app.widgets` | App Group |
+| FocuslingShieldConfig | `com.focusling.app.shield-config` | Family Controls, App Group |
+| FocuslingShieldAction | `com.focusling.app.shield-action` | Family Controls, App Group |
+| FocuslingActivityMonitor | `com.focusling.app.device-activity-monitor` | Family Controls, App Group |
+
+Family Controls needs Apple's distribution approval before TestFlight/App Store; development
+builds can use the development entitlement.
+
 ## 0. Readiness audit (from the code, not a device)
 
 | Area | What's in the repo | Known risk / to verify |
@@ -16,6 +61,10 @@ matrix), `IOS_SELECTIVE_BLOCKING_RESEARCH.md`, `PREMIUM.md`.
 | Entitlements | `app.json`: family-controls, app group, `UIBackgroundModes: ["screen-capture"]` | Family Controls **distribution** approval needed for TestFlight/App Store |
 | Reels detection | ScreenCaptureKit on iOS 27 (`SCContentSharingPicker`) | iOS 27 only; whole-app works on 16.4+ |
 | Store module | `modules/focusling-store` (StoreKit 2) | Never compiled; needs products or a `.storekit` file |
+| Planner native module | `modules/studyling-native` (PDFKit, Vision OCR, App Group snapshot, ActivityKit) | Never compiled |
+| Widget extension | `targets/widgets` (WidgetKit small/medium, Live Activity, iOS 16.4+) | Never compiled; `Info.plist` has `NSSupportsLiveActivities` |
+| Notifications | `expo-notifications` plugin, category `studyling.start` with a Start & Lock action | Category registration and response handling untested |
+| Deep link | `focusling://planner/start?plan=ID&source=widget` → `app/planner/start.tsx` | Untested from the widget |
 | JS fallbacks | Mock protection/store on web and when native modules are missing | Confirm a native build never selects the mock store (`services/index.ts`) |
 
 ## 1. Record for every run
@@ -93,7 +142,58 @@ Focus (Do Not Disturb) on/off · Developer tools → Native protection panel val
 | S9 | Airplane mode on Premium screen | Graceful "couldn't reach the App Store"; previews still work | |
 | S10 | Family Mode Child View | No purchase UI anywhere; Premium page read-only | |
 
-## 9. Accessibility on device
+## 9. Planner on device (Studyling)
+
+### App lifecycle
+| # | Step | Expected | Result |
+|---|---|---|---|
+| A1 | Launch, reload, background, force quit, lock/unlock with plans saved | Planner data and pending reminders intact; nothing duplicated | |
+| A2 | Import a text-based PDF syllabus | Pages read on device; review shows items with page/line | |
+| A3 | Import a scanned (image-only) PDF | Progress shows page N of M; OCR text parsed; OCR-repaired dates marked Needs review | |
+| A4 | Same PDF again | "Already imported" (no duplicates, no second OCR pass in the same session) | |
+| A5 | Large PDF (40+ pages) | UI stays responsive (work is off the main thread) | |
+
+### Notifications
+| # | Step | Expected | Result |
+|---|---|---|---|
+| N1 | Turn on reminders → Allow | Permission prompt only now; start cues scheduled for the next 72 h | |
+| N2 | Turn on reminders → Don't Allow | Calm settings note; planner works; no re-prompt | |
+| N3 | Wait for a start cue | Delivered at plan time; Private copy by default | |
+| N4 | Tap **Start & Lock** on the notification | App opens straight into the planned session; protection result shown truthfully | |
+| N5 | Tap the notification body | Planner opens | |
+| N6 | Quiet hours covering a plan | No notification | |
+| N7 | Reschedule / skip / complete the assignment | Old notification cancelled; rescheduled one appears once | |
+| N8 | Start a session before a later cue | No cue fires during the session | |
+| N9 | Revised syllabus moves a deadline earlier | Plans after it cancelled; their notifications gone | |
+
+### Widget (StudylingWidgets)
+| # | Step | Expected | Result |
+|---|---|---|---|
+| W1 | Add small and medium widgets | Studyling, next course/time (small); assignment, minutes, today, Start & Lock (medium) | |
+| W2 | Private mode (default) | No course or assignment names | |
+| W3 | Detailed mode | Course code + assignment title | |
+| W4 | Tap Start / Start & Lock | Planned session starts (source = widget) | |
+| W5 | Accept/complete plans | Widget refreshes within seconds (timeline reload) | |
+| W6 | Delete the app's data / stale snapshot | Widget shows "No block yet", no crash | |
+
+### Live Activity
+| # | Step | Expected | Result |
+|---|---|---|---|
+| L1 | Start a session | Live Activity starts: Studyling, countdown, protection status | |
+| L2 | Lock the phone / Dynamic Island | Countdown runs; compact/minimal views readable | |
+| L3 | Private vs Detailed | Private never shows course/assignment | |
+| L4 | Protection failed | "Not protected" (never "Protected") | |
+| L5 | Complete / end early | Activity ends immediately | |
+| L6 | Force quit during a session, relaunch | Activity ended or resumed; no orphan | |
+
+### Time
+| # | Step | Expected | Result |
+|---|---|---|---|
+| T1 | Change time zone with plans | Plans keep absolute times; due times stay in the course zone | |
+| T2 | Day rollover with the app open | Today/Upcoming update | |
+| T3 | DST change (US: 1 Nov 2026) | Evening windows stay at local evening times | |
+
+## 10. Accessibility on device
 | # | Step | Expected | Result |
 |---|---|---|---|
 | X1 | VoiceOver through Pet, Focus, Shop, Play, Premium, Room Studio | Every control labelled; Premium marker read as "Premium" | |

@@ -90,7 +90,7 @@ export function PlannerHome() {
           ) : (
             <Card>
               <Text style={styles.body}>{derived.proposed.length ? 'Review the proposed plan below to fill your week.' : 'No study blocks planned right now.'}</Text>
-              {derived.schedulableUnplanned.length > 0 && <Button label="Plan my study" onPress={() => store.proposePlans()} />}
+              {derived.schedulableUnplanned.length > 0 && derived.proposed.length === 0 && <Button label="Plan my study" onPress={() => store.proposePlans()} />}
             </Card>
           )}
           {derived.todayOthers.length > 0 && (

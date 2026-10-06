@@ -143,7 +143,19 @@ logic, local persistence, and a mock Screen Time service.
   support, version, local data erase) and Premium QA tools behind Developer tools.
 - Native iPhone checks still to run: `docs/NATIVE_IPHONE_TEST_PLAN.md`.
 
+**Studyling Planner (student-first):** details in `docs/STUDYLING_PLANNER.md`.
+- Import a syllabus (PDF/file on iPhone, paste from email, or type it), review anything uncertain
+  (Confirmed / Looks likely / Needs review), and get realistic study blocks inside your own study
+  windows, with a calm note when the work doesn't fit.
+- Local reminders only when you turn them on; a quiet start cue with **Start & Lock** that begins
+  the planned session through the existing Focus timer and protection (and says so honestly when
+  protection can't start). Experimental reminder fading (Standard → Light → Ambient) you can override.
+- Brief retrieval after eligible sessions (brain dump or your own recall question).
+- Widget and Live Activity foundations, PDF/OCR native module: written, **not yet compiled or tested
+  on a device** (`docs/NATIVE_IPHONE_TEST_PLAN.md`).
+- Everything stays on the device (`docs/PLANNER_PRIVACY.md`). No AI parsing, no accounts.
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,
-`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`, `room.ts`, `roomThemes.ts`, `sounds.ts`, `premium.ts`, `legal.ts`.
+`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`, `room.ts`, `roomThemes.ts`, `sounds.ts`, `premium.ts`, `legal.ts`, `planner.ts`.

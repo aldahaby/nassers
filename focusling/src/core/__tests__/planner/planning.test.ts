@@ -34,6 +34,14 @@ describe('plan generation', () => {
     expect(plans.map((p) => p.sequenceIndex)).toEqual([1, 2, 3, 4]);
   });
 
+  it('a tight deadline is balanced across the evenings left, not stacked on one', () => {
+    const { state, assignmentId, ids } = withAssignment({ dueDayKey: '2026-10-14', dueTime: '09:00', type: 'exam', title: 'Midterm', estimatedMinutes: 240 });
+    const plans = plansOf(proposePlans(state, MON, ids).state, assignmentId);
+    const perDay = new Map<string, number>();
+    for (const p of plans) perDay.set(dayKeyIn(p.plannedStartAt, TZ), (perDay.get(dayKeyIn(p.plannedStartAt, TZ)) ?? 0) + 1);
+    expect([...perDay.values()]).toEqual([3, 3]);
+  });
+
   it('respects a custom preferred session length', () => {
     const { state, assignmentId, ids } = withAssignment({ dueDayKey: '2026-10-22', estimatedMinutes: 120 });
     const s = { ...state, preferences: { ...state.preferences, preferredSessionMinutes: 60 } };

@@ -72,8 +72,6 @@ export const PLANNER_RULES = {
    * to be optimal; spreading is simply even across the available days.
    */
   spreadAcrossDays: true,
-  /** At most this many blocks of one assignment on the same day when spreading. */
-  maxBlocksPerAssignmentPerDay: 1,
   /**
    * Blocks go in the last few days before a deadline (not weeks early), then
    * spread evenly inside that window: at least `minLeadDays`, plus

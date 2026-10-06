@@ -410,30 +410,20 @@ function placeSessions(days: { day: string; free: Interval[] }[], lengths: numbe
       }
     });
   }
-  // Anything left: earliest free time from the window backwards in time, then forwards.
+  // Anything left: round-robin over the days (window first, then earlier days), one block
+  // per day per pass, so a tight deadline gets balanced evenings instead of one marathon.
   const order = [...window, ...usable.slice(0, Math.max(0, usable.length - leadDays)).reverse()];
-  for (let i = 0; i < queue.length; i++) {
-    const len = queue[i]!;
-    if (!len) continue;
+  let progress = true;
+  while (queue.some(Boolean) && progress) {
+    progress = false;
     for (const d of order) {
-      const perDay = placed.filter((p) => d.free.some((f) => p.start >= f.start - 1 && p.start < f.end + 1)).length;
-      if (PLANNER_RULES.spreadAcrossDays && perDay >= PLANNER_RULES.maxBlocksPerAssignmentPerDay && order.length >= queue.length) continue;
-      const iv = placeIn(free(d), len);
+      const i = queue.findIndex(Boolean);
+      if (i < 0) break;
+      const iv = placeIn(free(d), queue[i]!);
       if (iv) {
         put(iv);
         queue[i] = 0;
-        break;
-      }
-    }
-    // Still nowhere: allow a second block on a day as a last resort.
-    if (queue[i]) {
-      for (const d of order) {
-        const iv = placeIn(free(d), len);
-        if (iv) {
-          put(iv);
-          queue[i] = 0;
-          break;
-        }
+        progress = true;
       }
     }
   }

@@ -29,7 +29,7 @@ export default function PlannerQA() {
   const now = useNow(1000);
   const routes = useAppRoutes();
   const [, rerender] = useReducer((x: number) => x + 1, 0);
-  const [banner, setBanner] = useState<{ key: string; title: string; body: string; suppressed: boolean } | null>(null);
+  const [banner, setBanner] = useState<{ key: string; title: string; body: string; suppressed: boolean; kind: 'startCue' | 'digest' } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const mockNotes = services.notifications instanceof MockNotificationService ? services.notifications : null;
   const mockProtection = services.protection instanceof MockProtectionService ? services.protection : null;
@@ -78,7 +78,7 @@ export default function PlannerQA() {
     if (!n) return say('No reminder is pending. Turn reminders on and accept a plan inside the next 72 hours.');
     setTime(n.fireAt);
     const shown = mockNotes.deliver(n.osId, n.fireAt);
-    setBanner({ key: n.key, title: n.title, body: n.body, suppressed: !shown });
+    setBanner({ key: n.key, title: n.title, body: n.body, suppressed: !shown, kind: n.data.kind });
   };
 
   const snapshot = buildWidgetSnapshot(planner, now, { activeSession: active ? { endsAt: active.startedAt + active.plannedDurationMinutes * 60_000, protection: active.study?.protectionResult ?? 'unknown' } : null, pet: pet ? { speciesId: pet.speciesId, stage: 'baby' } : null });
@@ -269,6 +269,9 @@ export default function PlannerQA() {
                 <Text style={styles.bannerTitle}>{banner.title}</Text>
                 <Text style={styles.body}>{banner.body}</Text>
                 <View style={styles.row}>
+                  {banner.kind === 'digest' ? (
+                    <Button label="Open Planner" variant="secondary" onPress={() => { mockNotes?.respond(banner.key, 'open'); setBanner(null); }} style={styles.flex} />
+                  ) : (
                   <Button
                     label="Start & Lock"
                     sound={null}
@@ -278,6 +281,7 @@ export default function PlannerQA() {
                     }}
                     style={styles.flex}
                   />
+                  )}
                   <Button label="Dismiss" variant="ghost" onPress={() => setBanner(null)} style={styles.flex} />
                 </View>
               </>
@@ -303,8 +307,8 @@ export default function PlannerQA() {
         {activityFor('detailed') && (
           <>
             <Text style={styles.muted}>Live Activity · detailed / private</Text>
-            <LiveActivityMock content={activityFor('detailed')!} now={now} />
-            <LiveActivityMock content={activityFor('private')!} now={now} />
+            <LiveActivityMock content={activityFor('detailed')!} now={active ? now : sessionForActivity!.startedAt} />
+            <LiveActivityMock content={activityFor('private')!} now={active ? now : sessionForActivity!.startedAt} />
           </>
         )}
         <Text style={styles.muted}>Bridge: {services.widgets.kind}{mockWidgets?.activity ? ` · activity running (${mockWidgets.activity.updates} updates)` : ''}</Text>
