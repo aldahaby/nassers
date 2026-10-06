@@ -13,3 +13,6 @@ export * from './style';
 export * from './room';
 export type * from './future';
 export * from './entitlement';
+export type * from './syllabus';
+export type * from './planner';
+export type * from './retrieval';

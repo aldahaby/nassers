@@ -47,3 +47,39 @@ export function canWear(save: GameSave, item: ShopItem, caps: Capabilities): boo
   if (itemAccess(item) === 'premium') return item.equipSlot === 'aura' ? caps.canUsePremiumEffects : caps.canUsePremiumCollections;
   return false;
 }
+
+/**
+ * Studyling planner capabilities. The effectiveness core is free for every
+ * tier and never depends on entitlement. Future Premium candidates
+ * (continuous LMS sync, encrypted multi-device sync, advanced analytics) are
+ * not built, so they are off for everyone, not "locked".
+ */
+export interface PlannerCapabilities {
+  manualEntry: true;
+  syllabusImport: true;
+  planner: true;
+  localReminders: true;
+  reminderFading: true;
+  startAndLock: true;
+  basicRetrieval: true;
+  basicWidget: true;
+  continuousLmsSync: false;
+  encryptedSync: false;
+  advancedAnalytics: false;
+}
+
+export function plannerCapabilitiesFor(_entitlement: EntitlementState): PlannerCapabilities {
+  return {
+    manualEntry: true,
+    syllabusImport: true,
+    planner: true,
+    localReminders: true,
+    reminderFading: true,
+    startAndLock: true,
+    basicRetrieval: true,
+    basicWidget: true,
+    continuousLmsSync: false,
+    encryptedSync: false,
+    advancedAnalytics: false,
+  };
+}

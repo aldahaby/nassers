@@ -2,6 +2,7 @@ import type { GrowthStage } from './pet';
 import type { ProtectionMode } from './protection';
 import type { MissionCompletion } from './missions';
 import type { Id, Timestamp } from './common';
+import type { StudyContext } from './planner';
 
 /**
  * Something the user wants to stay away from during a session.
@@ -45,6 +46,8 @@ export interface FocusSession {
   /** Protection this session was started with (native state is still authoritative). */
   protectionMode: ProtectionMode;
   reward: SessionReward | null;
+  /** Studyling: what this session was for and how it started (optional; older sessions have none). */
+  study?: StudyContext;
 }
 
 /** Rewards a session would pay if completed, shown before and during a session. */
