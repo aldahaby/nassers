@@ -18,7 +18,9 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "screen-capture"
-        ]
+        ],
+        "NSSupportsLiveActivities": true,
+        "CFBundleDisplayName": "Studyling"
       }
     },
     "android": {
@@ -46,6 +48,12 @@
           "microphonePermission": false,
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": []
         }
       ]
     ],
