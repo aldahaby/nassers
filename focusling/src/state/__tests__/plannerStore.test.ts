@@ -232,3 +232,26 @@ describe('planner persistence and the existing save', () => {
     expect(JSON.stringify(save)).not.toMatch(/plannerSchemaVersion|assignments/);
   });
 });
+
+describe('planner store: Journey', () => {
+  it('a real finished session and task are stored as milestones once, and survive a reload', async () => {
+    const plannerRepo = new MemoryPlannerRepository();
+    const saveRepo = new MemorySaveRepository();
+    const ctx = await setup({ plannerRepo, saveRepo });
+    expect((await ctx.game.getState().startFocus(25)).ok).toBe(true);
+    ctx.clock.t += 25 * 60_000 + 1_000;
+    ctx.game.getState().refresh();
+    await flush();
+    const m1 = ctx.planner.getState().planner!.journey.milestones;
+    expect(m1.firstSession?.achievedAt).toBe(ctx.clock.t - 1_000);
+    const courseId = ctx.planner.getState().addCourse({ name: 'History' });
+    const taskId = ctx.planner.getState().addAssignment({ courseId, title: 'Essay', type: 'paper', dueDayKey: '2026-10-20', dueTime: '23:59' });
+    ctx.planner.getState().completeAssignment(taskId);
+    await flush();
+    const m2 = ctx.planner.getState().planner!.journey.milestones;
+    expect(m2.firstTask?.achievedAt).toBe(ctx.clock.t);
+    expect(m2.firstSession).toEqual(m1.firstSession);
+    const reloaded = await setup({ plannerRepo, saveRepo, clock: ctx.clock });
+    expect(reloaded.planner.getState().planner!.journey.milestones).toEqual(m2);
+  });
+});

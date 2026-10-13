@@ -155,6 +155,16 @@ logic, local persistence, and a mock Screen Time service.
   on a device** (`docs/NATIVE_IPHONE_TEST_PLAN.md`).
 - Everything stays on the device (`docs/PLANNER_PRIVACY.md`). No AI parsing, no accounts.
 
+**Stats & Journey:** details in `docs/STATS_AND_JOURNEY.md` and `docs/PREMIUM_ARCHITECTURE.md`.
+- A Stats tab (Pet / Planner / Focus / Stats / Settings; the Shop opens from the Pet screen): today
+  and this week's focus time, a seven-day chart, sessions and tasks, focus time by course (with
+  unassigned time shown as such), progress over time and full session history. All Free.
+- Journey: a timeline of one-time milestones (first session, session and hour counts, tasks,
+  courses, recall practice, pet growth) from real records only. No streaks.
+- Premium foundations: access states (free / trial / paid / expired / pending / unavailable),
+  30- and 14-day trial definitions, student email verification models (no backend yet; the app says
+  "unavailable") and ad-eligibility rules (no ad SDK, nothing shown).
+
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,

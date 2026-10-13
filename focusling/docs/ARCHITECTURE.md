@@ -468,3 +468,14 @@ Full design: [`STUDYLING_PLANNER.md`](STUDYLING_PLANNER.md) · privacy: [`PLANNE
   `targets/widgets` (StudylingWidgets, `com.focusling.app.widgets`).
 - **UI:** `app/(tabs)/planner.tsx`, `app/planner/*`, `features/planner/*`, `app/dev/syllabus-lab.tsx`,
   `app/dev/planner-qa.tsx`. Tabs: Pet / Planner / Focus / Shop / Settings.
+
+## 18. Stats, Journey and Premium foundations
+
+- **Stats** (`core/stats`, `features/stats`, Stats tab): one `FocusSessionRecord` per FocusSession,
+  merged from the planner's durable `studySessions` and the game's recent history, with minutes
+  capped to real elapsed time. Local-day/DST-safe aggregations. See `docs/STATS_AND_JOURNEY.md`.
+- **Journey**: one-time milestones in the planner document (`journey`, planner schema 2, migrated
+  from v1 with an empty Journey), evaluated in the planner store's `commit` and on pet XP changes.
+- **Access states** (`accessStateFor`), trial periods, `canUseExtendedStats`; dev overrides limited
+  to development/web builds. Student verification (models, reducer, Unavailable service) and ad
+  eligibility rules, no backend or SDK. See `docs/PREMIUM_ARCHITECTURE.md`.

@@ -22,6 +22,7 @@ Planner document  studyling/planner/v1  (AsyncStorage / localStorage on this dev
    ├─ plans, reminder rules, scheduled reminders, exposures
    ├─ study sessions (times, durations, outcome, start source, protection result)
    ├─ retrieval items (the student's own prompts/answers)
+   ├─ Journey milestones (ids, dates, course ids; no text)
    └─ event log (ids, times, small codes; no titles or text)
    │
    ├─► Local notifications (OS): titles/bodies follow the Lock Screen setting
@@ -41,6 +42,7 @@ Planner document  studyling/planner/v1  (AsyncStorage / localStorage on this dev
 | Study session records | LOCAL · SYNC_ELIGIBLE | No content |
 | Retrieval prompts / answers / brain dumps | LOCAL · SYNC_ELIGIBLE | Never in notifications, widgets or logs |
 | Event log | LOCAL | Never sent to analytics |
+| Journey milestones / Stats | LOCAL | Derived on device; no analytics SDK |
 | Hash, parser version, provenance | LOCAL · SYNC_ELIGIBLE | No source text |
 | Widget snapshot | WIDGET_SHARED | 12 fixed keys (`WIDGET_SNAPSHOT_KEYS`) |
 | Pet species + stage | WIDGET_SHARED | No name |

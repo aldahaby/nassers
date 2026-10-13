@@ -26,7 +26,23 @@ export interface EntitlementState {
   /** ms since epoch, when the store reports one. */
   expiresAt?: number;
   willAutoRenew?: boolean;
+  /** Trial or paid period, when the authority reports one (a trial is never granted by the client). */
+  period?: EntitlementPeriod;
+  /** Which trial this is (student 30 days or standard 14 days; config/trials.ts). */
+  trialKind?: TrialKind;
 }
+
+export type EntitlementPeriod = 'trial' | 'paid';
+export type TrialKind = 'student' | 'standard';
+
+/**
+ * The one derived answer to "where does this person stand?", from the
+ * authoritative entitlement and the current time (accessStateFor). Only
+ * trialActive and paidActive unlock Premium capabilities. "unavailable" means
+ * the authority can't be reached or isn't present: Free capabilities, nothing
+ * deleted, and a student's own records stay fully available.
+ */
+export type AccessState = 'free' | 'trialActive' | 'paidActive' | 'trialExpired' | 'paidExpired' | 'pending' | 'unavailable';
 
 /** Capability questions the UI asks. Add new ones here, never `if (isPremium)` in screens. */
 export interface Capabilities {
@@ -44,6 +60,11 @@ export interface Capabilities {
   canPurchase: boolean;
   /** Premium content can always be previewed on the pet. */
   canPreviewPremium: boolean;
+  /**
+   * Longer-range Stats views (e.g. 12-week trend). Never gates a student's own
+   * records: today/week, the weekly chart, history, courses and Journey are Free.
+   */
+  canUseExtendedStats: boolean;
 }
 
 /** Content access tier for catalog items, collections and room themes. */

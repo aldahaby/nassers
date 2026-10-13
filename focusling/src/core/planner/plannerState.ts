@@ -1,5 +1,6 @@
 import { defaultPreferences, EVENT_LOG_LIMIT, PLANNER_SCHEMA_VERSION, REMINDER_FADING_POLICY } from '@/config/planner';
 import type { Id, PlannerEvent, PlannerEventType, PlannerState, Timestamp } from '../models';
+import { createJourneyState } from '../stats/journey';
 
 /** Generates ids. The state layer passes a real one; tests pass a counter. */
 export type IdGen = (prefix: string) => Id;
@@ -29,6 +30,7 @@ export function createPlannerState(now: Timestamp, timezone: string): PlannerSta
     preferences: defaultPreferences(timezone),
     originals: {},
     pendingRetrieval: null,
+    journey: createJourneyState(now),
   };
 }
 
@@ -57,5 +59,7 @@ export function migratePlanner(raw: unknown, now: Timestamp, timezone: string): 
     events: Array.isArray(r.events) ? r.events : [],
     originals: r.originals ?? {},
     pendingRetrieval: r.pendingRetrieval ?? null,
+    // v1 → v2: Journey starts now. Milestones are then evaluated from existing records (never invented).
+    journey: r.journey && typeof r.journey === 'object' ? { ...base.journey, ...r.journey, milestones: r.journey.milestones ?? {} } : base.journey,
   };
 }

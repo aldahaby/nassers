@@ -26,3 +26,6 @@ export * from './room';
 export * from './entitlements';
 export * from './game/debugStyle';
 export * from './planner';
+export * from './stats';
+export * from './verification';
+export * from './ads';

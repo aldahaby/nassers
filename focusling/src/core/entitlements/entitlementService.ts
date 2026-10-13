@@ -1,4 +1,4 @@
-import type { Capabilities, ContentAccess, EntitlementState, GameSave, ShopItem } from '../models';
+import type { AccessState, Capabilities, ContentAccess, EntitlementState, GameSave, ShopItem, Timestamp } from '../models';
 
 export const FREE_ENTITLEMENT: EntitlementState = { tier: 'free', source: 'none', status: 'unknown' };
 
@@ -7,11 +7,34 @@ export interface AccessContext {
   childView: boolean;
   /** A real or mock store is present and can sell. */
   storeAvailable: boolean;
+  /** When given, an `expiresAt` in the past ends access even before the store says so. */
+  now?: Timestamp;
 }
 
 export function isPremiumTier(e: EntitlementState): boolean {
   return (e.tier === 'premium' || e.tier === 'premiumStudentPromo') && (e.status === 'active' || e.source === 'devOverride');
 }
+
+/**
+ * Derive the access state. Deterministic: entitlement + time in, state out.
+ * - devOverride (QA only; the store refuses it outside development builds) acts as paid.
+ * - A reported expiry in the past ends access, whatever the status says.
+ * - Free/unknown/inactive with no period is plain Free.
+ */
+export function accessStateFor(e: EntitlementState, now?: Timestamp): AccessState {
+  if (e.source === 'devOverride') return e.tier === 'free' ? 'free' : 'paidActive';
+  if (e.status === 'unavailable') return 'unavailable';
+  if (e.status === 'pending') return 'pending';
+  const expiredState: AccessState = e.period === 'trial' ? 'trialExpired' : 'paidExpired';
+  if (e.status === 'expired' || e.status === 'revoked') return expiredState;
+  if (e.status === 'active' && e.tier !== 'free') {
+    if (e.expiresAt != null && now != null && e.expiresAt <= now) return expiredState;
+    return e.period === 'trial' ? 'trialActive' : 'paidActive';
+  }
+  return 'free';
+}
+
+export const isPremiumAccess = (state: AccessState): boolean => state === 'trialActive' || state === 'paidActive';
 
 /**
  * The single source of truth for "what can this person use?". Pure, so it is
@@ -20,7 +43,7 @@ export function isPremiumTier(e: EntitlementState): boolean {
  * same for everyone.
  */
 export function capabilitiesFor(e: EntitlementState, ctx: AccessContext): Capabilities {
-  const premium = isPremiumTier(e);
+  const premium = isPremiumAccess(accessStateFor(e, ctx.now));
   return {
     canUsePremiumCollections: premium,
     canUsePremiumLooks: premium,
@@ -29,6 +52,7 @@ export function capabilitiesFor(e: EntitlementState, ctx: AccessContext): Capabi
     canUseAdvancedCustomization: premium,
     canPurchase: !ctx.childView && ctx.storeAvailable && !premium,
     canPreviewPremium: true,
+    canUseExtendedStats: premium,
   };
 }
 

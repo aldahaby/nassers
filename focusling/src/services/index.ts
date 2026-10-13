@@ -5,6 +5,7 @@ import type { FocusProtectionService } from './protection/FocusProtectionService
 import { IOSProtectionService } from './protection/IOSProtectionService';
 import { MockProtectionService } from './protection/MockProtectionService';
 import { FocuslingProtectionNative } from './protection/nativeModule';
+import { UnavailableStudentVerificationService, type StudentVerificationService } from './verification/StudentVerificationService';
 import { FocuslingStoreNative, MockStoreService, NativeStoreService, UnavailableStoreService, type StoreService } from './store';
 import { LocalOnlySyncProvider, type SyncProvider } from '@/core';
 import type { DocumentService } from './documents/DocumentService';
@@ -64,6 +65,8 @@ export const services: {
   widgets: StudyWidgetBridge;
   /** Local-only: nothing leaves the device (docs/PLANNER_PRIVACY.md). */
   sync: SyncProvider;
+  /** No verification backend exists yet: always Unavailable (docs/PREMIUM_ARCHITECTURE.md). */
+  studentVerification: StudentVerificationService;
 } = {
   saveRepository: new AsyncStorageSaveRepository(),
   protection: createProtectionService(),
@@ -73,6 +76,7 @@ export const services: {
   documents: Platform.OS === 'web' ? new WebDocumentService() : new NativeDocumentService(),
   widgets: Platform.OS === 'ios' && StudylingNative ? new NativeStudyWidgetBridge() : new MockStudyWidgetBridge(),
   sync: new LocalOnlySyncProvider(),
+  studentVerification: new UnavailableStudentVerificationService(),
 };
 
 export type { SaveRepository } from './persistence/SaveRepository';
@@ -88,3 +92,4 @@ export type { StudyWidgetBridge } from './widgets/StudyWidgetBridge';
 export { MemoryPlannerRepository } from './planner/PlannerRepository';
 export type { PlannerRepository } from './planner/PlannerRepository';
 export { appClock } from './clock';
+export * from './verification/StudentVerificationService';

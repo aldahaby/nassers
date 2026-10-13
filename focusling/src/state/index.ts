@@ -12,5 +12,5 @@ export {
 export * from './selectors';
 export { createEntitlementStore, effectiveEntitlement, type EntitlementStore } from './entitlementStore';
 export { useEntitlementStore, useCapabilities, useEntitlement } from './entitlements';
-export { usePlannerStore, usePlanner, useNextPlan } from './planner';
+export { usePlannerStore, usePlanner, useNextPlan, useStudyData } from './planner';
 export { createPlannerStore, type PlannerStoreState, type StartNotice, type ImportStatus } from './createPlannerStore';

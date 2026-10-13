@@ -1,6 +1,7 @@
 import type { Id, Timestamp } from './common';
 import type { ProtectionMode } from './protection';
 import type { RetrievalItem } from './retrieval';
+import type { JourneyState } from './studyStats';
 import type { ConfidenceLevel, ReviewReason, SourceProvenance, Syllabus, SyllabusSourceType } from './syllabus';
 
 /**
@@ -357,4 +358,6 @@ export interface PlannerState {
   /** Only present when the student turned on "Keep original locally". */
   originals: Record<Id, string>;
   pendingRetrieval: PendingRetrieval | null;
+  /** Journey milestones (planner schema 2). */
+  journey: JourneyState;
 }

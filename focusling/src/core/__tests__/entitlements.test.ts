@@ -32,6 +32,7 @@ describe('entitlement → capabilities (the single source of truth)', () => {
       canUseAdvancedCustomization: false,
       canPurchase: true,
       canPreviewPremium: true,
+      canUseExtendedStats: false,
     });
   });
 

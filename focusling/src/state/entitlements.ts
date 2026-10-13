@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { services } from '@/services';
+import { appClock, services } from '@/services';
 import { capabilitiesFor, type Capabilities } from '@/core';
 import { createEntitlementStore, effectiveEntitlement } from './entitlementStore';
 import { setCapabilitiesProvider, useGameStore } from './gameStore';
@@ -11,7 +11,7 @@ export const useEntitlementStore = createEntitlementStore(services.store);
 setCapabilitiesProvider(() => {
   const e = useEntitlementStore.getState();
   const g = useGameStore.getState();
-  return capabilitiesFor(effectiveEntitlement(e), { childView: g.save?.mode === 'family' && g.familyView === 'child', storeAvailable: e.storeAvailable });
+  return capabilitiesFor(effectiveEntitlement(e), { childView: g.save?.mode === 'family' && g.familyView === 'child', storeAvailable: e.storeAvailable, now: appClock.now() });
 });
 
 /** Capabilities for the current person and view. Screens ask this, never `isPremium`. */
@@ -20,7 +20,7 @@ export function useCapabilities(): Capabilities {
   const devOverride = useEntitlementStore((s) => s.devOverride);
   const storeAvailable = useEntitlementStore((s) => s.storeAvailable);
   const childView = useGameStore((s) => s.save?.mode === 'family' && s.familyView === 'child');
-  return useMemo(() => capabilitiesFor(effectiveEntitlement({ storeEntitlement, devOverride }), { childView, storeAvailable }), [storeEntitlement, devOverride, storeAvailable, childView]);
+  return useMemo(() => capabilitiesFor(effectiveEntitlement({ storeEntitlement, devOverride }), { childView, storeAvailable, now: appClock.now() }), [storeEntitlement, devOverride, storeAvailable, childView]);
 }
 
 export function useEntitlement() {

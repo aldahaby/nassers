@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { PREMIUM_PRODUCT_IDS } from '@/config/premium';
 import { FREE_ENTITLEMENT, type AccessTier, type EntitlementState, type StudentOfferState } from '@/core';
@@ -25,9 +26,14 @@ export interface EntitlementStore {
   clearMessage(): void;
 }
 
+/** Dev tier overrides exist only in development builds and the web demo (no real store there). */
+export function devOverrideAllowed(): boolean {
+  return (typeof __DEV__ !== 'undefined' && __DEV__) || Platform.OS === 'web';
+}
+
 /** The entitlement the app acts on: a dev override (QA) wins, otherwise the store. */
 export function effectiveEntitlement(s: Pick<EntitlementStore, 'storeEntitlement' | 'devOverride'>): EntitlementState {
-  if (s.devOverride) return s.devOverride === 'free' ? { tier: 'free', source: 'devOverride', status: 'inactive' } : { tier: s.devOverride, source: 'devOverride', status: 'active' };
+  if (s.devOverride && devOverrideAllowed()) return s.devOverride === 'free' ? { tier: 'free', source: 'devOverride', status: 'inactive' } : { tier: s.devOverride, source: 'devOverride', status: 'active' };
   return s.storeEntitlement;
 }
 
@@ -85,7 +91,10 @@ export function createEntitlementStore(store: StoreService) {
     },
 
     setDevOverride(tier, devToolsEnabled) {
-      if (!devToolsEnabled) return; // store-refused unless Developer tools are on
+      // Store-refused unless Developer tools are on AND this is a development
+      // build (or the web demo). Developer tools can be switched on in a
+      // release build, so that alone must never grant paid access.
+      if (!devToolsEnabled || !devOverrideAllowed()) return;
       set({ devOverride: tier });
     },
 

@@ -7,7 +7,7 @@ import type { AssignmentType, AvailabilityWindow, PlanType, PlannerPreferences, 
  * starting guesses, not established findings.
  */
 
-export const PLANNER_SCHEMA_VERSION = 1;
+export const PLANNER_SCHEMA_VERSION = 2;
 
 // ── Parser ──────────────────────────────────────────────────────────
 

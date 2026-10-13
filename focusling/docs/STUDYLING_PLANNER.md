@@ -184,7 +184,7 @@ through, then "Check your notes." and Got it / Partly / Missed it), **Make a rec
 assignment, source session, attempts, last result and a V1 `nextDueAt` (fixed 1/2/4 days by result,
 not a spaced-repetition algorithm).
 
-## 11. Future Stats instrumentation (no Stats UI yet)
+## 11. Stats instrumentation (Stats UI: docs/STATS_AND_JOURNEY.md)
 
 Derivable from local records, without any "focus score": study time by course (`StudySession`),
 planned vs completed (plans + sessions), start delay (actual − planned start), independent start
@@ -248,7 +248,7 @@ future-only; no student ID capture.
 
 ## 17. Student-first changes and legacy identifiers
 
-- Tabs: **Pet / Planner / Focus / Shop / Settings**; Play opens from the Pet screen; Stats hidden.
+- Tabs: **Pet / Planner / Focus / Stats / Settings**; Play and the Shop open from the Pet screen.
 - New UI uses **Studyling**; iOS display name set via `CFBundleDisplayName: "Studyling"`.
 - Family Mode is untouched (not expanded, not deleted); its save data is preserved.
 - **Legacy technical identifiers kept** to avoid destabilising signing and native work: `expo.name`

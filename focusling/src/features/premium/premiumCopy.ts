@@ -6,13 +6,14 @@ export function describeEntitlement(e: EntitlementState, storeAvailable: boolean
   switch (e.status) {
     case 'active': {
       const until = e.expiresAt ? new Date(e.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+      if (e.period === 'trial') return until ? `Premium trial · ends ${until}` : 'Premium trial is active';
       if (!until) return 'Premium is active';
       return e.willAutoRenew === false ? `Premium until ${until} (won’t renew)` : `Premium is active · renews ${until}`;
     }
     case 'pending':
       return 'Purchase waiting for approval';
     case 'expired':
-      return 'Free · your Premium subscription has ended';
+      return e.period === 'trial' ? 'Free · your Premium trial has ended' : 'Free · your Premium subscription has ended';
     case 'revoked':
       return 'Free · Premium was refunded or revoked';
     default:

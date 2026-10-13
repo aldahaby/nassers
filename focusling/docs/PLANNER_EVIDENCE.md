@@ -24,8 +24,9 @@ Use this ledger to keep product copy honest.
 - Session minutes are "protected/focused session time", never "concentration".
 - No "Focus Score".
 
-## Measuring it later (no Stats UI in this milestone)
+## Measuring it later
 
 The local records support honest evaluation: start delay, independent-start rate, planned vs
 completed, early-end rate, recovery after misses, retrieval attempts and self-rated results, all by
-policy version. Any study needs consent and its own privacy review; nothing is collected today.
+policy version. The Stats screen (docs/STATS_AND_JOURNEY.md) shows the student their own focus time and
+completed work; it does not evaluate effectiveness. Any study needs consent and its own privacy review; nothing is collected today.

@@ -19,6 +19,7 @@ import {
   createId,
   createImportDraft,
   createPlannerState,
+  withJourneyUpdated,
   deleteAssignment,
   desiredReminders,
   diffReminders,
@@ -183,7 +184,9 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
     };
 
     /** Commit a new planner document, then keep reminders and the widget in step. */
-    const commit = (planner: PlannerState, extra: Partial<PlannerStoreState> = {}, opts: { sync?: boolean } = {}) => {
+    const commit = (next: PlannerState, extra: Partial<PlannerStoreState> = {}, opts: { sync?: boolean } = {}) => {
+      // Journey milestones are stored as soon as the records support them (each once).
+      const planner = withJourneyUpdated(next, deps.game.getState().save, now());
       set({ planner, ...extra });
       persist(planner);
       if (opts.sync !== false) {
@@ -235,8 +238,15 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
         const planner = get().planner;
         if (planner) {
           const recorded = recordFinishedSession(planner, finished, ids);
-          if (recorded !== planner) commit(updateSupport(recorded, now(), ids));
+          if (recorded !== planner) return commit(updateSupport(recorded, now(), ids));
         }
+      }
+      // Pet growth from anything else (e.g. missions) is noticed when it happens.
+      const xp = save.pet?.lifetimeXp ?? null;
+      const planner = get().planner;
+      if (planner && xp !== planner.journey.petXpSeen) {
+        const updated = withJourneyUpdated(planner, save, now());
+        if (updated !== planner) commit(updated, {}, { sync: false });
       }
     };
 

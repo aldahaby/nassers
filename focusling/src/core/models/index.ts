@@ -16,3 +16,6 @@ export * from './entitlement';
 export type * from './syllabus';
 export type * from './planner';
 export type * from './retrieval';
+export type * from './studyStats';
+export type * from './verification';
+export type * from './ads';
