@@ -1,4 +1,3 @@
-import { Redirect, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { MEMORY_GARDEN } from '@/config/play';
@@ -6,7 +5,6 @@ import { getShopItem } from '@/config/shopCatalog';
 import { createMemoryDeck, flipCard, hideMismatch, isMemoryComplete, pairsFound, type GameRoundResult, type MemoryState } from '@/core';
 import { GameFrame } from '@/features/play/GameFrame';
 import { RoundSummary } from '@/features/play/RoundSummary';
-import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useGameStore, usePetView, usePlayToday } from '@/state';
 import { AnimatedPet, ItemArt, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
@@ -17,7 +15,6 @@ const newSeed = () => Math.floor(Math.random() * 2 ** 31);
 export default function MemoryGardenScreen() {
   const view = usePetView();
   const play = usePlayToday();
-  const routes = useAppRoutes();
   const { startGameRound, completeGameRound } = useGameStore.getState();
   const { width, height } = useWindowDimensions();
   const [deck, setDeck] = useState<MemoryState>(() => createMemoryDeck(newSeed()));
@@ -57,7 +54,6 @@ export default function MemoryGardenScreen() {
   };
 
   if (!view || !play) return null;
-  if (!play.access.open && !result) return <Redirect href={routes.play as Href} />;
   const { pet, progression, mood } = view;
 
   // Four columns; sized to fit phones and to stay comfortable on tablets.

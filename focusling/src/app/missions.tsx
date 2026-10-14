@@ -1,13 +1,10 @@
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { MissionManager } from '@/features/missions/MissionManager';
-import { useAppMode } from '@/state';
 import { Button, Screen, colors, spacing, typography, Pressable } from '@/ui';
 
-/** Self mode missions: pick templates or make your own. */
+/** Missions: pick templates or make your own. */
 export default function MissionsScreen() {
-  const mode = useAppMode();
-  if (mode === 'family') return <Redirect href="/(child)/missions" />;
   const back = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)'));
 
   return (
@@ -22,7 +19,7 @@ export default function MissionsScreen() {
         <Text style={styles.muted}>Small daily goals that pay bonus coins on top of your focus rewards.</Text>
       </View>
       <Button label="Start focusing" icon="⏳" onPress={() => router.navigate('/(tabs)/focus')} />
-      <MissionManager audience="self" />
+      <MissionManager />
     </Screen>
   );
 }

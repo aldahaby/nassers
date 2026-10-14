@@ -343,7 +343,7 @@ describe('v5 → v6 migration', () => {
     v5.inventory.equipped = { face: 'fc-visor-frost', head: 'acc-cap' };
     v5.cosmetics = { newItemIds: ['fc-visor-frost'], looks: [{ id: 'l1', equipped: { face: 'fc-visor-frost' }, savedAt: 1 }, null, null] };
     const migrated = migrateSave(v5);
-    expect(migrated.schemaVersion).toBe(8);
+    expect(migrated.schemaVersion).toBe(9);
     expect(migrated.cosmetics).toMatchObject({
       newItemIds: ['fc-visor-frost'],
       looks: [{ id: 'l1', equipped: { face: 'fc-visor-frost' } }, null, null],

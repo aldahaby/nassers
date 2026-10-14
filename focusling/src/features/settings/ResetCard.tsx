@@ -11,7 +11,7 @@ export function ResetCard() {
     <Card>
       <Text style={typography.heading}>Erase local data</Text>
       <Text style={styles.muted}>
-        Erases the pet, coins, items, missions, stats, family settings, courses, plans, reminders and recall notes stored on this device. Focusling has no account or server copy, so this can’t be undone. A Premium
+        Erases the pet, coins, items, missions, stats, courses, plans, reminders and recall notes stored on this device. Focusling has no account or server copy, so this can’t be undone. A Premium
         subscription is with Apple and isn’t affected; cancel it in Manage subscription.
       </Text>
       {confirming ? (

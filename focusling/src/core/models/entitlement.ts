@@ -56,7 +56,7 @@ export interface Capabilities {
   canUsePremiumEffects: boolean;
   /** Umbrella for future advanced customisation. */
   canUseAdvancedCustomization: boolean;
-  /** Show purchase controls (never in Child View; never without a store). */
+  /** Show purchase controls (never without a store, never while Premium is active). */
   canPurchase: boolean;
   /** Premium content can always be previewed on the pet. */
   canPreviewPremium: boolean;

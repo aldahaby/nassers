@@ -2,10 +2,9 @@ import { router, type Href } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { MEMORY_GARDEN, TOY_TOSS } from '@/config/play';
 import type { GameId } from '@/core';
-import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useDebugToolsEnabled, useGameStore, usePetView, usePlayToday } from '@/state';
 import { AnimatedPet, Button, Card, ItemArt, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
-import { capReachedLine, lockedLine } from './playCopy';
+import { capReachedLine } from './playCopy';
 
 const minCoins = Math.min(...TOY_TOSS.coinsByCatches);
 const maxCoins = Math.max(...TOY_TOSS.coinsByCatches);
@@ -34,10 +33,8 @@ export function PlayHub() {
   const view = usePetView();
   const play = usePlayToday();
   const debug = useDebugToolsEnabled();
-  const routes = useAppRoutes();
   if (!view || !play) return null;
   const { pet, progression, mood } = view;
-  const locked = !play.access.open;
 
   return (
     <View style={styles.wrap}>
@@ -47,27 +44,18 @@ export function PlayHub() {
           Play with {pet.name}
         </Text>
         <Text style={styles.status} accessibilityLiveRegion="polite">
-          {locked ? lockedLine(pet.name) : play.capReached ? capReachedLine(pet.name) : `${play.coinsEarned} of ${play.cap} play coins today`}
+          {play.capReached ? capReachedLine(pet.name) : `${play.coinsEarned} of ${play.cap} play coins today`}
         </Text>
       </View>
-
-      {locked && (
-        <Card>
-          <Text style={styles.body}>Missions unlock Play for the rest of the day.</Text>
-          <Button label="See missions" variant="secondary" onPress={() => router.navigate(routes.missions as Href)} />
-        </Card>
-      )}
 
       <View style={styles.games}>
         {GAMES.map((game) => (
           <Pressable
             key={game.id}
-            disabled={locked}
             onPress={() => router.push(game.href)}
             accessibilityRole="button"
-            accessibilityState={{ disabled: locked }}
-            accessibilityLabel={`${game.title}. ${game.body(pet.name)} ${play.capReached ? 'Just for fun today.' : game.reward}${locked ? '. Locked until a mission is done.' : ''}`}
-            style={({ pressed }) => [styles.game, shadow, pressed && styles.pressed, locked && styles.locked]}
+            accessibilityLabel={`${game.title}. ${game.body(pet.name)} ${play.capReached ? 'Just for fun today.' : game.reward}`}
+            style={({ pressed }) => [styles.game, shadow, pressed && styles.pressed]}
           >
             <View style={styles.art}>
               <ItemArt itemId={game.art} size={56} />
@@ -75,7 +63,7 @@ export function PlayHub() {
             <View style={styles.gameText}>
               <Text style={styles.gameTitle}>{game.title}</Text>
               <Text style={styles.body}>{game.body(pet.name)}</Text>
-              <Text style={styles.reward}>{locked ? '🔒 After a mission' : play.capReached ? 'Just for fun today' : game.reward}</Text>
+              <Text style={styles.reward}>{play.capReached ? 'Just for fun today' : game.reward}</Text>
             </View>
           </Pressable>
         ))}
@@ -87,9 +75,9 @@ export function PlayHub() {
   );
 }
 
-/** Developer-only Play shortcuts (Child View has no settings screen). */
+/** Developer-only Play shortcuts. */
 function PlayDevTools() {
-  const { debugPlayCapOneLeft, debugResetDailyPlay, debugUnlockPlay, debugGrantPlayCoins } = useGameStore.getState();
+  const { debugPlayCapOneLeft, debugResetDailyPlay, debugGrantPlayCoins } = useGameStore.getState();
   return (
     <Card>
       <Text style={typography.heading}>🛠 Play developer tools</Text>
@@ -97,7 +85,6 @@ function PlayDevTools() {
         <Button variant="secondary" label="+3 play coins" onPress={() => debugGrantPlayCoins(3)} style={styles.devCell} />
         <Button variant="secondary" label="Cap: 1 left" onPress={debugPlayCapOneLeft} style={styles.devCell} />
         <Button variant="secondary" label="Reset daily play" onPress={debugResetDailyPlay} style={styles.devCell} />
-        <Button variant="secondary" label="Unlock Play" onPress={debugUnlockPlay} style={styles.devCell} />
       </View>
     </Card>
   );
@@ -111,7 +98,6 @@ const styles = StyleSheet.create({
   games: { gap: spacing.md },
   game: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, minHeight: 104 },
   pressed: { backgroundColor: colors.primarySoft },
-  locked: { opacity: 0.6 },
   art: { width: 72, height: 72, borderRadius: radius.md, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   gameText: { flex: 1, gap: 3 },
   gameTitle: { ...typography.heading },

@@ -18,11 +18,9 @@ const TABS: readonly { name: string; title: string; icon: TabIconName }[] = [
 
 export default function TabsLayout() {
   const onboarded = useGameStore((s) => Boolean(s.save?.pet && s.save.profile.onboardingCompletedAt));
-  const family = useGameStore((s) => s.save?.mode === 'family');
   useSessionCompleteRedirect();
 
   if (!onboarded) return <Redirect href="/onboarding" />;
-  if (family) return <Redirect href="/(child)" />;
 
   return (
     <Tabs

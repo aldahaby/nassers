@@ -140,7 +140,7 @@ Focus (Do Not Disturb) on/off · Developer tools → Native protection panel val
 | S7 | Let sandbox subscription expire | Returns to Free; Premium pieces hidden, not deleted; free items intact | |
 | S8 | Refund / revoke (StoreKit test) | Returns to Free via `Transaction.updates` | |
 | S9 | Airplane mode on Premium screen | Graceful "couldn't reach the App Store"; previews still work | |
-| S10 | Family Mode Child View | No purchase UI anywhere; Premium page read-only | |
+| S10 | Stats & Journey | Today/week totals and milestones match sessions run on the device | |
 
 ## 9. Planner on device (Studyling)
 

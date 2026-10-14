@@ -40,8 +40,6 @@ export function createNewSave(now: Timestamp, options: { debugToolsEnabled?: boo
     streak: createStreakState(),
     daily: {},
     protection: { ...DEFAULT_PROTECTION, surfaces: [...DEFAULT_PROTECTION.surfaces] },
-    mode: 'self',
-    family: null,
     missions: createMissionState(),
     play: createPlayStats(),
     cosmetics: createCosmeticsState(),

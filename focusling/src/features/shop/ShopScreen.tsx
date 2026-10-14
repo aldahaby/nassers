@@ -8,7 +8,7 @@ import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { ItemCard } from '@/features/shop/ItemCard';
 import { ItemDetailSheet } from '@/features/shop/ItemDetailSheet';
-import { useCapabilities, useCoins, useDebugToolsEnabled, useGameStore, useIsChildView, usePetView } from '@/state';
+import { useCapabilities, useCoins, useDebugToolsEnabled, useGameStore, usePetView } from '@/state';
 import { AnimatedNumber, CoinIcon, PetArt, PremiumMark, Screen, TabIcon, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
 
 /** The shop: browse by category, tap an item for details. Nothing is bought from the grid. */
@@ -20,7 +20,6 @@ export default function ShopScreen() {
   const [category, setCategory] = useState<ShopCategory>('accessory');
   const [selected, setSelected] = useState<string | null>(null);
   const routes = useAppRoutes();
-  const childView = useIsChildView();
   const caps = useCapabilities();
   const nightglow = getCollection('nightglow');
 
@@ -68,8 +67,8 @@ export default function ShopScreen() {
         </Pressable>
       </View>
 
-      {/* One quiet Premium shelf (never in Child View): a preview, not a prompt. */}
-      {!childView && nightglow && (
+      {/* One quiet Premium shelf: a preview, not a prompt. */}
+      {nightglow && (
         <Pressable
           style={styles.premiumShelf}
           onPress={() => router.push(`/collection/${nightglow.id}` as Href)}

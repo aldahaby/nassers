@@ -1,11 +1,9 @@
-import { Redirect, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, LayoutChangeEvent, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { TOY_TOSS } from '@/config/play';
 import { countCatches, judgeToss, markerPosition, type CatchQuality, type GameRoundResult } from '@/core';
 import { GameFrame } from '@/features/play/GameFrame';
 import { RoundSummary } from '@/features/play/RoundSummary';
-import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useGameStore, usePetView, usePlayToday } from '@/state';
 import { AnimatedPet, Button, ItemArt, colors, radius, spacing, typography, useNativeDriver } from '@/ui';
@@ -30,7 +28,6 @@ const RESULT_LINE: Record<CatchQuality, (pet: string) => string> = {
 export default function ToyTossScreen() {
   const view = usePetView();
   const play = usePlayToday();
-  const routes = useAppRoutes();
   const reducedMotion = useReducedMotion();
   const { startGameRound, completeGameRound } = useGameStore.getState();
   const { height } = useWindowDimensions();
@@ -110,7 +107,6 @@ export default function ToyTossScreen() {
   };
 
   if (!view || !play) return null;
-  if (!play.access.open && !result) return <Redirect href={routes.play as Href} />;
   const { pet, progression, mood } = view;
   const catches = countCatches(results);
   const petSize = Math.min(180, height * 0.22);

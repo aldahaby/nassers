@@ -3,8 +3,6 @@ import type { AccessState, Capabilities, ContentAccess, EntitlementState, GameSa
 export const FREE_ENTITLEMENT: EntitlementState = { tier: 'free', source: 'none', status: 'unknown' };
 
 export interface AccessContext {
-  /** Child View (Family Mode): never show purchase controls. */
-  childView: boolean;
   /** A real or mock store is present and can sell. */
   storeAvailable: boolean;
   /** When given, an `expiresAt` in the past ends access even before the store says so. */
@@ -50,7 +48,7 @@ export function capabilitiesFor(e: EntitlementState, ctx: AccessContext): Capabi
     canUsePremiumRoomThemes: premium,
     canUsePremiumEffects: premium,
     canUseAdvancedCustomization: premium,
-    canPurchase: !ctx.childView && ctx.storeAvailable && !premium,
+    canPurchase: ctx.storeAvailable && !premium,
     canPreviewPremium: true,
     canUseExtendedStats: premium,
   };

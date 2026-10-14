@@ -21,7 +21,7 @@ compile-time types in `src/core/models/future.ts`, which are deliberately **not*
 - **Before building, decide:** what creates an account; authentication (Sign in with Apple, email,
   passkeys); the exact cloud-visible fields; age handling and abuse prevention; in-app account and
   data deletion (required by App Review as soon as accounts exist).
-- **Child View:** Friends does not ship there until an explicit age/consent/privacy decision is made.
+- **Younger students:** Friends needs an explicit age/consent/privacy decision before it ships to anyone under the regional minimum age.
 
 ## College student launch offer (future)
 

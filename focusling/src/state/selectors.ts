@@ -7,7 +7,6 @@ import {
   estimateReward,
   getCurrentMission,
   getMissionViews,
-  getPlayAccess,
   playStatsFor,
   getActiveSessionProgress,
   getEffectiveStreakDays,
@@ -90,22 +89,12 @@ export function useDebugToolsEnabled(): boolean {
   return useGameStore((s) => s.save?.profile.settings.debugToolsEnabled ?? false);
 }
 
-export type HomeHref = '/onboarding' | '/(tabs)' | '/(child)';
+export type HomeHref = '/onboarding' | '/(tabs)';
 
-/** Where "home" is: onboarding until it's done, then the self tabs or the child view. */
+/** Where "home" is: onboarding until it's done, then the tabs. */
 export function useHomeHref(): HomeHref {
   const onboarded = useGameStore((s) => Boolean(s.save?.profile.onboardingCompletedAt && s.save?.pet));
-  const family = useGameStore((s) => s.save?.mode === 'family');
-  if (!onboarded) return '/onboarding';
-  return family ? '/(child)' : '/(tabs)';
-}
-
-export function useAppMode() {
-  return useGameStore((s) => s.save?.mode ?? 'self');
-}
-
-export function useIsChildView(): boolean {
-  return useGameStore((s) => s.save?.mode === 'family' && s.familyView === 'child');
+  return onboarded ? '/(tabs)' : '/onboarding';
 }
 
 /** Today's missions; re-evaluated each minute so day changes show up. */
@@ -132,7 +121,6 @@ export function usePlayToday() {
       cap: PLAY_ECONOMY.dailyCoinCap,
       capReached: stats.coinsEarned >= PLAY_ECONOMY.dailyCoinCap,
       completions: stats.completions,
-      access: getPlayAccess(save, now),
     };
   }, [save, now]);
 }

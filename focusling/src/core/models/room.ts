@@ -1,6 +1,6 @@
 /**
  * The pet's room. Basic room colour is free creative expression: any colour,
- * no coins, XP, milestones or parent PIN. `color` null = the default
+ * no coins, XP or milestones. `color` null = the default
  * Focusling room.
  *
  * Future (not built): earnable room *treatments* (wallpapers, floors, lighting

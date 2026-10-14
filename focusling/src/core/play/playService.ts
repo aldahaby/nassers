@@ -1,18 +1,17 @@
 import { GAME_REWARDS, MEMORY_GARDEN, PLAY_ECONOMY, TOY_TOSS } from '@/config/play';
-import { hasCompletedMissionToday } from '../missions/missionService';
 import { applyStatDelta } from '../pet/petCareService';
 import { toDateKey } from '../shared/dates';
 import type { GameId, GameRoundResult, GameSave, PlayStats, Timestamp } from '../models';
 
 export function createPlayStats(): PlayStats {
-  return { date: null, coinsEarned: 0, happinessEarned: 0, completions: {}, rewardedRounds: [], debugUnlockedDate: null };
+  return { date: null, coinsEarned: 0, happinessEarned: 0, completions: {}, rewardedRounds: [] };
 }
 
 /** Today's play stats; a new calendar day starts from zero (round IDs are kept for duplicate protection). */
 export function playStatsFor(stats: PlayStats, now: Timestamp): PlayStats {
   const today = toDateKey(now);
   if (stats.date === today) return stats;
-  return { ...createPlayStats(), date: today, rewardedRounds: stats.rewardedRounds, debugUnlockedDate: stats.debugUnlockedDate };
+  return { ...createPlayStats(), date: today, rewardedRounds: stats.rewardedRounds };
 }
 
 export function playCoinsRemaining(save: GameSave, now: Timestamp): number {
@@ -40,13 +39,7 @@ export function completeGameRound(
   if (today.rewardedRounds.includes(round.roundId)) {
     return {
       save,
-      result: { coins: 0, happiness: 0, capReached: today.coinsEarned >= PLAY_ECONOMY.dailyCoinCap, duplicate: true, locked: false },
-    };
-  }
-  if (!getPlayAccess(save, now).open) {
-    return {
-      save,
-      result: { coins: 0, happiness: 0, capReached: today.coinsEarned >= PLAY_ECONOMY.dailyCoinCap, duplicate: false, locked: true },
+      result: { coins: 0, happiness: 0, capReached: today.coinsEarned >= PLAY_ECONOMY.dailyCoinCap, duplicate: true },
     };
   }
   const coins = Math.min(baseRoundCoins(round.gameId, round.score), Math.max(0, PLAY_ECONOMY.dailyCoinCap - today.coinsEarned));
@@ -75,19 +68,8 @@ export function completeGameRound(
       wallet: { coins: save.wallet.coins + coins },
       stats: { ...save.stats, lifetimeCoinsEarned: save.stats.lifetimeCoinsEarned + coins },
     },
-    result: { coins, happiness, capReached: play.coinsEarned >= PLAY_ECONOMY.dailyCoinCap, duplicate: false, locked: false },
+    result: { coins, happiness, capReached: play.coinsEarned >= PLAY_ECONOMY.dailyCoinCap, duplicate: false },
   };
-}
-
-export type PlayAccessState = { open: true } | { open: false; reason: 'finish-mission' };
-
-/** Self mode: always open. Family mode: the parent's play setting decides. */
-export function getPlayAccess(save: GameSave, now: Timestamp): PlayAccessState {
-  if (save.mode !== 'family' || !save.family) return { open: true };
-  if (save.family.play.access === 'always') return { open: true };
-  if (hasCompletedMissionToday(save, now)) return { open: true };
-  if (save.play.debugUnlockedDate === toDateKey(now)) return { open: true };
-  return { open: false, reason: 'finish-mission' };
 }
 
 // ── Developer helpers ────────────────────────────────────────────────────────
@@ -107,8 +89,4 @@ export function debugPlayCapOneLeft(save: GameSave, now: Timestamp): GameSave {
 export function debugResetDailyPlay(save: GameSave, now: Timestamp): GameSave {
   const today = playStatsFor(save.play, now);
   return { ...save, play: { ...today, coinsEarned: 0, happinessEarned: 0, completions: {} } };
-}
-
-export function debugUnlockPlay(save: GameSave, now: Timestamp): GameSave {
-  return { ...save, play: { ...save.play, debugUnlockedDate: toDateKey(now) } };
 }

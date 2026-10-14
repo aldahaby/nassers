@@ -15,7 +15,6 @@ function isSpecies(value: unknown): value is PetSpeciesId {
 export default function NamePetScreen() {
   const { species } = useLocalSearchParams<{ species?: string }>();
   const adoptPet = useGameStore((s) => s.adoptPet);
-  const family = useGameStore((s) => s.save?.mode === 'family');
   const progress = useOnboardingProgress('name');
   const [name, setName] = useState('');
 
@@ -26,9 +25,7 @@ export default function NamePetScreen() {
   const adopt = () => {
     if (!trimmed) return;
     adoptPet(species, trimmed);
-    // Family setup finishes with a first mission; self onboarding is done here.
-    if (family) router.push('/onboarding/family-mission');
-    else router.replace('/(tabs)');
+    router.replace('/(tabs)');
   };
 
   return (

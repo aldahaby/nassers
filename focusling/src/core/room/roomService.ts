@@ -8,8 +8,8 @@ export function normalizeRoomColor(value: unknown): string | null {
 }
 
 /**
- * Set the room colour (null resets to the default room). Always allowed: in
- * Self Mode and Child View alike, with no cost and no gate. Invalid colours are
+ * Set the room colour (null resets to the default room). Always allowed, for
+ * everyone, with no cost and no gate. Invalid colours are
  * ignored so a bad value can never break the room.
  */
 export function setRoomColor(save: GameSave, color: string | null): GameSave {

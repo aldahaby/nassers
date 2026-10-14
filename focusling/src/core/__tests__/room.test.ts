@@ -49,7 +49,7 @@ describe('v6 → v8 migration', () => {
     const v6 = JSON.parse(JSON.stringify({ ...current, schemaVersion: 6 })) as Record<string, unknown>;
     delete v6.room;
     const migrated = migrateSave(v6);
-    expect(migrated.schemaVersion).toBe(8);
+    expect(migrated.schemaVersion).toBe(9);
     expect(migrated.room).toEqual({ color: null, theme: null });
     expect(migrated.pet).toEqual(current.pet);
     expect(migrated.inventory).toEqual(current.inventory);

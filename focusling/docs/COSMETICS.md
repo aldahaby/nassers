@@ -19,7 +19,7 @@ brief. The product line from it that everything below serves: **"Nimbus turns fo
 | Animation ladder: most items A/B, a few hero items C | A: items move with the pet (they're drawn in its body). B: the equip beat. C: auras twinkle, go still and dim during focus. |
 | Equip storyboard: notice → land → hop → sparkle → settle; Reduce Motion = crossfade + static highlight | `PetReactionStage` "show" reaction does exactly this; Reduce Motion gets one fading highlight ring. |
 | Legal/source metadata for every item | `credit: { designer, rights: 'original', art: 'v1' | 'final' }` on every collection item. |
-| Child side: earned items and play, no purchase pressure (Québec, Apple Kids) | Child View gets the same wardrobe and reveals. Nothing costs real money anywhere; the only prices are coins earned by focusing. Copy never uses urgency, envy or guilt. |
+| Younger students: earned items and play, no purchase pressure (Québec) | Nothing costs real money in the wardrobe; the only prices are coins earned by focusing. Copy never uses urgency, envy or guilt. |
 | Don't make "minutes browsing cosmetics" a goal | The wardrobe is one finite screen: no feeds, no refreshes, no recommendations. |
 
 **Out of scope this milestone** (per research roadmap, later phases): real-money bundles, creator
@@ -285,8 +285,7 @@ without changing first-party ones. A licensed collection would add:
 `origin: { kind: 'licensed', partner, attribution, licenceRef, territories, validFrom, validTo, postTermUse }`
 and possibly `availability: { kind: 'window', from, to, returns }`. Rules to keep: items obtained
 during the licence stay usable after it ends (`postTermUse`), attribution shows on the collection
-page, Child View never shows purchase prompts, and nothing time-limited ships without a separate
-product decision (Family Mode audiences).
+page, and nothing time-limited ships without a separate product decision.
 
 ## 15. Ethical design
 

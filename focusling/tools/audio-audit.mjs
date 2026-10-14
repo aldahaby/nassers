@@ -24,19 +24,20 @@ export const RAW_ALLOWED = {
 
 const AREAS = [
   [/app\/onboarding/, 'Onboarding'],
-  [/features\/pet|app\/\(tabs\)\/index|app\/\(child\)\/index/, 'Pet / Home'],
-  [/features\/focus|app\/\(tabs\)\/focus|app\/\(child\)\/focus/, 'Focus (setup + active)'],
+  [/features\/pet|app\/\(tabs\)\/index/, 'Pet / Home'],
+  [/features\/focus|app\/\(tabs\)\/focus/, 'Focus (setup + active)'],
   [/features\/completion|session-complete/, 'Completion'],
   [/app\/wardrobe|features\/wardrobe|features\/style|app\/collection/, 'Wardrobe · Pieces · Looks · Collections · Reactions'],
-  [/features\/shop|app\/\(tabs\)\/shop|app\/\(child\)\/shop/, 'Shop'],
+  [/features\/shop|app\/\(tabs\)\/shop/, 'Shop'],
   [/app\/inventory|features\/inventory/, 'Inventory'],
   [/missions/, 'Missions'],
   [/play|games/, 'Play'],
-  [/features\/family|app\/parent|parent-gate|\(child\)/, 'Family / Child View / Parent'],
   [/settings/, 'Settings'],
   [/protection/, 'Protection'],
   [/room/, 'Room Studio'],
   [/app\/dev/, 'Developer tools'],
+  [/features\/stats|app\/\(tabs\)\/stats/, 'Stats & Journey'],
+  [/planner/, 'Planner'],
   [/ui\//, 'Shared UI'],
 ];
 const areaOf = (rel) => (AREAS.find(([re]) => re.test(rel)) ?? [null, 'Other'])[1];

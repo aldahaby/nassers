@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { PET_SPECIES, STARTER_SPECIES_ORDER } from '@/config/pets';
 import type { PetSpeciesId } from '@/core';
-import { useGameStore } from '@/state';
 import { OnboardingStep } from '@/features/onboarding/OnboardingStep';
 import { useOnboardingProgress } from '@/features/onboarding/flow';
 import { PetArt, colors, radius, shadow, spacing, typography, Pressable } from '@/ui';
@@ -11,7 +10,6 @@ import { PetArt, colors, radius, shadow, spacing, typography, Pressable } from '
 export default function ChoosePetScreen() {
   const [selected, setSelected] = useState<PetSpeciesId | null>(null);
   const progress = useOnboardingProgress('choose');
-  const family = useGameStore((s) => s.save?.mode === 'family');
 
   return (
     <OnboardingStep
@@ -20,7 +18,7 @@ export default function ChoosePetScreen() {
       actionDisabled={!selected}
       onAction={() => selected && router.push({ pathname: '/onboarding/name', params: { species: selected } })}
     >
-      <Text style={styles.title}>{family ? 'Choose their pet' : 'Choose your starter'}</Text>
+      <Text style={styles.title}>Choose your starter</Text>
       <View style={styles.list}>
         {STARTER_SPECIES_ORDER.map((id) => {
           const species = PET_SPECIES[id];

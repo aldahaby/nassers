@@ -12,4 +12,4 @@ export const AD_PLACEMENTS: Record<string, AdPlacement> = {
 };
 
 /** Never ads here, approved or not. */
-export const FORBIDDEN_AD_SURFACES: readonly AdSurface[] = ['focusTimer', 'assignment', 'notes', 'syllabusReview', 'notification', 'retrieval', 'messages', 'announcements', 'childView'];
+export const FORBIDDEN_AD_SURFACES: readonly AdSurface[] = ['focusTimer', 'assignment', 'notes', 'syllabusReview', 'notification', 'retrieval', 'messages', 'announcements'];

@@ -4,7 +4,7 @@ import { appClock, services } from '@/services';
 import { createGameStore } from './createGameStore';
 
 /** Late-bound so the entitlement store (which reads this store) can plug in without an import cycle. */
-let capabilitiesProvider: () => Capabilities = () => capabilitiesFor(FREE_ENTITLEMENT, { childView: false, storeAvailable: false });
+let capabilitiesProvider: () => Capabilities = () => capabilitiesFor(FREE_ENTITLEMENT, { storeAvailable: false });
 export function setCapabilitiesProvider(provider: () => Capabilities) {
   capabilitiesProvider = provider;
 }

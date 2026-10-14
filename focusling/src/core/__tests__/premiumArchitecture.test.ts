@@ -9,7 +9,7 @@ import type { AdContext, AdPlacement, EntitlementState, VerificationEvent, Verif
 
 const NOW = Date.UTC(2026, 9, 13, 12);
 const DAY = 86_400_000;
-const ctx = { childView: false, storeAvailable: true, now: NOW };
+const ctx = { storeAvailable: true, now: NOW };
 const trial = (expiresAt: number, kind: 'student' | 'standard' = 'student'): EntitlementState => ({ tier: 'premium', source: 'storekit', status: 'active', period: 'trial', trialKind: kind, expiresAt });
 const paid = (extra: Partial<EntitlementState> = {}): EntitlementState => ({ tier: 'premium', source: 'storekit', status: 'active', period: 'paid', expiresAt: NOW + 30 * DAY, ...extra });
 
@@ -138,7 +138,7 @@ describe('verification flow (server-driven reducer)', () => {
 
 describe('ad eligibility (rules only; no SDK)', () => {
   const approved: Record<string, AdPlacement> = { feed: { id: 'feed', surface: 'courseSpaceFeed', format: 'sponsorCard', approved: true, label: 'Sponsored' } };
-  const ok: AdContext = { access: 'free', placementId: 'feed', surface: 'courseSpaceFeed', adConsent: true, ageRequirementMet: true, childView: false, focusSessionActive: false, sensitiveAcademicContentVisible: false };
+  const ok: AdContext = { access: 'free', placementId: 'feed', surface: 'courseSpaceFeed', adConsent: true, ageRequirementMet: true, ageStatus: 'adult', personalized: false, focusSessionActive: false, sensitiveAcademicContentVisible: false };
 
   it('Free users on an approved placement with consent are eligible', () => {
     expect(adEligibility(ok, approved)).toEqual({ eligible: true });
@@ -154,8 +154,14 @@ describe('ad eligibility (rules only; no SDK)', () => {
     expect(adEligibility({ ...ok, sensitiveAcademicContentVisible: true }, approved)).toMatchObject({ reason: 'sensitiveContent' });
     expect(adEligibility({ ...ok, adConsent: false }, approved)).toMatchObject({ reason: 'noConsent' });
     expect(adEligibility({ ...ok, ageRequirementMet: false }, approved)).toMatchObject({ reason: 'ageRequirement' });
-    expect(adEligibility({ ...ok, childView: true }, approved)).toMatchObject({ reason: 'childView' });
     expect(adEligibility({ ...ok, placementId: 'nope' }, approved)).toMatchObject({ reason: 'unknownPlacement' });
+  });
+
+  it('no behavioural profiling of minors or of anyone whose age is unknown; contextual ads only', () => {
+    expect(adEligibility({ ...ok, personalized: true, ageStatus: 'minor' }, approved)).toMatchObject({ reason: 'personalizationNotAllowed' });
+    expect(adEligibility({ ...ok, personalized: true, ageStatus: 'unknown' }, approved)).toMatchObject({ reason: 'personalizationNotAllowed' });
+    expect(adEligibility({ ...ok, personalized: true, ageStatus: 'adult' }, approved)).toEqual({ eligible: true });
+    expect(adEligibility({ ...ok, personalized: false, ageStatus: 'minor' }, approved)).toEqual({ eligible: true });
   });
 
   it('never in the timer, assignments, notes, syllabus review, notifications, retrieval or messages', () => {

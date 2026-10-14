@@ -34,21 +34,6 @@ describe('room colour through the store', () => {
     expect(again.store.getState().save!.room.color).toBeNull();
   });
 
-  it('works in Child View without the parent PIN, and survives reload there', async () => {
-    const { store, repo, now } = setup();
-    await store.getState().hydrate();
-    const s = store.getState();
-    s.chooseMode('family');
-    expect(s.setParentPin('2468').ok).toBe(true);
-    s.setChildNickname('Sunny');
-    s.adoptPet('cloudling', 'Nimbus');
-    s.enterChildView();
-    store.getState().setRoomColor('#FBD9E3');
-    expect(store.getState().save!.room.color).toBe('#FBD9E3');
-    const again = await reload(repo, now());
-    expect(again.store.getState().save!.room.color).toBe('#FBD9E3');
-  });
-
   it('trying on a collection Look never changes the room', async () => {
     const { store } = setup();
     await store.getState().hydrate();

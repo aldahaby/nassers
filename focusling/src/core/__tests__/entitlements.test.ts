@@ -15,7 +15,7 @@ import type { Capabilities, EntitlementState, GameSave } from '../models';
 
 const T0 = new Date(2026, 8, 28, 10, 0).getTime();
 const fresh = (): GameSave => adoptPet(createNewSave(T0), 'cloudling', 'Nimbus', T0);
-const ctx = { childView: false, storeAvailable: true };
+const ctx = { storeAvailable: true };
 const active: EntitlementState = { tier: 'premium', source: 'storekit', status: 'active', productId: 'p', willAutoRenew: true };
 const FREE = capabilitiesFor(FREE_ENTITLEMENT, ctx);
 const PREMIUM = capabilitiesFor(active, ctx);
@@ -56,11 +56,10 @@ describe('entitlement → capabilities (the single source of truth)', () => {
     expect(isPremiumTier({ tier: 'free', source: 'devOverride', status: 'inactive' })).toBe(false);
   });
 
-  it('Child View can never purchase, and neither can a device without a store', () => {
-    expect(capabilitiesFor(FREE_ENTITLEMENT, { childView: true, storeAvailable: true }).canPurchase).toBe(false);
-    expect(capabilitiesFor(FREE_ENTITLEMENT, { childView: false, storeAvailable: false }).canPurchase).toBe(false);
+  it('a device without a store can never purchase', () => {
+    expect(capabilitiesFor(FREE_ENTITLEMENT, { storeAvailable: false }).canPurchase).toBe(false);
     // Previews still work everywhere.
-    expect(capabilitiesFor(FREE_ENTITLEMENT, { childView: true, storeAvailable: false }).canPreviewPremium).toBe(true);
+    expect(capabilitiesFor(FREE_ENTITLEMENT, { storeAvailable: false }).canPreviewPremium).toBe(true);
   });
 
   it('entitlement is not part of the save', () => {
@@ -172,7 +171,7 @@ describe('v7 → v8 migration', () => {
     const v7 = JSON.parse(JSON.stringify({ ...current, schemaVersion: 7 })) as Record<string, unknown>;
     (v7.room as Record<string, unknown>) = { color: '#1E2447' };
     const migrated = migrateSave(v7);
-    expect(migrated.schemaVersion).toBe(8);
+    expect(migrated.schemaVersion).toBe(9);
     expect(migrated.room).toEqual({ color: '#1E2447', theme: null });
     const { room: _a, schemaVersion: _b, ...rest } = migrated;
     const { room: _c, schemaVersion: _d, ...before } = current;

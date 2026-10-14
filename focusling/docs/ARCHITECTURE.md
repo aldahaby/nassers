@@ -85,13 +85,11 @@ focusling/
 ├── src/
 │   ├── app/                         # routes
 │   │   ├── _layout.tsx              # root: hydrate save, loading/error gate, lifecycle
-│   │   ├── index.tsx                # redirect → onboarding, tabs, child view or parent area
-│   │   ├── onboarding/              # welcome → who → (self: how-it-works | family: intro, PIN, nickname) → choose → name → (family: first mission)
-│   │   ├── (tabs)/                  # Self mode: Pet (home), Focus, Shop, Play, Settings (Stats hidden)
-│   │   ├── (child)/                 # Family Child View: Pet, Missions, Play, Shop (+ hidden Focus)
-│   │   ├── parent/                  # Parent Dashboard, Missions, Settings (behind parent-gate)
-│   │   ├── parent-gate.tsx          # PIN gate
-│   │   ├── missions.tsx, play.tsx   # Self mode Missions and Play
+│   │   ├── index.tsx                # redirect → onboarding or tabs
+│   │   ├── onboarding/              # welcome → how-it-works → choose → name
+│   │   ├── (tabs)/                  # Pet (home), Planner, Focus, Stats, Settings (+ hidden Shop, Play)
+│   │   ├── planner/                 # import, review, week, settings, assignment, retrieval
+│   │   ├── missions.tsx             # Missions (from Focus)
 │   │   └── games/                   # memory-garden, toy-toss
 │   ├── config/
 │   │   ├── economy.ts               # coin/XP formulas' constants
@@ -101,7 +99,6 @@ focusling/
 │   │   ├── pets.ts                  # the 3 starter species
 │   │   ├── shopCatalog.ts           # shop items
 │   │   ├── missions.ts, play.ts     # mission presets/rewards, play economy
-│   │   ├── family.ts                # parent gate settings
 │   │   ├── petLines.ts              # things the pet says
 │   │   └── distractingApps.ts       # sample block targets for the mock
 │   ├── core/
@@ -112,7 +109,8 @@ focusling/
 │   │   ├── focus/                   # session creation and timing
 │   │   ├── inventory/               # buy / equip / feed / play
 │   │   ├── streaks/                 # day + session streaks with freezes
-│   │   ├── family/, missions/, play/ # milestone 5 rules (see FAMILY_MODE.md)
+│   │   ├── missions/, play/         # missions and Calm Play (see MISSIONS_AND_PLAY.md)
+│   │   ├── planner/, stats/         # Studyling planner, Stats & Journey
 │   │   ├── game/                    # cross-service actions (end session, refresh…)
 │   │   ├── save/                    # new save factory, schema migrations
 │   │   ├── shared/                  # dates, ids, Result type, math
@@ -123,7 +121,7 @@ focusling/
 │   │   └── index.ts                 # composition root
 │   ├── state/                       # store factory, app store, selector hooks
 │   ├── hooks/                       # useGameLifecycle, useNow
-│   ├── features/                    # screen composites (pet, focus, shop, missions, play, family, settings…)
+│   ├── features/                    # screen composites (pet, focus, shop, missions, play, planner, stats, settings…)
 │   ├── ui/                          # theme, components, pet art, room, icons
 │   └── utils/
 └── app.json, package.json, tsconfig.json, eslint.config.js
@@ -320,32 +318,22 @@ latest-wins for settings). `profile.id` is already generated for that.
   `ui/room/decorations.tsx`), and shop icons crop that same art. Toys and food live in
   `ui/items/toyFoodArt.tsx`.
 
-## 11. Family Mode, Missions and Play (milestone 5)
+## 11. Missions and Play (milestone 5)
 
-Full design: [`FAMILY_MODE.md`](FAMILY_MODE.md).
+Full design: [`MISSIONS_AND_PLAY.md`](MISSIONS_AND_PLAY.md).
 
-> **Local-only.** No analytics SDKs, advertising, cloud child profiles, remote tracking or
-> third-party behavioural tracking. Any future cloud-connected Family Mode must receive a separate
-> privacy/security/legal design review before implementation.
-
-Architecture summary:
-
-- **Save v4** adds `mode` (`self` | `family`), `family` (PIN record, child nickname, play settings),
-  `missions` (definitions + per-occurrence progress) and `play` (today's play totals, recent round
-  IDs). Migration 3 fills defaults; existing saves become `self`.
-- **Pure core modules:** `core/family/` (PIN hashing, throttling, setup), `core/missions/`
-  (progress from completed sessions, once-per-occurrence rewards, validation), `core/play/`
-  (Memory Garden and Toy Toss rules, capped idempotent round rewards, play access),
-  `core/protection/describe.ts` (honest dashboard state), `core/game/debugDay.ts`.
+- **Save v4** adds `missions` (definitions + per-occurrence progress) and `play` (today's play
+  totals, recent round IDs). (It also added the former Family Mode fields `mode` and `family`;
+  save v9 removes them, see §19.)
+- **Pure core modules:** `core/missions/` (progress from completed sessions, once-per-occurrence
+  rewards, validation), `core/play/` (Memory Garden and Toy Toss rules, capped idempotent round
+  rewards), `core/game/debugDay.ts`.
 - **Mission rewards are part of `endSession`**, so focus reward, mission progress and mission
   reward are one state transition, persisted together.
-- **Routing:** `(tabs)` is Self mode, `(child)` is Child View, `parent/` is the parent area behind
-  `parent-gate`. Shared screens live in `features/` (`PetHomeScreen`, `FocusScreen`, `ShopScreen`)
-  with thin route files; `useAppRoutes()` gives mode-correct targets. `familyView` is in-memory, so
-  every start opens Child View.
+- Shared screens live in `features/` with thin route files; `useAppRoutes()` gives route targets.
 - **Developer actions** are guarded twice: hidden in UI and refused in the store (`devOnly`) unless
   Developer tools are on.
-- `Screen` caps content width (640 pt, or 1120 pt for the dashboard) so tablets get a centred column.
+- `Screen` caps content width (640 pt, or 1120 pt for wide screens) so tablets get a centred column.
 
 ## 12. Cosmetics and rewards (creative milestone)
 
@@ -406,7 +394,7 @@ Full design: [`ART_DIRECTION.md`](ART_DIRECTION.md) §11–15 and [`AUDIO_DIRECT
 
 - **Save v7** adds `room: { color: string | null }` (migration 6 sets the default room; invalid stored
   colours are dropped on load). `core/room/roomService.ts` (`setRoomColor`, `normalizeRoomColor`);
-  store action `setRoomColor` (no gate: Self Mode and Child View).
+  store action `setRoomColor` (no gate).
 - **Room rendering:** `ui/room/roomPalette.ts` derives the palette (tuning in `config/room.ts`);
   `RoomScene` takes `roomColor`. Room Studio: `app/room-studio.tsx`, `features/room/RoomColorPicker.tsx`
   and `HslSlider.tsx` (silent drags, adjustable for screen readers).
@@ -439,10 +427,9 @@ Full design and status: [`PREMIUM.md`](PREMIUM.md). Device checks: [`NATIVE_IPHO
 - **Save v8** adds `room.theme: string | null` (migration 7). `sanitizeEquipped` keeps equipped
   Premium pieces; `effectiveEquipped(save, caps)` hides them when not entitled.
 - **Navigation:** Self tabs are Pet / Focus / Shop / Play / Settings. Missions are reached from
-  Focus (`FocusSetup`); Stats stays as a hidden route until its milestone. Onboarding leads with
-  "For me"; Family Mode is a smaller second option and is otherwise unchanged.
+  Focus (`FocusSetup`). (Tabs later became Pet / Planner / Focus / Stats / Settings.)
 - **Screens:** `app/premium.tsx` (modal), Premium sections in Wardrobe, collection pages, Room
-  Studio and Shop; `features/premium/PremiumStatusCard.tsx` (Settings and Parent settings),
+  Studio and Shop; `features/premium/PremiumStatusCard.tsx` (Settings),
   `features/settings/TrustCard.tsx`, `features/settings/PremiumDevTools.tsx`.
 
 ## 17. Studyling Planner (student-first)
@@ -479,3 +466,13 @@ Full design: [`STUDYLING_PLANNER.md`](STUDYLING_PLANNER.md) · privacy: [`PLANNE
 - **Access states** (`accessStateFor`), trial periods, `canUseExtendedStats`; dev overrides limited
   to development/web builds. Student verification (models, reducer, Unavailable service) and ad
   eligibility rules, no backend or SDK. See `docs/PREMIUM_ARCHITECTURE.md`.
+
+## 19. Student-only cleanup (save schema 9)
+
+Studyling is student-only. The former Family Mode (parent PIN gate, Child View tabs, parent area,
+family onboarding, Play's "after a mission" gate) was removed as code, routes, state and docs.
+Save migration 8 → 9 drops `mode`, `family` and `play.debugUnlockedDate`, keeps every piece of
+student progress, and marks onboarding done for a pet adopted during an unfinished family setup.
+`core/__tests__/studentOnly.test.ts` fails if family routes, modules or Child View checks return.
+Apple's Screen Time framework names (`FamilyControls`, `FamilyActivityPicker`) are platform APIs
+used by focus protection and are unrelated.

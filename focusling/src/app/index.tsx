@@ -1,9 +1,7 @@
 import { Redirect } from 'expo-router';
-import { useGameStore, useHomeHref } from '@/state';
+import { useHomeHref } from '@/state';
 
-/** Entry: onboarding, the self tabs, the child view, or (if it was open) the parent area. */
+/** Entry: onboarding until it's done, then the tabs. */
 export default function Index() {
-  const home = useHomeHref();
-  const parentView = useGameStore((s) => s.save?.mode === 'family' && s.familyView === 'parent');
-  return <Redirect href={parentView ? '/parent' : home} />;
+  return <Redirect href={useHomeHref()} />;
 }

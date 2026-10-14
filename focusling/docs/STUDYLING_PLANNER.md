@@ -250,7 +250,7 @@ future-only; no student ID capture.
 
 - Tabs: **Pet / Planner / Focus / Stats / Settings**; Play and the Shop open from the Pet screen.
 - New UI uses **Studyling**; iOS display name set via `CFBundleDisplayName: "Studyling"`.
-- Family Mode is untouched (not expanded, not deleted); its save data is preserved.
+- Studyling is student-only; the former Family Mode was removed (save schema 9).
 - **Legacy technical identifiers kept** to avoid destabilising signing and native work: `expo.name`
   and slug `focusling`, bundle id `com.focusling.app` (and extension ids `com.focusling.app.*`),
   App Group `group.com.focusling.app`, URL scheme `focusling://`, storage keys `focusling/save/v1`,

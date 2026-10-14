@@ -8,7 +8,6 @@ import {
   debugMissionAlmostDone,
   draftFromPreset,
   getMissionViews,
-  hasCompletedMissionToday,
   removeMission,
   validateMissionDraft,
   type MissionDraft,
@@ -151,7 +150,6 @@ describe('reward safety', () => {
     const first = debugCompleteMission(save, 'm1', THU_4PM);
     expect(first.completion?.coins).toBe(10);
     expect(debugCompleteMission(first.save, 'm1', THU_4PM).completion).toBeNull();
-    expect(hasCompletedMissionToday(first.save, THU_4PM)).toBe(true);
   });
 
   it('"almost done" leaves exactly one step', () => {

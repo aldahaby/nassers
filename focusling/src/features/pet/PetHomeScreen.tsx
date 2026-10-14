@@ -25,22 +25,16 @@ import {
   useRoomTheme,
   useGameStore,
   usePetView,
-  usePlayToday,
   useStreakDays,
 } from '@/state';
-import { Button, Card, PremiumGlyph, RoomScene, Screen, SpeechBubble, colors, radius, shadow, spacing, typography, Pressable, TabIcon } from '@/ui';
+import { Button, PremiumGlyph, RoomScene, Screen, SpeechBubble, colors, radius, spacing, typography, Pressable, TabIcon } from '@/ui';
 import { pickRandom } from '@/utils/format';
 
 /** Most toys/snacks shown for one-tap use under the pet. */
 const QUICK_ITEM_LIMIT = 8;
 
-interface Props {
-  /** "self": the classic pet tab. "child": Family Mode's Child View home. */
-  variant: 'self' | 'child';
-}
-
 /** The emotional centre of the app: the pet in its room, today's mission, and its stats. */
-export function PetHomeScreen({ variant }: Props) {
+export function PetHomeScreen() {
   const view = usePetView();
   const coins = useCoins();
   const streakDays = useStreakDays();
@@ -49,7 +43,6 @@ export function PetHomeScreen({ variant }: Props) {
   const roomTheme = useRoomTheme();
   const activeSession = useActiveSession();
   const mission = useCurrentMission();
-  const play = usePlayToday();
   const routes = useAppRoutes();
   const premium = useCapabilities().canUsePremiumCollections;
   const petPet = useGameStore((s) => s.petPet);
@@ -146,8 +139,6 @@ export function PetHomeScreen({ variant }: Props) {
   const { pet, progression } = view;
   const stageLabel = getStageDefinitionById(progression.stage).label;
   const petSize = Math.min(290, width * 0.7);
-  const child = variant === 'child';
-  const playLocked = play ? !play.access.open : false;
 
   return (
     <Screen scroll>
@@ -201,84 +192,25 @@ export function PetHomeScreen({ variant }: Props) {
         <Button label="Start focusing" icon="⏳" onPress={() => router.navigate(routes.focus)} />
       )}
 
-      {/* Self mode keeps Home calm: missions live in Focus, Play has its own tab. */}
-      {!child && mission && mission.status !== 'complete' && (
+      {/* Home stays calm: missions live in Focus, Play opens from here. */}
+      {mission && mission.status !== 'complete' && (
         <MissionCard view={mission} compact onPress={() => router.navigate(routes.missions as Href)} accessibilityHint="Opens missions" />
-      )}
-
-      {child && (mission ? (
-        <MissionCard view={mission} compact onPress={() => router.navigate(routes.missions as Href)} accessibilityHint="Opens missions" />
-      ) : (
-        <Card style={styles.emptyMission}>
-          <Text style={styles.emptyTitle}>{child ? 'No mission today' : 'Set yourself a mission'}</Text>
-          <Text style={styles.emptyBody}>
-            {child
-              ? `Focus sessions still help ${pet.name} grow. A grown-up can add a mission any time.`
-              : `Missions are small daily goals, like 45 focus minutes. Finish one for bonus coins.`}
-          </Text>
-          {!child && <Button label="Choose a mission" variant="secondary" onPress={() => router.navigate(routes.missions as Href)} />}
-        </Card>
-      ))}
-
-      {child && (
-      <View style={styles.entries}>
-        <EntryTile
-          icon="🎯"
-          title="Missions"
-          detail={mission?.status === 'complete' ? 'Done for today' : 'Daily goals'}
-          onPress={() => router.navigate(routes.missions as Href)}
-        />
-        <EntryTile
-          icon="🧩"
-          title="Play"
-          detail={playLocked ? 'After a mission' : play?.capReached ? 'Just for fun' : `${play?.coinsEarned ?? 0}/${play?.cap ?? 0} play coins`}
-          onPress={() => router.navigate(routes.play as Href)}
-        />
-      </View>
       )}
 
       <PetStatsCard stats={pet.stats} progression={progression} />
 
-      {!child && (
-        <Pressable onPress={() => router.navigate(routes.play as Href)} style={styles.premiumLink} accessibilityRole="button" accessibilityLabel={`Play with ${pet.name}`} accessibilityHint="Calm mini-games">
-          <TabIcon name="play" color={colors.primaryDark} size={16} />
-          <Text style={[styles.premiumLinkText, { color: colors.primaryDark }]}>Play with {pet.name}</Text>
-        </Pressable>
-      )}
+      <Pressable onPress={() => router.navigate(routes.play as Href)} style={styles.premiumLink} accessibilityRole="button" accessibilityLabel={`Play with ${pet.name}`} accessibilityHint="Calm mini-games">
+        <TabIcon name="play" color={colors.primaryDark} size={16} />
+        <Text style={[styles.premiumLinkText, { color: colors.primaryDark }]}>Play with {pet.name}</Text>
+      </Pressable>
 
-      {!child && !premium && (
+      {!premium && (
         <Pressable onPress={() => router.push('/premium' as Href)} style={styles.premiumLink} accessibilityRole="button" accessibilityLabel="Focusling Premium" accessibilityHint="Room themes, Premium Looks and collections. Focus stays free.">
           <PremiumGlyph size={12} />
           <Text style={styles.premiumLinkText}>Premium: room themes, Looks and more</Text>
         </Pressable>
       )}
-
-      {child && (
-        <Pressable
-          onPress={() => router.push('/parent-gate')}
-          style={styles.grownUps}
-          accessibilityRole="button"
-          accessibilityLabel="Grown-ups"
-          accessibilityHint="Opens the parent area. A parent PIN is needed."
-        >
-          <Text style={styles.grownUpsText}>🔒 Grown-ups</Text>
-        </Pressable>
-      )}
     </Screen>
-  );
-}
-
-function EntryTile({ icon, title, detail, onPress }: { icon: string; title: string; detail: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.tile, shadow]} accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`}>
-      <Text style={styles.tileIcon}>{icon}</Text>
-      <View style={styles.tileText}>
-        <Text style={styles.tileTitle}>{title}</Text>
-        <Text style={styles.tileDetail} numberOfLines={1}>
-          {detail}
-        </Text>
-      </View>
-    </Pressable>
   );
 }
 
@@ -288,26 +220,6 @@ const styles = StyleSheet.create({
   roomChipText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
   name: { ...typography.title },
   subtitle: { ...typography.label, color: colors.textMuted },
-  emptyMission: { gap: spacing.sm },
-  emptyTitle: { ...typography.heading, fontSize: 18 },
-  emptyBody: { ...typography.body, fontSize: 15, color: colors.textMuted },
-  entries: { flexDirection: 'row', gap: spacing.md },
-  tile: {
-    flex: 1,
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  tileIcon: { fontSize: 28 },
-  tileText: { flex: 1 },
-  tileTitle: { ...typography.heading, fontSize: 17 },
-  tileDetail: { ...typography.label, fontSize: 12 },
   premiumLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, alignSelf: 'center', paddingHorizontal: spacing.md },
   premiumLinkText: { ...typography.label, color: '#5A3FC0' },
-  grownUps: { alignSelf: 'center', minHeight: 44, paddingHorizontal: spacing.lg, justifyContent: 'center' },
-  grownUpsText: { ...typography.label, color: colors.textMuted },
 });

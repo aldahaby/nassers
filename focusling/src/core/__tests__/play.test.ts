@@ -1,16 +1,11 @@
 import { MEMORY_GARDEN, PLAY_ECONOMY, TOY_TOSS } from '@/config/play';
 import { adoptPet } from '../game/gameEngine';
 import { debugSimulateNextDay } from '../game/debugDay';
-import { chooseAppMode, setPlaySettings } from '../family/familyService';
-import { addMission, debugCompleteMission, draftFromPreset } from '../missions/missionService';
-import { getMissionPreset } from '@/config/missions';
 import {
   completeGameRound,
   debugGrantPlayCoins,
   debugPlayCapOneLeft,
   debugResetDailyPlay,
-  debugUnlockPlay,
-  getPlayAccess,
   playCoinsRemaining,
 } from '../play/playService';
 import { createMemoryDeck, flipCard, hideMismatch, isMemoryComplete, pairsFound } from '../play/memoryGarden';
@@ -141,31 +136,8 @@ describe('play rewards', () => {
 });
 
 describe('play access', () => {
-  it('is always open in self mode', () => {
-    expect(getPlayAccess(fresh(), T0)).toEqual({ open: true });
-  });
-
-  it('in family mode can wait for a finished mission, and a completed mission unlocks it for the day', () => {
-    let save = setPlaySettings(chooseAppMode(fresh(), 'family'), { access: 'afterMission' });
-    const added = addMission(save, draftFromPreset(getMissionPreset('homework-buddy')!), 'm1', T0);
-    if (!added.ok) throw new Error(added.error);
-    save = added.value;
-    expect(getPlayAccess(save, T0)).toEqual({ open: false, reason: 'finish-mission' });
-    save = debugCompleteMission(save, 'm1', T0).save;
-    expect(getPlayAccess(save, T0)).toEqual({ open: true });
-    expect(getPlayAccess(save, T0 + 24 * 3600 * 1000)).toEqual({ open: false, reason: 'finish-mission' });
-  });
-
-  it('the developer unlock only lasts today', () => {
-    const save = debugUnlockPlay(setPlaySettings(chooseAppMode(fresh(), 'family'), { access: 'afterMission' }), T0);
-    expect(getPlayAccess(save, T0).open).toBe(true);
-    expect(getPlayAccess(save, T0 + 24 * 3600 * 1000).open).toBe(false);
-  });
-
-  it('a locked (mission-gated) Play pays nothing and leaves the save untouched', () => {
-    const save = setPlaySettings(chooseAppMode(fresh(), 'family'), { access: 'afterMission' });
-    const { save: after, result } = completeGameRound(save, { gameId: 'memoryGarden', roundId: 'r-locked', score: 4 }, T0);
-    expect(result).toMatchObject({ coins: 0, locked: true });
-    expect(after).toBe(save);
+  it('is always open: Play has no mission gate', () => {
+    const { result } = completeGameRound(fresh(), { gameId: 'memoryGarden', roundId: 'r-open', score: 4 }, T0);
+    expect(result.coins).toBeGreaterThan(0);
   });
 });

@@ -32,7 +32,7 @@ export interface ReactionDef {
 
 /**
  * How long a collection is offered. Every collection so far is permanent; a
- * future seasonal window needs its own product decision (Family Mode, no FOMO).
+ * future seasonal window needs its own product decision (no FOMO).
  */
 export type CollectionAvailability = { kind: 'permanent' };
 

@@ -7,7 +7,7 @@ import { AnimatedPet, colors, spacing, typography } from '@/ui';
 export default function WelcomeScreen() {
   const progress = useOnboardingProgress('welcome');
   return (
-    <OnboardingStep {...progress} actionLabel="Let's go" onAction={() => router.push('/onboarding/who')}>
+    <OnboardingStep {...progress} actionLabel="Let's go" onAction={() => router.push('/onboarding/how-it-works')}>
       <View style={styles.hero}>
         <View style={styles.row}>
           <AnimatedPet speciesId="sproutling" stage="young" mood="joyful" size={110} />

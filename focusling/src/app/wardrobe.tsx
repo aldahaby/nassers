@@ -27,7 +27,7 @@ import { WardrobeTile } from '@/features/wardrobe/WardrobeTile';
 import { cosmeticName, describeProgress, describeUnlock, slotName } from '@/features/wardrobe/cosmeticCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useCapabilities, useEquipped, useGameStore, useIsChildView, usePetView } from '@/state';
+import { useCapabilities, useEquipped, useGameStore, usePetView } from '@/state';
 import { Button, CollectionBadge, PetArt, PremiumMark, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 type Filter = 'all' | AccessorySlot;
@@ -47,7 +47,6 @@ export default function WardrobeScreen() {
   const reaction = useGameStore((s) => s.petReaction);
   const { equip, unequipItem, consumePetReaction, markItemsSeen, wearCollectionLook, wearOutfitPreview, saveLook } = useGameStore.getState();
   const caps = useCapabilities();
-  const childView = useIsChildView();
   const { bubble, say, sayForReaction } = usePetSpeech();
   const routes = useAppRoutes();
   const { width } = useWindowDimensions();
@@ -180,7 +179,7 @@ export default function WardrobeScreen() {
           {preview?.kind === 'premiumLook' && <Text style={styles.lookSub}>A Premium Look. Try it on as long as you like.</Text>}
           <View style={styles.tryActions}>
             <Button variant="ghost" label="Stop trying on" onPress={() => setPreview(null)} style={styles.tryButton} />
-            {preview?.kind === 'premiumLook' && !childView && <Button variant="secondary" label="See Premium" onPress={seePremium} style={styles.tryButton} />}
+            {preview?.kind === 'premiumLook' && <Button variant="secondary" label="See Premium" onPress={seePremium} style={styles.tryButton} />}
           </View>
         </View>
       ) : detailEntry ? (
@@ -196,7 +195,7 @@ export default function WardrobeScreen() {
               style={styles.tryButton}
             />
             {detailEntry.state === 'buyable' && <Button variant="secondary" label="See in the shop" onPress={() => router.navigate(routes.shop as Href)} style={styles.tryButton} />}
-            {detailEntry.state === 'premium' && !childView && <Button variant="secondary" label="See Premium" onPress={seePremium} style={styles.tryButton} />}
+            {detailEntry.state === 'premium' && <Button variant="secondary" label="See Premium" onPress={seePremium} style={styles.tryButton} />}
           </View>
         </PieceDetail>
       ) : (

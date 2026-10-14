@@ -10,13 +10,8 @@ import { PresetOption } from './PresetOption';
 
 type Editing = { kind: 'new'; draft: MissionDraft } | { kind: 'edit'; id: string; draft: MissionDraft } | null;
 
-interface Props {
-  /** Copy tweaks: a parent manages their child's missions; self users manage their own. */
-  audience: 'parent' | 'self';
-}
-
 /** Mission management: current missions with pause/edit/remove, templates, and a custom editor. */
-export function MissionManager({ audience }: Props) {
+export function MissionManager() {
   const views = useMissionViews();
   const { addMission, updateMission, setMissionActive, removeMission } = useGameStore.getState();
   const [editing, setEditing] = useState<Editing>(null);
@@ -58,7 +53,7 @@ export function MissionManager({ audience }: Props) {
           {notice}
         </Text>
       )}
-      <Text style={styles.section}>{audience === 'parent' ? 'Their missions' : 'Your missions'}</Text>
+      <Text style={styles.section}>Your missions</Text>
       {views.length === 0 && (
         <Text style={styles.muted}>No missions yet. Pick a template below or make your own.</Text>
       )}

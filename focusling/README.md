@@ -74,20 +74,14 @@ logic, local persistence, and a mock Screen Time service.
   one cleanup path, reconciliation, Protection settings screen, Developer Mode native panel.
 - Device test plan: `docs/IOS_DEVICE_TEST_PLAN.md`.
 
-**Milestone 5 (Family Mode, Missions, Calm Play):** details in `docs/FAMILY_MODE.md`.
-- Onboarding asks "Who is Focusling for?": *For me* (the app as before) or *For my child*. Existing
-  saves migrate to *For me* and skip the question.
-- Family Mode (local, one device, one child): parent PIN (salted hash, throttled), child nickname,
-  pet, first mission, then **Child View** (Pet, Missions, Play, Shop). The **Parent Gate** leads to
-  the **Parent Dashboard** (today's focus totals, current mission, honest protection state, the
-  child's pet), mission management and parent settings. No monitoring, no accounts, nothing leaves
-  the device.
-- Missions in both modes: focus minutes, session count, scheduled focus; six presets (Wind Down is
-  marked unavailable until native protection can verify it) and a custom editor. Paid once per
+**Milestone 5 (Missions, Calm Play):** details in `docs/MISSIONS_AND_PLAY.md`.
+- Missions: focus minutes, session count, scheduled focus; six presets (Wind Down is marked
+  unavailable until native protection can verify it) and a custom editor. Paid once per
   occurrence, missed missions are never punished.
-- Play: Memory Garden (4 pairs, no timer) and Toy Toss (5 tosses, constant speed) with the real pet,
-  a 10-coin daily play cap, and an optional "after a mission" parent setting.
-- Developer tools for modes, gate, missions and play (hidden and refused when off).
+- Play: Memory Garden (4 pairs, no timer) and Toy Toss (5 tosses, constant speed) with your pet and
+  a 10-coin daily play cap.
+- This milestone also shipped a local Family Mode; it was removed when Studyling became
+  student-only (save schema 9 drops its fields).
 
 **Creative milestone (cosmetics, wardrobe, rewards):** details in `docs/COSMETICS.md`.
 - Focus Club: an original cute-streetwear collection (Gummy Visor, Cloud Cap, Charm Harness, Mood
@@ -126,14 +120,14 @@ logic, local persistence, and a mock Screen Time service.
 **Character, room and sound pass:** details in `docs/ART_DIRECTION.md` §11–15 and `docs/AUDIO_DIRECTION.md`.
 - Richer base Focuslings: species-specific rendering (cloud lobes, veined leaves, layered flame),
   illustrated eyes, a fuller expression library, visible growth without clothing, and quiet idle life.
-- **Room Studio:** any room colour, free for everyone (Child View too), with presets and a derived,
+- **Room Studio:** any room colour, free for everyone, with presets and a derived,
   art-directed palette that adapts to very dark and very bright colours.
 - **Bubbly micro-sounds:** original synthesised UI sounds with one semantic palette, focus-session
   silence rules, rapid-tap protection, a Sound Effects setting and a developer Audio Lab. No music.
 
 **Premium foundation:** details in `docs/PREMIUM.md`.
-- Consumer-first tabs: Pet / Focus / Shop / Play / Settings, with missions inside Focus. Family Mode
-  is unchanged and still offered in onboarding.
+- Consumer-first tabs (since replaced by Pet / Planner / Focus / Stats / Settings), with missions
+  inside Focus.
 - One entitlement system (capabilities, never `isPremium`), a StoreKit 2 module (written, **not yet
   compiled or tested on a device**), a web/dev mock store and an "unavailable" fallback. Premium is
   never stored in the save.
@@ -168,4 +162,4 @@ logic, local persistence, and a mock Screen Time service.
 ## Tuning
 
 Every number is in `src/config/`: `economy.ts`, `progression.ts`, `petCare.ts`, `focus.ts`,
-`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `family.ts`, `room.ts`, `roomThemes.ts`, `sounds.ts`, `premium.ts`, `legal.ts`, `planner.ts`.
+`shopCatalog.ts`, `cosmetics.ts`, `collections.ts`, `reactions.ts`, `missions.ts`, `play.ts`, `room.ts`, `roomThemes.ts`, `sounds.ts`, `premium.ts`, `legal.ts`, `planner.ts`.

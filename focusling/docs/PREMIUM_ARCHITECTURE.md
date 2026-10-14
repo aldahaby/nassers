@@ -17,7 +17,7 @@ access from the client. See also `docs/PREMIUM.md`.
 | `pending` | e.g. Ask to Buy | Off |
 | `unavailable` | No store / can't reach the authority | Off (nothing deleted; records stay Free) |
 
-`capabilitiesFor(entitlement, { childView, storeAvailable, now })` is still the single gate. New:
+`capabilitiesFor(entitlement, { storeAvailable, now })` is still the single gate. New:
 `canUseExtendedStats`. Entitlements come only from the store service at runtime; nothing is read
 from the save.
 
@@ -70,12 +70,14 @@ Rules only. `adEligibility(ctx)` is true only when **all** hold:
 
 - access is `free`, `trialExpired` or `paidExpired` (never trial, paid, pending or unavailable);
 - the placement exists, is on its own surface, and is **approved** (none are approved today);
-- not Child View; ad consent given; regional age requirements met;
+- ad consent given; regional age requirements met;
+- personalised (behavioural) ads only for a known adult: never for a minor or anyone whose age
+  is unknown (they can only ever get contextual ads);
 - no active focus session; no sensitive academic content on screen.
 
 Planned placements: Course Space feed sponsor card, community discovery sponsor card, Final Grind
 sponsorship (all labelled "Sponsored", all `approved: false`).
 
 Never: the focus timer, assignments, notes, syllabus review, retrieval, notifications, messages or
-announcements, Child View, full-screen interstitials, rewarded ads, or anything that pays for
+announcements, full-screen interstitials, rewarded ads, or anything that pays for
 studying longer or looks like a classmate's message.

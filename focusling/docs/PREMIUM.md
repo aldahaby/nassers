@@ -16,7 +16,7 @@ pet mood or growth, and it never adds energy, loot boxes, paid multipliers, coun
 | Mock store (web / `__DEV__`) | Implemented. Purchases only while Developer tools are on, in memory only |
 | StoreKit 2 module (`modules/focusling-store`) | **Written, not compiled, not run.** Needs a Mac/EAS build and App Store Connect products (or a StoreKit configuration file) |
 | Premium content: Nightglow (6 pieces), 2 Premium Looks, 4 room themes, Aurora Veil aura | Implemented (original art) |
-| Premium screen (`/premium`), Settings + Parent status, Restore, Manage | Implemented against the store interface; verified on web with the mock only |
+| Premium screen (`/premium`), Settings status, Restore, Manage | Implemented against the store interface; verified on web with the mock only |
 | Real products, prices, receipts, sandbox purchases | **Not done**: needs App Store Connect |
 | Student offer | **Architecture only** (see §7). No verification, no promo in production UI |
 
@@ -29,7 +29,7 @@ StoreService (StoreKit | Mock | Unavailable)
 entitlementStore (runtime only, never in the save)  ── devOverride (Developer tools only, memory only)
       │ effectiveEntitlement()
       ▼
-capabilitiesFor(entitlement, { childView, storeAvailable })   ← the single source of truth
+capabilitiesFor(entitlement, { storeAvailable, now })   ← the single source of truth
       │
       ├─ useCapabilities()            (screens)
       └─ capabilities provider        (game store actions: equip, wear look, set theme)
@@ -37,15 +37,16 @@ capabilitiesFor(entitlement, { childView, storeAvailable })   ← the single sou
 
 Screens and store actions ask for **capabilities**, never `isPremium`:
 
-| Capability | Free | Premium / Student promo | Child View |
-|---|---|---|---|
-| `canUsePremiumCollections` | ✗ | ✓ | same as the family's entitlement |
-| `canUsePremiumLooks` | ✗ | ✓ | same |
-| `canUsePremiumRoomThemes` | ✗ | ✓ | same |
-| `canUsePremiumEffects` | ✗ | ✓ | same |
-| `canUseAdvancedCustomization` | ✗ | ✓ | same |
-| `canPreviewPremium` | ✓ | ✓ | ✓ |
-| `canPurchase` | ✓ if a store is available | ✗ (already subscribed) | **always ✗** |
+| Capability | Free | Premium / Student promo |
+|---|---|---|
+| `canUsePremiumCollections` | ✗ | ✓ |
+| `canUsePremiumLooks` | ✗ | ✓ |
+| `canUsePremiumRoomThemes` | ✗ | ✓ |
+| `canUsePremiumEffects` | ✗ | ✓ |
+| `canUseAdvancedCustomization` | ✗ | ✓ |
+| `canUseExtendedStats` | ✗ | ✓ |
+| `canPreviewPremium` | ✓ | ✓ |
+| `canPurchase` | ✓ if a store is available | ✗ (already subscribed) |
 
 Only `status: 'active'` counts as Premium (`pending`, `expired`, `revoked`, `unknown` do not).
 A developer override counts while it exists; it can only be set with Developer tools on and is
@@ -74,8 +75,7 @@ Room themes live in `src/config/roomThemes.ts`.
 
 Anyone can try on any Premium piece, Look or theme on their own Focusling (Wardrobe, collection
 page, Room Studio, Premium screen). Locked content uses one marker, `PremiumMark` (sparkle glyph +
-the word "Premium", never colour alone), and says "Try it on free". Child View sees previews but
-never a purchase button or "See Premium" link.
+the word "Premium", never colour alone), and says "Try it on free".
 
 ## 5. StoreKit 2 implementation (`modules/focusling-store/ios/FocuslingStoreModule.swift`)
 
@@ -127,13 +127,10 @@ active transaction. Types live in `src/core/models/future.ts` (`StudentPromoElig
 not part of the save. The only UI is a Developer-tools demo card ("Student offer demo"); production
 UI never advertises an unavailable promo. See `docs/FUTURE_FRIENDS_AND_PROMO.md`.
 
-## 8. Family Mode
+## 8. Purchases
 
-- Purchases, Restore and Manage appear only in Self Mode Settings and Parent settings (behind the
-  parent PIN). Child View has `canPurchase = false`, a read-only Premium page, and no "See Premium"
-  links in the Wardrobe, collections, Room Studio or Shop.
-- Premium doesn't change any parent boundary (play access, missions, protection, PIN).
-- Local-only: no remote parent accounts, no cloud pairing.
+- Purchases, Restore and Manage appear only in Settings and on the Premium screen.
+- Premium never changes focus rewards, missions, Play, protection, Stats records or Journey.
 
 ## 9. Developer tools (QA)
 

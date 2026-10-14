@@ -7,7 +7,7 @@ import { MissionCard } from '@/features/missions/MissionCard';
 import { ProtectionSummaryRow } from '@/features/protection/ProtectionSummaryRow';
 import { isSelectiveFailure, startErrorMessage } from '@/features/protection/protectionCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
-import { useCurrentMission, useEquipped, useGameStore, useRoomColor, useRoomTheme, useIsChildView, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
+import { useCurrentMission, useEquipped, useGameStore, useRoomColor, useRoomTheme, usePetView, useRewardEstimate, useDebugToolsEnabled } from '@/state';
 import { AnimatedPet, Button, Card, Pressable, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
 import { getRoomTheme } from '@/config/roomThemes';
 import { roomPalette } from '@/ui/room/roomPalette';
@@ -22,7 +22,6 @@ export function FocusSetup() {
   const roomColor = useRoomColor();
   const roomTheme = useRoomTheme();
   const startFocus = useGameStore((s) => s.startFocus);
-  const childView = useIsChildView();
   const debug = useDebugToolsEnabled();
   const mission = useCurrentMission();
   const routes = useAppRoutes();
@@ -101,8 +100,7 @@ export function FocusSetup() {
       {mission ? (
         <MissionCard view={mission} compact onPress={() => router.navigate(routes.missions as Href)} accessibilityHint="Opens missions" />
       ) : (
-        !childView && (
-          <Pressable onPress={() => router.navigate(routes.missions as Href)} style={styles.missionRow} accessibilityRole="button" accessibilityLabel="Missions. Set a small daily goal for bonus coins.">
+        <Pressable onPress={() => router.navigate(routes.missions as Href)} style={styles.missionRow} accessibilityRole="button" accessibilityLabel="Missions. Set a small daily goal for bonus coins.">
             <TabIcon name="missions" color={colors.primaryDark} size={20} />
             <View style={styles.missionText}>
               <Text style={styles.missionTitle}>Missions</Text>
@@ -110,22 +108,19 @@ export function FocusSetup() {
             </View>
             <Text style={styles.chevron}>›</Text>
           </Pressable>
-        )
       )}
 
-      {/* In Child View, protection is a parent setting and isn't shown here. */}
-      {!childView && <ProtectionSummaryRow />}
+      <ProtectionSummaryRow />
 
       {error && (
         <Card style={styles.errorCard}>
           <Text style={styles.errorText}>
             {error === 'invalid' ? 'That session could not start. Try a length between 5 and 180 minutes.' : startErrorMessage(error)}
           </Text>
-          {error !== 'invalid' && childView && <Text style={styles.errorText}>Ask a grown-up to check the protection settings.</Text>}
-          {error !== 'invalid' && !childView && isSelectiveFailure(error) && (
+          {error !== 'invalid' && isSelectiveFailure(error) && (
             <Button label="Block Instagram entirely instead" variant="secondary" onPress={useWholeAppInstead} />
           )}
-          {error !== 'invalid' && !childView && !isSelectiveFailure(error) && (
+          {error !== 'invalid' && !isSelectiveFailure(error) && (
             <Button label="Set up protection" variant="secondary" onPress={() => router.push('/protection')} />
           )}
         </Card>

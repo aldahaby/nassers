@@ -11,7 +11,6 @@ const AD_ACCESS: readonly AccessState[] = ['free', 'trialExpired', 'paidExpired'
 export function adEligibility(ctx: AdContext, placements: Record<string, AdPlacement> = AD_PLACEMENTS): AdEligibility {
   const no = (reason: Extract<AdEligibility, { eligible: false }>['reason']): AdEligibility => ({ eligible: false, reason });
   if (FORBIDDEN_AD_SURFACES.includes(ctx.surface)) return no('forbiddenSurface');
-  if (ctx.childView) return no('childView');
   if (!AD_ACCESS.includes(ctx.access)) return no('notFree');
   const placement = placements[ctx.placementId];
   if (!placement) return no('unknownPlacement');
@@ -21,5 +20,7 @@ export function adEligibility(ctx: AdContext, placements: Record<string, AdPlace
   if (ctx.sensitiveAcademicContentVisible) return no('sensitiveContent');
   if (!ctx.adConsent) return no('noConsent');
   if (!ctx.ageRequirementMet) return no('ageRequirement');
+  // No behavioural profiling of minors (or of anyone whose age isn't known).
+  if (ctx.personalized && ctx.ageStatus !== 'adult') return no('personalizationNotAllowed');
   return { eligible: true };
 }

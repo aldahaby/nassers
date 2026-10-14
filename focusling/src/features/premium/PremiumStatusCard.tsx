@@ -5,8 +5,7 @@ import { Button, Card, PremiumMark, colors, spacing, typography } from '@/ui';
 import { describeEntitlement } from './premiumCopy';
 
 /**
- * Premium status with Restore and Manage, for Settings and Parent settings.
- * Never shown in Child View. Restore calls AppStore.sync on iOS (the mock in dev).
+ * Premium status with Restore and Manage, for Settings. Restore calls AppStore.sync on iOS (the mock in dev).
  */
 export function PremiumStatusCard() {
   const entitlement = useEntitlement();

@@ -6,12 +6,12 @@ import { ROOM_THEMES, getRoomTheme } from '@/config/roomThemes';
 import { RoomColorPicker } from '@/features/room/RoomColorPicker';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { playSound } from '@/services/audio';
-import { useCapabilities, useEquipped, useGameStore, useIsChildView, usePetView, useRoomColor, useRoomTheme } from '@/state';
+import { useCapabilities, useEquipped, useGameStore, usePetView, useRoomColor, useRoomTheme } from '@/state';
 import { AnimatedPet, Button, PremiumMark, Pressable, RoomScene, Screen, colors, radius, spacing, typography } from '@/ui';
 
 /**
  * Room Studio: choose any colour for your Focusling's room. Free for everyone
- * (Self Mode and Child View, no PIN, no coins or milestones). The preview
+ * (no coins or milestones). The preview
  * updates live; nothing is saved until Done. Only the room changes colour,
  * never the app's own interface.
  *
@@ -26,7 +26,6 @@ export default function RoomStudio() {
   const setRoomColor = useGameStore((s) => s.setRoomColor);
   const setRoomTheme = useGameStore((s) => s.setRoomTheme);
   const caps = useCapabilities();
-  const childView = useIsChildView();
   const routes = useAppRoutes();
   const { width } = useWindowDimensions();
   const [draft, setDraft] = useState<string>(saved ?? DEFAULT_ROOM_COLOR);
@@ -74,7 +73,7 @@ export default function RoomStudio() {
           {previewOnly ? (
             <>
               <Text style={styles.themeText}>Previewing. Themes are included with Focusling Premium. Done keeps your colour.</Text>
-              {!childView && <Button variant="secondary" label="See Premium" onPress={() => router.push('/premium' as Href)} />}
+              <Button variant="secondary" label="See Premium" onPress={() => router.push('/premium' as Href)} />
             </>
           ) : (
             <Text style={styles.themeText}>Your colour is kept for when you switch back to My colour.</Text>

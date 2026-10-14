@@ -1,7 +1,7 @@
 /**
  * Room Studio: free room colours (docs/ART_DIRECTION.md, "Room palette").
  * Presets are shortcuts; any colour can be picked. None of this costs coins,
- * XP or milestones, and none of it needs the parent PIN.
+ * XP or milestones.
  */
 
 export interface RoomPreset {

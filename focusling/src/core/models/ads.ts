@@ -11,8 +11,7 @@ export type AdSurface =
   | 'notification'
   | 'retrieval'
   | 'messages'
-  | 'announcements'
-  | 'childView';
+  | 'announcements';
 
 /** Only labelled cards/sponsorships. No interstitials, rewarded ads or formats that look like messages. */
 export type AdFormat = 'sponsorCard' | 'sponsorship';
@@ -33,14 +32,17 @@ export interface AdContext {
   surface: AdSurface;
   /** Consent for ads (and any tracking) where required; false until asked. */
   adConsent: boolean;
-  /** Age requirements for the region are met (never assumed). */
+  /** Regional minimum-age requirements for seeing ads are met (never assumed). */
   ageRequirementMet: boolean;
-  childView: boolean;
+  /** Known adult, known minor, or unknown. Only a known adult may ever get personalised ads. */
+  ageStatus: 'adult' | 'minor' | 'unknown';
+  /** The ad would use interests or behaviour (personalised) rather than only its placement (contextual). */
+  personalized: boolean;
   focusSessionActive: boolean;
   /** Assignments, notes, syllabus review, grades or retrieval answers are on screen. */
   sensitiveAcademicContentVisible: boolean;
 }
 
-export type AdIneligibleReason = 'notFree' | 'unknownPlacement' | 'placementNotApproved' | 'forbiddenSurface' | 'surfaceMismatch' | 'noConsent' | 'ageRequirement' | 'childView' | 'focusSessionActive' | 'sensitiveContent';
+export type AdIneligibleReason = 'notFree' | 'unknownPlacement' | 'placementNotApproved' | 'forbiddenSurface' | 'surfaceMismatch' | 'noConsent' | 'ageRequirement' | 'personalizationNotAllowed' | 'focusSessionActive' | 'sensitiveContent';
 
 export type AdEligibility = { eligible: true } | { eligible: false; reason: AdIneligibleReason };

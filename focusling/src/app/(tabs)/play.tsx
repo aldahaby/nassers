@@ -1,7 +1,7 @@
 import { PlayHub } from '@/features/play/PlayHub';
 import { Screen } from '@/ui';
 
-/** Self mode Play tab (Family Mode uses the Child View tab). */
+/** Play (opened from the Pet screen; hidden from the tab bar). */
 export default function PlayScreen() {
   return (
     <Screen scroll>

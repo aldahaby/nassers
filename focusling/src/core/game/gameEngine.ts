@@ -68,9 +68,7 @@ export function adoptPet(
   speciesId: PetSpeciesId,
   name: string,
   now: Timestamp,
-  options: { completeOnboarding?: boolean } = {},
 ): GameSave {
-  const completeOnboarding = options.completeOnboarding ?? true;
   return {
     ...save,
     pet: {
@@ -83,7 +81,7 @@ export function adoptPet(
       statsUpdatedAt: now,
       lastPettedAt: null,
     },
-    profile: completeOnboarding ? { ...save.profile, onboardingCompletedAt: now } : save.profile,
+    profile: { ...save.profile, onboardingCompletedAt: now },
   };
 }
 

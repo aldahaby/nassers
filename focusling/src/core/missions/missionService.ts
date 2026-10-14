@@ -200,12 +200,6 @@ export function getCurrentMission(save: GameSave, now: Timestamp): MissionView |
   return getMissionViews(save, now).find((v) => v.status === 'active' || v.status === 'complete') ?? null;
 }
 
-/** True if any mission occurrence was completed today (unlocks mission-gated Play). */
-export function hasCompletedMissionToday(save: GameSave, now: Timestamp): boolean {
-  const today = toDateKey(now);
-  return Object.values(save.missions.progress).some((p) => p.rewarded && p.completedAt !== null && toDateKey(p.completedAt) === today);
-}
-
 // ── Creating and editing ─────────────────────────────────────────────────────
 
 export interface MissionDraft {

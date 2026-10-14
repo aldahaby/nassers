@@ -5,7 +5,6 @@ import { ProtectionDebugPanel } from '@/features/protection/ProtectionDebugPanel
 import { InventoryDevTools } from '@/features/shop/InventoryDevTools';
 import { useGameStore } from '@/state';
 import { Button, Card, typography } from '@/ui';
-import { FamilyDevTools } from './FamilyDevTools';
 import { PremiumDevTools } from './PremiumDevTools';
 import { StyleDevTools } from './StyleDevTools';
 import { devStyles } from './devStyles';
@@ -58,7 +57,6 @@ export function DeveloperTools() {
       />
       {message && <Text style={styles.muted}>{message}</Text>}
       <PremiumDevTools />
-      <FamilyDevTools />
       <StyleDevTools />
       <ProtectionDebugPanel />
     </Card>

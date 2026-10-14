@@ -47,8 +47,9 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
       schemaVersion: 3,
     };
   },
-  // v3 → v4: Family Mode, Missions and Play. Every existing save is a self-use save;
-  // nothing else changes (pet, coins, inventory, history, settings, protection).
+  // v3 → v4: Missions and Play. Nothing else changes (pet, coins, inventory,
+  // history, settings, protection). (This step also added the former Family Mode
+  // fields; v8 → v9 removes them.)
   3: (save) => {
     const daily = Object.fromEntries(
       Object.entries((save.daily ?? {}) as Record<string, RawRecord>).map(([k, d]) => [
@@ -59,10 +60,8 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
     return {
       ...save,
       daily,
-      mode: 'self',
-      family: null,
       missions: { items: [], progress: {} },
-      play: { date: null, coinsEarned: 0, happinessEarned: 0, completions: {}, rewardedRounds: [], debugUnlockedDate: null },
+      play: { date: null, coinsEarned: 0, happinessEarned: 0, completions: {}, rewardedRounds: [] },
       schemaVersion: 4,
     };
   },
@@ -102,6 +101,20 @@ const MIGRATIONS: Record<number, (save: RawSave) => RawSave> = {
   // v7 → v8: Premium groundwork. Adds an (empty) room theme preference. No
   // entitlement is ever stored in the save; owned items and equipment are untouched.
   7: (save) => ({ ...save, room: { ...((save.room as RawRecord) ?? { color: null }), theme: null }, schemaVersion: 8 }),
+  // v8 → v9: Studyling is student-only. The former Family Mode fields (`mode`
+  // and `family`: a parent PIN digest, a nickname and a Play setting, plus the
+  // Play mission-gate override `play.debugUnlockedDate`) held no
+  // study activity and are dropped. The pet, XP, coins, cosmetics, room,
+  // missions, focus history and stats all stay. A pet adopted during an
+  // unfinished family setup keeps its owner past onboarding.
+  8: (save) => {
+    const { mode: _mode, family: _family, ...rest } = save;
+    const { debugUnlockedDate: _unlock, ...play } = (rest.play ?? {}) as RawRecord;
+    const profile = (rest.profile ?? {}) as RawRecord;
+    const pet = rest.pet as RawRecord | null | undefined;
+    const onboarded = profile.onboardingCompletedAt ?? (pet ? (pet.adoptedAt ?? null) : null);
+    return { ...rest, play, profile: { ...profile, onboardingCompletedAt: onboarded }, schemaVersion: 9 };
+  },
 };
 
 export class SaveMigrationError extends Error {}

@@ -183,7 +183,7 @@ final illustration. What an illustrator should do:
 ## 10. Future only (documented, not built)
 
 - **Focusling Cards:** a possible collectible card per Look/reaction for sharing a snapshot. Not
-  built. Would need: no trading economy, no randomness, Child View without sharing, parent control.
+  built. Would need: no trading economy, no randomness, and an age/privacy review for sharing.
 - **Licensed collaborations:** architecture boundary only (`CollectionOrigin` / `CollectionAvailability`
   unions, see `COSMETICS.md` §14). Nothing licensed exists; no fake collaborations.
 - **Behaviour achievements:** `Provenance` (`core/cosmetics/cosmeticsService.ts`) is a union so a

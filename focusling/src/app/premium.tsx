@@ -7,7 +7,7 @@ import { LEGAL } from '@/config/legal';
 import { ALWAYS_FREE, PREMIUM_INCLUDES, PREMIUM_PRODUCTS } from '@/config/premium';
 import { ROOM_THEMES } from '@/config/roomThemes';
 import { playSound } from '@/services/audio';
-import { useCapabilities, useEntitlement, useEntitlementStore, useGameStore, useIsChildView, usePetView } from '@/state';
+import { useCapabilities, useEntitlement, useEntitlementStore, useGameStore, usePetView } from '@/state';
 import { AnimatedPet, Button, ItemArt, PetArt, PremiumGlyph, Pressable, RoomScene, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
 
 const NIGHTGLOW = getCollection('nightglow')!;
@@ -16,12 +16,10 @@ const NIGHTGLOW = getCollection('nightglow')!;
  * Focusling Premium. "Focus for free. Make your Focusling world bigger with
  * Premium." Real content previews on the person's own pet, store-supplied
  * prices only, and clear Restore / Manage / Terms / Privacy / Not now. No
- * countdowns, guilt or urgency, and the pet never asks for money. In Child
- * View there are no purchase controls at all.
+ * countdowns, guilt or urgency, and the pet never asks for money.
  */
 export default function PremiumScreen() {
   const view = usePetView();
-  const childView = useIsChildView();
   const caps = useCapabilities();
   const entitlement = useEntitlement();
   const { products, storeAvailable, busy, message, studentOffer, storeKind } = useEntitlementStore();
@@ -72,14 +70,7 @@ export default function PremiumScreen() {
         <Text style={styles.subtitle}>Make your Focusling’s world bigger with Premium.</Text>
       </View>
 
-      {childView ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Your Focusling is complete as it is</Text>
-          <Text style={styles.body}>Premium is extra wardrobe and room styles. It’s something a grown-up can look at in the parent area. Nothing here changes how your Focusling grows.</Text>
-          <Button label="Back to my Focusling" variant="secondary" onPress={close} />
-        </View>
-      ) : (
-        <>
+      <>
           <Text style={styles.section}>Nightglow collection</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
             {NIGHTGLOW_ITEMS.map((item) => (
@@ -210,8 +201,7 @@ export default function PremiumScreen() {
             </View>
             <Button label="Not now" variant="ghost" onPress={close} />
           </View>
-        </>
-      )}
+      </>
     </Screen>
   );
 }

@@ -188,7 +188,7 @@ describe('planner persistence and the existing save', () => {
     expect(ctx.notifications.pending.size).toBe(pendingBefore);
   });
 
-  it('installing the planner leaves an existing save untouched (pet, XP, coins, cosmetics, room, sound, history, protection, Family data)', async () => {
+  it('installing the planner leaves an existing save untouched (pet, XP, coins, cosmetics, room, sound, history, protection); legacy Family Mode fields are dropped', async () => {
     const T0 = fromWallClock({ year: 2026, month: 9, day: 1, hour: 9, minute: 0 }, TZ);
     let base: GameSave = adoptPet(createNewSave(T0), 'emberling', 'Pip', T0);
     base = setRoomColor(base, '#1E2447');
@@ -200,10 +200,9 @@ describe('planner persistence and the existing save', () => {
       protection: { ...base.protection, mode: 'wholeApp' },
       inventory: { items: { 'acc-cap': { itemId: 'acc-cap', quantity: 1, acquiredAt: T0, lastUsedAt: null } }, equipped: { head: 'acc-cap' } },
       focus: { active: null, history: [{ id: 'old-1', plannedDurationMinutes: 25, startedAt: T0, endedAt: T0 + 1_500_000, status: 'completed', blockedTargets: [], protectionMode: 'none', reward: null }] },
-      mode: 'family',
-      family: { child: { nickname: 'Sunny' } } as unknown as GameSave['family'],
     };
-    const v7 = JSON.parse(JSON.stringify({ ...base, schemaVersion: 7 }));
+    // A historical save from the former Family Mode build.
+    const v7 = JSON.parse(JSON.stringify({ ...base, schemaVersion: 7, mode: 'family', family: { gate: null, child: { nickname: 'Sunny' }, play: { access: 'afterMission' }, setupCompletedAt: T0 } }));
     delete v7.room.theme;
     // Like the AsyncStorage repository, migrate on load.
     const saveRepo = new (class extends MemorySaveRepository {
@@ -215,7 +214,7 @@ describe('planner persistence and the existing save', () => {
     await saveRepo.save(v7);
     const ctx = await setup({ saveRepo });
     const save = ctx.game.getState().save!;
-    expect(save.schemaVersion).toBe(8);
+    expect(save.schemaVersion).toBe(9);
     expect(save.pet).toMatchObject({ name: 'Pip', speciesId: 'emberling', lifetimeXp: 777 });
     expect(save.wallet.coins).toBe(321);
     expect(save.inventory.equipped).toEqual({ head: 'acc-cap' });
@@ -223,8 +222,8 @@ describe('planner persistence and the existing save', () => {
     expect(save.profile.settings.soundEnabled).toBe(false);
     expect(save.focus.history[0]!.id).toBe('old-1');
     expect(save.protection.mode).toBe('wholeApp');
-    expect(save.mode).toBe('family');
-    expect(save.family).toMatchObject({ child: { nickname: 'Sunny' } });
+    expect(save).not.toHaveProperty('mode');
+    expect(save).not.toHaveProperty('family');
     // The planner starts empty and old sessions are not back-filled or rewritten.
     const p = ctx.planner.getState().planner!;
     expect(Object.keys(p.courses)).toHaveLength(0);

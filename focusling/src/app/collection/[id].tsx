@@ -11,7 +11,7 @@ import { StyleStage } from '@/features/style/StyleStage';
 import { WardrobeTile } from '@/features/wardrobe/WardrobeTile';
 import { cosmeticName } from '@/features/wardrobe/cosmeticCopy';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
-import { useCapabilities, useEquipped, useGameStore, useIsChildView, usePetView } from '@/state';
+import { useCapabilities, useEquipped, useGameStore, usePetView } from '@/state';
 import { Button, CollectionBadge, ItemArt, PremiumMark, ReactionIcon, Screen, TabIcon, colors, radius, spacing, typography, Pressable } from '@/ui';
 
 /**
@@ -36,7 +36,6 @@ export default function CollectionScreen() {
   const [performance, setPerformance] = useState<{ reactionId: string; key: number } | null>(null);
   const [cheer, setCheer] = useState(0);
   const caps = useCapabilities();
-  const childView = useIsChildView();
   const entries = useMemo(() => (save && collection ? getWardrobe(save, caps).filter((e) => e.item.collection === collection.id) : []), [save, collection, caps]);
 
   if (!collection) return <Redirect href="/wardrobe" />;
@@ -152,7 +151,7 @@ export default function CollectionScreen() {
       ) : premium ? (
         <View style={styles.premiumRow}>
           <Text style={styles.lookHint}>Try every piece on {pet.name} for free. Wearing them is included with Focusling Premium.</Text>
-          {!childView && <Button variant="secondary" label="See Premium" onPress={() => router.push('/premium' as Href)} />}
+          <Button variant="secondary" label="See Premium" onPress={() => router.push('/premium' as Href)} />
         </View>
       ) : (
         <Text style={styles.lookHint}>

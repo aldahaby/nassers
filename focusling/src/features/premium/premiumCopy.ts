@@ -1,6 +1,6 @@
 import type { EntitlementState } from '@/core';
 
-/** One honest line for the current Premium state (Settings, Parent settings, Premium screen). */
+/** One honest line for the current Premium state (Settings, Premium screen). */
 export function describeEntitlement(e: EntitlementState, storeAvailable: boolean): string {
   if (e.source === 'devOverride') return e.tier === 'free' ? 'Free (developer override)' : 'Premium (developer override, this session only)';
   switch (e.status) {

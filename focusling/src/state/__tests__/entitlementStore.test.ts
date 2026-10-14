@@ -5,7 +5,7 @@ import { MockStoreService, UnavailableStoreService, toEntitlement } from '@/serv
 import { createGameStore } from '../createGameStore';
 import { createEntitlementStore, effectiveEntitlement } from '../entitlementStore';
 
-const ctx = { childView: false, storeAvailable: true };
+const ctx = { storeAvailable: true };
 const PREMIUM: Capabilities = capabilitiesFor({ tier: 'premium', source: 'mock', status: 'active' }, ctx);
 const FREE: Capabilities = capabilitiesFor(FREE_ENTITLEMENT, ctx);
 
@@ -81,7 +81,7 @@ describe('entitlement store (mock StoreKit)', () => {
     const { s } = await ready(new UnavailableStoreService() as unknown as MockStoreService);
     expect(s.getState().storeAvailable).toBe(false);
     expect(s.getState().products).toEqual([]);
-    expect(capabilitiesFor(effectiveEntitlement(s.getState()), { childView: false, storeAvailable: false }).canPurchase).toBe(false);
+    expect(capabilitiesFor(effectiveEntitlement(s.getState()), { storeAvailable: false }).canPurchase).toBe(false);
     expect((await s.getState().purchase('x')).status).toBe('unavailable');
   });
 

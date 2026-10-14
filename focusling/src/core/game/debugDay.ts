@@ -28,7 +28,6 @@ export function debugSimulateNextDay(save: GameSave): GameSave {
     play: {
       ...save.play,
       date: save.play.date ? back(save.play.date) : null,
-      debugUnlockedDate: save.play.debugUnlockedDate ? back(save.play.debugUnlockedDate) : null,
     },
     streak: { ...save.streak, lastActiveDate: save.streak.lastActiveDate ? back(save.streak.lastActiveDate) : null },
   };

@@ -51,8 +51,6 @@ export default function RootLayout() {
           <Stack.Screen name="planner/assignment/[id]" options={{ animation: slide }} />
           <Stack.Screen name="planner/retrieval" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="planner/start" options={{ animation: 'fade' }} />
-          <Stack.Screen name="parent-gate" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
-          <Stack.Screen name="parent" options={{ animation: 'fade' }} />
           <Stack.Screen
             name="session-complete"
             options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }}
