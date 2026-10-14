@@ -32,4 +32,11 @@ describe('student-only product', () => {
       .filter((f) => banned.test(readFileSync(f, 'utf8')));
     expect(offenders.map((f) => f.slice(ROOT.length))).toEqual([]);
   });
+
+  it('every route file still exports a screen (no route left empty by the cleanup)', () => {
+    const empty = files(APP)
+      .filter((f) => f.endsWith('.tsx'))
+      .filter((f) => !/export default|export \{ default \}/.test(readFileSync(f, 'utf8')));
+    expect(empty.map((f) => f.slice(APP.length))).toEqual([]);
+  });
 });
