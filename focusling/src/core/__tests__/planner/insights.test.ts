@@ -8,7 +8,7 @@ const ca = extractInsights(CA_OUTLINE.text);
 
 describe('course identity', () => {
   it('reads institution, code, title, term and section (US)', () => {
-    expect(us.identity).toEqual({ institution: 'Northlake University', code: 'CS 1301', subject: 'CS', number: '1301', title: 'Introduction to Computing', term: { season: 'fall', year: 2026 }, section: 'A02' });
+    expect(us.identity).toEqual({ institution: 'Northlake University', code: 'CS 1301', subject: 'CS', number: '1301', title: 'Introduction to Computing', term: { season: 'fall', year: 2026 }, section: 'A02', credits: null });
   });
   it('reads institution, code, title, term and section (Canada)', () => {
     expect(ca.identity).toMatchObject({ institution: 'Lakeshore University', code: 'COMP 202', title: 'Foundations of Programming', term: { season: 'fall', year: 2026 }, section: '001' });

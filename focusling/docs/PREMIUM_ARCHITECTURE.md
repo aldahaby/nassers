@@ -21,9 +21,49 @@ access from the client. See also `docs/PREMIUM.md`.
 `canUseExtendedStats`. Entitlements come only from the store service at runtime; nothing is read
 from the save.
 
-**Developer override hardening:** "Force Premium" now needs Developer tools **and** a development
-build or the web demo (`devOverrideAllowed()`: `__DEV__ || Platform.OS === 'web'`). Developer tools
-can be switched on in a release build, so they alone can no longer grant Premium.
+**Developer override hardening:** "Force Premium" needs Developer tools **and** a test build
+(`devOverrideAllowed()` = `testPurchasesEnabled()`). Developer tools can be switched on in a
+release build, so they alone can never grant Premium. Being on the web is not enough either.
+
+## Test purchases (simulated Premium)
+
+For trying Premium on a phone browser without paying. Only in **explicitly authorised test
+builds**:
+
+- `config/buildFlags.ts`: `TEST_PURCHASES_ENABLED = __DEV__ || EXPO_PUBLIC_STUDYLING_TEST_PURCHASES
+  === 'enabled'`. Expo inlines the value at build time. A production build without the variable
+  has no test store in it.
+  - Test build: `EXPO_PUBLIC_STUDYLING_TEST_PURCHASES=enabled npx expo export --platform web`
+  - Production: `npx expo export --platform web` (no variable)
+- `services/index.ts › createStoreService`:
+  - iOS uses StoreKit.
+  - A test build uses `MockStoreService` (persistent test store, key `studyling/test-store/v1`).
+  - Anything else uses `UnavailableStoreService` ("Purchases aren't available in this version
+    yet").
+- There is **no query parameter, secret code, endpoint or receipt**. The test store only ever
+  holds `source: 'mock'` data and ignores anything else written to its storage.
+  `effectiveEntitlement` drops mock entitlements whenever the build flag is off, so a leftover
+  test flag in a production browser grants nothing. A simulated entitlement can never become a
+  StoreKit entitlement.
+- Premium screen, test builds only: a **TEST BUILD** panel with:
+  - the current status;
+  - the next outcome (succeeds, fails, is cancelled);
+  - **Simulate Premium Purchase**, behind a confirmation that says "This is a test purchase. No
+    payment is collected…";
+  - Expire Premium, Restore active Premium, and Reset to Free.
+- The real Subscribe button and Apple's subscription text are hidden there, so a test purchase
+  is never presented as a real one.
+- Feature gates follow `capabilitiesFor`, and ads follow `adEligibility` (test Premium counts as
+  paid, so no ads; Reset to Free makes the student ad-eligible again). Both are covered by tests.
+- Tests:
+  - `state/__tests__/entitlementStore.test.ts` (purchase, persistence, expiry, restore, reset,
+    forged entries, ads);
+  - `state/__tests__/productionPurchases.test.ts` (flag off: web gets no test store, overrides
+    are refused, mock entitlements are ignored, StoreKit is unaffected);
+  - browser suite m15.
+
+**A public preview URL is not a trusted environment.** Only a build made with the variable on
+has the test store, so never deploy a test build where real customers could reach it.
 
 ## Trials (`config/trials.ts`)
 

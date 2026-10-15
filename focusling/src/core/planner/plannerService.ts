@@ -3,7 +3,7 @@ import { PLAN_TYPE_FOR, PLANNER_RULES } from '@/config/planner';
 import type { Assignment, AssignmentType, AvailabilityWindow, Course, Id, PlannerState, SessionPlan, Timestamp } from '../models';
 import { logEvent, type IdGen } from './plannerState';
 import { normalizeTitle } from './syllabusParser';
-import { cancelPlansFor, dueAtFor, fingerprintOf } from './syllabusImport';
+import { cancelPlansFor, conditionalDueDay, dueAtFor, fingerprintOf } from './syllabusImport';
 import { addDays, atMinute, dayKeyIn, toWallClock } from './time';
 
 /** "HH:MM" at an instant in a zone. */
@@ -123,6 +123,28 @@ export function updateAssignment(state: PlannerState, id: Id, patch: AssignmentP
   const s1: PlannerState = { ...state, plans, assignments: { ...state.assignments, [id]: next } };
   const cancelled = dueChanged ? cancelPlansFor(s1, id, next.dueAt ?? null, now) : [];
   return { state: s1, cancelledPlanIds: cancelled };
+}
+
+/**
+ * The student answers a conditional deadline ("my lecture is Sep 9"): the due
+ * date is worked out from the syllabus's rule and counts as their own edit, so
+ * a re-import never resets it.
+ */
+export function resolveConditional(state: PlannerState, id: Id, anchorDayKey: string, anchorLabel: string | null, now: Timestamp): { state: PlannerState; cancelledPlanIds: Id[] } {
+  const a = state.assignments[id];
+  if (!a?.conditional) return { state, cancelledPlanIds: [] };
+  const conditional = { ...a.conditional, anchorDayKey, anchorLabel: anchorLabel ?? undefined };
+  const withRule: PlannerState = { ...state, assignments: { ...state.assignments, [id]: { ...a, conditional, unresolved: undefined, dueCandidates: undefined } } };
+  return updateAssignment(withRule, id, { dueDayKey: conditionalDueDay(conditional, anchorDayKey), dueTime: conditional.time }, now);
+}
+
+/** The student picks one of the dates a self-contradicting syllabus allows. */
+export function chooseDueCandidate(state: PlannerState, id: Id, dayKey: string, now: Timestamp): { state: PlannerState; cancelledPlanIds: Id[] } {
+  const a = state.assignments[id];
+  const pick = a?.dueCandidates?.find((c) => c.dayKey === dayKey);
+  if (!a || !pick) return { state, cancelledPlanIds: [] };
+  const cleared: PlannerState = { ...state, assignments: { ...state.assignments, [id]: { ...a, unresolved: undefined, dueCandidates: undefined } } };
+  return updateAssignment(cleared, id, { dueDayKey: pick.dayKey, dueTime: pick.time }, now);
 }
 
 /** "Looks right" on a needs-review assignment that already has a date. */

@@ -12,9 +12,13 @@ export const PLANNER_SCHEMA_VERSION = 3;
 // ── Parser ──────────────────────────────────────────────────────────
 
 /** Current deterministic, on-device parser. */
-export const PARSER_VERSION = 'syllabus-parser-2.0';
-/** Older behaviour kept for Syllabus Lab comparison (no table splitting, no recurrence). */
-export const PARSER_VERSIONS = [PARSER_VERSION, 'syllabus-parser-1.0', 'syllabus-parser-0.9'] as const;
+export const PARSER_VERSION = 'syllabus-parser-3.0';
+/**
+ * Older behaviour kept for Syllabus Lab comparison. 3.0 adds academic reading
+ * (named assessments, conditional deadlines, year checks) on top of 2.0's
+ * line parser; 1.0 has no table splitting or recurrence.
+ */
+export const PARSER_VERSIONS = [PARSER_VERSION, 'syllabus-parser-2.0', 'syllabus-parser-1.0', 'syllabus-parser-0.9'] as const;
 export type ParserVersion = (typeof PARSER_VERSIONS)[number];
 
 /** Month/day order for numeric dates like 3/4 when the document doesn't make it obvious. */

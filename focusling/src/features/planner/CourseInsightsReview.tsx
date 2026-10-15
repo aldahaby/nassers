@@ -67,7 +67,7 @@ export function CourseInsightsReview({ draft }: { draft: ImportDraft }) {
         </Card>
       )}
 
-      {(ins.schedule.length > 0 || ins.coverage.length > 0 || ins.keyDates.length > 0 || ins.policies.length > 0) && (
+      {(ins.schedule.length > 0 || ins.coverage.length > 0 || ins.keyDates.length > 0 || ins.policies.length > 0 || (ins.lectures ?? []).length > 0) && (
         <Card>
           <SectionTitle>Course structure</SectionTitle>
           {ins.schedule.length > 0 && <Detail label="Weekly topics" value={`${ins.schedule.length} weeks, e.g. “${ins.schedule[0]!.topic}”`} />}
@@ -77,36 +77,32 @@ export function CourseInsightsReview({ draft }: { draft: ImportDraft }) {
           {ins.keyDates.map((k) => (
             <Detail key={`${k.label}${k.provenance.line}`} label={k.label} value={k.dayKey ? formatDayKey(k.dayKey) : 'Date not given'} />
           ))}
-          {ins.policies.length > 0 && <Detail label="Policies mentioned" value={ins.policies.map((p) => p.title).join(' · ')} />}
+          {(ins.lectures ?? []).length > 0 && <Detail label="Lecture schedule" value={(ins.lectures ?? []).map((l) => `${l.number}. ${l.topic}`).join('\n')} />}
+          {ins.policies.map((p) => (
+            <Detail key={`${p.title}${p.provenance.line}`} label={p.title} value={p.summary ?? 'Mentioned in the syllabus'} />
+          ))}
           <Text style={styles.muted}>Course dates like drop deadlines are saved with the course, not added as tasks.</Text>
         </Card>
       )}
 
-      {draft.detailsDiff.length > 0 && (
-        <Card>
-          <SectionTitle>Changed in this version</SectionTitle>
-          {draft.detailsDiff.map((d, i) => (
-            <Text key={i} style={styles.diff}>
-              {d.label}: {d.from ?? 'not listed'} → {d.to ?? 'removed'}
-            </Text>
-          ))}
-          <Text style={styles.muted}>{draft.details.save ? 'These replace the saved course details when you add this syllabus.' : 'Turn on “Save course details” to apply these.'}</Text>
-        </Card>
-      )}
     </>
   );
 }
 
-function meetingsText(ins: SyllabusInsights): string {
+/** "Classes: Tue/Thu 8:35–9:55 AM · McMed 522". */
+export function meetingsText(ins: Pick<SyllabusInsights, 'meetings'>): string {
   const groups = new Map<string, number[]>();
   for (const m of ins.meetings) {
-    const k = `${m.kind}|${minuteRange(m.startMinute, m.endMinute)}`;
+    const k = `${m.kind}|${minuteRange(m.startMinute, m.endMinute)}|${m.location ?? ''}`;
     groups.set(k, [...(groups.get(k) ?? []), m.weekday]);
   }
-  return [...groups.entries()].map(([k, days]) => {
-    const [kind, time] = k.split('|');
-    return `${kind![0]!.toUpperCase()}${kind!.slice(1)}s: ${days.map(weekdayShort).join('/')}${time ? ` ${time}` : ''}`;
-  }).join('\n');
+  return [...groups.entries()]
+    .map(([k, days]) => {
+      const [kind, time, where] = k.split('|');
+      const label = kind === 'class' ? 'Classes' : `${kind![0]!.toUpperCase()}${kind!.slice(1)}s`;
+      return `${label}: ${days.map(weekdayShort).join('/')}${time ? ` ${time}` : ''}${where ? ` · ${where}` : ''}`;
+    })
+    .join('\n');
 }
 
 function Detail({ label, value }: { label: string; value: string | null }) {

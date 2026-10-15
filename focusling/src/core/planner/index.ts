@@ -3,6 +3,7 @@ export * from './time';
 export * from './plannerState';
 export * from './syllabusParser';
 export * from './syllabusInsights';
+export * from './academicReading';
 export * from './courseIdentity';
 export * from './syllabusImport';
 export * from './sourceAuthority';

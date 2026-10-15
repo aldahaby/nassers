@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { testPurchasesEnabled } from '@/config/buildFlags';
 import { Platform } from 'react-native';
 import { AsyncStorageSaveRepository } from './persistence/AsyncStorageSaveRepository';
 import type { SaveRepository } from './persistence/SaveRepository';
@@ -7,7 +9,7 @@ import { MockProtectionService } from './protection/MockProtectionService';
 import { FocuslingProtectionNative } from './protection/nativeModule';
 import { LocalSyllabusAnalysisProvider, type SyllabusAnalysisProvider } from './syllabusAnalysis/SyllabusAnalysisProvider';
 import { UnavailableStudentVerificationService, type StudentVerificationService } from './verification/StudentVerificationService';
-import { FocuslingStoreNative, MockStoreService, NativeStoreService, UnavailableStoreService, type StoreService } from './store';
+import { FocuslingStoreNative, NativeStoreService, UnavailableStoreService, type StoreService } from './store';
 import { LocalOnlySyncProvider, type SyncProvider } from '@/core';
 import type { DocumentService } from './documents/DocumentService';
 import { NativeDocumentService } from './documents/NativeDocumentService';
@@ -30,13 +32,22 @@ function createProtectionService(): FocusProtectionService {
 }
 
 /**
- * Purchases: StoreKit on iOS builds with the FocuslingStore module; an
- * explicit, clearly labelled mock on web and dev builds; otherwise no store
- * (Free, purchases disabled, previews still work).
+ * Purchases: StoreKit on iOS builds with the FocuslingStore module; the TEST
+ * store (simulated Premium, persisted on this device) only in builds with test
+ * purchases enabled; otherwise no store (Free, purchases disabled, previews
+ * still work). Production web builds therefore have no way to buy or fake Premium.
  */
-function createStoreService(): StoreService {
+export function createStoreService(testPurchases: boolean = testPurchasesEnabled()): StoreService {
   if (Platform.OS === 'ios' && FocuslingStoreNative) return new NativeStoreService(FocuslingStoreNative);
-  if (Platform.OS === 'web' || __DEV__) return new MockStoreService();
+  // The literal check is inlined at build time, so a production bundle drops this branch
+  // and never contains the test store (see docs/PREMIUM_ARCHITECTURE.md).
+  if (__DEV__ || process.env.EXPO_PUBLIC_STUDYLING_TEST_PURCHASES === 'enabled') {
+    if (testPurchases) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { MockStoreService } = require('./store/MockStoreService') as typeof import('./store/MockStoreService');
+      return new MockStoreService(AsyncStorage);
+    }
+  }
   return new UnavailableStoreService();
 }
 

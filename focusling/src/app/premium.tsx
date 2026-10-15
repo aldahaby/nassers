@@ -10,6 +10,14 @@ import { playSound } from '@/services/audio';
 import { useCapabilities, useEntitlement, useEntitlementStore, useGameStore, usePetView } from '@/state';
 import { AnimatedPet, Button, ItemArt, PetArt, PremiumGlyph, Pressable, RoomScene, Screen, TabIcon, colors, radius, spacing, typography } from '@/ui';
 
+/**
+ * Test builds only. The literal check is inlined at build time, so a production
+ * bundle drops the simulated-purchase panel entirely.
+ */
+const TestPurchasePanel: typeof import('@/features/premium/TestPurchasePanel').TestPurchasePanel | null =
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  __DEV__ || process.env.EXPO_PUBLIC_STUDYLING_TEST_PURCHASES === 'enabled' ? require('@/features/premium/TestPurchasePanel').TestPurchasePanel : null;
+
 const NIGHTGLOW = getCollection('nightglow')!;
 
 /**
@@ -136,11 +144,13 @@ export default function PremiumScreen() {
               <Text style={styles.body}>
                 {entitlement.source === 'devOverride'
                   ? 'Developer override (QA only).'
+                  : entitlement.source === 'mock'
+                    ? 'Test purchase (no charge). Everything Premium is unlocked on this device.'
                   : entitlement.expiresAt
                     ? `${entitlement.willAutoRenew === false ? 'Ends' : 'Renews'} ${new Date(entitlement.expiresAt).toLocaleDateString()}.`
                     : 'Thanks for supporting Focusling.'}
               </Text>
-              <Button label="Manage subscription" variant="secondary" onPress={() => void manageSubscription()} />
+              {entitlement.source !== 'mock' && <Button label="Manage subscription" variant="secondary" onPress={() => void manageSubscription()} />}
             </View>
           ) : (
             <View style={styles.card}>
@@ -169,13 +179,18 @@ export default function PremiumScreen() {
               ) : (
                 <Text style={styles.body}>{storeAvailable ? 'Loading subscription options…' : 'Subscriptions aren’t available here right now. You can still preview everything.'}</Text>
               )}
-              <Button label={busy ? 'Working…' : 'Subscribe'} sound={null} onPress={() => void subscribe()} disabled={!caps.canPurchase || !product || busy} accessibilityHint="Opens the App Store purchase sheet" />
-              {storeKind === 'mock' && <Text style={styles.note}>Preview build: this is a demo store{debug ? ' (Developer tools can simulate purchases)' : ' and nothing can be bought here'}.</Text>}
-              <Text style={styles.legal}>
-                Payment is charged to your Apple Account. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and can be managed or cancelled in your Apple Account settings.
-              </Text>
+              {storeKind !== 'mock' && (
+                <>
+                  <Button label={busy ? 'Working…' : 'Subscribe'} sound={null} onPress={() => void subscribe()} disabled={!caps.canPurchase || !product || busy} accessibilityHint="Opens the App Store purchase sheet" />
+                  <Text style={styles.legal}>
+                    Payment is charged to your Apple Account. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and can be managed or cancelled in your Apple Account settings.
+                  </Text>
+                </>
+              )}
             </View>
           )}
+
+          {storeKind === 'mock' && TestPurchasePanel && <TestPurchasePanel productId={product?.id} />}
 
           {message ? (
             <Text style={styles.message} accessibilityLiveRegion="polite">

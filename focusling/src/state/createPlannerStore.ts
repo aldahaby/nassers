@@ -44,6 +44,10 @@ import {
   skipPlan,
   syncReminderRules,
   updateAssignment,
+  resolveConditional,
+  chooseDueCandidate,
+  chooseDraftYear,
+  resolveDraftConditional,
   updateCourse,
   updateSupport,
   type AssignmentField,
@@ -122,6 +126,10 @@ export interface PlannerStoreState {
   cancelDraft(): void;
   /** Revised syllabus: "this is the same item as…" / "these are different". */
   linkDraftItem(key: string): void;
+  /** "Which year is this course?" when the syllabus disagrees with itself. */
+  chooseDraftYear(year: number): void;
+  /** "Which lecture were you assigned?" */
+  resolveDraftConditional(key: string, answer: { lecture: number } | { dayKey: string; label?: string }): void;
   unlinkDraftItem(key: string): void;
   setDraftDetails(patch: { save?: boolean; saveContacts?: boolean }): void;
   setDraftIdentity(patch: Partial<Pick<CourseIdentity, 'institution' | 'section'>>): void;
@@ -131,6 +139,8 @@ export interface PlannerStoreState {
   updateCourse(id: Id, patch: Partial<CourseInput>): void;
   addAssignment(input: AssignmentInput): Id;
   updateAssignment(id: Id, patch: AssignmentPatch): void;
+  resolveConditional(id: Id, anchorDayKey: string, anchorLabel: string | null): void;
+  chooseDueCandidate(id: Id, dayKey: string): void;
   confirmAssignment(id: Id): void;
   completeAssignment(id: Id): void;
   reopenAssignment(id: Id): void;
@@ -371,6 +381,14 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
         if (!d) return;
         set({ draft: { ...d, courses: d.courses.map((c) => (c.index === index ? { ...c, ...patch, name: patch.name ?? c.name } : c)) } });
       },
+      chooseDraftYear(year) {
+        const d = get().draft;
+        if (d) set({ draft: chooseDraftYear(d, year) });
+      },
+      resolveDraftConditional(key, answer) {
+        const d = get().draft;
+        if (d) set({ draft: resolveDraftConditional(d, key, answer) });
+      },
       linkDraftItem(key) {
         const d = get().draft;
         if (d) set({ draft: linkDraftItem(current(), d, key) });
@@ -415,6 +433,8 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
         return r.assignmentId;
       },
       updateAssignment: (id, patch) => commit(updateAssignment(current(), id, patch, now()).state),
+      resolveConditional: (id, anchorDayKey, anchorLabel) => commit(resolveConditional(current(), id, anchorDayKey, anchorLabel, now()).state),
+      chooseDueCandidate: (id, dayKey) => commit(chooseDueCandidate(current(), id, dayKey, now()).state),
       confirmAssignment: (id) => commit(confirmAssignment(current(), id, now())),
       completeAssignment: (id) => commit(completeAssignment(current(), id, now(), ids)),
       reopenAssignment: (id) => commit(reopenAssignment(current(), id, now())),

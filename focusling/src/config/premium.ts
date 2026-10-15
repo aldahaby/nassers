@@ -35,6 +35,6 @@ export const ALWAYS_FREE: readonly string[] = [
 
 /** Mock store (web and developer builds only): clearly labelled demo products. */
 export const MOCK_PRODUCTS = [
-  { id: PREMIUM_PRODUCTS.monthly, title: 'Focusling Premium (monthly)', displayPrice: 'Demo price', period: 'month' as const },
-  { id: PREMIUM_PRODUCTS.yearly, title: 'Focusling Premium (yearly)', displayPrice: 'Demo price', period: 'year' as const },
+  { id: PREMIUM_PRODUCTS.monthly, title: 'Studyling Premium (monthly) · TEST', displayPrice: 'Test price (no charge)', period: 'month' as const },
+  { id: PREMIUM_PRODUCTS.yearly, title: 'Studyling Premium (yearly) · TEST', displayPrice: 'Test price (no charge)', period: 'year' as const },
 ];

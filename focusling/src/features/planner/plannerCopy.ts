@@ -1,4 +1,4 @@
-import { dayKeyIn, toWallClock, type AssignmentType, type ConfidenceLevel, type Course, type ProtectionResult, type StartContext, type Timestamp, type TrustStatus } from '@/core';
+import { conditionalRuleText, dayKeyIn, toWallClock, type Assignment, type AssignmentType, type ConfidenceLevel, type Course, type DraftItem, type ImportDraft, type ProtectionResult, type StartContext, type TermSeason, type Timestamp, type TrustStatus } from '@/core';
 
 /** Plain-language labels for planner screens (no percentages, no guilt). */
 
@@ -22,11 +22,11 @@ export const TRUST_LABEL: Record<ConfidenceLevel, string> = { confirmed: 'Confir
 /** What Studyling knows about a value, in the student's words. */
 export const TRUST_STATUS_LABEL: Record<TrustStatus, string> = {
   confirmedByYou: 'Confirmed by you',
-  fromDocument: 'Confirmed from document',
-  inferred: 'Inferred from context',
-  needsReview: 'Needs your review',
-  conflicting: 'Conflicting information',
-  notSpecified: 'Not specified',
+  fromDocument: 'From your syllabus',
+  inferred: 'Worked out from context',
+  needsReview: 'Worth a quick check',
+  conflicting: 'Syllabus disagrees',
+  notSpecified: 'No date yet',
 };
 
 export function minuteRange(start: number | null, end: number | null): string {
@@ -115,4 +115,42 @@ export const COURSE_COLORS: readonly string[] = ['#5E41E0', '#1F8A55', '#C2410C'
 
 export function courseColor(c: Pick<Course, 'id' | 'color'> | undefined, index = 0): string {
   return c?.color ?? COURSE_COLORS[index % COURSE_COLORS.length]!;
+}
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Oct 29" (no weekday: used when the year, and so the weekday, isn't known yet). */
+export const monthDay = (month: number, day: number) => `${MONTHS_SHORT[month - 1]} ${day}`;
+
+/** "23:59" → "11:59 PM". */
+export function timeLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  return minuteLabel((h ?? 0) * 60 + (m ?? 0));
+}
+
+export function seasonYear(season: TermSeason, year: number): string {
+  return `${season[0]!.toUpperCase()}${season.slice(1)} ${year}`;
+}
+
+/** What a review row says about an item's date, in plain words. */
+export function draftDueText(item: DraftItem, draft: ImportDraft): string {
+  if (item.recurrence) return `Every ${WEEKDAYS_LONG[item.recurrence.weekday]}${item.dueTime ? ` · ${timeLabel(item.dueTime)}` : ''}`;
+  if (item.dueDayKey) return `${formatDayKey(item.dueDayKey)}${item.dueTime ? ` · ${timeLabel(item.dueTime)}` : ''}`;
+  if (item.conditional) return `Due ${conditionalRuleText(item.conditional)}`;
+  if (item.dueOptions?.length) return `${item.dueOptions.length} possible dates`;
+  if (item.reasons.includes('yearConflict') && item.writtenDate) return `${monthDay(item.writtenDate.month, item.writtenDate.day)} · year to confirm`;
+  if (item.window) return `Exam period ${formatDayKey(item.window.from)} – ${formatDayKey(item.window.to)}`;
+  if (item.reasons.includes('examPeriod')) return 'During the exam period (date not set yet)';
+  if (item.reasons.includes('tba')) return 'Date to be announced';
+  void draft;
+  return 'No date given';
+}
+
+/** The same for a saved assignment that has no date yet. */
+export function unresolvedText(a: Pick<Assignment, 'unresolved' | 'conditional' | 'dueCandidates'>): string {
+  if (a.conditional && !a.conditional.anchorDayKey) return `Due ${conditionalRuleText(a.conditional)}`;
+  if (a.dueCandidates?.length) return `${a.dueCandidates.length} possible dates: pick one`;
+  if (a.unresolved === 'examPeriod') return 'During the exam period (date not set yet)';
+  if (a.unresolved === 'tba') return 'Date to be announced';
+  return 'No date yet';
 }

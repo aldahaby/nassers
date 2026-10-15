@@ -30,7 +30,10 @@ export type ReviewReason =
   | 'recurringRange'
   | 'tentative'
   | 'examPeriod'
-  | 'timeZoneStated';
+  | 'timeZoneStated'
+  | 'yearConflict'
+  | 'conditional'
+  | 'weekdayMismatch';
 
 /**
  * How Studyling knows a value (shown to the student):
@@ -89,6 +92,8 @@ export interface CourseIdentity {
   title: string | null;
   term: { season: TermSeason; year: number } | null;
   section: string | null;
+  /** Credit weight, when stated ("3 credits"). */
+  credits?: number | null;
 }
 
 export interface CoursePerson {
@@ -113,7 +118,44 @@ export interface ClassMeeting {
   weekday: number;
   startMinute: number | null;
   endMinute: number | null;
+  /** Room/building when stated ("McMed 522"). */
+  location?: string | null;
   provenance: SourceProvenance;
+}
+
+/** One dated lecture from a lecture schedule (the year is resolved with the term). */
+export interface LectureEntry {
+  number: number;
+  month: number;
+  day: number;
+  /** Weekday as written, if any (used to check the year). */
+  weekday: number | null;
+  topic: string;
+  provenance: SourceProvenance;
+}
+
+/**
+ * The academic year question. A syllabus can say "Fall 2025" in its heading and
+ * use 2026 dates elsewhere; Studyling shows the evidence and asks, never picks.
+ */
+export interface YearEvidence {
+  year: number;
+  kind: 'heading' | 'explicitDate' | 'weekday';
+  /** Plain words, e.g. "“Tuesday, October 20” falls on a Tuesday in 2026". */
+  note: string;
+  provenance: SourceProvenance;
+}
+
+export interface YearAnalysis {
+  /** The student's answer when the years conflict. */
+  chosen?: number | null;
+  /** Academic (term-start) year from the heading, if any. */
+  termYear: number | null;
+  season: TermSeason | null;
+  /** Distinct academic years the document points to. */
+  options: number[];
+  conflict: boolean;
+  evidence: YearEvidence[];
 }
 
 export interface GradingComponent {
@@ -159,8 +201,11 @@ export interface KeyDate {
 }
 
 export interface PolicyRef {
-  /** Heading only, e.g. "Late submission policy". No policy text is stored. */
+  /** Heading, e.g. "Late submission policy". */
   title: string;
+  kind?: 'late' | 'ai' | 'integrity' | 'submission' | 'attendance' | 'accommodation' | 'other';
+  /** The policy's first sentence or two, as written (short; kept only with course details). */
+  summary?: string | null;
   provenance: SourceProvenance;
 }
 
@@ -174,6 +219,10 @@ export interface SyllabusInsights {
   coverage: CoverageRelation[];
   keyDates: KeyDate[];
   policies: PolicyRef[];
+  /** Dated lectures (for "which lecture were you assigned?"). */
+  lectures?: LectureEntry[];
+  /** Year evidence for this document. */
+  years?: YearAnalysis;
 }
 
 /** What a course keeps from its syllabus after review (local only). */

@@ -90,4 +90,102 @@ Reading week: October 12-16`,
   ].join('\f'),
 };
 
-export const OUTLINE_FIXTURES: readonly OutlineFixture[] = [US_OUTLINE, CA_OUTLINE];
+
+/**
+ * BIOL 115 regression fixture: RECONSTRUCTED from the facts reported about a
+ * real McGill syllabus (the original file is not in this repository). It keeps
+ * the reported imperfections: a Fall 2025 heading with 2026 dates, weekday/date
+ * mismatches, deadlines tied to each student's assigned lecture, a final exam
+ * with no date, a grading list that doesn't total 100%, a prerequisite line
+ * naming BIOL 112, running headers/footers, and prose like "The midterm will be
+ * written…" and "uploaded to myCourses Assignment 3 tab". Replace with the real
+ * text when it is available.
+ */
+export const BIOL115_RECONSTRUCTED: OutlineFixture = {
+  id: 'biol115-reconstructed',
+  label: 'BIOL 115 (reconstructed McGill outline with conflicts)',
+  timezone: 'America/Toronto',
+  referenceAt: Date.UTC(2026, 7, 25, 16, 0),
+  text: [
+    `McGill University
+Faculty of Science
+BIOL 115 Essential Biology (3 credits)
+Fall 2025 Course Outline
+Instructors
+Dr. Gemma de Martino (gemma.demartino@example.edu)
+Dr. Sarah Woolley (sarah.woolley@example.edu)
+Class schedule
+Tuesdays and Thursdays, 8:35–9:55 AM
+Location: McMed 522
+Prerequisites and restrictions
+BIOL 112 or equivalent may not be taken for credit with this course. Not open to students who have taken BIOL 112.
+Course description
+An introduction to the essential principles of biology for students without a background in the life sciences.
+BIOL 115 · Fall 2025 · Page 1`,
+    `BIOL 115 · Fall 2025 · Page 2
+Evaluation
+Assignment 1 – Multiple-choice questions and answers 5%
+Assignment 2 – Fun Fact 10%
+Assignment 3 – Literature Assignment A 15%
+Assignment 4 – Literature Assignment B (video) 20%
+Midterm exam 20%
+Final exam
+Assignment 1: Multiple-choice questions and answers (5%)
+Write three multiple-choice questions, with answers, about the content of your assigned lecture.
+Due five days after your assigned lecture, by 11:59 PM, through myCourses.
+Assignment 2: Fun Fact (10%)
+Find one surprising, well-sourced fact related to your assigned lecture topic and write a short paragraph explaining it.
+The Fun Fact is due three days before your assigned lecture.
+BIOL 115 · Fall 2025 · Page 2`,
+    `BIOL 115 · Fall 2025 · Page 3
+Assignment 3: Literature Assignment A (15%)
+Read the assigned primary research article and write a 500-word summary of its research question, methods and main findings.
+Your summary must be uploaded to myCourses Assignment 3 tab by November 24, 2026 at 11:59 PM.
+Assignment 4: Literature Assignment B – Video (20%)
+Create a 2.5–3 minute video presenting a research article of your choice.
+Include the research question, methods, results, implications, and a creative component.
+Submit the required reference document together with your video.
+The video must be uploaded to myCourses Assignment 4 tab by Thursday, October 29 at 11:59 PM.
+Midterm exam
+The midterm will be written on Tuesday, October 20, from 7–9 PM. It covers lectures 1–10.
+Final exam
+The final exam will take place during the final examination period. The date will be set by Enrolment Services.
+BIOL 115 · Fall 2025 · Page 3`,
+    `BIOL 115 · Fall 2025 · Page 4
+Late policy
+Late assignments lose 10% per day, including weekends. Work submitted more than five days late will not be accepted.
+Use of generative AI
+Generative AI tools may not be used to write any part of a graded assignment. You may use them to check grammar only.
+Academic integrity
+McGill University values academic integrity. All students must understand the meaning and consequences of cheating, plagiarism and other academic offences.
+Lecture schedule (tentative)
+Tuesday, September 2 | Introduction: What is life?
+Thursday, September 4 | Cells and organelles
+Tuesday, September 9 | Membranes and transport
+Thursday, September 11 | Energy and metabolism
+Tuesday, September 16 | DNA structure and replication
+BIOL 115 · Fall 2025 · Page 4`,
+  ].join('\f'),
+};
+
+/** A UK-style module handbook: "Module", day-first numeric dates, "Coursework" and "Deadline" wording. */
+export const UK_OUTLINE: OutlineFixture = {
+  id: 'uk-outline',
+  label: 'UK module handbook (Riverside University, ECON1002)',
+  timezone: 'Europe/London',
+  referenceAt: Date.UTC(2026, 8, 1, 9, 0),
+  text: `Riverside University
+ECON1002 Principles of Economics
+Autumn 2026
+Module leader: Dr. P. Okonkwo
+Lectures: Mondays 10:00-11:00, Room LT2
+Assessment
+Coursework 1 (problem set) 20%
+Coursework 2 (essay) 30%
+Examination 50%
+Coursework 1 deadline: 23/10/2026 at 12:00
+Coursework 2 deadline: 27/11/2026 at 12:00
+Examination: January examination period (date to be published)`,
+};
+
+export const OUTLINE_FIXTURES: readonly OutlineFixture[] = [US_OUTLINE, CA_OUTLINE, BIOL115_RECONSTRUCTED, UK_OUTLINE];

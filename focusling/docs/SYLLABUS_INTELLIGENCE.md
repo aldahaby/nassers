@@ -1,4 +1,4 @@
-# Syllabus Intelligence 2.0
+# Syllabus Intelligence (parser 3.0: academic reading)
 
 Studyling reads a syllabus **on the device** and turns it into something the student reviews:
 course details, deadlines, grading and weekly structure. Nothing is planned until the student
@@ -11,7 +11,11 @@ file ──► core/documents (type check, DOCX, size/zip-bomb limits, readabili
                         conflicts, recurrence, weights, stated time zones, explicit coverage)
      ──► syllabusInsights (course identity, people, office hours, class times, grading,
                            weekly topics, "X covers Weeks 1–5", key dates, policy headings)
-     ──► import draft (trust status per item, revision matching, course-detail diffs)
+     ──► academicReading (named assessments from headings/grading rows, their own sections:
+                          requirements, submission, coverage; conditional deadlines;
+                          year evidence; dated lecture list)
+     ──► import draft (catalog merged over parser lines, year placement, trust status per
+                       item, revision matching, course-detail diffs)
      ──► student review ──► commit (planner schema 3) ──► Planner, Lock-In, Stats, Journey
 ```
 
@@ -64,21 +68,67 @@ file ──► core/documents (type check, DOCX, size/zip-bomb limits, readabili
   for review.
 - **Weekly activities** (tutorials every Thursday) are class meetings, not assignments.
 
+## Academic reading (parser 3.0)
+
+Rebuilt after a real syllabus (McGill BIOL 115) was badly misread: wrong course code (the
+BIOL 112 prerequisite), no instructors, no class times, sentence fragments as titles ("uploaded to
+myCourses Assignment 3 tab"), only some items, and the year silently defaulted.
+
+- **Course identity:** prerequisite/restriction lines are never the course; when several codes
+  appear, the most frequent heading code wins. Credits are read ("3 credits").
+- **People and class times** are read under headings ("Instructors", "Class schedule") as well as
+  from labels, including several names on one label. Location comes from the same or next line.
+- **Named assessments** (`buildCatalog`): headings and grading rows ("Assignment 3: Literature
+  Assignment A (15%)", "Final examination | 50% | TBA") define items. Each item owns the lines
+  below its heading until the next heading. Lines elsewhere that name it ("The midterm will be
+  written on…") add dates. Titles are "Assignment 3 — Literature Assignment A", never a sentence.
+  Category rows ("Homework (8 x 4%)") are groups, not items.
+- **Conditional deadlines:** "due three days before your assigned lecture" is saved as a rule with
+  no date. Review asks "Which lecture were you assigned?". The answer can be picked from the
+  syllabus's lecture list or given as a date, and the deadline is then worked out. A rule is never
+  turned into a fake fixed date.
+- **Years:** evidence comes from the heading, explicitly written years, and weekday + date pairs
+  ("Thursday, October 29" is a Thursday only in 2026). When the evidence disagrees, nothing that
+  depends on the year gets a date until the student answers "Which year is this course?" (with
+  the evidence one tap away). Dates written with a year that disagrees become a choice. After the
+  answer, any weekday that doesn't match is flagged ("The syllabus says Tuesday, but October 20,
+  2025 is a Monday"). A student's own date edit is never moved by a year answer.
+- **Weights** that are missing are never filled in. A grading list that doesn't reach 100% is
+  explained ("adds up to 70%… Final Exam has no weight in the syllabus").
+
 ## Trust statuses (no fake percentages)
 
 | Status | Meaning |
 |---|---|
 | Confirmed by you | The student edited or confirmed it |
-| Confirmed from document | Stated in the syllabus |
-| Inferred from context | Worked out (e.g. the year), with the note shown |
-| Needs your review | Ambiguous, tentative, time zone, OCR damage… (the reason is shown in words) |
-| Conflicting information | The syllabus gives two different values |
-| Not specified | The syllabus doesn't say (TBA, exam period only) |
+| From your syllabus | Stated in the syllabus (no badge shown in the date list) |
+| Worked out from context | Worked out (e.g. the year), with the note shown |
+| Worth a quick check | Ambiguous, tentative, time zone, OCR damage… (the reason is shown in words) |
+| Syllabus disagrees | The syllabus gives two different values |
+| No date yet | The syllabus doesn't say (TBA, exam period only, conditional) |
 
 Each item shows its source page and line. During review it also shows the original line as a
 quote; that quote is held in memory only and never saved.
 
 ## Review → planner
+
+The review leads with **"Your syllabus is ready!"**:
+
+1. **Course overview:** name, code, credits, term, institution, instructors, class times and
+   location, grading. "More course details" opens the rest (section, office hours, lectures,
+   policies with their summaries, email toggle).
+2. **Needs your attention:** only real questions (which year, which lecture, which of two dates,
+   an item with no date, a weekday that doesn't match, a grading list that doesn't add up), each
+   with its answer controls right there.
+3. **Important dates:** every item sorted by date, undated ones last with the reason in words.
+   Tapping an item shows what to do, how to submit, coverage, notes, the page it came from, and
+   the editors.
+4. **"Review & add to planner"** opens a confirm step listing exactly what will be added. The
+   button says "Add N items", and N is the number saved. Items without a date are saved as
+   requirements and never planned or reminded until they have one.
+
+Import diagnostics (parser version, header lines ignored, year evidence, per-item reasons) are
+shown only when Developer tools are on.
 
 - The student can edit the course details (institution, section), choose whether to save them,
   and choose whether to include email addresses (off by default).
@@ -153,19 +203,28 @@ No mock AI output is ever shown as real.
 
 - `core/documents/`: `inflate`, `zip`, `docx`, `documentText` (sniff, readability, headers)
 - `services/documents/readDocument.ts`: the shared reader used by the web and iOS services
-- `core/planner/syllabusParser.ts` (parser 2.0), `syllabusInsights.ts`, `syllabusImport.ts`,
+- `core/planner/syllabusParser.ts` (line parser), `academicReading.ts` (catalog, conditional
+  deadlines, years, lectures), `syllabusInsights.ts`, `syllabusImport.ts` (`applyCatalog`,
+  `chooseDraftYear`, `resolveDraftConditional`, `draftAttention`), `plannerService.ts`
+  (`resolveConditional`, `chooseDueCandidate`),
   `courseIdentity.ts`
 - `config/documents.ts`, `config/planner.ts` (`TENTATIVE_WORDS`, `RELEASE_WORDS`,
   `ZONE_ABBREVIATIONS`, `REVISION_MATCH`)
 - UI: `features/planner/SyllabusReview.tsx`, `CourseInsightsReview.tsx`, `CourseDetail.tsx`
   (route `planner/course/[id]`), `AssignmentDetail.tsx`, and the `features/focus/ActiveSession`
   study line
-- Fixtures: `core/planner/fixtures/courseOutlines.ts` (synthetic US and Canadian outlines)
+- Fixtures: `core/planner/fixtures/courseOutlines.ts` (synthetic US, Canadian and UK outlines,
+  plus `BIOL115_RECONSTRUCTED`)
 - Tests: `core/__tests__/documents/*`, `core/__tests__/planner/insights.test.ts`,
-  `intelligence.test.ts`, `stats/journey.test.ts`, `state/__tests__/plannerStore.test.ts`,
-  browser suite m14
+  `intelligence.test.ts`, `academic.test.ts` (BIOL 115 acceptance, other syllabi, malformed
+  input), `stats/journey.test.ts`, `state/__tests__/plannerStore.test.ts`, browser suites m14 and
+  m15
 
 ## Limitations
+
+- **The real BIOL 115 file has not been tested.** The regression fixture is *reconstructed* from
+  the reported facts (names, dates, weights, wording) and labelled as such. It should be replaced
+  by the real document (with permission) when available.
 
 - PDF, scanned PDF and photo reading are iOS-only and have **not been run on a device**.
 - Rules recognise common English layouts (US/Canadian). Unusual layouts, non-English syllabi and

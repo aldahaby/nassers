@@ -66,7 +66,7 @@ describe('import draft and review', () => {
     const draft = createImportDraft(s0, { text: AMBIGUOUS.text, sourceType: 'pdf', timezone: TZ, now: NOW });
     const { state } = commitImport(s0, draft, { now: NOW, ids, keepOriginal: false });
     expect(Object.values(state.assignments).every((a) => a.reviewState === 'needsReview')).toBe(true);
-    const tba = Object.values(state.assignments).find((a) => a.title === 'Final exam')!;
+    const tba = Object.values(state.assignments).find((a) => /^final exam$/i.test(a.title))!;
     expect(tba.dueAt).toBeUndefined();
   });
 

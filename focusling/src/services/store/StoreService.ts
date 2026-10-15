@@ -24,7 +24,7 @@ export type PurchaseOutcome =
  * The purchase boundary (docs/PREMIUM.md). The app never decides Premium on its
  * own: it asks the store. Implementations:
  * - NativeStoreService: StoreKit 2 via the `FocuslingStore` Expo module (iOS);
- * - MockStoreService: web/dev demo provider (purchases only with Developer tools);
+ * - MockStoreService: the TEST store (simulated purchases), only in test builds;
  * - UnavailableStoreService: no store (everything stays Free, previews still work).
  */
 export interface StoreService {
@@ -41,4 +41,20 @@ export interface StoreService {
   showManageSubscriptions(): Promise<boolean>;
   /** Transactions changed outside the app (renewal, refund, Ask to Buy approval, other device). */
   onEntitlementChange(listener: (e: EntitlementState) => void): () => void;
+}
+
+/** How the next simulated purchase ends (test store only). */
+export type TestOutcome = 'success' | 'failed' | 'cancelled' | 'pending';
+
+/** Controls only the test store has. Test builds only; production bundles don't contain that store. */
+export interface TestStoreControls {
+  setNextOutcome(outcome: TestOutcome): void;
+  simulate(status: 'expired' | 'revoked' | 'inactive'): Promise<void>;
+  prepareRestore(productId: string): Promise<void>;
+  reset(): Promise<void>;
+}
+
+/** The test store's controls, or null for any real/unavailable store. */
+export function testStoreControls(store: StoreService): (StoreService & TestStoreControls) | null {
+  return store.kind === 'mock' ? (store as StoreService & TestStoreControls) : null;
 }

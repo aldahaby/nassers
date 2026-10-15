@@ -1,16 +1,16 @@
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { assignmentProgress, assignmentTrustStatus, capacityFor, dayKeyIn, describeReason, isSchedulable, timeOfDay, type AssignmentField } from '@/core';
+import { assignmentProgress, assignmentTrustStatus, capacityFor, conditionalQuestion, conditionalRuleText, dayKeyIn, describeReason, isSchedulable, lectureDayKey, timeOfDay, type Assignment, type AssignmentField, type Course } from '@/core';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
 import { useActiveSession, usePlannerStore } from '@/state';
 import { Button, Card, colors, radius, spacing, typography } from '@/ui';
-import { DateField, EffortField, TimeField, TypeChips } from './AssignmentFields';
+import { Chips, DateField, EffortField, TimeField, TypeChips } from './AssignmentFields';
 import { CapacityNote } from './CapacityNote';
 import { PlanRow } from './PlanCard';
 import { CourseTag, InfoNote, SectionTitle, StatusPill } from './PlannerBits';
-import { formatClock, formatDay, formatDue, formatMinutes, START_CONTEXT_LABEL, TYPE_LABEL } from './plannerCopy';
+import { formatClock, formatDay, formatDayKey, formatDue, formatMinutes, START_CONTEXT_LABEL, timeLabel, TYPE_LABEL, unresolvedText } from './plannerCopy';
 
 /** Official requirement vs the student's own task (Studyling's plan suggestions are labelled separately). */
 const SOURCE_LABEL = { parser: 'From your syllabus · needs review', syllabus: 'Course requirement · from your syllabus', lms: 'From your class site', user: 'Added by you' } as const;
@@ -60,7 +60,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
         </View>
         <Text style={typography.title}>{a.title}</Text>
         <Text style={styles.meta}>
-          {TYPE_LABEL[a.type]} · {formatDue(a.dueAt, a.dueDateOnly, tz, now)}
+          {TYPE_LABEL[a.type]} · {a.dueAt ? formatDue(a.dueAt, a.dueDateOnly, tz, now) : unresolvedText(a)}
           {a.status === 'completed' ? ' · Done' : ''}
         </Text>
         <Text style={styles.muted}>
@@ -69,7 +69,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
           {a.provenance ? ` · page ${a.provenance.page ?? 1}, line ${a.provenance.line}` : ''}
         </Text>
         {a.missingFromSource && <Text style={styles.reason}>The latest syllabus doesn’t list this anymore.</Text>}
-        {a.unresolved && (
+        {(a.unresolved === 'examPeriod' || a.unresolved === 'tba') && (
           <Text style={styles.reason}>
             {a.unresolved === 'examPeriod' && a.window ? `Only the exam period is known (${formatDay(a.window.from, tz)} – ${formatDay(a.window.to, tz)}). Add the date when it’s announced.` : 'The syllabus doesn’t give a date yet. Add it when it’s announced.'}
           </Text>
@@ -79,7 +79,12 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
             {n}
           </Text>
         ))}
-        {(a.reviewReasons ?? []).map((r) => (
+        {(a.attentionNotes ?? []).map((n) => (
+          <Text key={n} style={styles.reason}>
+            {n}
+          </Text>
+        ))}
+        {(a.reviewReasons ?? []).filter((r) => r !== 'conditional' && r !== 'yearConflict').map((r) => (
           <Text key={r} style={styles.reason}>
             {describeReason(r)}
           </Text>
@@ -98,13 +103,45 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
           </Card>
         ))}
 
+      {a.conditional && !a.conditional.anchorDayKey && a.status === 'open' && <ConditionalCard a={a} course={course} />}
+
+      {a.dueCandidates && a.dueCandidates.length > 0 && !a.dueAt && (
+        <Card>
+          <Text style={typography.heading}>Which date is right?</Text>
+          <Text style={styles.body}>The syllabus doesn’t agree with itself about this date. Pick the one that fits your course; Studyling won’t plan it until you do.</Text>
+          {a.dueCandidates.map((c) => (
+            <Button key={c.dayKey} label={`${formatDayKey(c.dayKey)}, ${c.dayKey.slice(0, 4)}${c.time ? ` · ${timeLabel(c.time)}` : ''}`} variant="secondary" accessibilityHint={c.note} onPress={() => store.chooseDueCandidate(a.id, c.dayKey)} />
+          ))}
+        </Card>
+      )}
+
       {a.reviewState === 'needsReview' && !editing && (
         <InfoNote icon="book">This item needs a quick look before Studyling plans it or sends any reminder.{a.dueAt ? '' : ' Add its due date.'}</InfoNote>
       )}
 
-      {(a.weight !== undefined || a.availableAt || a.coverage) && (
+      {(a.weight !== undefined || a.availableAt || a.coverage || a.requirements?.length || a.submission || a.conditional) && (
         <Card>
           <SectionTitle>From the syllabus</SectionTitle>
+          {a.conditional && (
+            <Text style={styles.body}>
+              {`Due ${conditionalRuleText(a.conditional)}${a.conditional.time ? ` at ${timeLabel(a.conditional.time)}` : ''}.`}
+              {a.conditional.anchorDayKey ? ` You said yours is ${a.conditional.anchorLabel ?? formatDayKey(a.conditional.anchorDayKey)}.` : ''}
+            </Text>
+          )}
+          {a.requirements && a.requirements.length > 0 && (
+            <View style={styles.list}>
+              <Text style={styles.listLabel}>What to do</Text>
+              {a.requirements.map((r) => (
+                <Text key={r} style={styles.body}>{`• ${r}`}</Text>
+              ))}
+            </View>
+          )}
+          {a.submission && (
+            <View style={styles.list}>
+              <Text style={styles.listLabel}>How to submit</Text>
+              <Text style={styles.body}>{a.submission}</Text>
+            </View>
+          )}
           {a.weight !== undefined && <Text style={styles.body}>{`Worth ${a.weight}% of the final grade`}</Text>}
           {a.availableAt && <Text style={styles.body}>{`Released ${formatDay(a.availableAt, tz)}`}</Text>}
           {a.coverage && (
@@ -262,6 +299,34 @@ function formatSourceDate(v: string, tz: string) {
   return Number.isFinite(n) && n > 0 ? `${formatDay(n, tz)}, ${formatClock(n, tz)}` : 'no date';
 }
 
+/** "Which lecture were you assigned?" on a saved assignment. The answer counts as the student's own edit. */
+function ConditionalCard({ a, course }: { a: Assignment; course: Course | undefined }) {
+  const store = usePlannerStore.getState();
+  const c = a.conditional!;
+  const lectures = course?.details?.lectures ?? [];
+  const years = course?.details?.years;
+  const usable = c.anchorKind === 'lecture' && lectures.length > 0 && years && lectureDayKey(years, lectures[0]!) !== null;
+  return (
+    <Card>
+      <Text style={typography.heading}>{conditionalQuestion(c)}</Text>
+      <Text style={styles.body}>{`This is due ${conditionalRuleText(c)}, so its date depends on you. Answer once and Studyling works out the deadline.`}</Text>
+      {usable ? (
+        <Chips
+          label="Your lecture"
+          options={lectures.map((l) => ({ value: l.number, label: `${l.number}. ${formatDayKey(lectureDayKey(years!, l)!)}: ${l.topic}` }))}
+          value={null}
+          onChange={(n) => {
+            const l = lectures.find((x) => x.number === n)!;
+            store.resolveConditional(a.id, lectureDayKey(years!, l)!, `Lecture ${l.number}: ${l.topic}`);
+          }}
+        />
+      ) : (
+        <DateField label={c.anchorKind === 'lecture' ? 'Your lecture date' : 'The date it depends on'} value={null} onChange={(k) => k && store.resolveConditional(a.id, k, null)} />
+      )}
+    </Card>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value}`}>
@@ -272,6 +337,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  list: { gap: 4 },
+  listLabel: { ...typography.label, color: colors.text },
   inference: { fontSize: 13, color: '#4A3F8F', marginTop: 2 },
   kicker: { ...typography.label, color: colors.primaryDark },
   wrap: { gap: spacing.md },

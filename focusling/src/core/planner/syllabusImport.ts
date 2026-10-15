@@ -1,11 +1,12 @@
 import { PARSER_VERSION, PLAN_TYPE_FOR, PLANNER_RULES, REVISION_MATCH, type ParserVersion } from '@/config/planner';
 import { sha256Hex } from '../shared/sha256';
-import type { Assignment, AssignmentType, ConfidenceLevel, Course, CourseDetails, Id, Inference, PlannerState, ReviewReason, SourceProvenance, SourceValues, Syllabus, SyllabusInsights, SyllabusSourceType, Timestamp } from '../models';
+import type { Assignment, AssignmentType, ConditionalDeadline, ConfidenceLevel, Course, CourseDetails, Id, Inference, LectureEntry, PlannerState, ReviewReason, SourceProvenance, SourceValues, Syllabus, SyllabusInsights, SyllabusSourceType, Timestamp, YearAnalysis } from '../models';
 import { stripRunningHeaders } from '../documents/documentText';
 import { extractInsights } from './syllabusInsights';
+import { academicYearOf, analyzeYears, buildCatalog, calendarYearOf, cleanItemTitle, termDayKey, entryMentionedIn, readLines, weekdayMismatch, type CatalogEntry } from './academicReading';
 import { logEvent, type IdGen } from './plannerState';
 import { applySourceUpdate } from './sourceAuthority';
-import { normalizeTitle, parseSyllabus, worst, type Candidate, type CourseGuess } from './syllabusParser';
+import { datesInLine, normalizeTitle, parseSyllabus, worst, type Candidate, type CourseGuess } from './syllabusParser';
 import { addDays, atMinute, weekdayOfKey } from './time';
 
 /**
@@ -64,6 +65,17 @@ export interface DraftItem {
   coverage: { weeks: { from: number; to: number } | null; chapters: string | null; topics: string[] } | null;
   /** Revised syllabus: a new item that might be a renamed existing one. The student decides. */
   possibleMatch?: { assignmentId: Id; title: string };
+  /** The named assessment this item is (academic reading), e.g. "assignment4". */
+  catalogKey?: string;
+  /** The date as written (month/day, year only if the syllabus gave one), so a year answer can place it. */
+  writtenDate?: { month: number; day: number; explicitYear: number | null; text: string } | null;
+  /** "Due 3 days before your assigned lecture": no date until the student answers. */
+  conditional?: ConditionalDeadline | null;
+  /** The item's own sentences: what to hand in, and how. */
+  requirements?: string[];
+  submission?: string | null;
+  /** Inconsistencies worth telling the student about (weekday/date mismatch). */
+  notes?: string[];
 }
 
 /** What a student sees about one value: what Studyling knows, and what it doesn't. */
@@ -100,6 +112,8 @@ export interface ImportDraft {
   detailsDiff: DetailDiff[];
   /** Running header/footer lines ignored (repeated on most pages). */
   ignoredHeaderLines: number;
+  /** Year evidence; when the document disagrees with itself the student picks (`chosen`), never a silent default. */
+  years: YearAnalysis;
 }
 
 export interface CreateDraftInput {
@@ -161,7 +175,12 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
   const titleCounts = new Map<string, number>();
   parsed.candidates.forEach((c) => titleCounts.set(`${c.courseIndex}|${c.normalizedTitle}`, (titleCounts.get(`${c.courseIndex}|${c.normalizedTitle}`) ?? 0) + 1));
 
-  const items: DraftItem[] = parsed.candidates.map((c) => toDraftItem(c, courses[c.courseIndex]!, (titleCounts.get(`${c.courseIndex}|${c.normalizedTitle}`) ?? 1) > 1, insights));
+  let items: DraftItem[] = parsed.candidates.map((c) => toDraftItem(c, courses[c.courseIndex]!, (titleCounts.get(`${c.courseIndex}|${c.normalizedTitle}`) ?? 1) > 1, insights));
+  // Academic reading (current parser only; older versions stay comparable in Syllabus Lab).
+  const academic = parsed.parserVersion === PARSER_VERSION && courses.length === 1;
+  const lines = readLines(cleaned.text);
+  const years: YearAnalysis = { ...(insights.years ?? analyzeYears(lines)), chosen: null };
+  if (academic) items = applyCatalog(items, buildCatalog(lines), courses[0]!, insights, years);
 
   const primary = courses[0]!;
   const prior = primary.existingCourseId
@@ -188,8 +207,9 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
     details: { save: true, saveContacts: false },
     detailsDiff: primary.existingCourseId ? diffDetails(state.courses[primary.existingCourseId]?.details ?? null, insights) : [],
     ignoredHeaderLines: cleaned.removed,
+    years,
   };
-  return reconcileDraft(state, draft);
+  return reconcileDraft(state, academic ? placeYears(draft) : draft);
 }
 
 /** Coverage for an item: its own line first, then an explicit "X covers Y" line; topics come from those weeks of the schedule. */
@@ -227,6 +247,305 @@ function toDraftItem(c: Candidate, course: DraftCourse, series: boolean, insight
     statedZone: c.statedZone ?? null,
     coverage: coverageFor(c, insights),
   };
+}
+
+// ── Academic reading → draft ────────────────────────────────────────
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function blankItem(e: CatalogEntry, course: DraftCourse): DraftItem {
+  return {
+    key: `catalog-${e.key}`,
+    courseIndex: course.index,
+    title: e.title,
+    type: e.type,
+    dueDayKey: null,
+    dueTime: null,
+    estimatedMinutes: null,
+    include: true,
+    confidence: { title: 'likely', type: 'likely', due: 'needsReview' },
+    reasons: [],
+    provenance: [e.provenance],
+    snippet: e.dates[0]?.text ?? e.conditional?.anchor ?? e.title,
+    fingerprint: '',
+    change: 'new',
+    inferences: [],
+    availableDayKey: null,
+    window: null,
+    weightPercent: null,
+    statedZone: null,
+    coverage: null,
+  };
+}
+
+/** "lectures 1–10" → those lectures' topics, when the syllabus lists them. */
+function coverageFromText(text: string | null, lectures: LectureEntry[]): DraftItem['coverage'] {
+  if (!text) return null;
+  const m = /lectures?\s+(\d{1,2})\s*(?:[–—-]|to|through)\s*(\d{1,2})/i.exec(text);
+  const topics = m ? lectures.filter((l) => l.number >= Number(m[1]) && l.number <= Number(m[2])).map((l) => l.topic) : [];
+  return { weeks: null, chapters: text, topics };
+}
+
+/**
+ * Named assessments replace sentence fragments: "The video must be uploaded to
+ * myCourses Assignment 4 tab" becomes "Assignment 4 — Literature Assignment B",
+ * with its weight, requirements and submission method. Assessments the line
+ * parser missed (conditional deadlines, undated ones) are added, never dated
+ * by guesswork.
+ */
+function applyCatalog(items: DraftItem[], catalog: CatalogEntry[], course: DraftCourse, insights: SyllabusInsights, years: YearAnalysis): DraftItem[] {
+  const out: DraftItem[] = [];
+  const consumed = new Set<string>();
+  const merged = new Map<string, DraftItem>();
+  const courseKey = courseKeyOf(course);
+  const lectures = insights.lectures ?? [];
+  for (const e of catalog) {
+    const matches = items.filter((i) => !consumed.has(i.key) && i.change !== 'removed' && (normalizeTitle(i.title) === normalizeTitle(e.base) || normalizeTitle(i.title) === normalizeTitle(e.title) || (entryMentionedIn(e, i.title) && (i.type === e.type || cleanItemTitle(i.title, i.type) !== i.title))));
+    matches.forEach((i) => consumed.add(i.key));
+    const target = matches[0];
+    const due = e.dates.find((d) => d.role !== 'release') ?? null;
+    const release = e.dates.find((d) => d.role === 'release') ?? null;
+    const base = target ?? blankItem(e, course);
+    const reasons = new Set<ReviewReason>(base.reasons.filter((r) => r !== 'typeUnknown'));
+    if (e.tentative) reasons.add('tentative');
+    const item: DraftItem = {
+      ...base,
+      title: e.title,
+      type: e.type,
+      catalogKey: e.key,
+      weightPercent: e.weightPercent ?? base.weightPercent,
+      requirements: e.requirements,
+      submission: e.submission,
+      conditional: null,
+      fingerprint: fingerprintOf(courseKey, normalizeTitle(e.title)),
+      confidence: { ...base.confidence, title: 'likely', type: 'likely' },
+      coverage: base.coverage ?? coverageFromText(e.coverage, lectures),
+      provenance: [...new Map([...base.provenance, e.provenance].map((p) => [`${p.page}:${p.line}`, p])).values()],
+    };
+    if (due) {
+      item.writtenDate = { month: due.month, day: due.day, explicitYear: due.explicitYear, text: due.text };
+      item.dueTime = due.time ?? (target && target.dueDayKey?.endsWith(`-${pad2(due.month)}-${pad2(due.day)}`) ? target.dueTime : null);
+      if (!item.dueDayKey || !item.dueDayKey.endsWith(`-${pad2(due.month)}-${pad2(due.day)}`)) item.dueDayKey = years.termYear !== null ? termDayKey(due.month, due.day, due.explicitYear !== null ? academicYearOf(due.month, due.explicitYear, years.season) : years.termYear, years.season) : null;
+      if (!target && item.dueDayKey) item.confidence.due = reasons.has('tentative') ? 'needsReview' : 'likely';
+      // Other lines naming the same item with a different date: the student picks.
+      const statedDays = years.termYear !== null ? e.dates.filter((d) => d.role !== 'release' && d !== due).map((d) => termDayKey(d.month, d.day, d.explicitYear !== null ? academicYearOf(d.month, d.explicitYear, years.season) : years.termYear!, years.season)) : [];
+      const otherDays = [...matches.map((m) => m.dueDayKey), ...statedDays].filter((k): k is string => Boolean(k) && k !== item.dueDayKey);
+      if (otherDays.length && item.dueDayKey) {
+        item.dueOptions = [...new Set([item.dueDayKey, ...otherDays])].sort();
+        reasons.add('conflictingDates');
+        item.confidence.due = 'needsReview';
+      }
+      if (release && years.termYear !== null && !item.availableDayKey) item.availableDayKey = termDayKey(release.month, release.day, release.explicitYear !== null ? academicYearOf(release.month, release.explicitYear, years.season) : years.termYear, years.season);
+    } else if (e.conditional) {
+      item.conditional = { ...e.conditional };
+      item.dueDayKey = null;
+      item.dueOptions = undefined;
+      item.dueTime = e.conditional.time;
+      item.window = null;
+      item.confidence.due = 'needsReview';
+      reasons.add('conditional');
+    } else if (e.examPeriod) {
+      item.dueDayKey = null;
+      item.dueTime = null;
+      item.dueOptions = undefined;
+      item.confidence.due = 'needsReview';
+      reasons.add('examPeriod');
+      if (!item.window && e.examPeriod.start && e.examPeriod.end && years.termYear !== null) {
+        const y = (d: { month: number; explicitYear?: number | null }) => (d.explicitYear ? academicYearOf(d.month, d.explicitYear, years.season) : years.termYear!);
+        item.window = { from: termDayKey(e.examPeriod.start.month, e.examPeriod.start.day, y(e.examPeriod.start), years.season), to: termDayKey(e.examPeriod.end.month, e.examPeriod.end.day, y(e.examPeriod.start), years.season) };
+      }
+    } else if (e.tba) {
+      item.dueDayKey = null;
+      item.dueOptions = undefined;
+      item.confidence.due = 'needsReview';
+      reasons.add('tba');
+    }
+    item.reasons = [...reasons];
+    if (target) merged.set(target.key, item);
+    else out.push(item);
+  }
+  const result: DraftItem[] = [];
+  for (const i of items) {
+    if (merged.has(i.key)) result.push(merged.get(i.key)!);
+    else if (consumed.has(i.key)) continue;
+    else {
+      const title = cleanItemTitle(i.title, i.type);
+      result.push(title === i.title ? i : { ...i, title, fingerprint: fingerprintOf(courseKey, normalizeTitle(title), i.dueDayKey) });
+    }
+  }
+  result.push(...out);
+  // Two items that ended up with the same identity keep distinct fingerprints.
+  const seen = new Set<string>();
+  return result.map((i) => {
+    if (!seen.has(i.fingerprint)) {
+      seen.add(i.fingerprint);
+      return i;
+    }
+    const fingerprint = fingerprintOf(courseKey, normalizeTitle(i.title), i.dueDayKey ?? i.key);
+    seen.add(fingerprint);
+    return { ...i, fingerprint };
+  });
+}
+
+/** The date as the syllabus wrote it, for parser items that weren't matched to a named assessment. */
+function withWrittenDate(i: DraftItem): DraftItem {
+  if (i.writtenDate !== undefined || !i.dueDayKey || i.recurrence) return i;
+  const [, mm, dd] = i.dueDayKey.split('-').map(Number);
+  const d = datesInLine(i.snippet).find((x) => x.month === mm && x.day === dd);
+  return { ...i, writtenDate: d ? { month: d.month, day: d.day, explicitYear: d.year, text: i.snippet } : null };
+}
+
+/** The year the student's dates are placed in: the document's own when it agrees with itself, otherwise the student's answer (or none yet). */
+export function placementYear(years: YearAnalysis): number | null {
+  return years.conflict ? (years.chosen ?? null) : years.termYear;
+}
+
+function placeItem(i: DraftItem, y: YearAnalysis, lectures: LectureEntry[]): DraftItem {
+  // The student's own date stays; a lecture answer follows the year (the lecture moves with it).
+  if (i.change === 'removed' || (i.confidence.due === 'confirmed' && i.conditional?.anchorLecture === undefined)) return i;
+  const year = placementYear(y);
+  const hadYearConflict = i.reasons.includes('yearConflict');
+  const reasons: ReviewReason[] = i.reasons.filter((r) => r !== 'yearConflict' && r !== 'weekdayMismatch');
+  const notes: string[] = [];
+  const next: DraftItem = { ...i, confidence: { ...i.confidence } };
+  if (hadYearConflict) next.dueOptions = undefined;
+
+  if (i.conditional?.anchorLecture !== undefined) {
+    const lec = lectures.find((l) => l.number === i.conditional!.anchorLecture);
+    const anchorDayKey = lec && year !== null ? termDayKey(lec.month, lec.day, year, y.season) : null;
+    next.conditional = { ...i.conditional, anchorDayKey: anchorDayKey ?? undefined };
+    next.dueDayKey = anchorDayKey ? conditionalDueDay(i.conditional, anchorDayKey) : null;
+    next.confidence.due = next.dueDayKey ? 'confirmed' : 'needsReview';
+  }
+
+  const w = i.writtenDate;
+  if (w) {
+    if (w.explicitYear !== null) {
+      const explicitKey = `${w.explicitYear}-${pad2(w.month)}-${pad2(w.day)}`;
+      const ay = academicYearOf(w.month, w.explicitYear, y.season);
+      const against = year ?? y.termYear;
+      if (y.conflict && against !== null && ay !== against) {
+        next.dueOptions = [termDayKey(w.month, w.day, against, y.season), explicitKey].sort();
+        next.dueDayKey = null;
+        next.confidence.due = 'needsReview';
+        reasons.push('yearConflict');
+      } else next.dueDayKey = explicitKey;
+    } else if (year === null) {
+      if (y.conflict) {
+        next.dueDayKey = null;
+        next.confidence.due = 'needsReview';
+        reasons.push('yearConflict');
+      }
+    } else next.dueDayKey = termDayKey(w.month, w.day, year, y.season);
+    const ay = w.explicitYear !== null ? academicYearOf(w.month, w.explicitYear, y.season) : year;
+    if (ay !== null && !reasons.includes('yearConflict')) {
+      const mismatch = weekdayMismatch(w.text, w.month, w.day, ay, y.season);
+      if (mismatch) {
+        notes.push(mismatch);
+        reasons.push('weekdayMismatch');
+      }
+    }
+    if (hadYearConflict && !reasons.includes('yearConflict') && next.dueDayKey) next.confidence.due = 'likely';
+    const yearNote = i.inferences.find((x) => x.field === 'year');
+    next.inferences = i.inferences.filter((x) => x.field !== 'year');
+    if (w.explicitYear === null && year !== null && next.dueDayKey) {
+      const heading = y.evidence.find((e) => e.kind === 'heading');
+      const note = y.conflict ? `Year ${calendarYearOf(w.month, year, y.season)}: you chose it (the syllabus mentions ${y.options.join(' and ')})` : yearNote && !y.conflict ? yearNote.note : `Year ${calendarYearOf(w.month, year, y.season)} from ${heading ? heading.note.replace(/^The heading says /, '') : 'the syllabus'}`;
+      next.inferences.push({ field: 'year', note });
+    }
+  }
+  next.reasons = reasons;
+  next.notes = notes.length ? notes : undefined;
+  return next;
+}
+
+function placeYears(draft: ImportDraft): ImportDraft {
+  const lectures = draft.insights.lectures ?? [];
+  return { ...draft, items: draft.items.map((i) => placeItem(withWrittenDate(i), draft.years, lectures)) };
+}
+
+/** Student answers "which year is this course?" when the syllabus disagrees with itself. Their own date edits are kept. */
+export function chooseDraftYear(draft: ImportDraft, year: number): ImportDraft {
+  if (!draft.years.options.includes(year)) return draft;
+  const years = { ...draft.years, chosen: year };
+  return placeYears({ ...draft, years, insights: { ...draft.insights, years } });
+}
+
+/** Due day for a conditional deadline once its anchor is known. */
+export function conditionalDueDay(rule: Pick<ConditionalDeadline, 'offsetDays' | 'direction'>, anchorDayKey: string): string {
+  return addDays(anchorDayKey, rule.direction === 'before' ? -rule.offsetDays : rule.offsetDays);
+}
+
+/** Day of a listed lecture in the year being used (null until the year is known). */
+export function lectureDayKey(years: YearAnalysis, lecture: Pick<LectureEntry, 'month' | 'day'>): string | null {
+  const year = placementYear(years);
+  return year === null ? null : termDayKey(lecture.month, lecture.day, year, years.season);
+}
+
+/** "Which lecture were you assigned?" Answer with a listed lecture or a date. */
+export function resolveDraftConditional(draft: ImportDraft, key: string, answer: { lecture: number } | { dayKey: string; label?: string }): ImportDraft {
+  const lectures = draft.insights.lectures ?? [];
+  return {
+    ...draft,
+    items: draft.items.map((i) => {
+      if (i.key !== key || !i.conditional) return i;
+      if ('lecture' in answer) {
+        const lec = lectures.find((l) => l.number === answer.lecture);
+        if (!lec) return i;
+        const anchorDayKey = lectureDayKey(draft.years, lec);
+        const conditional: ConditionalDeadline = { ...i.conditional, anchorLecture: lec.number, anchorLabel: `Lecture ${lec.number}: ${lec.topic}`, anchorDayKey: anchorDayKey ?? undefined };
+        return { ...i, conditional, dueDayKey: anchorDayKey ? conditionalDueDay(conditional, anchorDayKey) : null, dueTime: conditional.time, confidence: { ...i.confidence, due: anchorDayKey ? 'confirmed' : 'needsReview' }, reasons: anchorDayKey ? i.reasons.filter((r) => r !== 'conditional') : i.reasons };
+      }
+      const conditional: ConditionalDeadline = { ...i.conditional, anchorLecture: undefined, anchorLabel: answer.label ?? undefined, anchorDayKey: answer.dayKey };
+      return { ...i, conditional, dueDayKey: conditionalDueDay(conditional, answer.dayKey), dueTime: conditional.time, confidence: { ...i.confidence, due: 'confirmed' }, reasons: i.reasons.filter((r) => r !== 'conditional') };
+    }),
+  };
+}
+
+export type AttentionItem =
+  | { kind: 'year'; options: number[]; evidence: YearAnalysis['evidence'] }
+  | { kind: 'conditional'; key: string; title: string; question: string }
+  | { kind: 'choose'; key: string; title: string; options: string[] }
+  | { kind: 'noDate'; key: string; title: string }
+  | { kind: 'mismatch'; key: string; title: string; note: string }
+  | { kind: 'grading'; total: number; missing: string[] };
+
+/** What genuinely needs the student before the planner can use this syllabus (not diagnostics). */
+export function draftAttention(draft: ImportDraft): AttentionItem[] {
+  const out: AttentionItem[] = [];
+  if (draft.years.conflict && draft.years.chosen == null) out.push({ kind: 'year', options: draft.years.options, evidence: draft.years.evidence });
+  for (const i of draft.items) {
+    if (!i.include || i.change === 'removed') continue;
+    if (i.conditional && !i.dueDayKey) out.push({ kind: 'conditional', key: i.key, title: i.title, question: conditionalQuestion(i.conditional) });
+    else if (i.dueOptions?.length && i.confidence.due !== 'confirmed') out.push({ kind: 'choose', key: i.key, title: i.title, options: i.dueOptions });
+    else if (!i.dueDayKey && !i.recurrence && !i.reasons.some((r) => r === 'examPeriod' || r === 'tba' || r === 'yearConflict')) out.push({ kind: 'noDate', key: i.key, title: i.title });
+    if (i.confidence.due !== 'confirmed') for (const note of i.notes ?? []) out.push({ kind: 'mismatch', key: i.key, title: i.title, note });
+  }
+  const g = draft.insights.grading;
+  if (g && !g.addsUp && g.totalPercent < 100) {
+    const missing = draft.items.filter((i) => i.include && i.change !== 'removed' && i.catalogKey && i.weightPercent === null).map((i) => i.title);
+    out.push({ kind: 'grading', total: g.totalPercent, missing });
+  }
+  return out;
+}
+
+export function conditionalQuestion(c: Pick<ConditionalDeadline, 'anchorKind' | 'anchor'>): string {
+  const what: Record<ConditionalDeadline['anchorKind'], string> = { lecture: 'Which lecture were you assigned?', presentation: 'When is your presentation?', lab: 'Which lab session are you in?', tutorial: 'Which tutorial are you in?', other: `When is ${c.anchor.replace(/^your\s+/i, 'your ')}?` };
+  return what[c.anchorKind];
+}
+
+/** "Due 3 days before your assigned lecture, 11:59 PM." */
+export function conditionalRuleText(c: Pick<ConditionalDeadline, 'offsetDays' | 'direction' | 'anchor'>): string {
+  const n = c.offsetDays % 7 === 0 && c.offsetDays >= 7 ? `${c.offsetDays / 7} week${c.offsetDays === 7 ? '' : 's'}` : `${c.offsetDays} day${c.offsetDays === 1 ? '' : 's'}`;
+  return `${n} ${c.direction} ${c.anchor}`;
+}
+
+/** Possible dates for an item whose year the student hasn't confirmed. */
+function yearCandidates(item: DraftItem, years: YearAnalysis): { dayKey: string; time: string | null; note: string }[] {
+  if (item.dueOptions?.length) return item.dueOptions.map((k) => ({ dayKey: k, time: item.dueTime, note: item.reasons.includes('yearConflict') ? `If the course runs in ${k.slice(0, 4)}` : 'Stated in the syllabus' }));
+  const w = item.writtenDate;
+  if (!w || !item.reasons.includes('yearConflict')) return [];
+  return years.options.map((y) => ({ dayKey: termDayKey(w.month, w.day, y, years.season), time: item.dueTime, note: `If the course runs in ${calendarYearOf(w.month, y, years.season)}` }));
 }
 
 const fmtDue = (dueAt: Timestamp | null | undefined) => (dueAt ? new Date(dueAt).toISOString() : 'none');
@@ -545,7 +864,7 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
             continue;
           }
           const upd = applySourceUpdate(existing, sourceValues, 'syllabus', now);
-          const a: Assignment = { ...upd.assignment, syllabusId, estimatedMinutes: item.estimatedMinutes ?? existing.estimatedMinutes, ...academicFields(item, dc.timezone, existing) };
+          const a: Assignment = { ...upd.assignment, syllabusId, estimatedMinutes: item.estimatedMinutes ?? existing.estimatedMinutes, ...academicFields(item, draft, dc.timezone, existing) };
           next.assignments[a.id] = a;
           if (upd.changedFields.length || upd.conflictFields.length) {
             result.changedAssignmentIds.push(a.id);
@@ -584,7 +903,7 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
           userOverrides: {},
           createdAt: now,
           updatedAt: now,
-          ...academicFields(item, dc.timezone),
+          ...academicFields(item, draft, dc.timezone),
         };
         result.createdAssignmentIds.push(id);
       }
@@ -596,12 +915,22 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
 const confirmLikely = (c: ConfidenceLevel): ConfidenceLevel => (c === 'likely' ? 'confirmed' : c);
 
 /** Weight, release date, exam window, coverage and inference notes from a reviewed item. Existing values the student set are kept. */
-function academicFields(item: DraftItem, timezone: string, existing?: Assignment): Partial<Assignment> {
+function academicFields(item: DraftItem, draft: ImportDraft, timezone: string, existing?: Assignment): Partial<Assignment> {
   const out: Partial<Assignment> = {};
+  if (item.requirements?.length) out.requirements = item.requirements;
+  if (item.submission) out.submission = item.submission;
+  out.attentionNotes = item.notes?.length ? item.notes : undefined;
+  // A deadline the student already placed (or edited) is theirs; the syllabus never resets it.
+  const studentOwnsDue = Boolean(existing?.userOverrides.due || existing?.conditional?.anchorDayKey);
+  if (item.conditional) out.conditional = studentOwnsDue && existing?.conditional ? existing.conditional : item.conditional;
+  if (!item.dueDayKey && !item.recurrence && !studentOwnsDue) {
+    const candidates = yearCandidates(item, draft.years);
+    out.dueCandidates = candidates.length ? candidates : undefined;
+  } else if (item.dueDayKey) out.dueCandidates = undefined;
   if (item.weightPercent !== null && existing?.weight === undefined) out.weight = item.weightPercent;
   if (item.availableDayKey && existing?.availableAt === undefined) out.availableAt = atMinute(item.availableDayKey, 0, timezone);
   if (item.window && !item.dueDayKey) out.window = { from: atMinute(item.window.from, 0, timezone), to: atMinute(item.window.to, 23 * 60 + 59, timezone) };
-  if (!item.dueDayKey && !item.recurrence) out.unresolved = item.reasons.includes('examPeriod') ? 'examPeriod' : item.reasons.includes('tba') ? 'tba' : undefined;
+  if (!item.dueDayKey && !item.recurrence && !studentOwnsDue) out.unresolved = item.reasons.includes('examPeriod') ? 'examPeriod' : item.reasons.includes('tba') ? 'tba' : item.conditional ? 'conditional' : item.reasons.includes('yearConflict') || item.dueOptions?.length ? 'yearConflict' : undefined;
   if (item.dueDayKey && existing?.unresolved) out.unresolved = undefined;
   if (item.coverage) out.coverage = item.coverage;
   if (item.inferences.length) out.inferenceNotes = item.inferences.map((i) => i.note);

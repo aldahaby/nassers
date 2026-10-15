@@ -1,7 +1,8 @@
-import { capabilitiesFor, FREE_ENTITLEMENT, type Capabilities } from '@/core';
+import { accessStateFor, adEligibility, capabilitiesFor, FREE_ENTITLEMENT, type AdContext, type AdPlacement, type Capabilities } from '@/core';
 import { MemorySaveRepository } from '@/services/persistence/MemorySaveRepository';
 import { MockProtectionService } from '@/services/protection/MockProtectionService';
-import { MockStoreService, UnavailableStoreService, toEntitlement } from '@/services/store';
+import { UnavailableStoreService, toEntitlement } from '@/services/store';
+import { MockStoreService } from '@/services/store/MockStoreService';
 import { createGameStore } from '../createGameStore';
 import { createEntitlementStore, effectiveEntitlement } from '../entitlementStore';
 
@@ -15,54 +16,95 @@ async function ready(store = new MockStoreService()) {
   return { s, store };
 }
 
-describe('entitlement store (mock StoreKit)', () => {
-  it('starts Free with labelled demo products and never unlocks from a local flag', async () => {
+class MemoryKV {
+  data = new Map<string, string>();
+  async getItem(k: string) {
+    return this.data.get(k) ?? null;
+  }
+  async setItem(k: string, v: string) {
+    this.data.set(k, v);
+  }
+  async removeItem(k: string) {
+    this.data.delete(k);
+  }
+}
+
+describe('entitlement store (test store: simulated Premium)', () => {
+  it('starts Free with clearly labelled test products', async () => {
     const { s } = await ready();
     expect(effectiveEntitlement(s.getState()).tier).toBe('free');
     expect(s.getState().products.length).toBeGreaterThan(0);
-    for (const p of s.getState().products) expect(p.displayPrice).toMatch(/demo/i);
+    for (const p of s.getState().products) expect(p.displayPrice).toMatch(/test price \(no charge\)/i);
   });
 
-  it('refuses demo purchases unless Developer tools allow them', async () => {
-    const { s, store } = await ready();
+  it('a simulated purchase activates Premium immediately and unlocks capabilities', async () => {
+    const { s } = await ready();
     const id = s.getState().products[0]!.id;
-    expect((await s.getState().purchase(id)).status).toBe('unavailable');
-    expect(effectiveEntitlement(s.getState()).tier).toBe('free');
-    store.allowPurchases = true;
     expect((await s.getState().purchase(id)).status).toBe('success');
-    expect(effectiveEntitlement(s.getState())).toMatchObject({ tier: 'premium', status: 'active', source: 'mock' });
+    const e = effectiveEntitlement(s.getState());
+    expect(e).toMatchObject({ tier: 'premium', status: 'active', source: 'mock' });
+    const caps = capabilitiesFor(e, { storeAvailable: true });
+    expect(caps).toMatchObject({ canUsePremiumCollections: true, canUsePremiumLooks: true, canUsePremiumRoomThemes: true, canUsePremiumEffects: true, canUseExtendedStats: true, canPurchase: false });
+    expect(s.getState().message).toMatch(/No payment was taken/);
   });
 
-  it('handles pending, cancelled and failed purchases without unlocking', async () => {
+  it('failed, cancelled and pending purchases never unlock Premium', async () => {
     const { s, store } = await ready();
-    store.allowPurchases = true;
     const id = s.getState().products[0]!.id;
     for (const outcome of ['pending', 'cancelled', 'failed'] as const) {
-      store.nextOutcome = outcome;
+      store.setNextOutcome(outcome);
       expect((await s.getState().purchase(id)).status).toBe(outcome);
       expect(effectiveEntitlement(s.getState()).tier).toBe('free');
     }
     expect(s.getState().busy).toBe(false);
   });
 
-  it('follows store events: expiry and refunds return to Free', async () => {
-    const { s, store } = await ready();
-    store.allowPurchases = true;
-    await s.getState().purchase(s.getState().products[0]!.id);
-    store.simulate('expired');
-    expect(effectiveEntitlement(s.getState())).toMatchObject({ tier: 'free', status: 'expired' });
-    store.simulate('revoked');
-    expect(effectiveEntitlement(s.getState()).status).toBe('revoked');
+  it('the test entitlement survives a refresh (a new app instance reading the same storage)', async () => {
+    const kv = new MemoryKV();
+    const first = await ready(new MockStoreService(kv));
+    await first.s.getState().purchase(first.s.getState().products[0]!.id);
+    const second = await ready(new MockStoreService(kv));
+    expect(effectiveEntitlement(second.s.getState())).toMatchObject({ tier: 'premium', status: 'active', source: 'mock' });
   });
 
-  it('restore re-reads the store and reports honestly', async () => {
-    const { s, store } = await ready();
-    await s.getState().restore();
-    expect(s.getState().message).toMatch(/No active Premium/);
-    store.allowPurchases = true;
-    await s.getState().purchase(s.getState().products[0]!.id);
+  it('expiry returns to Free; restore finds an active purchase; reset forgets everything', async () => {
+    const kv = new MemoryKV();
+    const { s, store } = await ready(new MockStoreService(kv));
+    const id = s.getState().products[0]!.id;
+    await s.getState().purchase(id);
+    await store.simulate('expired');
+    expect(effectiveEntitlement(s.getState())).toMatchObject({ tier: 'free', status: 'expired' });
+    expect(capabilitiesFor(effectiveEntitlement(s.getState()), ctx).canUseExtendedStats).toBe(false);
+    await store.prepareRestore(id);
     await s.getState().restore();
     expect(s.getState().message).toBe('Premium restored.');
+    expect(effectiveEntitlement(s.getState()).status).toBe('active');
+    await store.reset();
+    expect(effectiveEntitlement(s.getState())).toMatchObject({ tier: 'free', status: 'inactive' });
+    expect(kv.data.size).toBe(0);
+    const again = await ready(new MockStoreService(kv));
+    expect(effectiveEntitlement(again.s.getState()).tier).toBe('free');
+    await again.s.getState().restore();
+    expect(again.s.getState().message).toMatch(/No active test purchase/);
+  });
+
+  it('test Premium suppresses ads; Reset to Free makes the student ad-eligible again (rules only)', async () => {
+    const kv = new MemoryKV();
+    const { s, store } = await ready(new MockStoreService(kv));
+    const placement: Record<string, AdPlacement> = { feed: { id: 'feed', surface: 'courseSpaceFeed', format: 'sponsorCard', approved: true, label: 'Sponsored' } };
+    const ctx = (): AdContext => ({ access: accessStateFor(effectiveEntitlement(s.getState()), Date.now()), placementId: 'feed', surface: 'courseSpaceFeed', adConsent: true, ageRequirementMet: true, ageStatus: 'adult', personalized: false, focusSessionActive: false, sensitiveAcademicContentVisible: false });
+    expect(adEligibility(ctx(), placement).eligible).toBe(true);
+    await s.getState().purchase(s.getState().products[0]!.id);
+    expect(adEligibility(ctx(), placement)).toEqual({ eligible: false, reason: 'notFree' });
+    await store.reset();
+    expect(adEligibility(ctx(), placement).eligible).toBe(true);
+  });
+
+  it('a forged non-test entitlement in test storage is ignored', async () => {
+    const kv = new MemoryKV();
+    await kv.setItem('studyling/test-store/v1', JSON.stringify({ entitlement: { tier: 'premium', source: 'storekit', status: 'active' } }));
+    const { s } = await ready(new MockStoreService(kv));
+    expect(effectiveEntitlement(s.getState()).tier).toBe('free');
   });
 
   it('dev override is refused unless Developer tools are on', async () => {

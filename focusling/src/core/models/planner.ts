@@ -68,6 +68,21 @@ export interface FieldConflict {
   detectedAt: Timestamp;
 }
 
+/** A deadline relative to something only the student knows (their assigned lecture). */
+export interface ConditionalDeadline {
+  offsetDays: number;
+  direction: 'before' | 'after';
+  /** In the syllabus's words: "your assigned lecture". */
+  anchor: string;
+  anchorKind: 'lecture' | 'presentation' | 'lab' | 'tutorial' | 'other';
+  time: string | null;
+  /** Set once the student answers. */
+  anchorDayKey?: string;
+  anchorLabel?: string;
+  /** Lecture number from the syllabus's lecture list, when answered that way. */
+  anchorLecture?: number;
+}
+
 export interface Assignment {
   id: Id;
   courseId: Id;
@@ -109,8 +124,23 @@ export interface Assignment {
    */
   coverage?: { weeks: { from: number; to: number } | null; chapters: string | null; topics: string[] };
   window?: { from: Timestamp; to: Timestamp };
-  unresolved?: 'tba' | 'examPeriod';
+  unresolved?: 'tba' | 'examPeriod' | 'conditional' | 'yearConflict';
   inferenceNotes?: string[];
+  /**
+   * Syllabus Intelligence rebuild (still planner schema 3; optional fields only).
+   * - conditional: a deadline that depends on the student ("3 days before your
+   *   assigned lecture"). No date until the student says which one.
+   * - dueCandidates: possible dates when the syllabus disagrees with itself
+   *   (e.g. its years conflict). Never scheduled until the student picks one.
+   * - requirements / submission: the item's own sentences from the syllabus.
+   * - attentionNotes: inconsistencies the student should know about
+   *   ("The syllabus says Thursday, but Oct 29, 2025 is a Wednesday").
+   */
+  conditional?: ConditionalDeadline;
+  dueCandidates?: { dayKey: string; time: string | null; note: string }[];
+  requirements?: string[];
+  submission?: string;
+  attentionNotes?: string[];
   /** "I'll handle it" on a capacity note: don't show it again for this deadline. */
   capacityNoteDismissedFor?: Timestamp;
   createdAt: Timestamp;

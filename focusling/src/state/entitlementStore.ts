@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { testPurchasesEnabled } from '@/config/buildFlags';
 import { create } from 'zustand';
 import { PREMIUM_PRODUCT_IDS } from '@/config/premium';
 import { FREE_ENTITLEMENT, type AccessTier, type EntitlementState, type StudentOfferState } from '@/core';
@@ -26,13 +26,15 @@ export interface EntitlementStore {
   clearMessage(): void;
 }
 
-/** Dev tier overrides exist only in development builds and the web demo (no real store there). */
+/** Tier overrides and test purchases exist only in builds with test purchases enabled (never production). */
 export function devOverrideAllowed(): boolean {
-  return (typeof __DEV__ !== 'undefined' && __DEV__) || Platform.OS === 'web';
+  return testPurchasesEnabled();
 }
 
 /** The entitlement the app acts on: a dev override (QA) wins, otherwise the store. */
 export function effectiveEntitlement(s: Pick<EntitlementStore, 'storeEntitlement' | 'devOverride'>): EntitlementState {
+  // A test-store entitlement is never honoured outside a test build.
+  if (s.storeEntitlement.source === 'mock' && !testPurchasesEnabled()) return FREE_ENTITLEMENT;
   if (s.devOverride && devOverrideAllowed()) return s.devOverride === 'free' ? { tier: 'free', source: 'devOverride', status: 'inactive' } : { tier: s.devOverride, source: 'devOverride', status: 'active' };
   return s.storeEntitlement;
 }
@@ -66,7 +68,7 @@ export function createEntitlementStore(store: StoreService) {
     async purchase(productId) {
       set({ busy: true, message: null });
       const outcome = await store.purchase(productId);
-      if (outcome.status === 'success') set({ storeEntitlement: outcome.entitlement, message: 'Welcome to Premium. Enjoy the extra wardrobe.' });
+      if (outcome.status === 'success') set({ storeEntitlement: outcome.entitlement, message: outcome.entitlement.source === 'mock' ? 'Test purchase complete: Premium is on. No payment was taken.' : 'Welcome to Premium. Enjoy the extra wardrobe.' });
       else if (outcome.status === 'pending') set({ message: 'Your purchase is waiting for approval. Premium unlocks as soon as it’s approved.' });
       else if (outcome.status === 'cancelled') set({ message: null });
       else set({ message: outcome.message });
@@ -78,7 +80,7 @@ export function createEntitlementStore(store: StoreService) {
       set({ busy: true, message: null });
       try {
         const e = await store.restore();
-        set({ storeEntitlement: e, message: e.status === 'active' ? 'Premium restored.' : 'No active Premium subscription was found for this Apple Account.' });
+        set({ storeEntitlement: e, message: e.status === 'active' ? 'Premium restored.' : e.source === 'mock' ? 'No active test purchase to restore.' : 'No active Premium subscription was found for this Apple Account.' });
       } catch {
         set({ message: 'Couldn’t reach the App Store. Try again in a moment.' });
       }

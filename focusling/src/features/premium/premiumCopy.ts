@@ -3,6 +3,7 @@ import type { EntitlementState } from '@/core';
 /** One honest line for the current Premium state (Settings, Premium screen). */
 export function describeEntitlement(e: EntitlementState, storeAvailable: boolean): string {
   if (e.source === 'devOverride') return e.tier === 'free' ? 'Free (developer override)' : 'Premium (developer override, this session only)';
+  if (e.source === 'mock') return e.status === 'active' ? 'Premium (test purchase, no charge)' : e.status === 'expired' ? 'Free · test Premium expired' : e.status === 'revoked' ? 'Free · test Premium refunded' : 'Free · test store';
   switch (e.status) {
     case 'active': {
       const until = e.expiresAt ? new Date(e.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;

@@ -45,6 +45,8 @@ Planner document  studyling/planner/v1  (AsyncStorage / localStorage on this dev
 | Event log | LOCAL | Never sent to analytics |
 | Journey milestones / Stats | LOCAL | Derived on device; no analytics SDK |
 | Hash, parser version, provenance | LOCAL · SYNC_ELIGIBLE | No source text |
+| Assignment requirements / submission line, policy summaries, lecture topics | LOCAL | Short sentences the student reviewed (max 6 per item; policy summaries ≤ 2 sentences). Saved with the assignment or the course details only. Never in events, notifications, widgets or analytics |
+| Conditional rule + the student's answer (lecture / date) | LOCAL · SYNC_ELIGIBLE | No source text |
 | Widget snapshot | WIDGET_SHARED | 12 fixed keys (`WIDGET_SNAPSHOT_KEYS`) |
 | Pet species + stage | WIDGET_SHARED | No name |
 | Future LMS/OAuth tokens | SECRET_STORAGE | Keychain only; `serializePlannerState` strips token-like keys |

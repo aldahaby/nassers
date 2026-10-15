@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import type { AccessTier } from '@/core';
 import { describeEntitlement } from '@/features/premium/premiumCopy';
 import { services } from '@/services';
-import { MockStoreService } from '@/services/store';
+import { testStoreControls } from '@/services/store';
 import { useDebugToolsEnabled, useEntitlement, useEntitlementStore } from '@/state';
 import { Button, typography } from '@/ui';
 import { devStyles as styles } from './devStyles';
@@ -27,7 +27,7 @@ export function PremiumDevTools() {
   const override = useEntitlementStore((s) => s.devOverride);
   const studentOffer = useEntitlementStore((s) => s.studentOffer);
   const { setDevOverride, setStudentOffer } = useEntitlementStore.getState();
-  const mock = services.store instanceof MockStoreService ? services.store : null;
+  const mock = testStoreControls(services.store);
   const [note, setNote] = useState<string | null>(null);
 
   return (
@@ -50,7 +50,7 @@ export function PremiumDevTools() {
       </View>
       {mock && (
         <>
-          <Text style={styles.muted}>Demo store: next purchase / store events</Text>
+          <Text style={styles.muted}>Test store: next purchase / store events</Text>
           <View style={styles.grid}>
             {(['pending', 'cancelled', 'failed'] as const).map((o) => (
               <Button
@@ -58,8 +58,8 @@ export function PremiumDevTools() {
                 variant="secondary"
                 label={`Next: ${o}`}
                 onPress={() => {
-                  mock.nextOutcome = o;
-                  setNote(`The next demo purchase will be ${o}.`);
+                  mock.setNextOutcome(o);
+                  setNote(`The next test purchase will be ${o}.`);
                 }}
                 style={styles.cell}
               />
@@ -70,8 +70,8 @@ export function PremiumDevTools() {
                 variant="secondary"
                 label={`Simulate ${s}`}
                 onPress={() => {
-                  mock.simulate(s);
-                  setNote(`Demo store reported: ${s}.`);
+                  void mock.simulate(s);
+                  setNote(`Test store reported: ${s}.`);
                 }}
                 style={styles.cell}
               />

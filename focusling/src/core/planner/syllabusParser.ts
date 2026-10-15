@@ -307,6 +307,7 @@ interface Line {
   cells: string[];
 }
 
+const PREREQUISITE = /\b(pre-?requisites?|co-?requisites?|restrictions?|not open to|may not be taken|equivalent|formerly|anti-?requisite)\b/i;
 export const COURSE_CODE = /\b([A-Z]{2,5})[ -]?(\d{3,4}[A-Z]?)\b/;
 export const TERM_RE = /\b(fall|autumn|spring|summer|winter)\s*(?:term|semester|quarter|session)?\s*(\d{4})\b/i;
 
@@ -333,7 +334,8 @@ function guessCourses(lines: Line[]): { courses: CourseGuess[]; courseOfLine: nu
   lines.forEach((l, idx) => {
     const code = COURSE_CODE.exec(l.text);
     // A heading: the code starts the line (or the first lines of the document) and isn't a sentence.
-    const heading = code && (code.index <= 2 || idx < 3) && l.text.length < 90 && !/[.?!]$/.test(l.text) && !findDates(l.text, 'MDY').length;
+    // Prerequisite/restriction lines name other courses ("BIOL 112 or equivalent…"): never a course heading.
+    const heading = code && (code.index <= 2 || idx < 3) && l.text.length < 90 && !/[.?!]$/.test(l.text) && !findDates(l.text, 'MDY').length && !PREREQUISITE.test(l.text);
     if (heading) {
       const codeText = `${code![1]} ${code![2]}`;
       if (!courses.some((c) => c.code === codeText)) {
@@ -429,7 +431,7 @@ const DATE_REASONS: readonly ReviewReason[] = ['ambiguousWeek', 'missingYear', '
 export function parseSyllabus(input: ParseInput): ParseResult {
   const version = input.parserVersion ?? PARSER_VERSION;
   const modern = version !== 'syllabus-parser-0.9';
-  const v2 = version === PARSER_VERSION;
+  const v2 = version === PARSER_VERSION || version === 'syllabus-parser-2.0';
   const lines = splitLines(input.text, modern);
   const { courses, courseOfLine } = guessCourses(lines);
   const repairedLines = lines.map((l) => repairOcrDates(l.text));
@@ -730,5 +732,11 @@ export function describeReason(reason: ReviewReason): string {
       return 'Only the exam period is given, not the exam’s own date.';
     case 'timeZoneStated':
       return 'The time is given in a different time zone.';
+    case 'yearConflict':
+      return 'The syllabus gives conflicting years. Choose the right term first.';
+    case 'conditional':
+      return 'The date depends on something specific to you.';
+    case 'weekdayMismatch':
+      return 'The weekday written doesn’t match this date.';
   }
 }

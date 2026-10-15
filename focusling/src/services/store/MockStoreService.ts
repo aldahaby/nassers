@@ -1,23 +1,60 @@
 import { MOCK_PRODUCTS } from '@/config/premium';
 import type { EntitlementState } from '@/core';
-import type { PurchaseOutcome, StoreProduct, StoreService } from './StoreService';
+import type { PurchaseOutcome, StoreProduct, StoreService, TestOutcome, TestStoreControls } from './StoreService';
 
 const FREE: EntitlementState = { tier: 'free', source: 'mock', status: 'inactive' };
+export const TEST_STORE_KEY = 'studyling/test-store/v1';
+
+/** Tiny persistence boundary (AsyncStorage/localStorage in the app, memory in tests). */
+export interface KeyValueStore {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
+}
+
 
 /**
- * Web/dev demo provider. Products are clearly labelled demo items. A "purchase"
- * only succeeds when Developer tools are on (`allowPurchases`), and lives only
- * in memory: reload and it's gone. It is never used on an iOS build that has
- * the StoreKit module.
+ * TEST STORE (simulated Premium). Exists only in builds where test purchases
+ * are enabled (config/buildFlags.ts); production builds never create it.
+ * - No payment details are collected and no receipt is produced.
+ * - Entitlements are marked `source: 'mock'`; the app ignores them in any
+ *   build without test purchases, so one can never become a real entitlement.
+ * - The state persists in this browser/device so a refresh keeps it.
  */
-export class MockStoreService implements StoreService {
+export class MockStoreService implements StoreService, TestStoreControls {
   readonly kind = 'mock' as const;
   private entitlement: EntitlementState = FREE;
+  /** What "Restore purchases" will find (test control). */
+  private restorable: EntitlementState | null = null;
   private listeners = new Set<(e: EntitlementState) => void>();
-  /** Set by the app from the Developer tools switch. */
-  allowPurchases = false;
-  /** Dev QA: make the next purchase come back as pending or cancelled. */
-  nextOutcome: 'success' | 'pending' | 'cancelled' | 'failed' = 'success';
+  private loaded: Promise<void> | null = null;
+  /** Test control: how the next purchase ends. Resets to success after use. */
+  nextOutcome: TestOutcome = 'success';
+
+  constructor(private readonly storage: KeyValueStore | null = null) {}
+
+  /** Test control: choose how the next purchase ends. */
+  setNextOutcome(outcome: TestOutcome) {
+    this.nextOutcome = outcome;
+  }
+
+  private load() {
+    if (!this.loaded) {
+      this.loaded = (async () => {
+        if (!this.storage) return;
+        try {
+          const raw = await this.storage.getItem(TEST_STORE_KEY);
+          if (!raw) return;
+          const parsed = JSON.parse(raw) as { entitlement?: EntitlementState; restorable?: EntitlementState | null };
+          if (parsed.entitlement?.source === 'mock') this.entitlement = parsed.entitlement;
+          if (parsed.restorable?.source === 'mock') this.restorable = parsed.restorable;
+        } catch {
+          // Unreadable test state: start Free.
+        }
+      })();
+    }
+    return this.loaded;
+  }
 
   async isAvailable() {
     return true;
@@ -28,21 +65,26 @@ export class MockStoreService implements StoreService {
   }
 
   async purchase(productId: string): Promise<PurchaseOutcome> {
-    if (!this.allowPurchases) return { status: 'unavailable', message: 'Purchases aren’t available in this preview.' };
+    await this.load();
     const outcome = this.nextOutcome;
     this.nextOutcome = 'success';
     if (outcome === 'pending') return { status: 'pending' };
     if (outcome === 'cancelled') return { status: 'cancelled' };
-    if (outcome === 'failed') return { status: 'failed', message: 'The demo store reported an error.' };
-    this.set({ tier: 'premium', source: 'mock', status: 'active', productId, willAutoRenew: true });
-    return { status: 'success', entitlement: this.entitlement };
+    if (outcome === 'failed') return { status: 'failed', message: 'Test purchase failed (simulated). Nothing was charged and Premium stays off.' };
+    const active: EntitlementState = { tier: 'premium', source: 'mock', status: 'active', period: 'paid', productId, willAutoRenew: true };
+    this.restorable = active;
+    await this.set(active);
+    return { status: 'success', entitlement: active };
   }
 
   async currentEntitlement() {
+    await this.load();
     return this.entitlement;
   }
 
   async restore() {
+    await this.load();
+    if (this.restorable && this.restorable.status === 'active') await this.set(this.restorable);
     return this.entitlement;
   }
 
@@ -57,39 +99,44 @@ export class MockStoreService implements StoreService {
     };
   }
 
-  /** Dev QA: simulate the store reporting expiry or a refund. */
-  simulate(status: 'expired' | 'revoked' | 'inactive') {
-    this.set({ tier: 'free', source: 'mock', status });
+  /** Test control: the store reports the subscription ended (or was refunded). */
+  async simulate(status: 'expired' | 'revoked' | 'inactive') {
+    await this.load();
+    await this.set({ tier: 'free', source: 'mock', status, period: 'paid' });
   }
 
-  private set(e: EntitlementState) {
+  /** Test control: make "Restore purchases" find an active subscription. */
+  async prepareRestore(productId: string) {
+    await this.load();
+    this.restorable = { tier: 'premium', source: 'mock', status: 'active', period: 'paid', productId, willAutoRenew: true };
+    await this.persist();
+  }
+
+  /** Test control: forget every simulated purchase and return to Free. */
+  async reset() {
+    await this.load();
+    this.restorable = null;
+    this.nextOutcome = 'success';
+    this.entitlement = FREE;
+    try {
+      await this.storage?.removeItem(TEST_STORE_KEY);
+    } catch {
+      // ignore
+    }
+    this.listeners.forEach((l) => l(FREE));
+  }
+
+  private async persist() {
+    try {
+      await this.storage?.setItem(TEST_STORE_KEY, JSON.stringify({ entitlement: this.entitlement, restorable: this.restorable }));
+    } catch {
+      // Storage blocked (private browsing): works for this session only.
+    }
+  }
+
+  private async set(e: EntitlementState) {
     this.entitlement = e;
+    await this.persist();
     this.listeners.forEach((l) => l(e));
-  }
-}
-
-/** No store at all: Free, purchases disabled, previews still work. */
-export class UnavailableStoreService implements StoreService {
-  readonly kind = 'unavailable' as const;
-  async isAvailable() {
-    return false;
-  }
-  async getProducts() {
-    return [];
-  }
-  async purchase(): Promise<PurchaseOutcome> {
-    return { status: 'unavailable', message: 'The App Store isn’t available right now.' };
-  }
-  async currentEntitlement(): Promise<EntitlementState> {
-    return { tier: 'free', source: 'none', status: 'unavailable' };
-  }
-  async restore() {
-    return this.currentEntitlement();
-  }
-  async showManageSubscriptions() {
-    return false;
-  }
-  onEntitlementChange() {
-    return () => {};
   }
 }

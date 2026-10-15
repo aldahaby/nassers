@@ -57,27 +57,37 @@ export function stripRunningHeaders(text: string): { text: string; removed: numb
   const pages = text.split('\f');
   let removed = 0;
   const pageNumber = /^(page\s*)?#(\s*(of|\/)\s*#)?$|^-\s*#\s*-$/;
+  // Only a page's first and last few lines can be a running header/footer.
+  const EDGE = 2;
+  const edgeIndexes = (lines: string[]) => {
+    const filled = lines.map((l, i) => (l.trim() ? i : -1)).filter((i) => i >= 0);
+    return new Set([...filled.slice(0, EDGE), ...filled.slice(-EDGE)]);
+  };
   const counts = new Map<string, number>();
   if (pages.length >= 2) {
     for (const page of pages) {
+      const lines = page.split('\n');
+      const edges = edgeIndexes(lines);
       const seen = new Set<string>();
-      for (const l of page.split('\n')) {
+      lines.forEach((l, i) => {
+        if (!edges.has(i)) return;
         const s = shape(l);
         if (s.length >= 4 && !seen.has(s)) {
           seen.add(s);
           counts.set(s, (counts.get(s) ?? 0) + 1);
         }
-      }
+      });
     }
   }
   const threshold = Math.max(2, Math.ceil(pages.length * 0.5));
   const firstSeen = new Set<string>();
-  const out = pages.map((page) =>
-    page
-      .split('\n')
-      .map((l) => {
+  const out = pages.map((page) => {
+    const lines = page.split('\n');
+    const edges = edgeIndexes(lines);
+    return lines
+      .map((l, i) => {
         const s = shape(l);
-        if (!s) return l;
+        if (!s || !edges.has(i)) return l;
         if (pageNumber.test(s)) {
           removed++;
           return '';
@@ -92,7 +102,7 @@ export function stripRunningHeaders(text: string): { text: string; removed: numb
         }
         return l;
       })
-      .join('\n'),
-  );
+      .join('\n');
+  });
   return { text: out.join('\f'), removed };
 }
