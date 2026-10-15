@@ -3,7 +3,8 @@
  * uploaded anywhere.
  * - Plain text and DOCX: read in JavaScript on every platform (core/documents).
  * - PDF: iOS PDFKit text first, Vision OCR for pages without text
- *   (modules/studyling-native). Not available on web.
+ *   (modules/studyling-native). Web: Mozilla PDF.js in the browser (text layer
+ *   only; no OCR, so a scanned PDF is reported as such, never as empty).
  * - Photos (JPEG/PNG/HEIC): iOS Vision OCR. Not available on web.
  */
 export interface PickedDocument {
@@ -23,6 +24,8 @@ export interface ExtractedPage {
 export interface ExtractionResult {
   pages: ExtractedPage[];
   method: 'embeddedText' | 'ocr' | 'mixed' | 'pastedText' | 'docx';
+  /** PDF pages (1-based) with no text layer that couldn't be read here (no OCR on web). */
+  pagesWithoutText?: number[];
 }
 
 /**
@@ -30,9 +33,10 @@ export interface ExtractionResult {
  * - unreadable: damaged, or the text is mostly garbled (a poor scan);
  * - empty: no text at all;
  * - tooLarge: over the size limit (or a suspicious archive);
- * - encrypted: password-protected.
+ * - encrypted: password-protected;
+ * - scanned: a PDF made of page pictures, with no text this platform can read (web has no OCR).
  */
-export type ExtractionError = 'cancelled' | 'unsupported' | 'unreadable' | 'empty' | 'tooLarge' | 'encrypted';
+export type ExtractionError = 'cancelled' | 'unsupported' | 'unreadable' | 'empty' | 'tooLarge' | 'encrypted' | 'scanned';
 
 /** File types offered in the picker. */
 export const SYLLABUS_MIME_TYPES = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'] as const;

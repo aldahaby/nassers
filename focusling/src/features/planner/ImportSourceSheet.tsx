@@ -42,7 +42,7 @@ export function ImportSourceSheet() {
   return (
     <View style={styles.wrap}>
       <SectionTitle>Import syllabus</SectionTitle>
-      <SourceOption icon="book" title="PDF, Word or text file" body={services.documents.canReadPdf ? 'Read on this device: PDF, Word, text, or a photo of the page. Scans use on-device text recognition.' : 'DOCX and text files work here. PDFs and photos are read in the iPhone app; you can paste the text instead.'} onPress={() => void pickFile()} disabled={busy} />
+      <SourceOption icon="book" title="PDF, Word or text file" body={services.documents.kind === 'web' ? 'Choose your syllabus from Files. It’s read right here in your browser; nothing is uploaded.' : services.documents.canReadPdf ? 'Read on this device: PDF, Word, text, or a photo of the page. Scans use on-device text recognition.' : 'DOCX and text files work here; you can paste the text instead.'} onPress={() => void pickFile()} disabled={busy} />
       <SourceOption icon="bell" title="Paste from email" body="Copy the syllabus or schedule from an email and paste it here. No mailbox access." onPress={() => setPasting((v) => !v)} disabled={busy} />
 
       {busy && (
@@ -59,16 +59,18 @@ export function ImportSourceSheet() {
       {error && (
         <InfoNote icon="book">
           {error === 'unsupported'
-            ? 'This file type can’t be read here. PDFs and photos are read on the iPhone app; on the web, use a DOCX or text file, or paste the text.'
+            ? 'This file type can’t be read here. Use a PDF, Word (.docx) or text file, or paste the text.'
+            : error === 'scanned'
+              ? 'This PDF is a scan (pictures of the pages), so there’s no text to read in the browser. Try the original PDF from your course site, or copy the text and paste it here.'
             : error === 'empty'
               ? 'No text was found. If it’s a photo of a page, try a clearer scan, or paste the text.'
               : error === 'tooLarge'
                 ? 'That file is too large to read on this device. Try exporting just the syllabus pages, or paste the text.'
                 : error === 'encrypted'
-                  ? 'That file is password-protected. Save an unprotected copy, or paste the text.'
+                  ? 'That PDF is password-protected, so it can’t be opened here. Save a copy without a password, or paste the text.'
                   : error === 'noItems'
                     ? 'No dates or assignments were found. You can add them yourself in a minute.'
-                    : 'Most of that file couldn’t be read, so nothing was imported. Try a clearer copy or paste the text.'}
+                    : 'That file seems to be damaged or isn’t a real PDF, so nothing was imported. Try downloading it again, or paste the text.'}
         </InfoNote>
       )}
 

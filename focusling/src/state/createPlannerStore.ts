@@ -91,7 +91,7 @@ export interface PlannerStoreDeps {
 }
 
 export type ImportStatus = 'idle' | 'picking' | 'extracting' | 'parsing' | 'error';
-export type ImportError = 'unsupported' | 'unreadable' | 'empty' | 'noItems' | 'tooLarge' | 'encrypted';
+export type ImportError = 'unsupported' | 'unreadable' | 'empty' | 'noItems' | 'tooLarge' | 'encrypted' | 'scanned';
 
 export interface StartNotice {
   planId?: Id;
@@ -119,7 +119,7 @@ export interface PlannerStoreState {
   reset(): Promise<void>;
   // Import
   pickAndExtract(): Promise<void>;
-  importText(text: string, sourceType: SyllabusSourceType, opts?: { filename?: string; extraction?: Syllabus['extraction']; parserVersion?: ParserVersion }): ImportDraft | null;
+  importText(text: string, sourceType: SyllabusSourceType, opts?: { filename?: string; extraction?: Syllabus['extraction']; parserVersion?: ParserVersion; pagesWithoutText?: number[] }): ImportDraft | null;
   editDraftItem(key: string, patch: DraftItemPatch): void;
   confirmDraftItem(key: string): void;
   setDraftCourse(index: number, patch: { name?: string; code?: string | null; timezone?: string }): void;
@@ -349,7 +349,7 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
         set({ importStatus: 'parsing' });
         const method = extracted.value.method;
         const sourceType: SyllabusSourceType = method === 'docx' ? 'docx' : method === 'pastedText' ? 'emailText' : doc.mimeType?.startsWith('image/') ? 'image' : 'pdf';
-        const draft = get().importText(joinPages(extracted.value), sourceType, { filename: doc.name, extraction: method });
+        const draft = get().importText(joinPages(extracted.value), sourceType, { filename: doc.name, extraction: method, pagesWithoutText: extracted.value.pagesWithoutText });
         if (!draft) return;
         set({ importStatus: 'idle', importProgress: null });
       },
@@ -359,7 +359,7 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
           set({ importStatus: 'error', importError: 'empty' });
           return null;
         }
-        const draft = createImportDraft(current(), { text, sourceType, filename: opts.filename, timezone: current().preferences.timezone, now: now(), parserVersion: opts.parserVersion ?? PARSER_VERSION, extraction: opts.extraction });
+        const draft = createImportDraft(current(), { text, sourceType, filename: opts.filename, timezone: current().preferences.timezone, now: now(), parserVersion: opts.parserVersion ?? PARSER_VERSION, extraction: opts.extraction, pagesWithoutText: opts.pagesWithoutText });
         if (!draft.items.length && !draft.duplicateOfSyllabusId) {
           set({ importStatus: 'error', importError: 'noItems', draft });
           return draft;

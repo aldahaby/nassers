@@ -17,4 +17,8 @@ export const DOCUMENT_LIMITS = {
   minReadableRatio: 0.55,
   /** Fewer readable letters than this means there is nothing to work with. */
   minLetters: 40,
+  /** Most PDF pages read (memory guard for phones; syllabi are far shorter). */
+  maxPdfPages: 80,
+  /** A PDF page with fewer letters than this has no text layer (a scan or a picture). */
+  minPageLetters: 15,
 } as const;

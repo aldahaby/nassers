@@ -282,3 +282,20 @@ describe('malformed and partial documents', () => {
     expect(cat.find((e) => e.key === 'midterm')?.dates).toEqual([]);
   });
 });
+
+describe('repeated headings never merge the midterm and final', () => {
+  it('a section heading repeated at the top of pages keeps each exam’s own details', () => {
+    const text = [
+      'HIST 210 World History\nFall 2026\nAssessments\nMidterm exam (30%)\nThe midterm is on Thursday, October 15, 2026 at 2 PM in class.\nPage 1',
+      'Assessments\nFinal exam (40%)\nThe final exam is held during the December exam period.\nPage 2',
+      'Assessments\nEssay (30%)\nThe essay is due November 20, 2026 by 11:59 PM.\nPage 3',
+    ].join('\f');
+    const d = createImportDraft(createPlannerState(Date.UTC(2026, 7, 25), 'America/Toronto'), { text, sourceType: 'pdf', timezone: 'America/Toronto', now: Date.UTC(2026, 7, 25) });
+    const mid = d.items.find((i) => i.catalogKey === 'midterm')!;
+    const fin = d.items.find((i) => i.catalogKey === 'final')!;
+    expect(mid).toMatchObject({ dueDayKey: '2026-10-15', dueTime: '14:00', weightPercent: 30 });
+    expect(mid.reasons).not.toContain('examPeriod');
+    expect(fin).toMatchObject({ dueDayKey: null, weightPercent: 40 });
+    expect(fin.reasons).toContain('examPeriod');
+  });
+});

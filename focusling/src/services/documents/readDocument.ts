@@ -4,8 +4,8 @@ import { decodeUtf8 } from '@/core/documents/utf8';
 import type { ExtractedPage, ExtractionError, ExtractionResult } from './DocumentService';
 
 export interface ReadDeps {
-  /** PDF reader for this platform, or null (web). */
-  pdf: ((uri: string) => Promise<ExtractedPage[]>) | null;
+  /** PDF reader for this platform: iOS PDFKit (by uri) or PDF.js on web (by bytes). */
+  pdf: ((uri: string, bytes: Uint8Array) => Promise<ExtractedPage[] | { pages: ExtractedPage[]; pagesWithoutText: number[] }>) | null;
   /** Photo OCR for this platform, or null (web). */
   image: ((uri: string) => Promise<ExtractedPage[]>) | null;
 }
@@ -22,6 +22,7 @@ export async function readDocument(bytes: Uint8Array, name: string, uri: string,
   if (!bytes.length) return { ok: false, error: 'empty' };
   const kind = sniffDocumentKind(bytes, name);
   let pages: ExtractedPage[];
+  let pagesWithoutText: number[] = [];
   try {
     switch (kind) {
       case 'text': {
@@ -35,10 +36,13 @@ export async function readDocument(bytes: Uint8Array, name: string, uri: string,
         pages = r.pages.map((t, i) => ({ index: i, text: t, method: 'docx' as const }));
         break;
       }
-      case 'pdf':
+      case 'pdf': {
         if (!deps.pdf) return { ok: false, error: 'unsupported' };
-        pages = await deps.pdf(uri);
+        const r = await deps.pdf(uri, bytes);
+        pages = Array.isArray(r) ? r : r.pages;
+        pagesWithoutText = Array.isArray(r) ? [] : r.pagesWithoutText;
         break;
+      }
       case 'image':
         if (!deps.image) return { ok: false, error: 'unsupported' };
         pages = await deps.image(uri);
@@ -46,12 +50,15 @@ export async function readDocument(bytes: Uint8Array, name: string, uri: string,
       default:
         return { ok: false, error: 'unsupported' };
     }
-  } catch {
+  } catch (e) {
+    // PdfReadError carries why: password, damage, too long, or a scan with no text layer.
+    const code = (e as { code?: string })?.code;
+    if (code === 'encrypted' || code === 'tooLarge' || code === 'scanned') return { ok: false, error: code };
     return { ok: false, error: 'unreadable' };
   }
   const all = pages.map((p) => p.text).join('\n');
   const quality = assessReadability(all);
   if (!quality.ok) return { ok: false, error: quality.reason };
   const method: ExtractionResult['method'] = kind === 'text' ? 'pastedText' : kind === 'docx' ? 'docx' : pages.every((p) => p.method === 'ocr') ? 'ocr' : pages.some((p) => p.method === 'ocr') ? 'mixed' : 'embeddedText';
-  return { ok: true, value: { pages, method } };
+  return { ok: true, value: { pages, method, ...(pagesWithoutText.length ? { pagesWithoutText } : {}) } };
 }

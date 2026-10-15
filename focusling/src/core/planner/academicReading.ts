@@ -511,6 +511,9 @@ export function cleanItemTitle(title: string, type: AssignmentType): string {
   const sentence = words.length >= 7 || /^(the|your|this|all|each|students?|you|it|please|submit|upload|uploaded|due)\b/i.test(title) || SENTENCE.test(title);
   if (!sentence) return title;
   const m = new RegExp(`\\b${KIND}\\s*(?:#\\s*)?(\\d{1,2}|[A-D](?![a-z])|I{1,3}V?(?![a-z]))?\\b`, 'i').exec(title);
+  // "The Research Proposal is due…": the sentence names the item.
+  const subject = /^(?:[Tt]he|[Yy]our)\s+((?:[A-Z][\w-]*)(?:\s+[A-Z][\w-]*){0,4})(?:\s+(?:is|are|will be)\b|$)/.exec(title);
+  if (subject) return subject[1]!;
   if (m) return baseOf(m[1]!, m[2]).base;
   const defaults: Record<AssignmentType, string> = { assignment: 'Assignment', exam: 'Exam', quiz: 'Quiz', paper: 'Paper', project: 'Project', reading: 'Reading', lab: 'Lab', presentation: 'Presentation', review: 'Review', other: 'Course item' };
   return defaults[type];

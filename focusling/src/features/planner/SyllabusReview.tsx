@@ -2,7 +2,7 @@ import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Toggle } from './Toggle';
-import { conditionalRuleText, describeReason, draftAttention, draftCounts, lectureDayKey, placementYear, trustStatusOf, worst, type AttentionItem, type DraftItem, type ImportDraft } from '@/core';
+import { conditionalRuleText, describeReason, draftAttention, weekdayOfKey, draftCounts, lectureDayKey, placementYear, trustStatusOf, worst, type AttentionItem, type DraftItem, type ImportDraft } from '@/core';
 import { playSound } from '@/services/audio';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useDebugToolsEnabled, usePlannerStore } from '@/state';
@@ -13,18 +13,23 @@ import { InfoNote, SectionTitle, StatusPill } from './PlannerBits';
 import { draftDueText, formatDayKey, formatMinutes, monthDay, seasonYear, timeLabel, TRUST_STATUS_LABEL, TYPE_LABEL } from './plannerCopy';
 
 /**
- * "Your syllabus is ready!" Nothing from a syllabus is planned or reminded
- * until the student has seen it here. The screen leads with what matters
- * (the course, its important dates, and only the questions that genuinely
- * need the student); everything else is one tap away. Diagnostics live in
- * the Developer view only.
+ * Syllabus review in three short stages. Nothing from a syllabus is planned or
+ * reminded until the student approves it here.
+ *   A. Your course at a glance: what was found, in one card.
+ *   B. Just a few things to check: only questions that change a date or the
+ *      schedule, each answerable on its own (or skipped: the item stays undated).
+ *   C. Ready for your planner: what will be saved, dated vs waiting for a date,
+ *      and the exact count, then explicit approval.
+ * Page references, evidence and diagnostics stay behind "Source details" or the
+ * Developer view.
  */
 export function SyllabusReview() {
   const draft = usePlannerStore((s) => s.draft);
-  const [stage, setStage] = useState<'ready' | 'confirm'>('ready');
+  const [stage, setStage] = useState<'glance' | 'check' | 'ready'>('glance');
   const [keepOriginal, setKeepOriginal] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [moreDetails, setMoreDetails] = useState(false);
+  const [skipped, setSkipped] = useState<string[]>([]);
   const debug = useDebugToolsEnabled();
   const routes = useAppRoutes();
   const store = usePlannerStore.getState();
@@ -58,134 +63,198 @@ export function SyllabusReview() {
     const res = store.commitDraft(keepOriginal);
     if (!res) return;
     playSound('confirm');
-    // Plan right away for anything with a reviewed date and an estimate.
+    // Only study blocks for items that already have an estimate; the planner then offers
+    // "Plan your first study session" for the rest (the student chooses).
     usePlannerStore.getState().proposePlans(res.assignmentIds.length ? res.assignmentIds : undefined);
-    router.dismissTo(routes.planner as Href);
+    router.dismissTo(`${routes.planner}?imported=${res.assignmentIds.length}` as Href);
+  };
+  const cancel = () => {
+    store.cancelDraft();
+    router.back();
   };
 
-  const attention = draftAttention(draft);
+  const attentionAll = draftAttention(draft);
+  const questions = attentionAll.filter((a) => a.kind !== 'grading' && !('key' in a && skipped.includes(`${a.kind}:${a.key}`)) && !(a.kind === 'year' && skipped.includes('year')));
+  const notes = attentionAll.filter((a) => a.kind === 'grading');
   const included = draft.items.filter((i) => i.include && i.change !== 'removed');
-  const scheduled = included.filter((i) => i.dueDayKey || i.recurrence);
-
-  if (stage === 'confirm') {
-    return (
-      <View style={styles.wrap}>
-        <Card>
-          <Text style={typography.heading}>Add to your planner</Text>
-          <Text style={styles.body}>
-            {`${counts.included} item${counts.included === 1 ? '' : 's'} from ${draft.courses[0]?.code ?? draft.courses[0]?.name ?? 'this course'}. ${scheduled.length} with a date${included.length > scheduled.length ? `, ${included.length - scheduled.length} without one yet (saved, but not planned or reminded until they have a date)` : ''}.`}
-          </Text>
-          {included.map((i) => (
-            <View key={i.key} style={styles.confirmRow}>
-              <Text style={styles.confirmTitle} numberOfLines={2}>
-                {i.title}
-              </Text>
-              <Text style={styles.confirmDue}>{draftDueText(i, draft)}</Text>
-            </View>
-          ))}
-          {draft.items.some((i) => i.change === 'removed') && <Text style={styles.muted}>{`${counts.removed} item${counts.removed === 1 ? '' : 's'} the updated syllabus no longer lists ${counts.removed === 1 ? 'is' : 'are'} handled as you chose.`}</Text>}
-        </Card>
-        <Card>
-          <View style={styles.switchRow}>
-            <View style={styles.flex}>
-              <Text style={styles.switchTitle}>Save course details</Text>
-              <Text style={styles.muted}>Instructors, class times, grading and policies, kept on this device with your course.</Text>
-            </View>
-            <Toggle value={draft.details.save} onValueChange={(save) => store.setDraftDetails({ save })} accessibilityLabel="Save course details" />
-          </View>
-          <View style={styles.switchRow}>
-            <View style={styles.flex}>
-              <Text style={styles.switchTitle}>Keep the original on this device</Text>
-              <Text style={styles.muted}>Off by default. Studyling keeps only what you confirm, plus where it came from.</Text>
-            </View>
-            <Toggle value={keepOriginal} onValueChange={setKeepOriginal} accessibilityLabel="Keep the original on this device" />
-          </View>
-        </Card>
-        <Button label={`Add ${counts.included} item${counts.included === 1 ? '' : 's'} to planner`} onPress={add} disabled={counts.included === 0} sound={null} />
-        <Button label="Back to review" variant="ghost" onPress={() => setStage('ready')} />
-      </View>
-    );
-  }
-
-  const course = draft.courses[0];
-  const ins = draft.insights;
-  const instructors = ins.people.filter((p) => p.role === 'instructor');
-  const term = ins.identity.term ? seasonYear(ins.identity.term.season, placementYear(draft.years) ?? ins.identity.term.year) : course?.term;
-  const sorted = [...draft.items.filter((i) => i.change !== 'removed')].sort(byDate);
+  const dated = included.filter((i) => i.dueDayKey || i.recurrence).sort(byDate);
+  const undated = included.filter((i) => !i.dueDayKey && !i.recurrence);
   const removed = draft.items.filter((i) => i.change === 'removed');
+  const ins = draft.insights;
+  const course = draft.courses[0];
+  const instructors = ins.people.filter((p) => p.role === 'instructor');
+  const year = placementYear(draft.years);
+  const term = ins.identity.term ? seasonYear(ins.identity.term.season, year ?? ins.identity.term.year) : course?.term;
+  const steps = ['Your course', 'Check', 'Add'] as const;
+  const stepIndex = stage === 'glance' ? 0 : stage === 'check' ? 1 : 2;
+  const skip = (id: string) => setSkipped((xs) => [...xs, id]);
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle} accessibilityRole="header">
-          Your syllabus is ready!
-        </Text>
-        <Text style={styles.body}>{attention.some((a) => a.kind !== 'grading') ? 'Here’s what Studyling found. A few things need you before they can go in your planner.' : 'Here’s what Studyling found. Have a look, then add it to your planner.'}</Text>
+      <View style={styles.steps} accessibilityRole="progressbar" accessibilityLabel={`Step ${stepIndex + 1} of 3: ${steps[stepIndex]}`}>
+        {steps.map((label, i) => (
+          <View key={label} style={[styles.step, i <= stepIndex && styles.stepOn]}>
+            <Text style={[styles.stepText, i <= stepIndex && styles.stepTextOn]}>{`${i + 1}. ${label}`}</Text>
+          </View>
+        ))}
       </View>
 
-      {draft.courses.map((c) => (
-        <Card key={c.index}>
-          <Text style={styles.kicker}>{c.existingCourseId ? 'Updating course' : 'Course overview'}</Text>
-          <TextInput value={c.name} onChangeText={(name) => store.setDraftCourse(c.index, { name })} style={styles.courseName} accessibilityLabel="Course name" />
-          {c.index === 0 && (
+      {stage === 'glance' && (
+        <>
+          <Text style={styles.heroTitle} accessibilityRole="header">
+            Your course at a glance
+          </Text>
+          {draft.courses.map((c) => (
+            <Card key={c.index}>
+              {c.existingCourseId && <Text style={styles.kicker}>Updating a course you already have</Text>}
+              <TextInput value={c.name} onChangeText={(name) => store.setDraftCourse(c.index, { name })} style={styles.courseName} accessibilityLabel="Course name (you can edit it)" />
+              <Text style={styles.overviewMeta}>{[c.code, c.index === 0 && ins.identity.credits ? `${ins.identity.credits} credits` : null, c.index === 0 ? term : c.term, c.index === 0 ? ins.identity.institution : null].filter(Boolean).join(' · ')}</Text>
+              {c.index === 0 && instructors.length > 0 && <Overview label={instructors.length > 1 ? 'Instructors' : 'Instructor'} value={instructors.map((p) => p.name).join(', ')} />}
+              {c.index === 0 && ins.meetings.length > 0 && <Overview label="Class" value={meetingsText(ins)} />}
+            </Card>
+          ))}
+          <View style={styles.statsRow} accessible accessibilityLabel={`${included.length} assessments found: ${dated.length} with a date, ${undated.length} waiting for a date.`}>
+            <Stat n={included.length} label="assessments" />
+            <Stat n={dated.length} label="with a date" />
+            <Stat n={undated.length} label="waiting for a date" />
+          </View>
+          <View style={[styles.statusLine, questions.length ? styles.statusAsk : styles.statusOk]} accessibilityLiveRegion="polite">
+            <Text style={styles.statusText}>{questions.length ? `${questions.length} thing${questions.length === 1 ? '' : 's'} to check, so your dates are right.` : 'Everything we found is clear.'}</Text>
+          </View>
+          {draft.revisionOfSyllabusId && (counts.changed > 0 || counts.removed > 0) && <InfoNote icon="planner">{`This looks like an updated syllabus: ${counts.changed} changed, ${counts.removed} no longer listed. Your own edits are kept.`}</InfoNote>}
+          <Button label={questions.length ? `Next: check ${questions.length} thing${questions.length === 1 ? '' : 's'}` : 'Next: preview your planner'} onPress={() => setStage(questions.length ? 'check' : 'ready')} disabled={counts.included === 0} />
+          <Disclosure label="More about this course" open={moreDetails} onToggle={() => setMoreDetails((v) => !v)}>
+            <CourseInsightsReview draft={draft} />
+          </Disclosure>
+          <Button label="Cancel import" variant="ghost" onPress={cancel} />
+        </>
+      )}
+
+      {stage === 'check' && (
+        <>
+          <Text style={styles.heroTitle} accessibilityRole="header">
+            {questions.length ? 'Just a few things to check' : 'All set!'}
+          </Text>
+          <Text style={styles.body}>{questions.length ? 'Each answer places a date. Not sure? Skip it: the item is saved without a date and you can answer later.' : 'Every question is answered. Next, see what goes into your planner.'}</Text>
+          {questions.map((a, i) => (
+            <View key={`${a.kind}-${'key' in a ? a.key : i}`} style={styles.question}>
+              <AttentionCard a={a} draft={draft} />
+              {a.kind !== 'skippedPages' && (
+                <Pressable onPress={() => skip(a.kind === 'year' ? 'year' : `${a.kind}:${'key' in a ? a.key : ''}`)} style={styles.skip} accessibilityRole="button" accessibilityLabel={`Skip for now: ${'title' in a ? a.title : 'year'}`}>
+                  <Text style={styles.skipText}>Skip for now</Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
+          {notes.map((a, i) => (
+            <AttentionCard key={`note-${i}`} a={a} draft={draft} />
+          ))}
+          <Button label="Next: preview your planner" onPress={() => setStage('ready')} />
+          <Button label="Back" variant="ghost" onPress={() => setStage('glance')} />
+        </>
+      )}
+
+      {stage === 'ready' && (
+        <>
+          <Text style={styles.heroTitle} accessibilityRole="header">
+            Ready for your planner
+          </Text>
+          <Text style={styles.body}>Tap an item to see what to do, how to submit, or to change it.</Text>
+          <SectionTitle>{`With a date (${dated.length})`}</SectionTitle>
+          <Text style={styles.muted}>These can get study blocks and reminders.</Text>
+          {dated.map((item) => (
+            <ReviewItem key={item.key} item={item} draft={draft} open={open === item.key} onToggle={() => setOpen((o) => (o === item.key ? null : item.key))} />
+          ))}
+          {dated.length === 0 && <Text style={styles.muted}>None yet.</Text>}
+          {undated.length > 0 && (
             <>
-              <Text style={styles.overviewMeta}>{[c.code, ins.identity.credits ? `${ins.identity.credits} credits` : null, term, ins.identity.institution].filter(Boolean).join(' · ')}</Text>
-              {instructors.length > 0 && <Overview label={instructors.length > 1 ? 'Instructors' : 'Instructor'} value={instructors.map((p) => p.name).join(', ')} />}
-              {ins.meetings.length > 0 && <Overview label="Class" value={meetingsText(ins)} />}
-              {ins.grading && <Overview label="Grading" value={`${ins.grading.components.map((g) => `${g.name} ${g.weightPercent}%`).join(' · ')}${ins.grading.addsUp ? '' : ` (adds up to ${ins.grading.totalPercent}%)`}`} />}
+              <SectionTitle>{`Waiting for a date (${undated.length})`}</SectionTitle>
+              <Text style={styles.muted}>Saved as course requirements. No study blocks or reminders until they have a date.</Text>
+              {undated.map((item) => (
+                <ReviewItem key={item.key} item={item} draft={draft} open={open === item.key} onToggle={() => setOpen((o) => (o === item.key ? null : item.key))} />
+              ))}
             </>
           )}
-          {c.index > 0 && <Text style={styles.muted}>{[c.code, c.term].filter(Boolean).join(' · ')}</Text>}
-          {c.index === 0 && <Button label={moreDetails ? 'Hide course details' : 'More course details'} variant="ghost" onPress={() => setMoreDetails((v) => !v)} />}
-        </Card>
-      ))}
-      {moreDetails && <CourseInsightsReview draft={draft} />}
-
-      {attention.length > 0 && (
-        <View style={styles.attention}>
-          <SectionTitle>{`Needs your attention (${attention.filter((a) => a.kind !== 'grading').length})`}</SectionTitle>
-          {attention.map((a, i) => (
-            <AttentionCard key={`${a.kind}-${'key' in a ? a.key : i}-${i}`} a={a} draft={draft} />
+          {removed.length > 0 && <SectionTitle>No longer in the syllabus</SectionTitle>}
+          {removed.map((item) => (
+            <ReviewItem key={item.key} item={item} draft={draft} open={open === item.key} onToggle={() => setOpen((o) => (o === item.key ? null : item.key))} />
           ))}
-        </View>
+          {draft.detailsDiff.length > 0 && (
+            <Card>
+              <SectionTitle>Course details changed</SectionTitle>
+              {draft.detailsDiff.map((d, i) => (
+                <Text key={i} style={styles.diff}>
+                  {d.label}: {d.from ?? 'not listed'} → {d.to ?? 'removed'}
+                </Text>
+              ))}
+            </Card>
+          )}
+          <Card>
+            <View style={styles.switchRow}>
+              <View style={styles.flex}>
+                <Text style={styles.switchTitle}>Save course details</Text>
+                <Text style={styles.muted}>Instructors, class times, grading and policies, on this device.</Text>
+              </View>
+              <Toggle value={draft.details.save} onValueChange={(save) => store.setDraftDetails({ save })} accessibilityLabel="Save course details" />
+            </View>
+            <View style={styles.switchRow}>
+              <View style={styles.flex}>
+                <Text style={styles.switchTitle}>Keep the original file text</Text>
+                <Text style={styles.muted}>Off by default. Studyling keeps only what you approve.</Text>
+              </View>
+              <Toggle value={keepOriginal} onValueChange={setKeepOriginal} accessibilityLabel="Keep the original on this device" />
+            </View>
+          </Card>
+          {debug && <ImportDiagnostics draft={draft} />}
+          <View style={styles.sticky}>
+            <Button label={`Add ${counts.included} item${counts.included === 1 ? '' : 's'} to planner`} onPress={add} disabled={counts.included === 0} sound={null} />
+            <Text style={styles.stickyNote}>{`${dated.length} with a date · ${undated.length} waiting for a date`}</Text>
+          </View>
+          <Button label="Back" variant="ghost" onPress={() => setStage(questions.length ? 'check' : 'glance')} />
+        </>
       )}
+    </View>
+  );
+}
 
-      {draft.revisionOfSyllabusId && (counts.changed > 0 || counts.removed > 0) && (
-        <InfoNote icon="planner">{`This looks like an updated syllabus: ${counts.changed} changed, ${counts.removed} no longer listed. Your own edits are kept; anything that conflicts is flagged.`}</InfoNote>
-      )}
+/** Where a conflicting option comes from ("the year written next to this date"); null when it's simply stated. */
+function dueOptionNote(item: DraftItem | undefined, dayKey: string, draft: ImportDraft): string | null {
+  if (!item?.reasons.includes('yearConflict')) return item?.reasons.includes('conflictingDates') ? 'One of the dates the syllabus gives' : null;
+  const y = Number(dayKey.slice(0, 4));
+  if (item.writtenDate?.explicitYear === y) return 'The year written next to this date';
+  return placementYear(draft.years) !== null ? 'Fits the course year you chose' : 'Fits the year in the syllabus heading';
+}
 
-      {draft.detailsDiff.length > 0 && (
-        <Card>
-          <SectionTitle>Changed in this version</SectionTitle>
-          {draft.detailsDiff.map((d, i) => (
-            <Text key={i} style={styles.diff}>
-              {d.label}: {d.from ?? 'not listed'} → {d.to ?? 'removed'}
-            </Text>
-          ))}
-          <Text style={styles.muted}>{draft.details.save ? 'These replace the saved course details when you add this syllabus.' : 'Turn on “Save course details” to apply these.'}</Text>
-        </Card>
-      )}
-      <SectionTitle>{`Important dates (${sorted.length})`}</SectionTitle>
-      <Text style={styles.muted}>Tap any item to see its details or change it.</Text>
-      {sorted.map((item) => (
-        <ReviewItem key={item.key} item={item} draft={draft} open={open === item.key} onToggle={() => setOpen((o) => (o === item.key ? null : item.key))} />
-      ))}
-      {removed.length > 0 && <SectionTitle>No longer listed</SectionTitle>}
-      {removed.map((item) => (
-        <ReviewItem key={item.key} item={item} draft={draft} open={open === item.key} onToggle={() => setOpen((o) => (o === item.key ? null : item.key))} />
-      ))}
+/** A date choice: the date on one line, where it comes from below. */
+function OptionButton({ item, dayKey, draft, selected, onPress }: { item: DraftItem | undefined; dayKey: string; draft: ImportDraft; selected: boolean; onPress: () => void }) {
+  const note = dueOptionNote(item, dayKey, draft);
+  const date = `${formatDayKey(dayKey)}, ${dayKey.slice(0, 4)}`;
+  return (
+    <Pressable onPress={onPress} style={[styles.option, selected && styles.optionOn]} accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={`${date}${note ? `. ${note}` : ''}`}>
+      <Text style={styles.optionDate}>{date}</Text>
+      {note && <Text style={styles.optionNote}>{note}</Text>}
+    </Pressable>
+  );
+}
 
-      {debug && <ImportDiagnostics draft={draft} />}
+function Stat({ n, label }: { n: number; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statN}>{n}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
 
-      <Button label="Review & add to planner" onPress={() => setStage('confirm')} disabled={counts.included === 0} />
-      <Button
-        label="Cancel import"
-        variant="ghost"
-        onPress={() => {
-          store.cancelDraft();
-          router.back();
-        }}
-      />
+/** Secondary content, collapsed by default. */
+function Disclosure({ label, open, onToggle, children }: { label: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <View style={styles.disclosure}>
+      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} style={styles.disclosureHead}>
+        <Text style={styles.disclosureText}>{label}</Text>
+        <Text style={styles.chevron}>{open ? '⌃' : '⌄'}</Text>
+      </Pressable>
+      {open && <View style={styles.disclosureBody}>{children}</View>}
     </View>
   );
 }
@@ -253,11 +322,9 @@ function AttentionCard({ a, draft }: { a: AttentionItem; draft: ImportDraft }) {
       <View style={styles.askCard}>
         <Text style={styles.askTitle}>{a.title}</Text>
         <Text style={styles.body}>{item?.reasons.includes('yearConflict') ? 'The syllabus gives this date with a different year from the rest. Which one is right?' : 'The syllabus gives more than one date for this. Which one is right?'}</Text>
-        <View style={styles.row}>
-          {a.options.map((o) => (
-            <Button key={o} label={`${formatDayKey(o)}, ${o.slice(0, 4)}`} variant="secondary" onPress={() => store.editDraftItem(a.key, { dueDayKey: o })} style={styles.flexBtn} />
-          ))}
-        </View>
+        {a.options.map((o) => (
+          <OptionButton key={o} item={item} dayKey={o} draft={draft} selected={false} onPress={() => store.editDraftItem(a.key, { dueDayKey: o })} />
+        ))}
       </View>
     );
   }
@@ -279,6 +346,28 @@ function AttentionCard({ a, draft }: { a: AttentionItem; draft: ImportDraft }) {
       </View>
     );
   }
+  if (a.kind === 'skippedPages') {
+    return (
+      <View style={styles.askCard}>
+        <Text style={styles.askTitle}>{`Page${a.pages.length === 1 ? '' : 's'} ${a.pages.join(', ')} couldn’t be read`}</Text>
+        <Text style={styles.body}>{`${a.pages.length === 1 ? 'That page is' : 'Those pages are'} a scanned picture with no text, so nothing on ${a.pages.length === 1 ? 'it' : 'them'} was imported. Check ${a.pages.length === 1 ? 'it' : 'them'} in the PDF and add anything missing yourself.`}</Text>
+      </View>
+    );
+  }
+  if (a.kind === 'unknownDate') {
+    return (
+      <View style={styles.askCard}>
+        <Text style={styles.askTitle}>{a.title}</Text>
+        <Text style={styles.body}>{a.reason === 'examPeriod' ? 'The syllabus only says it’s in the exam period. Know the date already? Add it. Otherwise it waits without a date (no reminders) until you add it.' : 'The date hasn’t been announced. Add it if you know it; otherwise it waits without a date.'}</Text>
+        <DateField label="Date, if you know it" value={null} onChange={(dueDayKey) => store.editDraftItem(a.key, { dueDayKey })} />
+      </View>
+    );
+  }
+  if (a.kind === 'lectureWeekdays') {
+    return (
+      <InfoNote icon="book">{`${a.count} lecture date${a.count === 1 ? '' : 's'} in the schedule ${a.count === 1 ? 'doesn’t' : 'don’t'} match ${a.count === 1 ? 'its' : 'their'} weekday in ${a.year} (e.g. ${a.example}). If that year is wrong, change your answer to “Which year is this course?”.`}</InfoNote>
+    );
+  }
   return (
     <InfoNote icon="book">
       {`The grading list adds up to ${a.total}%, not 100%.${a.missing.length ? ` ${a.missing.join(', ')} ${a.missing.length === 1 ? 'has' : 'have'} no weight in the syllabus.` : ''} Studyling won’t guess the missing part.`}
@@ -298,7 +387,9 @@ function ConditionalAnswer({ item, draft }: { item: DraftItem; draft: ImportDraf
         label="Your lecture"
         options={lectures.filter((l) => !item.conditional?.fromLecture || l.number >= item.conditional.fromLecture).map((l) => {
           const day = lectureDayKey(draft.years, l);
-          return { value: l.number, label: `${l.number}. ${day ? formatDayKey(day) : monthDay(l.month, l.day)}: ${l.topic}` };
+          // The schedule's own weekday disagreeing with the date in this year is shown, not hidden.
+          const listed = l.weekday !== null && day && weekdayOfKey(day) !== l.weekday ? ` (listed as ${WEEKDAY_SHORT[l.weekday]})` : '';
+          return { value: l.number, label: `${l.number}. ${day ? formatDayKey(day) : monthDay(l.month, l.day)}${listed}: ${l.topic}` };
         })}
         value={item.conditional.anchorLecture ?? null}
         onChange={(lecture) => store.resolveDraftConditional(item.key, { lecture })}
@@ -310,8 +401,12 @@ function ConditionalAnswer({ item, draft }: { item: DraftItem; draft: ImportDraf
 
 function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: ImportDraft; open: boolean; onToggle: () => void }) {
   const store = usePlannerStore.getState();
+  const [editing, setEditing] = useState(false);
+  const [source, setSource] = useState(false);
   const level = worst(item.confidence.title, item.confidence.type, item.confidence.due);
-  const due = draftDueText(item, draft);
+  // The date badge already shows month and day; the line keeps the weekday and time.
+  const dueFull = draftDueText(item, draft);
+  const due = item.dueDayKey ? dueFull.replace(/^(\w{3}) \w{3} \d{1,2}/, '$1') : dueFull;
   const removed = item.change === 'removed';
   const status = trustStatusOf(item);
   const unresolved = !item.dueDayKey && !item.recurrence;
@@ -319,7 +414,7 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
 
   return (
     <View style={[styles.item, level === 'needsReview' && styles.itemReview, !item.include && styles.itemOff]}>
-      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${item.title}, ${TYPE_LABEL[item.type]}, ${due}. ${removed ? 'No longer listed. ' : ''}${removed ? '' : `Status: ${TRUST_STATUS_LABEL[status]}. `}${open ? 'Collapse' : 'Details'}.`} style={styles.itemHead}>
+      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${item.title}, ${TYPE_LABEL[item.type]}, ${dueFull}. ${removed ? 'No longer listed. ' : ''}${removed ? '' : `Status: ${TRUST_STATUS_LABEL[status]}. `}${open ? 'Collapse' : 'Details'}.`} style={styles.itemHead}>
         <View style={styles.dateCol}>
           <Text style={styles.dateMonth}>{item.dueDayKey ? formatDayKey(item.dueDayKey).split(' ')[1] : '—'}</Text>
           <Text style={styles.dateDay}>{item.dueDayKey ? Number(item.dueDayKey.slice(8)) : ''}</Text>
@@ -371,21 +466,6 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
           {item.coverage && <Detail label="Covers" value={`${item.coverage.weeks ? `Weeks ${item.coverage.weeks.from}–${item.coverage.weeks.to}` : item.coverage.chapters}${item.coverage.topics.length ? `: ${item.coverage.topics.slice(0, 4).join('; ')}${item.coverage.topics.length > 4 ? '…' : ''}` : ''}`} />}
           {item.availableDayKey && <Detail label="Released" value={formatDayKey(item.availableDayKey)} />}
           {item.statedZone && <Detail label="Time zone" value={`Given as ${item.statedZone.label}`} />}
-          {item.inferences.map((inf) => (
-            <Text key={inf.note} style={styles.inference}>
-              {inf.note}
-            </Text>
-          ))}
-          {item.reasons.filter((r) => r !== 'conditional' && r !== 'yearConflict').map((r) => (
-            <Text key={r} style={styles.reason}>
-              {describeReason(r)}
-            </Text>
-          ))}
-          {(item.notes ?? []).map((n) => (
-            <Text key={n} style={styles.reason}>
-              {n}
-            </Text>
-          ))}
           {item.conditional && (
             <View style={styles.field}>
               <Text style={styles.label}>{`Due ${conditionalRuleText(item.conditional)}`}</Text>
@@ -396,19 +476,39 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
             <View style={styles.options}>
               <Text style={styles.label}>Which date is right?</Text>
               {item.dueOptions.map((o) => (
-                <Button key={o} label={`${formatDayKey(o)}, ${o.slice(0, 4)}`} variant={item.dueDayKey === o ? 'primary' : 'secondary'} onPress={() => store.editDraftItem(item.key, { dueDayKey: o })} />
+                <OptionButton key={o} item={item} dayKey={o} draft={draft} selected={item.dueDayKey === o} onPress={() => store.editDraftItem(item.key, { dueDayKey: o })} />
               ))}
             </View>
           )}
-          <View style={styles.field}>
-            <Text style={styles.label}>Title</Text>
-            <TextInput value={item.title} onChangeText={(title) => store.editDraftItem(item.key, { title })} style={styles.input} accessibilityLabel="Title" />
-          </View>
-          <TypeChips value={item.type} onChange={(type) => store.editDraftItem(item.key, { type })} />
-          {!item.recurrence && !item.conditional && <DateField value={item.dueDayKey} onChange={(dueDayKey) => store.editDraftItem(item.key, { dueDayKey })} />}
-          <TimeField value={item.dueTime} onChange={(dueTime) => store.editDraftItem(item.key, { dueTime })} />
           <EffortField value={item.estimatedMinutes} onChange={(estimatedMinutes) => store.editDraftItem(item.key, { estimatedMinutes })} />
-          {item.provenance[0] ? <Text style={styles.muted}>{`Found on page ${item.provenance[0].page ?? 1} of your syllabus.`}</Text> : null}
+          <Disclosure label="Change title, type or date" open={editing} onToggle={() => setEditing((v) => !v)}>
+            <View style={styles.field}>
+              <Text style={styles.label}>Title</Text>
+              <TextInput value={item.title} onChangeText={(title) => store.editDraftItem(item.key, { title })} style={styles.input} accessibilityLabel="Title" />
+            </View>
+            <TypeChips value={item.type} onChange={(type) => store.editDraftItem(item.key, { type })} />
+            {!item.recurrence && !item.conditional && <DateField value={item.dueDayKey} onChange={(dueDayKey) => store.editDraftItem(item.key, { dueDayKey })} />}
+            <TimeField value={item.dueTime} onChange={(dueTime) => store.editDraftItem(item.key, { dueTime })} />
+          </Disclosure>
+          <Disclosure label="Source details" open={source} onToggle={() => setSource((v) => !v)}>
+            {item.provenance[0] ? <Text style={styles.muted}>{`Found on page ${item.provenance[0].page ?? 1} of your syllabus${item.provenance.length > 1 ? ` (and ${item.provenance.length - 1} more place${item.provenance.length > 2 ? 's' : ''})` : ''}.`}</Text> : null}
+            {item.inferences.map((inf) => (
+              <Text key={inf.note} style={styles.inference}>
+                {inf.note}
+              </Text>
+            ))}
+            {item.reasons.filter((r) => r !== 'conditional' && r !== 'yearConflict').map((r) => (
+              <Text key={r} style={styles.reason}>
+                {describeReason(r)}
+              </Text>
+            ))}
+            {(item.notes ?? []).map((n) => (
+              <Text key={n} style={styles.reason}>
+                {n}
+              </Text>
+            ))}
+            <Text style={styles.muted}>{`Status: ${TRUST_STATUS_LABEL[status]}`}</Text>
+          </Disclosure>
           {unresolved && <Text style={styles.muted}>No date yet. It’s saved as a course requirement without a date, and won’t be planned or reminded until it has one.</Text>}
           <View style={styles.row}>
             {level !== 'confirmed' && (item.dueDayKey || item.recurrence) && <Button label="Looks right" variant="secondary" onPress={() => store.confirmDraftItem(item.key)} style={styles.flexBtn} />}
@@ -459,8 +559,35 @@ function ImportDiagnostics({ draft }: { draft: ImportDraft }) {
 }
 
 const amber = '#8A4B00';
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const styles = StyleSheet.create({
+  steps: { flexDirection: 'row', gap: 6 },
+  option: { minHeight: 52, borderRadius: radius.md, borderWidth: 2, borderColor: colors.primarySoft, backgroundColor: colors.surface, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, justifyContent: 'center' },
+  optionOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  optionDate: { fontSize: 16, fontWeight: '900', color: colors.primaryDark },
+  optionNote: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  step: { flex: 1, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted, paddingVertical: 6, alignItems: 'center' },
+  stepOn: { backgroundColor: colors.primarySoft },
+  stepText: { fontSize: 12, fontWeight: '800', color: colors.textMuted },
+  stepTextOn: { color: colors.primaryDark },
+  statsRow: { flexDirection: 'row', gap: spacing.sm },
+  stat: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: 6, alignItems: 'center' },
+  statN: { fontSize: 22, fontWeight: '900', color: colors.text },
+  statLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textAlign: 'center' },
+  statusLine: { borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  statusAsk: { backgroundColor: '#FFF4E0' },
+  statusOk: { backgroundColor: colors.successSoft },
+  statusText: { fontSize: 15, fontWeight: '800', color: colors.text },
+  question: { gap: 2 },
+  skip: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
+  skipText: { fontSize: 14, fontWeight: '800', color: colors.textMuted, textDecorationLine: 'underline' },
+  sticky: { gap: 4 },
+  stickyNote: { ...typography.label, textAlign: 'center' },
+  disclosure: { backgroundColor: colors.surface, borderRadius: radius.lg },
+  disclosureHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: spacing.md },
+  disclosureText: { fontSize: 15, fontWeight: '800', color: colors.primaryDark },
+  disclosureBody: { gap: spacing.md, padding: spacing.md, paddingTop: 0 },
   wrap: { gap: spacing.md },
   hero: { gap: spacing.xs, paddingHorizontal: spacing.xs },
   heroTitle: { fontSize: 26, fontWeight: '900', color: colors.text },

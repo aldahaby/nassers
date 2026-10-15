@@ -46,6 +46,7 @@ export default function RootLayout() {
           <Stack.Screen name="planner/import" options={{ animation: slide }} />
           <Stack.Screen name="planner/review" options={{ animation: slide }} />
           <Stack.Screen name="planner/manual" options={{ animation: slide }} />
+          <Stack.Screen name="planner/plan" options={{ animation: slide }} />
           <Stack.Screen name="planner/week" options={{ animation: slide }} />
           <Stack.Screen name="planner/settings" options={{ animation: slide }} />
           <Stack.Screen name="planner/assignment/[id]" options={{ animation: slide }} />

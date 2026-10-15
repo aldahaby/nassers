@@ -115,6 +115,8 @@ export interface ImportDraft {
   ignoredHeaderLines: number;
   /** Year evidence; when the document disagrees with itself the student picks (`chosen`), never a silent default. */
   years: YearAnalysis;
+  /** PDF pages that couldn't be read (no text layer); the student is told to check them. */
+  pagesWithoutText: number[];
 }
 
 export interface CreateDraftInput {
@@ -125,6 +127,8 @@ export interface CreateDraftInput {
   now: Timestamp;
   parserVersion?: ParserVersion;
   extraction?: Syllabus['extraction'];
+  /** PDF pages (1-based) that had no readable text (scans) and were skipped. */
+  pagesWithoutText?: number[];
 }
 
 export function fingerprintOf(courseKey: string, normalizedTitle: string, dayKey?: string | null): string {
@@ -150,8 +154,29 @@ function matchCourse(state: PlannerState, guess: CourseGuess): Course | null {
   return null;
 }
 
+/**
+ * A date or time wrapped onto the next line ("…due Friday, January 22, 2027 at" / "11:59 PM.")
+ * is put back on its line. The emptied line keeps its place, so page/line references stay true.
+ */
+export function joinWrappedTimes(text: string): string {
+  return text
+    .split('\f')
+    .map((page) => {
+      const lines = page.split('\n');
+      for (let i = 0; i < lines.length - 1; i++) {
+        if (/\b(at|by|on|from|to|until|before|due)\s*$/i.test(lines[i]!) && /^\s*\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?|noon|midnight)\b/i.test(lines[i + 1]!)) {
+          lines[i] = `${lines[i]!.replace(/\s+$/, '')} ${lines[i + 1]!.trim()}`;
+          lines[i + 1] = '';
+        }
+      }
+      return lines.join('\n');
+    })
+    .join('\f');
+}
+
 export function createImportDraft(state: PlannerState, input: CreateDraftInput): ImportDraft {
-  const cleaned = stripRunningHeaders(input.text);
+  const unwrapped = stripRunningHeaders(input.text);
+  const cleaned = { ...unwrapped, text: joinWrappedTimes(unwrapped.text) };
   const parsed = parseSyllabus({ text: cleaned.text, timezone: input.timezone, referenceAt: input.now, parserVersion: input.parserVersion });
   const insights = extractInsights(cleaned.text);
   const courses: DraftCourse[] = parsed.courses.map((g, index) => {
@@ -186,6 +211,11 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
     const catalog = buildCatalog(lines);
     items = applyCatalog(items, catalog, courses[0]!, insights, years);
     // No grading table in the text, but items state their own weight ("Value: 5% of final grade").
+    // An item named in the grading list gets that weight ("Midterm Exam 25%"), never a guessed share.
+    if (insights.grading) {
+      const byName = new Map(insights.grading.components.filter((c) => !c.count).map((c) => [normalizeTitle(c.name), c.weightPercent]));
+      items = items.map((i) => (i.weightPercent === null && byName.has(normalizeTitle(i.title)) ? { ...i, weightPercent: byName.get(normalizeTitle(i.title))! } : i));
+    }
     const weighted = catalog.filter((e) => e.weightPercent !== null);
     if (!insights.grading && weighted.length >= 2) {
       const totalPercent = weighted.reduce((n, e) => n + e.weightPercent!, 0);
@@ -219,6 +249,7 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
     detailsDiff: primary.existingCourseId ? diffDetails(state.courses[primary.existingCourseId]?.details ?? null, draftInsights) : [],
     ignoredHeaderLines: cleaned.removed,
     years,
+    pagesWithoutText: input.pagesWithoutText ?? [],
   };
   return reconcileDraft(state, academic ? placeYears(draft) : draft);
 }
@@ -383,6 +414,8 @@ function applyCatalog(items: DraftItem[], catalog: CatalogEntry[], course: Draft
     else if (consumed.has(i.key)) continue;
     // "(Approved by Senate on 21 January 2009)", "Writer, A. (2021, September 14)": not course work.
     else if (i.change !== 'removed' && isReferenceLine(i.snippet)) continue;
+    // "Lectures meet Tuesdays and Thursdays from 11:30 AM…": a class meeting, not a task.
+    else if (i.change !== 'removed' && /^(?:lectures?|classes?|labs?|tutorials?|seminars?)\s+(?:meet|are held|take place|run)\b/i.test(i.snippet.trim())) continue;
     else {
       const title = cleanItemTitle(i.title, i.type);
       result.push(title === i.title ? i : { ...i, title, fingerprint: fingerprintOf(courseKey, normalizeTitle(title), i.dueDayKey) });
@@ -523,25 +556,50 @@ export type AttentionItem =
   | { kind: 'choose'; key: string; title: string; options: string[] }
   | { kind: 'noDate'; key: string; title: string }
   | { kind: 'mismatch'; key: string; title: string; note: string }
-  | { kind: 'grading'; total: number; missing: string[] };
+  | { kind: 'grading'; total: number; missing: string[] }
+  | { kind: 'skippedPages'; pages: number[] }
+  | { kind: 'unknownDate'; key: string; title: string; reason: 'examPeriod' | 'tba' }
+  | { kind: 'lectureWeekdays'; year: number; count: number; example: string };
 
 /** What genuinely needs the student before the planner can use this syllabus (not diagnostics). */
 export function draftAttention(draft: ImportDraft): AttentionItem[] {
   const out: AttentionItem[] = [];
+  if (draft.pagesWithoutText?.length) out.push({ kind: 'skippedPages', pages: draft.pagesWithoutText });
   if (draft.years.conflict && draft.years.chosen == null) out.push({ kind: 'year', options: draft.years.options, evidence: draft.years.evidence });
   for (const i of draft.items) {
     if (!i.include || i.change === 'removed') continue;
     if (i.conditional && !i.dueDayKey) out.push({ kind: 'conditional', key: i.key, title: i.title, question: conditionalQuestion(i.conditional) });
-    else if (i.dueOptions?.length && i.confidence.due !== 'confirmed') out.push({ kind: 'choose', key: i.key, title: i.title, options: i.dueOptions });
+    // A year-conflict choice waits for "Which year is this course?": that answer usually settles it.
+    else if (i.dueOptions?.length && i.confidence.due !== 'confirmed') {
+      if (!(i.reasons.includes('yearConflict') && draft.years.conflict && draft.years.chosen == null)) out.push({ kind: 'choose', key: i.key, title: i.title, options: i.dueOptions });
+    }
     else if (!i.dueDayKey && !i.recurrence && !i.reasons.some((r) => r === 'examPeriod' || r === 'tba' || r === 'yearConflict')) out.push({ kind: 'noDate', key: i.key, title: i.title });
+    if (!i.dueDayKey && !i.recurrence && (i.reasons.includes('examPeriod') || i.reasons.includes('tba'))) out.push({ kind: 'unknownDate', key: i.key, title: i.title, reason: i.reasons.includes('examPeriod') ? 'examPeriod' : 'tba' });
     if (i.confidence.due !== 'confirmed') for (const note of i.notes ?? []) out.push({ kind: 'mismatch', key: i.key, title: i.title, note });
   }
+  const lectureCheck = lectureWeekdayMismatches(draft.years, draft.insights.lectures ?? []);
+  if (lectureCheck) out.push({ kind: 'lectureWeekdays', ...lectureCheck });
   const g = draft.insights.grading;
   if (g && !g.addsUp && g.totalPercent < 100) {
     const missing = draft.items.filter((i) => i.include && i.change !== 'removed' && i.catalogKey && i.weightPercent === null).map((i) => i.title);
     out.push({ kind: 'grading', total: g.totalPercent, missing });
   }
   return out;
+}
+
+/**
+ * Lectures whose listed weekday doesn't match their date in the year being used
+ * ("Tue Sep 1" in 2025 is a Monday). Null when the year isn't known or all match.
+ */
+export function lectureWeekdayMismatches(years: YearAnalysis, lectures: LectureEntry[]): { year: number; count: number; example: string } | null {
+  const year = placementYear(years);
+  if (year === null) return null;
+  const NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const off = lectures.filter((l) => l.weekday !== null).map((l) => ({ l, actual: weekdayOfKey(termDayKey(l.month, l.day, year, years.season)) })).filter((x) => x.actual !== x.l.weekday);
+  if (!off.length) return null;
+  const e = off[0]!;
+  return { year: calendarYearOf(e.l.month, year, years.season), count: off.length, example: `lecture ${e.l.number} is listed on a ${NAMES[e.l.weekday!]}, but ${MONTHS[e.l.month - 1]} ${e.l.day} is a ${NAMES[e.actual]}` };
 }
 
 export function conditionalQuestion(c: Pick<ConditionalDeadline, 'anchorKind' | 'anchor'>): string {

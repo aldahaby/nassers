@@ -14,7 +14,9 @@ Evidence: `PLANNER_EVIDENCE.md`. Privacy: `PLANNER_PRIVACY.md`.
 | Planner store (persistence, Start & Lock, session recording, reminder sync) | Implemented, integration-tested (`src/state/__tests__/plannerStore.test.ts`) |
 | Planner UI, Syllabus Lab, Planner QA | Implemented, browser-tested (web build, suite m12) |
 | Local notifications (expo-notifications) | Wired; verified on web with the mock only. **UNTESTED on device** |
-| PDF text + on-device OCR (`modules/studyling-native`, PDFKit + Vision) | Written. **UNTESTED, not compiled**. Web reads text files and pasted text only |
+| PDF text + on-device OCR (`modules/studyling-native`, PDFKit + Vision) | Written. **UNTESTED, not compiled** |
+| PDF on the web (PDF.js, text layer only; scans refused with a message) | Implemented, unit-tested with real PDFs, browser-tested in Chromium (suite m18). **Not yet run in iPhone Safari**: `IPHONE_SAFARI_PDF_TEST.md` |
+| Planner home (Milestone 17) | Today's study plan → Upcoming deadlines (dated only) → Needs your attention → Waiting for a date → Courses. An empty day offers "Plan a study session" (`planner/plan`): your estimate, suggested blocks labelled as Studyling's, then accept or skip |
 | Widget + Live Activity (`targets/widgets`) | Written. **UNTESTED, not compiled**. Web shows labelled mocks |
 | Google Classroom / Canvas | Interfaces + fixtures only. No OAuth, no network, shown as "Coming later" |
 | Share extension (email attachment) | Deferred. V1 email import = paste text, or save the attachment and pick it as a file |

@@ -3,3 +3,4 @@ export * from './documentText';
 export * from './docx';
 export { inflateRaw, InflateError } from './inflate';
 export { isZip } from './zip';
+export * from './pdfLayout';

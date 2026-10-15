@@ -5,7 +5,7 @@ import { assignmentProgress, assignmentTrustStatus, capacityFor, conditionalQues
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
 import { useActiveSession, usePlannerStore } from '@/state';
-import { Button, Card, colors, radius, spacing, typography } from '@/ui';
+import { Button, Card, Pressable, colors, radius, spacing, typography } from '@/ui';
 import { Chips, DateField, EffortField, TimeField, TypeChips } from './AssignmentFields';
 import { CapacityNote } from './CapacityNote';
 import { PlanRow } from './PlanCard';
@@ -13,6 +13,8 @@ import { CourseTag, InfoNote, SectionTitle, StatusPill } from './PlannerBits';
 import { formatClock, formatDay, formatDayKey, formatDue, formatMinutes, START_CONTEXT_LABEL, timeLabel, TYPE_LABEL, unresolvedText } from './plannerCopy';
 
 /** Official requirement vs the student's own task (Studyling's plan suggestions are labelled separately). */
+/** Short, always-visible origin: an official requirement vs the student's own task. */
+const SOURCE_TAG = { parser: 'Course requirement', syllabus: 'Course requirement', lms: 'From your class site', user: 'Your task' } as const;
 const SOURCE_LABEL = { parser: 'From your syllabus · needs review', syllabus: 'Course requirement · from your syllabus', lms: 'From your class site', user: 'Added by you' } as const;
 
 export function AssignmentDetail({ id, editEstimate = false }: { id: string; editEstimate?: boolean }) {
@@ -22,6 +24,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
   const routes = useAppRoutes();
   const [editing, setEditing] = useState(editEstimate);
   const [title, setTitle] = useState<string | null>(null);
+  const [allReqs, setAllReqs] = useState(false);
   const store = usePlannerStore.getState();
   const a = planner?.assignments[id];
   if (!planner || !a || a.deletedAt) {
@@ -56,40 +59,38 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
       <Card>
         <View style={styles.rowBetween}>
           <CourseTag course={course} />
-          <StatusPill status={assignmentTrustStatus(a)} />
+          <Text style={styles.sourceTag}>{SOURCE_TAG[a.sourceAuthority]}</Text>
         </View>
         <Text style={typography.title}>{a.title}</Text>
+        <Text style={[styles.due, !a.dueAt && styles.dueMissing]}>{a.dueAt ? formatDue(a.dueAt, a.dueDateOnly, tz, now) : unresolvedText(a)}</Text>
+        {!a.dueAt && (a.unresolved === 'examPeriod' || a.unresolved === 'tba') && (
+          <Text style={styles.muted}>{a.unresolved === 'examPeriod' && a.window ? `Only the exam period is known (${formatDay(a.window.from, tz)} – ${formatDay(a.window.to, tz)}). Add the date when it’s announced.` : 'Add the date when it’s announced. No reminders until then.'}</Text>
+        )}
         <Text style={styles.meta}>
-          {TYPE_LABEL[a.type]} · {a.dueAt ? formatDue(a.dueAt, a.dueDateOnly, tz, now) : unresolvedText(a)}
-          {a.status === 'completed' ? ' · Done' : ''}
-        </Text>
-        <Text style={styles.muted}>
-          {SOURCE_LABEL[a.sourceAuthority]}
-          {syllabus ? ` · ${syllabus.filename ?? 'pasted text'}, revision ${syllabus.revision}` : ''}
-          {a.provenance ? ` · page ${a.provenance.page ?? 1}, line ${a.provenance.line}` : ''}
+          {`${TYPE_LABEL[a.type]} · ${a.weight !== undefined ? `${a.weight}% of your grade` : 'Grade weight not stated'}${a.status === 'completed' ? ' · Done' : ''}`}
         </Text>
         {a.missingFromSource && <Text style={styles.reason}>The latest syllabus doesn’t list this anymore.</Text>}
-        {(a.unresolved === 'examPeriod' || a.unresolved === 'tba') && (
-          <Text style={styles.reason}>
-            {a.unresolved === 'examPeriod' && a.window ? `Only the exam period is known (${formatDay(a.window.from, tz)} – ${formatDay(a.window.to, tz)}). Add the date when it’s announced.` : 'The syllabus doesn’t give a date yet. Add it when it’s announced.'}
-          </Text>
-        )}
-        {(a.inferenceNotes ?? []).map((n) => (
-          <Text key={n} style={styles.inference}>
-            {n}
-          </Text>
-        ))}
         {(a.attentionNotes ?? []).map((n) => (
           <Text key={n} style={styles.reason}>
             {n}
           </Text>
         ))}
-        {(a.reviewReasons ?? []).filter((r) => r !== 'conditional' && r !== 'yearConflict').map((r) => (
-          <Text key={r} style={styles.reason}>
-            {describeReason(r)}
-          </Text>
-        ))}
       </Card>
+
+      {a.status === 'open' && !active && (
+        <View style={styles.startBlock}>
+          {current && plannedNow ? (
+            <Button label={`Start planned ${current.plannedMinutes} min`} onPress={() => void startPlanned()} sound={null} accessibilityHint="Starts your planned session with your protection settings" />
+          ) : (
+            <Button label="Start & Lock-In" onPress={() => void startUnplanned()} sound={null} accessibilityHint={`Starts a ${planner.preferences.preferredSessionMinutes} minute study session for this assignment`} />
+          )}
+          <EffortField value={a.estimatedMinutes ?? null} onChange={(m) => store.updateAssignment(a.id, { estimatedMinutes: m })} />
+          {isSchedulable(a) && a.dueAt && a.dueAt > now && (
+            <Button label={a.estimatedMinutes ? (progress.upcomingPlans.length ? 'Re-plan study blocks' : 'Plan study blocks') : 'Plan a study session'} variant="secondary" onPress={() => router.push(`/planner/plan?assignment=${a.id}` as Href)} />
+          )}
+          <Text style={styles.muted}>Study time counts for this assignment. Studying never marks it done; you decide when it’s finished.</Text>
+        </View>
+      )}
 
       {a.conflicts &&
         (Object.entries(a.conflicts) as [AssignmentField, { sourceValue: string }][]).map(([field, c]) => (
@@ -110,7 +111,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
           <Text style={typography.heading}>Which date is right?</Text>
           <Text style={styles.body}>The syllabus doesn’t agree with itself about this date. Pick the one that fits your course; Studyling won’t plan it until you do.</Text>
           {a.dueCandidates.map((c) => (
-            <Button key={c.dayKey} label={`${formatDayKey(c.dayKey)}, ${c.dayKey.slice(0, 4)}${c.time ? ` · ${timeLabel(c.time)}` : ''}`} variant="secondary" accessibilityHint={c.note} onPress={() => store.chooseDueCandidate(a.id, c.dayKey)} />
+            <Button key={c.dayKey} label={`${formatDayKey(c.dayKey)}, ${c.dayKey.slice(0, 4)}${c.time ? ` · ${timeLabel(c.time)}` : ''} — ${c.note.toLowerCase()}`} variant="secondary" onPress={() => store.chooseDueCandidate(a.id, c.dayKey)} />
           ))}
         </Card>
       )}
@@ -121,7 +122,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
 
       {(a.weight !== undefined || a.availableAt || a.coverage || a.requirements?.length || a.submission || a.latePolicy || a.conditional) && (
         <Card>
-          <SectionTitle>From the syllabus</SectionTitle>
+          <Text style={styles.kicker}>From your syllabus</Text>
           {a.conditional && (
             <Text style={styles.body}>
               {`Due ${conditionalRuleText(a.conditional)}${a.conditional.time ? ` at ${timeLabel(a.conditional.time)}` : ''}.`}
@@ -131,9 +132,14 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
           {a.requirements && a.requirements.length > 0 && (
             <View style={styles.list}>
               <Text style={styles.listLabel}>What to do</Text>
-              {a.requirements.map((r) => (
+              {(allReqs ? a.requirements : a.requirements.slice(0, 3)).map((r) => (
                 <Text key={r} style={styles.body}>{`• ${r}`}</Text>
               ))}
+              {a.requirements.length > 3 && (
+                <Pressable onPress={() => setAllReqs((v) => !v)} accessibilityRole="button" style={styles.more}>
+                  <Text style={styles.moreText}>{allReqs ? 'Show less' : `Show all ${a.requirements.length}`}</Text>
+                </Pressable>
+              )}
             </View>
           )}
           {a.submission && (
@@ -148,7 +154,6 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
               <Text style={styles.body}>{a.latePolicy}</Text>
             </View>
           )}
-          {a.weight !== undefined && <Text style={styles.body}>{`Worth ${a.weight}% of the final grade`}</Text>}
           {a.availableAt && <Text style={styles.body}>{`Released ${formatDay(a.availableAt, tz)}`}</Text>}
           {a.coverage && (
             <Text style={styles.body}>
@@ -172,17 +177,6 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
 
       {course?.details && (
         <Button label="Course details" variant="ghost" onPress={() => router.push(`/planner/course/${course.id}` as Href)} />
-      )}
-
-      {a.status === 'open' && !active && (
-        <>
-          {current && plannedNow ? (
-            <Button label={`Start planned ${current.plannedMinutes} min`} onPress={() => void startPlanned()} sound={null} accessibilityHint="Starts your planned session with your protection settings" />
-          ) : (
-            <Button label="Start & Lock now" onPress={() => void startUnplanned()} sound={null} accessibilityHint={`Starts a ${planner.preferences.preferredSessionMinutes} minute study session for this assignment`} />
-          )}
-          <Text style={styles.muted}>Study time is recorded for this assignment. Studying doesn’t mark it done; you decide when it’s finished.</Text>
-        </>
       )}
 
       <Card>
@@ -225,7 +219,6 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
       ) : (
         <View style={styles.row}>
           <Button label="Edit details" variant="secondary" onPress={() => setEditing(true)} style={styles.flex} />
-          {isSchedulable(a) && a.estimatedMinutes ? <Button label={progress.upcomingPlans.length ? 'Re-plan' : 'Plan study'} variant="secondary" onPress={() => store.proposePlans([a.id])} style={styles.flex} /> : null}
         </View>
       )}
 
@@ -279,6 +272,25 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
           </Card>
         </>
       )}
+
+      <Disclosure label="Source details">
+        <Text style={styles.muted}>
+          {SOURCE_LABEL[a.sourceAuthority]}
+          {syllabus ? ` · ${syllabus.filename ?? 'pasted text'}, version ${syllabus.revision}` : ''}
+          {a.provenance ? ` · page ${a.provenance.page ?? 1}` : ''}
+        </Text>
+        <StatusPill status={assignmentTrustStatus(a)} />
+        {(a.inferenceNotes ?? []).map((n) => (
+          <Text key={n} style={styles.inference}>
+            {n}
+          </Text>
+        ))}
+        {(a.reviewReasons ?? []).filter((r) => r !== 'conditional' && r !== 'yearConflict').map((r) => (
+          <Text key={r} style={styles.reason}>
+            {describeReason(r)}
+          </Text>
+        ))}
+      </Disclosure>
 
       <View style={styles.row}>
         {a.status === 'open' ? (
@@ -334,6 +346,20 @@ function ConditionalCard({ a, course }: { a: Assignment; course: Course | undefi
   );
 }
 
+/** Secondary details, collapsed by default. */
+function Disclosure({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={styles.disclosure}>
+      <Pressable onPress={() => setOpen((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: open }} style={styles.disclosureHead}>
+        <Text style={styles.disclosureText}>{label}</Text>
+        <Text style={styles.disclosureChevron}>{open ? '⌃' : '⌄'}</Text>
+      </Pressable>
+      {open && <View style={styles.disclosureBody}>{children}</View>}
+    </View>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value}`}>
@@ -344,6 +370,17 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  due: { fontSize: 17, fontWeight: '900', color: colors.text },
+  sourceTag: { fontSize: 12, fontWeight: '800', color: colors.primaryDark, backgroundColor: colors.primarySoft, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
+  more: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  moreText: { fontSize: 14, fontWeight: '800', color: colors.primaryDark },
+  dueMissing: { color: '#8A4B00' },
+  startBlock: { gap: spacing.sm },
+  disclosure: { backgroundColor: colors.surface, borderRadius: radius.lg },
+  disclosureHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: spacing.md },
+  disclosureText: { fontSize: 15, fontWeight: '800', color: colors.primaryDark },
+  disclosureChevron: { fontSize: 18, fontWeight: '900', color: colors.textMuted },
+  disclosureBody: { gap: spacing.sm, padding: spacing.md, paddingTop: 0 },
   list: { gap: 4 },
   listLabel: { ...typography.label, color: colors.text },
   inference: { fontSize: 13, color: '#4A3F8F', marginTop: 2 },

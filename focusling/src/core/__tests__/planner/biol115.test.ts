@@ -135,3 +135,19 @@ describe.each(sources)('BIOL 115 (%s)', (_name, text, lectureCount) => {
     expect(JSON.stringify(res.state)).not.toMatch(/Grading Scheme|Instructor-generated/);
   });
 });
+
+describe('BIOL 115 layout: lecture weekdays and unknown dates', () => {
+  const draft = createImportDraft(createPlannerState(NOW, TZ), { text: BIOL115_LAYOUT.text, sourceType: 'emailText', timezone: TZ, now: NOW });
+
+  it('choosing 2025 flags that the lecture schedule’s weekdays don’t fit; 2026 has no such note', () => {
+    const in2025 = draftAttention(chooseDraftYear(draft, 2025)).find((a) => a.kind === 'lectureWeekdays');
+    expect(in2025).toMatchObject({ kind: 'lectureWeekdays', year: 2025, count: 8 });
+    expect(in2025 && 'example' in in2025 ? in2025.example : '').toMatch(/lecture 1 is listed on a Thursday, but Sep 3 is a Wednesday/);
+    expect(draftAttention(chooseDraftYear(draft, 2026)).some((a) => a.kind === 'lectureWeekdays')).toBe(false);
+  });
+
+  it('the final exam (exam period, no date) is asked about but never given a date by itself', () => {
+    const a = draftAttention(draft).find((x) => x.kind === 'unknownDate');
+    expect(a).toMatchObject({ kind: 'unknownDate', title: 'Final Exam', reason: 'examPeriod' });
+  });
+});

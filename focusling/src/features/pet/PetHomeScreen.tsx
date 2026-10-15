@@ -216,7 +216,7 @@ export function PetHomeScreen() {
 
 const styles = StyleSheet.create({
   identity: { alignItems: 'center', gap: 2, marginTop: -spacing.sm },
-  roomChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.88)' },
+  roomChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.88)' },
   roomChipText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
   name: { ...typography.title },
   subtitle: { ...typography.label, color: colors.textMuted },

@@ -93,10 +93,11 @@ const INSTITUTION = /\b(universit[yé]|université|college|cégep|institute of t
 
 function identityOf(lines: Line[]): CourseIdentity {
   const head = lines.slice(0, 25);
-  const instLine = head.find((l) => INSTITUTION.test(l.text) && l.text.length <= 90 && !/[.?!]$/.test(l.text) && !EMAIL.test(l.text));
+  const partOf = (t: string) => t.split(/\s*[|·•,–—]\s*|\s+-\s+/).find((p) => INSTITUTION.test(p) && !EMAIL.test(p) && !/:/.test(p));
+  const instLine = head.find((l) => INSTITUTION.test(l.text) && l.text.length <= 120 && !/[.?!]$/.test(l.text) && (!EMAIL.test(l.text) || Boolean(partOf(l.text))));
   let institution: string | null = null;
   if (instLine) {
-    const part = instLine.text.split(/\s*[|·•,–—]\s*|\s+-\s+/).find((p) => INSTITUTION.test(p)) ?? instLine.text;
+    const part = partOf(instLine.text) ?? instLine.text;
     institution = part.replace(TERM_RE, '').replace(/\s+/g, ' ').trim() || null;
   }
   let code: string | null = null;
@@ -264,7 +265,8 @@ function peopleOf(lines: Line[]): CoursePerson[] {
       }
     }
   });
-  for (const l of lines) {
+  const segmented = lines.flatMap((l) => (/\s[·|]\s/.test(l.text) ? l.text.split(/\s+[·|]\s+/).map((t) => ({ ...l, text: t, cells: [t] })) : [l]));
+  for (const l of segmented) {
     const text = l.cells.length > 1 ? `${l.cells[0]}: ${l.cells.slice(1).join(', ')}` : l.text;
     const ins = INSTRUCTOR_LABEL.exec(text);
     if (ins && !/office hours?/i.test(text)) {
@@ -304,7 +306,8 @@ const MEETING_WORD = /\b(lectures?|class(?:es)?|meets?|meeting times?|labs?|tuto
 const LOCATION_LABEL = /^(?:location|room|place|where|classroom|venue|lecture (?:room|hall))\s*[:\-|]\s*(.+)$/i;
 
 function locationNear(lines: Line[], idx: number): string | null {
-  const own = /,\s*(?:in\s+)?((?:room\s+)?[A-Z][A-Za-z.]{1,15}\s?\d{1,4}[A-Z]?)\s*$/.exec(lines[idx]!.text) ?? /\b(?:in|at|room:?)\s+((?:room\s+)?[A-Z][A-Za-z.]{1,15}\s?\d{1,4}[A-Z]?)\b/.exec(lines[idx]!.text);
+  const room = '((?:room\\s+)?[A-Z][A-Za-z.]{1,15}(?:\\s[A-Z][A-Za-z.]{1,15})?\\s?\\d{1,4}[A-Z]?)';
+  const own = new RegExp(`,\\s*(?:in\\s+)?${room}\\s*\\.?$`).exec(lines[idx]!.text) ?? new RegExp(`\\b(?:in|at|room:?)\\s+${room}\\b`).exec(lines[idx]!.text);
   if (own) return own[1]!.trim();
   for (const l of lines.slice(idx + 1, idx + 3)) {
     const m = LOCATION_LABEL.exec(l.text);
@@ -373,6 +376,20 @@ function gradingOf(lines: Line[]): GradingBreakdown | null {
     if (!name || name.length > 70 || !/[a-z]/i.test(name)) continue;
     if (components.some((c) => normalizeTitle(c.name) === normalizeTitle(name))) continue;
     components.push({ name, weightPercent: weight, ...(times ? { count: Number(times[1]) } : {}), provenance: l.provenance });
+  }
+  if (!components.length) {
+    // One line: "Grading: Reading responses 20%, Midterm Exam 25%, Final Exam 35%."
+    for (const [li, l] of lines.entries()) {
+      const m = /^(?:grading|evaluation|assessment|grade breakdown|marking)\s*:\s*(.+)$/i.exec(l.text);
+      if (!m) continue;
+      const list = /,$/.test(m[1]!) && lines[li + 1] ? `${m[1]} ${lines[li + 1]!.text}` : m[1]!;
+      for (const part of list.split(/\s*[,;]\s*|\s+and\s+/)) {
+        const pm = /^(.{2,60}?)\s*[:\-–]?\s*\(?(\d{1,3}(?:\.\d+)?)\s?%\)?\.?$/.exec(part.trim());
+        if (pm && /[a-z]/i.test(pm[1]!)) components.push({ name: pm[1]!.trim(), weightPercent: Number(pm[2]), provenance: l.provenance });
+      }
+      if (components.length >= 2) break;
+      components.length = 0;
+    }
   }
   if (!components.length) return null;
   const totalPercent = Math.round(components.reduce((s, c) => s + c.weightPercent, 0) * 100) / 100;
@@ -522,12 +539,17 @@ function summaryAfter(lines: Line[], idx: number, inline: string | null, kind: N
 function policiesOf(lines: Line[]): PolicyRef[] {
   const out: PolicyRef[] = [];
   lines.forEach((l, idx) => {
-    // "Late policy: Late assignments lose 10%…" (heading and text on one line).
-    const inline = /^([A-Z][A-Za-z ()/-]{3,50}?)\s*:\s+(.{15,})$/.exec(l.text);
+    // "Late policy: Late assignments lose 10%…" or a run-in heading "Late work. Problem sets…".
+    const inline = /^([A-Z][A-Za-z ()/-]{3,50}?)\s*:\s+(.{15,})$/.exec(l.text) ?? /^([A-Z][A-Za-z /-]{2,30})\.\s+([A-Z].{10,})$/.exec(l.text);
+    // A wrapped line of a sentence ("Student Accessibility Services early in the term so") ends
+    // on a word no heading ends with.
+    if (!inline && /\s(?:so|the|a|an|and|or|to|of|in|for|with|by|on|at|that|as|your|their|is|are|be|if|when)$/i.test(l.text)) return;
     const head = inline && POLICY.test(inline[1]!) ? inline[1]! : l.text;
     const t = head.replace(/^(?:\d+(?:\.\d+)*\.?|[a-z]\))\s*/i, '').replace(/[:\s]+$/, '');
     if (t.length > 60 || t.length < 4 || /\d{1,3}\s?%/.test(t) || datesInLine(t).length || /[.?!,;]$/.test(t)) return;
     if (!POLICY.test(t) || t.split(' ').length > 8) return;
+    // An umbrella heading ("Course policies") introduces the real ones below it.
+    if (/^(?:course\s+)?polic(?:y|ies)$/i.test(t)) return;
     if (!/^[A-Z]/.test(t)) return;
     if (out.some((p) => normalizeTitle(p.title) === normalizeTitle(t))) return;
     const own = inline && POLICY.test(inline[1]!) ? inline[2]! : null;
