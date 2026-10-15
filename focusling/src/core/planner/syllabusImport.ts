@@ -3,7 +3,7 @@ import { sha256Hex } from '../shared/sha256';
 import type { Assignment, AssignmentType, ConditionalDeadline, ConfidenceLevel, Course, CourseDetails, Id, Inference, LectureEntry, PlannerState, ReviewReason, SourceProvenance, SourceValues, Syllabus, SyllabusInsights, SyllabusSourceType, Timestamp, YearAnalysis } from '../models';
 import { stripRunningHeaders } from '../documents/documentText';
 import { extractInsights } from './syllabusInsights';
-import { academicYearOf, analyzeYears, buildCatalog, calendarYearOf, cleanItemTitle, termDayKey, entryMentionedIn, readLines, weekdayMismatch, type CatalogEntry } from './academicReading';
+import { academicYearOf, analyzeYears, buildCatalog, calendarYearOf, cleanItemTitle, termDayKey, entryAliasIn, entryMentionedIn, isReferenceLine, readLines, weekdayMismatch, type CatalogEntry } from './academicReading';
 import { logEvent, type IdGen } from './plannerState';
 import { applySourceUpdate } from './sourceAuthority';
 import { datesInLine, normalizeTitle, parseSyllabus, worst, type Candidate, type CourseGuess } from './syllabusParser';
@@ -74,6 +74,7 @@ export interface DraftItem {
   /** The item's own sentences: what to hand in, and how. */
   requirements?: string[];
   submission?: string | null;
+  late?: string | null;
   /** Inconsistencies worth telling the student about (weekday/date mismatch). */
   notes?: string[];
 }
@@ -157,7 +158,7 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
     // The insights pass reads labelled headings ("Course title:", institution lines) the parser doesn't.
     const guess: CourseGuess =
       index === 0 && parsed.courses.length === 1
-        ? { code: g.code ?? insights.identity.code, name: g.code && insights.identity.code === g.code ? insights.identity.title ?? g.name : g.name ?? insights.identity.title, term: g.term ?? (insights.identity.term ? `${insights.identity.term.season[0]!.toUpperCase()}${insights.identity.term.season.slice(1)} ${insights.identity.term.year}` : null) }
+        ? { code: insights.identity.code ?? g.code, name: insights.identity.title ?? g.name, term: g.term ?? (insights.identity.term ? `${insights.identity.term.season[0]!.toUpperCase()}${insights.identity.term.season.slice(1)} ${insights.identity.term.year}` : null) }
         : g;
     const existing = matchCourse(state, guess);
     return {
@@ -180,7 +181,17 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
   const academic = parsed.parserVersion === PARSER_VERSION && courses.length === 1;
   const lines = readLines(cleaned.text);
   const years: YearAnalysis = { ...(insights.years ?? analyzeYears(lines)), chosen: null };
-  if (academic) items = applyCatalog(items, buildCatalog(lines), courses[0]!, insights, years);
+  let draftInsights = insights;
+  if (academic) {
+    const catalog = buildCatalog(lines);
+    items = applyCatalog(items, catalog, courses[0]!, insights, years);
+    // No grading table in the text, but items state their own weight ("Value: 5% of final grade").
+    const weighted = catalog.filter((e) => e.weightPercent !== null);
+    if (!insights.grading && weighted.length >= 2) {
+      const totalPercent = weighted.reduce((n, e) => n + e.weightPercent!, 0);
+      draftInsights = { ...insights, grading: { components: weighted.map((e) => ({ name: e.title, weightPercent: e.weightPercent!, provenance: e.provenance })), totalPercent, addsUp: Math.abs(totalPercent - 100) < 0.01 } };
+    }
+  }
 
   const primary = courses[0]!;
   const prior = primary.existingCourseId
@@ -203,9 +214,9 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
     revisionOfSyllabusId: prior[0]?.id ?? null,
     dateRange: parsed.dateRange,
     rawText: input.text,
-    insights,
+    insights: draftInsights,
     details: { save: true, saveContacts: false },
-    detailsDiff: primary.existingCourseId ? diffDetails(state.courses[primary.existingCourseId]?.details ?? null, insights) : [],
+    detailsDiff: primary.existingCourseId ? diffDetails(state.courses[primary.existingCourseId]?.details ?? null, draftInsights) : [],
     ignoredHeaderLines: cleaned.removed,
     years,
   };
@@ -300,7 +311,7 @@ function applyCatalog(items: DraftItem[], catalog: CatalogEntry[], course: Draft
   const courseKey = courseKeyOf(course);
   const lectures = insights.lectures ?? [];
   for (const e of catalog) {
-    const matches = items.filter((i) => !consumed.has(i.key) && i.change !== 'removed' && (normalizeTitle(i.title) === normalizeTitle(e.base) || normalizeTitle(i.title) === normalizeTitle(e.title) || (entryMentionedIn(e, i.title) && (i.type === e.type || cleanItemTitle(i.title, i.type) !== i.title))));
+    const matches = items.filter((i) => !consumed.has(i.key) && i.change !== 'removed' && (normalizeTitle(i.title) === normalizeTitle(e.base) || normalizeTitle(i.title) === normalizeTitle(e.title) || (entryMentionedIn(e, i.title) && (i.type === e.type || cleanItemTitle(i.title, i.type) !== i.title)) || entryAliasIn(e, i.snippet) || (e.examPeriod !== null && i.reasons.includes('examPeriod') && /^(?:final\s+)?exam(?:ination)?s?\s+period\.?$/i.test(i.title.trim()))));
     matches.forEach((i) => consumed.add(i.key));
     const target = matches[0];
     const due = e.dates.find((d) => d.role !== 'release') ?? null;
@@ -316,6 +327,7 @@ function applyCatalog(items: DraftItem[], catalog: CatalogEntry[], course: Draft
       weightPercent: e.weightPercent ?? base.weightPercent,
       requirements: e.requirements,
       submission: e.submission,
+      late: e.late,
       conditional: null,
       fingerprint: fingerprintOf(courseKey, normalizeTitle(e.title)),
       confidence: { ...base.confidence, title: 'likely', type: 'likely' },
@@ -328,8 +340,9 @@ function applyCatalog(items: DraftItem[], catalog: CatalogEntry[], course: Draft
       if (!item.dueDayKey || !item.dueDayKey.endsWith(`-${pad2(due.month)}-${pad2(due.day)}`)) item.dueDayKey = years.termYear !== null ? termDayKey(due.month, due.day, due.explicitYear !== null ? academicYearOf(due.month, due.explicitYear, years.season) : years.termYear, years.season) : null;
       if (!target && item.dueDayKey) item.confidence.due = reasons.has('tentative') ? 'needsReview' : 'likely';
       // Other lines naming the same item with a different date: the student picks.
-      const statedDays = years.termYear !== null ? e.dates.filter((d) => d.role !== 'release' && d !== due).map((d) => termDayKey(d.month, d.day, d.explicitYear !== null ? academicYearOf(d.month, d.explicitYear, years.season) : years.termYear!, years.season)) : [];
-      const otherDays = [...matches.map((m) => m.dueDayKey), ...statedDays].filter((k): k is string => Boolean(k) && k !== item.dueDayKey);
+      const sameDay = (k: string) => k.endsWith(`-${pad2(due.month)}-${pad2(due.day)}`);
+      const statedDays = years.termYear !== null ? e.dates.filter((d) => d.role !== 'release' && d !== due && (d.month !== due.month || d.day !== due.day)).map((d) => termDayKey(d.month, d.day, d.explicitYear !== null ? academicYearOf(d.month, d.explicitYear, years.season) : years.termYear!, years.season)) : [];
+      const otherDays = [...matches.map((m) => m.dueDayKey), ...statedDays].filter((k): k is string => Boolean(k) && k !== item.dueDayKey && !sameDay(k as string));
       if (otherDays.length && item.dueDayKey) {
         item.dueOptions = [...new Set([item.dueDayKey, ...otherDays])].sort();
         reasons.add('conflictingDates');
@@ -368,6 +381,8 @@ function applyCatalog(items: DraftItem[], catalog: CatalogEntry[], course: Draft
   for (const i of items) {
     if (merged.has(i.key)) result.push(merged.get(i.key)!);
     else if (consumed.has(i.key)) continue;
+    // "(Approved by Senate on 21 January 2009)", "Writer, A. (2021, September 14)": not course work.
+    else if (i.change !== 'removed' && isReferenceLine(i.snippet)) continue;
     else {
       const title = cleanItemTitle(i.title, i.type);
       result.push(title === i.title ? i : { ...i, title, fingerprint: fingerprintOf(courseKey, normalizeTitle(title), i.dueDayKey) });
@@ -919,6 +934,7 @@ function academicFields(item: DraftItem, draft: ImportDraft, timezone: string, e
   const out: Partial<Assignment> = {};
   if (item.requirements?.length) out.requirements = item.requirements;
   if (item.submission) out.submission = item.submission;
+  if (item.late) out.latePolicy = item.late;
   out.attentionNotes = item.notes?.length ? item.notes : undefined;
   // A deadline the student already placed (or edited) is theirs; the syllabus never resets it.
   const studentOwnsDue = Boolean(existing?.userOverrides.due || existing?.conditional?.anchorDayKey);

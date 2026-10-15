@@ -119,7 +119,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
         <InfoNote icon="book">This item needs a quick look before Studyling plans it or sends any reminder.{a.dueAt ? '' : ' Add its due date.'}</InfoNote>
       )}
 
-      {(a.weight !== undefined || a.availableAt || a.coverage || a.requirements?.length || a.submission || a.conditional) && (
+      {(a.weight !== undefined || a.availableAt || a.coverage || a.requirements?.length || a.submission || a.latePolicy || a.conditional) && (
         <Card>
           <SectionTitle>From the syllabus</SectionTitle>
           {a.conditional && (
@@ -140,6 +140,12 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
             <View style={styles.list}>
               <Text style={styles.listLabel}>How to submit</Text>
               <Text style={styles.body}>{a.submission}</Text>
+            </View>
+          )}
+          {a.latePolicy && (
+            <View style={styles.list}>
+              <Text style={styles.listLabel}>If it’s late</Text>
+              <Text style={styles.body}>{a.latePolicy}</Text>
             </View>
           )}
           {a.weight !== undefined && <Text style={styles.body}>{`Worth ${a.weight}% of the final grade`}</Text>}
@@ -310,10 +316,11 @@ function ConditionalCard({ a, course }: { a: Assignment; course: Course | undefi
     <Card>
       <Text style={typography.heading}>{conditionalQuestion(c)}</Text>
       <Text style={styles.body}>{`This is due ${conditionalRuleText(c)}, so its date depends on you. Answer once and Studyling works out the deadline.`}</Text>
+      {c.anchorHint && <Text style={styles.body}>{`Where to look: ${c.anchorHint}`}</Text>}
       {usable ? (
         <Chips
           label="Your lecture"
-          options={lectures.map((l) => ({ value: l.number, label: `${l.number}. ${formatDayKey(lectureDayKey(years!, l)!)}: ${l.topic}` }))}
+          options={lectures.filter((l) => !c.fromLecture || l.number >= c.fromLecture).map((l) => ({ value: l.number, label: `${l.number}. ${formatDayKey(lectureDayKey(years!, l)!)}: ${l.topic}` }))}
           value={null}
           onChange={(n) => {
             const l = lectures.find((x) => x.number === n)!;

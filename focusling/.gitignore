@@ -40,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Real course documents used for local regression tests (copyrighted; never committed)
+src/core/planner/fixtures/private/

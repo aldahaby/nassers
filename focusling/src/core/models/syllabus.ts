@@ -149,6 +149,8 @@ export interface YearEvidence {
 export interface YearAnalysis {
   /** The student's answer when the years conflict. */
   chosen?: number | null;
+  /** When they conflict: the year most dated evidence (not the heading) points to. A hint only. */
+  suggested?: number | null;
   /** Academic (term-start) year from the heading, if any. */
   termYear: number | null;
   season: TermSeason | null;

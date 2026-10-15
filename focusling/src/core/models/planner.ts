@@ -81,6 +81,10 @@ export interface ConditionalDeadline {
   anchorLabel?: string;
   /** Lecture number from the syllabus's lecture list, when answered that way. */
   anchorLecture?: number;
+  /** Where the student finds the answer, as written ("myCourses -> Groups -> Multiple Choice"). */
+  anchorHint?: string | null;
+  /** Assignable lectures start here ("assignments start with lecture 4"). */
+  fromLecture?: number | null;
 }
 
 export interface Assignment {
@@ -140,6 +144,8 @@ export interface Assignment {
   dueCandidates?: { dayKey: string; time: string | null; note: string }[];
   requirements?: string[];
   submission?: string;
+  /** The item's own late rule, as written. */
+  latePolicy?: string;
   attentionNotes?: string[];
   /** "I'll handle it" on a capacity note: don't show it again for this deadline. */
   capacityNoteDismissedFor?: Timestamp;

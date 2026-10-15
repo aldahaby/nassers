@@ -222,9 +222,10 @@ function AttentionCard({ a, draft }: { a: AttentionItem; draft: ImportDraft }) {
         <Text style={styles.body}>
           {heading ? `${heading.note}, but some dates only fit ${a.options.filter((y) => y !== draft.years.termYear).join(' or ')}.` : `The syllabus points to ${a.options.join(' and ')}.`} Pick the year you’re taking it, and Studyling will place the dates. Nothing gets a date until you choose.
         </Text>
+        {draft.years.suggested != null && <Text style={styles.hint}>{`Most of the dates in the syllabus fit ${season ? seasonYear(season, draft.years.suggested) : draft.years.suggested}.`}</Text>}
         <View style={styles.row}>
-          {a.options.map((y) => (
-            <Button key={y} label={season ? seasonYear(season, y) : String(y)} variant="secondary" onPress={() => store.chooseDraftYear(y)} style={styles.flexBtn} />
+          {[...a.options].sort((x, y) => (x === draft.years.suggested ? -1 : y === draft.years.suggested ? 1 : 0)).map((y) => (
+            <Button key={y} label={`${season ? seasonYear(season, y) : String(y)}${y === draft.years.suggested ? ' · fits the dates' : ''}`} variant={y === draft.years.suggested ? 'primary' : 'secondary'} onPress={() => store.chooseDraftYear(y)} style={styles.flexBtn} />
           ))}
         </View>
         <Pressable onPress={() => setWhy((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: why }} style={styles.why}>
@@ -241,6 +242,7 @@ function AttentionCard({ a, draft }: { a: AttentionItem; draft: ImportDraft }) {
       <View style={styles.askCard}>
         <Text style={styles.askTitle}>{a.title}</Text>
         <Text style={styles.body}>{`Due ${conditionalRuleText(item.conditional)}${item.conditional.time ? ` at ${timeLabel(item.conditional.time)}` : ''}. ${a.question}`}</Text>
+        {item.conditional.anchorHint && <Text style={styles.hint}>{`Where to look: ${item.conditional.anchorHint}`}</Text>}
         <ConditionalAnswer item={item} draft={draft} />
       </View>
     );
@@ -294,7 +296,7 @@ function ConditionalAnswer({ item, draft }: { item: DraftItem; draft: ImportDraf
     return (
       <Chips
         label="Your lecture"
-        options={lectures.map((l) => {
+        options={lectures.filter((l) => !item.conditional?.fromLecture || l.number >= item.conditional.fromLecture).map((l) => {
           const day = lectureDayKey(draft.years, l);
           return { value: l.number, label: `${l.number}. ${day ? formatDayKey(day) : monthDay(l.month, l.day)}: ${l.topic}` };
         })}
@@ -365,6 +367,7 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
             </View>
           )}
           {item.submission && <Detail label="How to submit" value={item.submission} />}
+          {item.late && <Detail label="If it’s late" value={item.late} />}
           {item.coverage && <Detail label="Covers" value={`${item.coverage.weeks ? `Weeks ${item.coverage.weeks.from}–${item.coverage.weeks.to}` : item.coverage.chapters}${item.coverage.topics.length ? `: ${item.coverage.topics.slice(0, 4).join('; ')}${item.coverage.topics.length > 4 ? '…' : ''}` : ''}`} />}
           {item.availableDayKey && <Detail label="Released" value={formatDayKey(item.availableDayKey)} />}
           {item.statedZone && <Detail label="Time zone" value={`Given as ${item.statedZone.label}`} />}
@@ -472,6 +475,7 @@ const styles = StyleSheet.create({
   attention: { gap: spacing.sm },
   askCard: { gap: spacing.sm, backgroundColor: '#FFF8EC', borderRadius: radius.lg, borderWidth: 1, borderColor: '#F5D7A3', padding: spacing.md },
   askTitle: { fontSize: 16, fontWeight: '900', color: colors.text },
+  hint: { fontSize: 14, fontWeight: '700', color: colors.primaryDark, lineHeight: 20 },
   why: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   whyText: { fontSize: 14, fontWeight: '800', color: colors.primaryDark },
   confirmRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: 6, borderBottomWidth: 1, borderColor: colors.border },

@@ -70,6 +70,18 @@ file ──► core/documents (type check, DOCX, size/zip-bomb limits, readabili
 
 ## Academic reading (parser 3.0)
 
+Layout handling learned from the real BIOL 115 text:
+- PDF lecture tables ("3-Sep Thurs Lect.1 …"), read block by block with the topic and
+  assignments columns separated;
+- people listed in columns;
+- wrapped sentences joined back together;
+- deadline evidence ranked ("Deadline:" over a date in a sentence over a bare date; approvals,
+  citations and "published since" cut-offs ignored);
+- short names ("LitA" for "Literature assignment A");
+- per-item late rules, and where to find your assigned lecture;
+- the lecture schedule's weekdays as year evidence, with the year most dates fit suggested (the
+  student still chooses).
+
 Rebuilt after a real syllabus (McGill BIOL 115) was badly misread: wrong course code (the
 BIOL 112 prerequisite), no instructors, no class times, sentence fragments as titles ("uploaded to
 myCourses Assignment 3 tab"), only some items, and the year silently defaulted.
@@ -222,9 +234,20 @@ No mock AI output is ever shown as real.
 
 ## Limitations
 
-- **The real BIOL 115 file has not been tested.** The regression fixture is *reconstructed* from
-  the reported facts (names, dates, weights, wording) and labelled as such. It should be replaced
-  by the real document (with permission) when available.
+- **BIOL 115 regression:** the real syllabus text a student imported passes the acceptance suite
+  (`core/__tests__/planner/biol115.test.ts`, browser suite m17). The real text is copyrighted
+  course material, so it lives only in the git-ignored `fixtures/private/` folder and that part
+  of the suite runs only where the file exists. `BIOL115_LAYOUT` (committed, our own wording)
+  reproduces its layout traps in every run:
+  - a title-case code after the title, and a restriction wrapped onto a line that starts with
+    another course code;
+  - names under "Instructors' information", and TAs side by side;
+  - a PDF lecture table with topics wrapped around the date;
+  - weights on "Value:" lines;
+  - "published since" and citation dates;
+  - exams described only in prose.
+- That syllabus's grading summary table was an image, so the midterm and final weights aren't in
+  the text. Studyling says so instead of guessing.
 
 - PDF, scanned PDF and photo reading are iOS-only and have **not been run on a device**.
 - Rules recognise common English layouts (US/Canadian). Unusual layouts, non-English syllabi and

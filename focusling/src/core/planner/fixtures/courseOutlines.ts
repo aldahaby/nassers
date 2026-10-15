@@ -188,4 +188,184 @@ Coursework 2 deadline: 27/11/2026 at 12:00
 Examination: January examination period (date to be published)`,
 };
 
-export const OUTLINE_FIXTURES: readonly OutlineFixture[] = [US_OUTLINE, CA_OUTLINE, BIOL115_RECONSTRUCTED, UK_OUTLINE];
+
+/**
+ * BIOL 115 LAYOUT fixture: written in our own words, but laid out like the real
+ * McGill syllabus text a student imported (the real file is copyrighted course
+ * material and is never committed; see fixtures/private/). It keeps the real
+ * layout traps: a title-case code after the title, a restriction wrapped onto a
+ * line that starts with another course code, names under an "Instructors'
+ * information" heading with "Email:" lines, TAs side by side, a PDF lecture
+ * table whose topics wrap above and below the date, weights on "Value:" lines,
+ * a publication cut-off date and a citation date inside an assignment, a midterm
+ * and final described only in prose, and a "Fall 2025" heading while the dates
+ * fit 2026.
+ */
+export const BIOL115_LAYOUT: OutlineFixture = {
+  id: 'biol115-layout',
+  label: 'BIOL 115 (real layout, own wording)',
+  timezone: 'America/Toronto',
+  referenceAt: Date.UTC(2026, 7, 25, 13, 0),
+  text: [
+    `                                  Essential Biology, Biol 115
+General information
+Term and year: Fall 2025
+Restrictions: For students outside the Faculty of Science; not for those who completed BIOL 111,
+                                                BIOL 112, or equivalents.
+Course schedule: Tuesday and Thursdays; 8:35 – 9:55 AM in McMed 522
+Number of credits: 3 credits
+
+Instructors' information
+ Dr. Gemma de Martino (instructor & course coordinator)
+ Email: gdm@example.edu
+ Office location: N3/2
+
+ Dr. Sarah Woolley (instructor & TA coordinator)
+ Email: sw@example.edu
+
+ Teaching assistants (TAs)
+ Aleksei Sychterz                               Sabrina Percy
+ Email: as@example.edu                          Email: sp@example.edu
+
+Ev Berger-Wolf
+Email: ebw@example.edu
+
+Communicating with instructors:
+Post content questions on the discussion board first.
+                                                                                                         1`,
+    `The midterm will be written OCT 20 from 7- 9 PM (outside class time). Rooms will be posted
+in early October.
+
+The final exam will cover material only presented after the midterm and will be written during the final
+exam period.
+
+All exams will only cover lecture material and use multiple-choice questions.
+
+Course policies on deadlines
+Deadlines help TAs return feedback quickly.
+For assignment 2 (Fun Fact) - it must be in at least 3 days before the lecture. Late assignments lose 10% per day.
+For assignments 1, 3 and 4, each student has a late "bank" of 6 days for the semester.
+
+Course policies on Generative AI
+Students may use generative AI tools as learning aids, but remain accountable for their work.
+                                                                                                            2`,
+    `Course content & key milestones
+
+Date     Day     Lectures Topic                         Assignments
+
+                          Welcome and course overview,
+1-Sep    Tues
+                          meet the instructors          Lit.A & B start
+
+                          Scientific Method
+3-Sep    Thurs   Lect.1
+                          (Woolley)
+
+                          MODULE 1: Life, Diversity,
+                          and Evolution (Woolley)
+
+                          Fundamentals of Evolution:
+8-Sep    Tues    Lect.2
+                          Natural Selection
+
+                          Fundamentals of Evolution:
+10-Sep   Thur    Lect.3
+                          Sexual Selection
+
+                                                     Fun fact and Q&A assignments start with
+                          Fundamentals of Evolution: lecture 4 on Sep 15. Check your group number.
+15-Sep   Tues    Lect.4
+                          Drift and adaptation
+
+                           Brain Evolution: Evolution of
+29-Sep   Tues
+                 Lect. 8   Language
+
+13-Oct   Tues              Fall Break
+
+                          The Chemistry of Life:
+20-Oct   Tues   Lect.11
+                          Water and Macromolecules Midterm Exam on Modules 1 & 2 at 7
+
+                          Cellular Energy
+29-Oct   Thur   Lect.14
+                          &Respiration                Deadline for LitB video Oct.29
+
+                          Complex Inheritance and
+24-Nov   Tues   Lect.21
+                          Human Genetics (Sychterz) Deadline for LitA short essay Nov 24
+                                                                                           3`,
+    `McGill policy statements
+-   Language of submission
+    Students may submit graded written work in English or French. (Approved by Senate on 21 January 2009)
+-   Academic integrity
+    McGill University values academic integrity. See McGill University's guide to academic honesty.
+
+Assignments
+Instructions and rubrics for each assignment follow.
+
+Assignment 1 – Multiple choice questions and answers
+
+The purpose of this assignment is to check your understanding of the lecture by writing
+two multiple choice questions (with answers).
+
+Value: 5% of final grade
+
+Submission: Online through myCourses as a PDF or Word document
+
+Deadline: Always due at 11:59 PM, 5 days after the assigned lecture is presented. Upload to myCourses
+Assignment 1 tab
+
+Lectures are assigned to individuals in myCourses -> Groups -> Multiple Choice
+
+The bank of extension dates is applicable for this assignment.
+
+Grading Scheme for multiple choice Q&A (per question and answers):
+ Clarity /0.5 per question
+
+Assignment 2 - Fun Fact Assignment
+
+You will be assigned a lecture to present a fun fact slide about.
+
+Value: 10% of final grade
+
+Deadline: Always due at 11:59 PM, 3 days BEFORE the assigned lecture so that it can be presented in
+class. Upload to myCourses Assignment 2 tab
+
+Lectures are assigned via the Groups tab on myCourses - Consult the FUN FACT groups
+
+A late penalty of 10% per day will apply to this assignment. The bank of extension dates is NOT applicable.
+
+Grading Scheme for fun fact assignment ( /10 total)
+                                                                                                            4`,
+    `Assignment 3 – Literature assignment A
+
+Find a biology news item published since January 1, 2026 and evaluate how reliable its source is.
+
+Value: 15% of final grade
+
+Deadline: November 24, by 11:59 PM uploaded to myCourses Assignment 3 tab.
+
+Grading Scheme for Lit A Assignment ( /15 total)
+ Signed up for article by Sept 11 /0.5
+
+Assignment 4 – Literature assignment B: News Article Video Assignment
+
+Make a 2.5–3 minute video explaining a recent finding from a news article.
+
+Example reference: Writer, A. (2021, September 14). A science story. Science News.
+
+Value: 20% of final grade
+
+Submission: Online through myCourses in Assignment 4 tab.
+
+Deadline: October 29th, 2026, at 11:59 PM uploaded to myCourses Assignment 4 tab
+
+The bank of extension dates is applicable for this assignment.
+
+Grading Scheme for Lit B assignment:
+                                                                                                            5`,
+  ].join('\f'),
+};
+
+export const OUTLINE_FIXTURES: readonly OutlineFixture[] = [US_OUTLINE, CA_OUTLINE, BIOL115_RECONSTRUCTED, BIOL115_LAYOUT, UK_OUTLINE];

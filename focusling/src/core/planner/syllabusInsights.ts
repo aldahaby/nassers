@@ -1,4 +1,4 @@
-import { analyzeYears, lecturesOf, readLines } from './academicReading';
+import { analyzeYears, lectureTableOf, lecturesOf, readLines, withLectureEvidence } from './academicReading';
 import type { ClassMeeting, CourseIdentity, CoursePerson, CoverageRelation, GradingBreakdown, GradingComponent, KeyDate, OfficeHoursEntry, PolicyRef, ScheduleWeek, SourceProvenance, SyllabusInsights, TermSeason } from '../models';
 import { COURSE_CODE, datesInLine, normalizeText, normalizeTitle, TERM_RE } from './syllabusParser';
 
@@ -102,11 +102,19 @@ function identityOf(lines: Line[]): CourseIdentity {
   let code: string | null = null;
   let title: string | null = null;
   // Codes in prerequisite/restriction/equivalence sentences are other courses, never this one.
-  const elsewhere = (t: string) => PREREQ.test(t);
+  // A wrapped restriction ("…not open to students who have taken BIOL 111," / "BIOL 112, or
+  // equivalents.") continues on the next line: that line is still about other courses.
+  const prereqLines = new Set<Line>();
+  lines.forEach((l, i) => {
+    const prev = lines[i - 1];
+    if (PREREQ.test(l.text) || (prev && prereqLines.has(prev) && /(?:,|;|\bor|\band)$/i.test(prev.text))) prereqLines.add(l);
+  });
+  const elsewhereLine = (l: Line) => prereqLines.has(l);
+  const elsewhere = (t: string) => PREREQ.test(t) || lines.some((l) => l.text === t && prereqLines.has(l));
   const labelled = head.find((l) => /^course(?:\s+(?:code|number))?\s*[:\-]/i.test(l.text) && COURSE_CODE.test(l.text) && !elsewhere(l.text));
   const counts = new Map<string, number>();
   for (const l of lines) {
-    if (elsewhere(l.text)) continue;
+    if (elsewhereLine(l)) continue;
     for (const m of l.text.matchAll(new RegExp(COURSE_CODE.source, 'g'))) counts.set(`${m[1]} ${m[2]}`, (counts.get(`${m[1]} ${m[2]}`) ?? 0) + 1);
   }
   const headingLines = head.filter((l) => {
@@ -119,10 +127,24 @@ function identityOf(lines: Line[]): CourseIdentity {
     const cb = COURSE_CODE.exec(b.text)!;
     return (counts.get(`${cb[1]} ${cb[2]}`) ?? 0) - (counts.get(`${ca[1]} ${ca[2]}`) ?? 0);
   })[0];
-  const cm = codeLine ? COURSE_CODE.exec(codeLine.text) : null;
+  let cm: RegExpExecArray | null = codeLine ? COURSE_CODE.exec(codeLine.text) : null;
+  let titleLine = codeLine;
+  if (!cm) {
+    // "Essential Biology, Biol 115": a title-case code in the title lines, when the same subject
+    // appears in capitals elsewhere (BIOL 111…) so it's a real course subject.
+    const subjects = new Set([...lines.flatMap((l) => [...l.text.matchAll(new RegExp(COURSE_CODE.source, 'g'))].map((m) => m[1]!))]);
+    for (const l of head.slice(0, 3)) {
+      const m = /\b([A-Z][a-z]{1,4})[ -]?(\d{3,4}[A-Z]?)\b/.exec(l.text);
+      if (m && subjects.has(m[1]!.toUpperCase()) && !elsewhereLine(l)) {
+        cm = Object.assign([m[0], m[1]!.toUpperCase(), m[2]!], { index: m.index, input: l.text, groups: undefined }) as unknown as RegExpExecArray;
+        titleLine = l;
+        break;
+      }
+    }
+  }
   if (cm) {
     code = `${cm[1]} ${cm[2]}`;
-    const rest = codeLine!.text
+    const rest = titleLine!.text
       .slice(cm.index + cm[0].length)
       .replace(TERM_RE, '')
       .replace(/\b(?:section|sec\.?)\s*[A-Z0-9]{1,4}\b/i, '')
@@ -132,6 +154,21 @@ function identityOf(lines: Line[]): CourseIdentity {
       .replace(/^[\s:\-–—,]+|[\s:\-–—,]+$/g, '')
       .trim();
     if (rest && /[a-z]/i.test(rest) && !INSTITUTION.test(rest)) title = rest;
+    // Title before the code: "Essential Biology, Biol 115".
+    const before = titleLine!.text.slice(0, cm.index).replace(/[\s:\-–—,|·]+$/g, '').trim();
+    if (!title && before && /[a-z]/.test(before) && before.length <= 80 && !INSTITUTION.test(before)) title = before;
+  }
+  if (!institution) {
+    // No institution line in the heading: the name the document repeats ("McGill University").
+    const names = new Map<string, number>();
+    for (const l of lines)
+      for (const m of l.text.matchAll(/\b((?:[A-Z][a-zA-Z'-]+\s){1,3}University|University of(?:\s[A-Z][a-zA-Z'-]+){1,3}|Université(?:\s[A-Z][a-zA-Z'-]+){1,3})\b/g)) {
+        // "See McGill University's guide" and "McGill University" are the same name.
+        const name = /University$/.test(m[1]!) ? m[1]!.split(' ').slice(-2).join(' ') : m[1]!;
+        names.set(name, (names.get(name) ?? 0) + 1);
+      }
+    const best = [...names.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (best && best[1] >= 2) institution = best[0];
   }
   const titled = head.find((l) => /^course\s+title\s*[:\-]/i.test(l.text));
   if (titled) title = titled.text.replace(/^course\s+title\s*[:\-]\s*/i, '').trim() || title;
@@ -154,8 +191,11 @@ function identityOf(lines: Line[]): CourseIdentity {
 // ── People and office hours ─────────────────────────────────────────
 
 const INSTRUCTOR_LABEL = /^(?:course\s+)?(instructor|professor|prof\.?|lecturer|course coordinator|coordinator|faculty|module leader|module convenor|teaching staff)s?(?:\(s\))?\b\s*(?:\([^)]*\))?\s*[:\-|]\s*(.+)$/i;
-const INSTRUCTOR_HEADING = /^(?:course\s+)?(instructors?|instructor\(s\)|professors?|lecturers?|course coordinators?|teaching (?:staff|team)|contact(?: information)?|course staff)\s*:?$/i;
-const TA_HEADING = /^(teaching assistants?|tas|t\.a\.s?)\s*:?$/i;
+const INSTRUCTOR_HEADING = /^(?:course\s+)?(instructors?|instructor\(s\)|professors?|lecturers?|course coordinators?|teaching (?:staff|team)|contact(?: information)?|course staff)(?:'s?|s')?(?:\s+(?:information|info|contacts?|contact information|details))?\s*:?$/i;
+const TA_HEADING = /^(teaching assistants?|tas|t\.a\.s?)(?:\s*\((?:tas?|t\.a\.s?)\))?(?:\s+(?:information|info|contacts?))?\s*:?$/i;
+/** "Aleksei Sychterz", "Ev Berger-Wolf", "Zoë Rabinovitch" (a whole cell, nothing else). */
+const PLAIN_NAME = /^[A-Z][a-zà-ÿ'’-]+(?:[ -](?:de|da|di|del|van|von|der|le|la|du)?\s?[A-Z][a-zà-ÿ'’-]+){1,3}$/;
+const CONTACT_LABEL = /^(e-?mail|office(?: location| hours)?|location|phone|tel\.?|website|room|pronouns)\b/i;
 /** "Dr. Gemma de Martino", "Prof. L. Tremblay", "Professor Ana Ruiz". */
 const TITLED_NAME = /\b(?:Dr\.?|Prof\.?|Professor|Mr\.?|Ms\.?|Mx\.?|Mrs\.?)\s+[A-Z][a-zA-Z.'-]*(?:\s+(?:de|da|di|del|della|van|von|der|le|la|du|bin|al|el)?\s*[A-Z][a-zA-Z.'-]+){0,3}/g;
 const TA_LABEL = /^(teaching assistants?|tas?|t\.a\.s?|graders?)\b\s*[:\-|]\s*(.+)$/i;
@@ -192,15 +232,35 @@ function peopleOf(lines: Line[]): CoursePerson[] {
   lines.forEach((l, idx) => {
     const heading = INSTRUCTOR_HEADING.test(l.text) ? 'instructor' : TA_HEADING.test(l.text) ? 'ta' : null;
     if (!heading) return;
-    for (const next of lines.slice(idx + 1, idx + 7)) {
-      const names = [...next.text.matchAll(TITLED_NAME)];
-      const plain = /^[A-Z][a-z'-]+(?:\s+[A-Z][a-z'-]+){1,3}(?=\s*(?:\(|,|$|\s+[\w.+-]+@))/.exec(next.text);
-      if (!names.length && !(plain && EMAIL.test(next.text))) break;
-      for (const n of names.length ? names.map((m) => m[0]) : [plain![0]]) {
+    let last: CoursePerson[] = [];
+    for (const next of lines.slice(idx + 1, idx + 14)) {
+      if (INSTRUCTOR_HEADING.test(next.text) || TA_HEADING.test(next.text)) break;
+      // "Email: …" / "Office location: …" under a name (side-by-side columns pair up in order).
+      if (CONTACT_LABEL.test(next.text)) {
+        const emails = [...next.text.matchAll(new RegExp(EMAIL.source, 'g'))].map((m) => m[0]);
+        emails.forEach((e, i) => {
+          const p = last.length === emails.length ? last[i] : last.length === 1 && i === 0 ? last[0] : undefined;
+          if (p && !p.email) p.email = e;
+        });
+        continue;
+      }
+      const titled = [...next.text.matchAll(TITLED_NAME)].map((m) => m[0]);
+      const plain = next.cells.map((c) => c.replace(EMAIL, '').replace(/\([^)]*\)/g, '').replace(/[,;]+$/, '').trim()).filter((c) => PLAIN_NAME.test(c));
+      const found = titled.length ? titled : plain;
+      if (!found.length) break;
+      last = [];
+      for (const n of found) {
         const name = cleanName(n);
-        if (!name || out.some((p) => p.name === name)) continue;
+        if (!name) continue;
+        const existing = out.find((p) => p.name === name);
+        if (existing) {
+          last.push(existing);
+          continue;
+        }
         const email = EMAIL.exec(next.text);
-        out.push({ role: heading, name, ...(email && names.length <= 1 ? { email: email[0] } : {}), provenance: next.provenance });
+        const person: CoursePerson = { role: heading, name, ...(email && found.length <= 1 ? { email: email[0] } : {}), provenance: next.provenance };
+        out.push(person);
+        last.push(person);
       }
     }
   });
@@ -244,7 +304,7 @@ const MEETING_WORD = /\b(lectures?|class(?:es)?|meets?|meeting times?|labs?|tuto
 const LOCATION_LABEL = /^(?:location|room|place|where|classroom|venue|lecture (?:room|hall))\s*[:\-|]\s*(.+)$/i;
 
 function locationNear(lines: Line[], idx: number): string | null {
-  const own = /,\s*(?:in\s+)?((?:room\s+)?[A-Z][A-Za-z.]{1,15}\s?\d{1,4}[A-Z]?)\s*$/.exec(lines[idx]!.text);
+  const own = /,\s*(?:in\s+)?((?:room\s+)?[A-Z][A-Za-z.]{1,15}\s?\d{1,4}[A-Z]?)\s*$/.exec(lines[idx]!.text) ?? /\b(?:in|at|room:?)\s+((?:room\s+)?[A-Z][A-Za-z.]{1,15}\s?\d{1,4}[A-Z]?)\b/.exec(lines[idx]!.text);
   if (own) return own[1]!.trim();
   for (const l of lines.slice(idx + 1, idx + 3)) {
     const m = LOCATION_LABEL.exec(l.text);
@@ -422,15 +482,39 @@ function policyKind(t: string): NonNullable<PolicyRef['kind']> {
   return 'other';
 }
 
-/** The policy's first sentence or two (≤ 240 characters). */
-function summaryAfter(lines: Line[], idx: number, inline: string | null): string | null {
-  const body = inline ?? lines[idx + 1]?.text ?? '';
-  if (!body || body.length < 15 || POLICY.test(body.split(/[.:]/)[0] ?? '') && body.length < 40) return null;
-  const sentences = body.split(/(?<=[.!?])\s+/);
+const POLICY_KEY: Partial<Record<NonNullable<PolicyRef['kind']>, RegExp>> = {
+  late: /\blate\b|deduct|penalt|bank|extension/i,
+  ai: /\bai\b|generative|artificial intelligence/i,
+  integrity: /integrity|plagiarism|cheating|offen[cs]e/i,
+};
+
+/** The text under a policy heading, with PDF line wraps joined back into sentences. */
+function policyBody(lines: Line[], idx: number): string {
+  const parts: string[] = [];
+  for (const l of lines.slice(idx + 1, idx + 12)) {
+    const t = l.text;
+    if (parts.length && t.length < 60 && !/[.,;:]$/.test(t) && /^[A-Z]/.test(t) && t.split(' ').length <= 8 && !/^\d/.test(t)) break; // next heading
+    parts.push(t);
+  }
+  return parts.join(' ').replace(/\s+/g, ' ');
+}
+
+/** The policy's key sentence or two (≤ 260 characters), as written. */
+function summaryAfter(lines: Line[], idx: number, inline: string | null, kind: NonNullable<PolicyRef['kind']>): string | null {
+  const body = inline ?? policyBody(lines, idx);
+  if (!body || body.length < 15 || /^[-*]/.test(body) || (POLICY.test(body.split(/[.:]/)[0] ?? '') && body.length < 40)) return null;
+  const sentences = body.split(/(?<=[.!?])\s+(?=[A-Z0-9"(])/).map((x) => x.replace(/^\d\)\s*/, '').trim());
+  // Start just before the first key sentence and keep document order, so each rule keeps the
+  // sentence that says what it applies to ("For assignment 2 (Fun Fact)…").
+  const key = POLICY_KEY[kind];
+  const first = key ? sentences.findIndex((x) => key.test(x)) : 0;
+  const from = Math.max(0, first - 1);
+  const limit = kind === 'late' ? 440 : 260;
   let out = '';
-  for (const s of sentences) {
-    if ((out + ' ' + s).trim().length > 240) break;
+  for (const s of sentences.slice(from)) {
+    if ((out + ' ' + s).trim().length > limit) break;
     out = (out + ' ' + s).trim();
+    if (out.length > (kind === 'late' ? 360 : 120)) break;
   }
   return out || body.slice(0, 240);
 }
@@ -446,7 +530,14 @@ function policiesOf(lines: Line[]): PolicyRef[] {
     if (!POLICY.test(t) || t.split(' ').length > 8) return;
     if (!/^[A-Z]/.test(t)) return;
     if (out.some((p) => normalizeTitle(p.title) === normalizeTitle(t))) return;
-    out.push({ title: t, kind: policyKind(t), summary: summaryAfter(lines, idx, inline && POLICY.test(inline[1]!) ? inline[2]! : null), provenance: l.provenance });
+    const own = inline && POLICY.test(inline[1]!) ? inline[2]! : null;
+    let kind = policyKind(t);
+    // "Course policies on deadlines" is the late policy when its text is about late work.
+    if (kind === 'other') {
+      const body = own ?? policyBody(lines, idx);
+      if (/\blate\b.{0,40}(deduct|penalt|bank|day)/i.test(body)) kind = 'late';
+    }
+    out.push({ title: t, kind, summary: summaryAfter(lines, idx, own, kind), provenance: l.provenance });
   });
   return out;
 }
@@ -457,6 +548,8 @@ export function extractInsights(text: string): SyllabusInsights {
   const identity = identityOf(lines);
   const hint: YearHint = { season: identity.term?.season ?? null, year: identity.term?.year ?? null };
   const people = peopleOf(lines);
+  const table = lectureTableOf(text);
+  const lectures = table.length ? table : lecturesOf(read);
   return {
     identity,
     people,
@@ -467,8 +560,8 @@ export function extractInsights(text: string): SyllabusInsights {
     coverage: coverageOf(lines),
     keyDates: keyDatesOf(lines, hint),
     policies: policiesOf(lines),
-    lectures: lecturesOf(read),
-    years: analyzeYears(read),
+    lectures,
+    years: withLectureEvidence(analyzeYears(read), lectures),
   };
 }
 
