@@ -70,6 +70,18 @@ public class StudylingNativeModule: Module {
       }
     }
 
+    // A photographed syllabus page: Vision OCR on the device. UNTESTED on device.
+    AsyncFunction("extractImageText") { (uri: String, promise: Promise) in
+      DispatchQueue.global(qos: .userInitiated).async {
+        guard let url = URL(string: uri), let data = try? Data(contentsOf: url), let image = UIImage(data: data), let cgImage = image.cgImage else {
+          promise.reject("E_UNREADABLE", "The photo could not be opened.")
+          return
+        }
+        let text = Self.recognizeText(cgImage)
+        promise.resolve([["index": 0, "text": text, "method": "ocr"]])
+      }
+    }
+
     AsyncFunction("writeWidgetSnapshot") { (json: String) in
       UserDefaults(suiteName: StudylingShared.appGroup)?.set(json, forKey: StudylingShared.snapshotKey)
       WidgetCenter.shared.reloadAllTimelines()
@@ -120,6 +132,11 @@ public class StudylingNativeModule: Module {
     let scale: CGFloat = 2
     let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
     guard let cgImage = page.thumbnail(of: size, for: .mediaBox).cgImage else { return "" }
+    return recognizeText(cgImage)
+  }
+
+  /// Vision OCR for one image. Returns lines top to bottom.
+  private static func recognizeText(_ cgImage: CGImage) -> String {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
     request.usesLanguageCorrection = true

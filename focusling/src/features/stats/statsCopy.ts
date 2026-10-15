@@ -44,6 +44,12 @@ export function milestoneCopy(m: JourneyMilestone, courses: Record<string, Cours
       return { title: 'First recall practice', detail: 'Tried to remember what you studied, without looking.', icon: 'book' };
     case 'petStage':
       return { title: `${petName ?? 'Your pet'} grew to ${stageLabel(m.stage)}`, detail: 'Grown by your focus sessions.', icon: 'pet' };
+    case 'firstSyllabusTaskDone':
+      return { title: 'First syllabus task completed', detail: course ? courseLabel(course) : 'From an imported syllabus.', icon: 'check' };
+    case 'firstTaskSession':
+      return { title: 'First Lock-In for a specific task', detail: course ? courseLabel(course) : 'Study time linked to an assignment.', icon: 'focus' };
+    case 'firstExamPrep':
+      return { title: 'Started preparing for an exam', detail: course ? courseLabel(course) : 'A focus session for an exam.', icon: 'book' };
     case 'courseFirstSession':
       return { title: `First session for ${course ? courseLabel(course) : 'a course'}`, detail: course?.name && course.code ? course.name : 'Study time linked to this course.', icon: 'book' };
   }

@@ -59,6 +59,7 @@ export function migratePlanner(raw: unknown, now: Timestamp, timezone: string): 
     events: Array.isArray(r.events) ? r.events : [],
     originals: r.originals ?? {},
     pendingRetrieval: r.pendingRetrieval ?? null,
+    // v2 → v3 adds only optional fields (course details, assignment coverage/window), so older records load as they are.
     // v1 → v2: Journey starts now. Milestones are then evaluated from existing records (never invented).
     journey: r.journey && typeof r.journey === 'object' ? { ...base.journey, ...r.journey, milestones: r.journey.milestones ?? {} } : base.journey,
   };

@@ -1,11 +1,12 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { StudylingNative } from '../native/studylingNative';
-import { methodOf, type DocumentService, type PickedDocument } from './DocumentService';
+import { IMAGE_MIME_TYPES, SYLLABUS_MIME_TYPES, type DocumentService, type PickedDocument } from './DocumentService';
+import { readDocument } from './readDocument';
 
 /**
- * iOS: the system document picker, then the StudylingNative module
- * (PDFKit embedded text, Vision OCR fallback per page, off the main thread).
- * Plain-text files are read directly. UNTESTED on device.
+ * iOS: the system document picker. Text and DOCX are read in JavaScript; PDFs
+ * and photos go to the StudylingNative module (PDFKit text, Vision OCR, off the
+ * main thread). The native parts are UNTESTED on a device.
  */
 export class NativeDocumentService implements DocumentService {
   readonly kind = 'native' as const;
@@ -14,7 +15,8 @@ export class NativeDocumentService implements DocumentService {
   }
 
   async pick(): Promise<PickedDocument | null> {
-    const r = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'text/plain'], copyToCacheDirectory: true, multiple: false });
+    const types = StudylingNative?.extractImageText ? [...SYLLABUS_MIME_TYPES, ...IMAGE_MIME_TYPES] : [...SYLLABUS_MIME_TYPES];
+    const r = await DocumentPicker.getDocumentAsync({ type: types, copyToCacheDirectory: true, multiple: false });
     if (r.canceled || !r.assets?.[0]) return null;
     const a = r.assets[0];
     return { uri: a.uri, name: a.name, mimeType: a.mimeType ?? null };
@@ -22,16 +24,17 @@ export class NativeDocumentService implements DocumentService {
 
   async extract(doc: PickedDocument, onProgress?: (done: number, total: number) => void) {
     try {
-      if (doc.mimeType === 'text/plain' || doc.name.toLowerCase().endsWith('.txt')) {
-        const text = await (await fetch(doc.uri)).text();
-        return text.trim() ? { ok: true as const, value: { pages: [{ index: 0, text, method: 'embeddedText' as const }], method: 'pastedText' as const } } : { ok: false as const, error: 'empty' as const };
+      const bytes = new Uint8Array(await (await fetch(doc.uri)).arrayBuffer());
+      const native = StudylingNative;
+      const sub = native && onProgress ? native.addListener('onExtractionProgress', (e: { done: number; total: number }) => onProgress(e.done, e.total)) : null;
+      try {
+        return await readDocument(bytes, doc.name, doc.uri, {
+          pdf: native ? (uri) => native.extractPdfText(uri) : null,
+          image: native?.extractImageText ? (uri) => native.extractImageText!(uri) : null,
+        });
+      } finally {
+        sub?.remove();
       }
-      if (!StudylingNative) return { ok: false as const, error: 'unsupported' as const };
-      const sub = onProgress ? StudylingNative.addListener('onExtractionProgress', (e: { done: number; total: number }) => onProgress(e.done, e.total)) : null;
-      const pages = await StudylingNative.extractPdfText(doc.uri);
-      sub?.remove();
-      if (!pages.length || pages.every((p) => !p.text.trim())) return { ok: false as const, error: 'empty' as const };
-      return { ok: true as const, value: { pages, method: methodOf(pages) } };
     } catch {
       return { ok: false as const, error: 'unreadable' as const };
     }

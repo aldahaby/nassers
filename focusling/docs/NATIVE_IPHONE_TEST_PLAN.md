@@ -152,6 +152,9 @@ Focus (Do Not Disturb) on/off · Developer tools → Native protection panel val
 | A3 | Import a scanned (image-only) PDF | Progress shows page N of M; OCR text parsed; OCR-repaired dates marked Needs review | |
 | A4 | Same PDF again | "Already imported" (no duplicates, no second OCR pass in the same session) | |
 | A5 | Large PDF (40+ pages) | UI stays responsive (work is off the main thread) | |
+| A6 | Import a DOCX syllabus | Read in-app (no native code); course details, grading and weekly topics in review | |
+| A7 | Import a photo of a syllabus page | Vision OCR text; unreadable photo refused with a clear message, nothing imported | |
+| A8 | Start & Lock from an imported assignment | Session shows "Studying: course · assignment"; time appears under the course in Stats; assignment stays open | |
 
 ### Notifications
 | # | Step | Expected | Result |

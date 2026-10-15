@@ -194,13 +194,13 @@ export function PlannerHome() {
               .map((c, i) => {
                 const items = liveAssignments(planner).filter((a) => a.courseId === c.id && a.status === 'open');
                 return (
-                  <View key={c.id} style={styles.courseRow}>
+                  <Pressable key={c.id} style={styles.courseRow} onPress={() => router.push(`/planner/course/${c.id}` as Href)} accessibilityRole="button" accessibilityLabel={`${c.code ?? c.name}, ${items.length} open. Open course.`}>
                     <CourseTag course={c} index={i} />
                     <Text style={styles.muted}>
                       {c.code ? `${c.name} · ` : ''}
-                      {items.length} open
+                      {items.length} open ›
                     </Text>
-                  </View>
+                  </Pressable>
                 );
               })}
           </Card>
@@ -268,6 +268,6 @@ const styles = StyleSheet.create({
   dayNameToday: { color: colors.primaryDark },
   dayCount: { fontSize: 18, fontWeight: '900', color: colors.text },
   dayMinutes: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
-  courseRow: { gap: 2, paddingVertical: 4 },
+  courseRow: { gap: 2, paddingVertical: 6, minHeight: 44, justifyContent: 'center' },
   footnote: { ...typography.label, textAlign: 'center' },
 });

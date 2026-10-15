@@ -134,7 +134,7 @@ describe('planner schema migration (v1 → v2)', () => {
     const { journey: _drop, ...rest } = v2;
     const v1 = { ...rest, plannerSchemaVersion: 1 };
     const migrated: PlannerState = migratePlanner(JSON.parse(JSON.stringify(v1)), MON + DAY, TZ);
-    expect(migrated.plannerSchemaVersion).toBe(2);
+    expect(migrated.plannerSchemaVersion).toBe(3);
     expect(migrated.journey).toEqual({ startedAt: MON + DAY, milestones: {}, petXpSeen: null });
     expect(migrated.studySessions).toEqual(v2.studySessions);
     expect(migrated.events).toEqual(v2.events);
@@ -148,5 +148,34 @@ describe('planner schema migration (v1 → v2)', () => {
 
   it('refuses a document from a newer app instead of dropping data', () => {
     expect(() => migratePlanner({ ...createPlannerState(MON, TZ), plannerSchemaVersion: 99 }, MON, TZ)).toThrow('planner-from-newer-app');
+  });
+});
+
+describe('syllabus-connected Journey milestones', () => {
+  it('first syllabus task completed, first task-linked session and first exam prep, each once', () => {
+    const ids = counterIds();
+    const { state, courseId } = addCourse(createPlannerState(MON, TZ), { name: 'Chemistry', timezone: TZ }, MON, ids);
+    const exam = addAssignment(state, { courseId, title: 'Midterm', type: 'exam', dueDayKey: '2026-10-22', dueTime: '10:00' }, MON, ids);
+    const imported: PlannerState = { ...exam.state, assignments: { ...exam.state.assignments, [exam.assignmentId]: { ...exam.state.assignments[exam.assignmentId]!, syllabusId: 'syllabus_1' } } };
+    // A session linked to the exam (studying is not completing it).
+    let planner = recordFinishedSession(imported, focus(MON + HOUR, 30, { study: { courseId, assignmentId: exam.assignmentId } }), ids);
+    planner = withJourneyUpdated(planner, null, MON + 2 * HOUR);
+    expect(planner.journey.milestones.firstTaskSession?.achievedAt).toBe(MON + HOUR + 30 * 60_000);
+    expect(planner.journey.milestones.firstExamPrep?.achievedAt).toBe(MON + HOUR + 30 * 60_000);
+    expect(planner.journey.milestones.firstSyllabusTaskDone).toBeUndefined();
+    expect(planner.assignments[exam.assignmentId]!.status).toBe('open');
+    planner = withJourneyUpdated(completeAssignment(planner, exam.assignmentId, MON + DAY, ids), null, MON + DAY);
+    expect(planner.journey.milestones.firstSyllabusTaskDone?.achievedAt).toBe(MON + DAY);
+    const again = withJourneyUpdated(planner, null, MON + 2 * DAY);
+    expect(again).toBe(planner);
+  });
+
+  it('a manual task completion is not a syllabus milestone', () => {
+    const ids = counterIds();
+    const { state, courseId } = addCourse(createPlannerState(MON, TZ), { name: 'History', timezone: TZ }, MON, ids);
+    const t = addAssignment(state, { courseId, title: 'Essay', type: 'paper', dueDayKey: '2026-10-20', dueTime: '23:59' }, MON, ids);
+    const done = withJourneyUpdated(completeAssignment(t.state, t.assignmentId, MON + HOUR, ids), null, MON + HOUR);
+    expect(done.journey.milestones.firstTask).toBeDefined();
+    expect(done.journey.milestones.firstSyllabusTaskDone).toBeUndefined();
   });
 });

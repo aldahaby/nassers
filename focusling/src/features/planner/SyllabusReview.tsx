@@ -2,14 +2,15 @@ import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Toggle } from './Toggle';
-import { describeReason, draftCounts, worst, type DraftItem, type ImportDraft } from '@/core';
+import { describeReason, draftCounts, trustStatusOf, worst, type DraftItem, type ImportDraft } from '@/core';
 import { playSound } from '@/services/audio';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { usePlannerStore } from '@/state';
 import { Button, Card, Pressable, colors, radius, spacing, typography } from '@/ui';
 import { DateField, EffortField, TimeField, TypeChips } from './AssignmentFields';
-import { InfoNote, SectionTitle, TrustBadge } from './PlannerBits';
-import { formatDayKey, formatMinutes, TYPE_LABEL } from './plannerCopy';
+import { CourseInsightsReview } from './CourseInsightsReview';
+import { InfoNote, SectionTitle, StatusPill } from './PlannerBits';
+import { formatDayKey, formatMinutes, TRUST_STATUS_LABEL, TYPE_LABEL } from './plannerCopy';
 
 /**
  * Student review: nothing from a syllabus is planned or reminded until the
@@ -69,6 +70,8 @@ export function SyllabusReview() {
         </Card>
       ))}
 
+      <CourseInsightsReview draft={draft} />
+
       <View style={styles.summary} accessible accessibilityLabel={`${counts.found} items found. ${counts.needsReview} need review. ${counts.confirmed} confirmed.`}>
         <Stat n={counts.found} label="found" />
         <Stat n={counts.needsReview} label="need review" />
@@ -80,7 +83,8 @@ export function SyllabusReview() {
           This looks like an updated syllabus: {counts.changed} changed, {counts.removed} no longer listed. Your own edits are kept; anything that conflicts is flagged.
         </InfoNote>
       )}
-      {counts.needsReview > 0 && <InfoNote icon="book">Items marked “Needs review” won’t be planned or reminded until you fix or confirm them.</InfoNote>}
+      {counts.needsReview > 0 && <InfoNote icon="book">Items marked “Needs your review” won’t be planned or reminded until you fix or confirm them.</InfoNote>}
+      {draft.ignoredHeaderLines > 0 && <Text style={styles.muted}>{`Ignored ${draft.ignoredHeaderLines} repeated header/footer line${draft.ignoredHeaderLines === 1 ? '' : 's'} and page numbers.`}</Text>}
 
       <SectionTitle>{`Items (${counts.included} included)`}</SectionTitle>
       {draft.items.map((item) => (
@@ -125,13 +129,15 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
   const due = item.recurrence ? `Every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][item.recurrence.weekday]}${item.dueTime ? ` · ${item.dueTime}` : ''} (weekly)` : item.dueDayKey ? `${formatDayKey(item.dueDayKey)}${item.dueTime ? ` · ${item.dueTime}` : ' · date only'}` : 'No date';
   const where = item.provenance[0] ? `From page ${item.provenance[0].page ?? 1}, line ${item.provenance[0].line}${item.provenance.length > 1 ? ` (and ${item.provenance.length - 1} more place)` : ''}` : '';
   const removed = item.change === 'removed';
+  const status = trustStatusOf(item);
+  const unresolved = !item.dueDayKey && !item.recurrence;
 
   return (
     <View style={[styles.item, level === 'needsReview' && styles.itemReview, !item.include && styles.itemOff]}>
-      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${item.title}, ${TYPE_LABEL[item.type]}, ${due}. ${removed ? 'No longer listed. ' : ''}Trust: ${level}. ${open ? 'Collapse' : 'Edit'}.`} style={styles.itemHead}>
+      <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${item.title}, ${TYPE_LABEL[item.type]}, ${due}. ${removed ? 'No longer listed. ' : ''}${removed ? '' : `Status: ${TRUST_STATUS_LABEL[status]}. `}${open ? 'Collapse' : 'Edit'}.`} style={styles.itemHead}>
         <View style={styles.flex}>
           <View style={styles.badges}>
-            <TrustBadge level={level} />
+            {!removed && <StatusPill status={status} />}
             {item.change === 'changed' && <Text style={styles.changeTag}>Changed</Text>}
             {item.change === 'new' && draft.revisionOfSyllabusId && <Text style={styles.changeTag}>New</Text>}
             {removed && <Text style={styles.changeTag}>No longer listed</Text>}
@@ -139,9 +145,18 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
           </View>
           <Text style={styles.itemTitle}>{item.title}</Text>
           <Text style={styles.muted}>
-            {TYPE_LABEL[item.type]} · {due}
+            {TYPE_LABEL[item.type]} · {item.window && unresolved ? `Exam period ${formatDayKey(item.window.from)} – ${formatDayKey(item.window.to)}` : due}
+            {item.weightPercent !== null ? ` · ${item.weightPercent}% of grade` : ''}
             {item.estimatedMinutes ? ` · ${formatMinutes(item.estimatedMinutes)}` : ''}
           </Text>
+          {item.availableDayKey && <Text style={styles.muted}>Released {formatDayKey(item.availableDayKey)}</Text>}
+          {item.coverage && <Text style={styles.muted}>Covers {item.coverage.weeks ? `Weeks ${item.coverage.weeks.from}–${item.coverage.weeks.to}` : item.coverage.chapters}</Text>}
+          {item.statedZone && <Text style={styles.muted}>{`Time given as ${item.statedZone.label}`}</Text>}
+          {item.inferences.map((inf) => (
+            <Text key={inf.note} style={styles.inference}>
+              {inf.note}
+            </Text>
+          ))}
           {item.diffs?.map((d) => (
             <Text key={d.field} style={styles.diff}>
               {d.field === 'due' ? 'Date changed' : d.field === 'title' ? `Title was “${d.from}”` : `Type was ${d.from}`}
@@ -155,6 +170,15 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
         </View>
         <Text style={styles.chevron}>{open ? '⌃' : '›'}</Text>
       </Pressable>
+        {item.possibleMatch && (
+          <View style={[styles.matchBox, styles.matchOuter]}>
+            <Text style={styles.body}>{`Is this the same as “${item.possibleMatch.title}” from the earlier syllabus?`}</Text>
+            <View style={styles.row}>
+              <Button label="Same item" variant="secondary" onPress={() => store.linkDraftItem(item.key)} style={styles.flexBtn} />
+              <Button label="Different" variant="ghost" onPress={() => store.unlinkDraftItem(item.key)} style={styles.flexBtn} />
+            </View>
+          </View>
+        )}
 
       {open && !removed && (
         <View style={styles.editor}>
@@ -174,8 +198,9 @@ function ReviewItem({ item, draft, open, onToggle }: { item: DraftItem; draft: I
           {!item.recurrence && <DateField value={item.dueDayKey} onChange={(dueDayKey) => store.editDraftItem(item.key, { dueDayKey })} />}
           <TimeField value={item.dueTime} onChange={(dueTime) => store.editDraftItem(item.key, { dueTime })} />
           <EffortField value={item.estimatedMinutes} onChange={(estimatedMinutes) => store.editDraftItem(item.key, { estimatedMinutes })} />
-          {where ? <Text style={styles.muted}>{where}</Text> : null}
+          {where ? <Text style={styles.muted}>{`Source: ${where.replace(/^From /, '')}`}</Text> : null}
           {item.snippet ? <Text style={styles.snippet}>“{item.snippet}”</Text> : null}
+          {unresolved && <Text style={styles.muted}>No date yet. It’s saved as a requirement without a date; add the date here or later when it’s announced.</Text>}
           <View style={styles.row}>
             {level !== 'confirmed' && (item.dueDayKey || item.recurrence) && <Button label="Looks right" variant="secondary" onPress={() => store.confirmDraftItem(item.key)} style={styles.flexBtn} />}
             <Button label={item.include ? 'Exclude' : 'Include'} variant="ghost" onPress={() => store.editDraftItem(item.key, { include: !item.include })} style={styles.flexBtn} />
@@ -214,6 +239,9 @@ const styles = StyleSheet.create({
   itemTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
   diff: { fontSize: 13, fontWeight: '700', color: colors.primaryDark, marginTop: 2 },
   reason: { fontSize: 13, color: '#8A4B00', marginTop: 2 },
+  inference: { fontSize: 13, color: '#4A3F8F', marginTop: 2 },
+  matchBox: { gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.primarySoft },
+  matchOuter: { marginHorizontal: spacing.md, marginBottom: spacing.md },
   chevron: { fontSize: 22, fontWeight: '900', color: colors.textMuted },
   editor: { gap: spacing.md, padding: spacing.md, paddingTop: 0 },
   options: { gap: spacing.sm },

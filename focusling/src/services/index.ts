@@ -5,6 +5,7 @@ import type { FocusProtectionService } from './protection/FocusProtectionService
 import { IOSProtectionService } from './protection/IOSProtectionService';
 import { MockProtectionService } from './protection/MockProtectionService';
 import { FocuslingProtectionNative } from './protection/nativeModule';
+import { LocalSyllabusAnalysisProvider, type SyllabusAnalysisProvider } from './syllabusAnalysis/SyllabusAnalysisProvider';
 import { UnavailableStudentVerificationService, type StudentVerificationService } from './verification/StudentVerificationService';
 import { FocuslingStoreNative, MockStoreService, NativeStoreService, UnavailableStoreService, type StoreService } from './store';
 import { LocalOnlySyncProvider, type SyncProvider } from '@/core';
@@ -67,6 +68,8 @@ export const services: {
   sync: SyncProvider;
   /** No verification backend exists yet: always Unavailable (docs/PREMIUM_ARCHITECTURE.md). */
   studentVerification: StudentVerificationService;
+  /** Syllabus understanding runs on the device; no remote model is connected (docs/SYLLABUS_INTELLIGENCE.md). */
+  syllabusAnalysis: SyllabusAnalysisProvider;
 } = {
   saveRepository: new AsyncStorageSaveRepository(),
   protection: createProtectionService(),
@@ -77,6 +80,7 @@ export const services: {
   widgets: Platform.OS === 'ios' && StudylingNative ? new NativeStudyWidgetBridge() : new MockStudyWidgetBridge(),
   sync: new LocalOnlySyncProvider(),
   studentVerification: new UnavailableStudentVerificationService(),
+  syllabusAnalysis: new LocalSyllabusAnalysisProvider(),
 };
 
 export type { SaveRepository } from './persistence/SaveRepository';
@@ -93,3 +97,4 @@ export { MemoryPlannerRepository } from './planner/PlannerRepository';
 export type { PlannerRepository } from './planner/PlannerRepository';
 export { appClock } from './clock';
 export * from './verification/StudentVerificationService';
+export * from './syllabusAnalysis/SyllabusAnalysisProvider';

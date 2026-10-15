@@ -1,7 +1,10 @@
 /**
- * Choosing a syllabus file and extracting its text ON THE DEVICE.
- * iOS: PDFKit text first; Vision OCR for pages without embedded text
- * (modules/studyling-native). Nothing is uploaded anywhere.
+ * Choosing a syllabus file and extracting its text ON THE DEVICE. Nothing is
+ * uploaded anywhere.
+ * - Plain text and DOCX: read in JavaScript on every platform (core/documents).
+ * - PDF: iOS PDFKit text first, Vision OCR for pages without text
+ *   (modules/studyling-native). Not available on web.
+ * - Photos (JPEG/PNG/HEIC): iOS Vision OCR. Not available on web.
  */
 export interface PickedDocument {
   uri: string;
@@ -14,15 +17,26 @@ export interface PickedDocument {
 export interface ExtractedPage {
   index: number;
   text: string;
-  method: 'embeddedText' | 'ocr';
+  method: 'embeddedText' | 'ocr' | 'docx';
 }
 
 export interface ExtractionResult {
   pages: ExtractedPage[];
-  method: 'embeddedText' | 'ocr' | 'mixed' | 'pastedText';
+  method: 'embeddedText' | 'ocr' | 'mixed' | 'pastedText' | 'docx';
 }
 
-export type ExtractionError = 'cancelled' | 'unsupported' | 'unreadable' | 'empty';
+/**
+ * - unsupported: this platform can't read this kind of file (e.g. PDF on web, old .doc);
+ * - unreadable: damaged, or the text is mostly garbled (a poor scan);
+ * - empty: no text at all;
+ * - tooLarge: over the size limit (or a suspicious archive);
+ * - encrypted: password-protected.
+ */
+export type ExtractionError = 'cancelled' | 'unsupported' | 'unreadable' | 'empty' | 'tooLarge' | 'encrypted';
+
+/** File types offered in the picker. */
+export const SYLLABUS_MIME_TYPES = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'] as const;
+export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/heic'] as const;
 
 export interface DocumentService {
   readonly kind: 'native' | 'web';
@@ -37,6 +51,7 @@ export function joinPages(result: ExtractionResult): string {
 }
 
 export function methodOf(pages: ExtractedPage[]): ExtractionResult['method'] {
+  if (pages.length && pages.every((p) => p.method === 'docx')) return 'docx';
   const ocr = pages.filter((p) => p.method === 'ocr').length;
   return ocr === 0 ? 'embeddedText' : ocr === pages.length ? 'ocr' : 'mixed';
 }

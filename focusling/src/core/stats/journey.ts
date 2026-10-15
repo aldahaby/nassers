@@ -88,6 +88,14 @@ export function journeyCandidates(inputs: JourneyInputs, previousPetXp: number |
     if (retrievalEvent) out.push({ id: 'firstRetrieval', kind: 'firstRetrieval', achievedAt: retrievalEvent.at });
     else if (ledger.some((s) => s.retrievalCompleted)) out.push({ id: 'firstRetrieval', kind: 'firstRetrieval', achievedAt: null });
 
+    // Syllabus-connected milestones (real actions only; repeated imports never re-award).
+    const fromSyllabus = tasks.find((t) => planner.assignments[t.assignmentId]?.syllabusId);
+    if (fromSyllabus) out.push({ id: 'firstSyllabusTaskDone', kind: 'firstSyllabusTaskDone', achievedAt: fromSyllabus.completedAt, courseId: fromSyllabus.courseId });
+    const linked = completed.find((r) => r.assignmentId && planner.assignments[r.assignmentId]);
+    if (linked) out.push({ id: 'firstTaskSession', kind: 'firstTaskSession', achievedAt: linked.endedAt, courseId: linked.courseId });
+    const prep = completed.find((r) => r.assignmentId && planner.assignments[r.assignmentId]?.type === 'exam');
+    if (prep) out.push({ id: 'firstExamPrep', kind: 'firstExamPrep', achievedAt: prep.endedAt, courseId: prep.courseId });
+
     for (const course of Object.values(planner.courses)) {
       const first = completed.find((r) => r.courseId === course.id);
       if (first) out.push({ id: `courseFirstSession:${course.id}`, kind: 'courseFirstSession', achievedAt: first.endedAt, courseId: course.id });

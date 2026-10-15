@@ -149,6 +149,16 @@ logic, local persistence, and a mock Screen Time service.
   on a device** (`docs/NATIVE_IPHONE_TEST_PLAN.md`).
 - Everything stays on the device (`docs/PLANNER_PRIVACY.md`). No AI parsing, no accounts.
 
+**Syllabus Intelligence 2.0:** details in `docs/SYLLABUS_INTELLIGENCE.md`.
+- Reads DOCX and text everywhere (PDF and photos on the iPhone app, not yet device-tested), drops
+  repeated headers/footers, and refuses unreadable scans instead of importing part of them.
+- Understands course details (institution, section, instructor/TAs, office hours, class times),
+  grading breakdowns, weekly topics, explicit exam coverage, release vs due dates, tentative dates,
+  exam periods and key course dates. Every item shows a plain status and its source page.
+- Revised syllabi show changes and possible renamed items before anything is applied. Imported
+  assignments start real Lock-In sessions that count toward Stats and Journey without completing
+  the task.
+
 **Stats & Journey:** details in `docs/STATS_AND_JOURNEY.md` and `docs/PREMIUM_ARCHITECTURE.md`.
 - A Stats tab (Pet / Planner / Focus / Stats / Settings; the Shop opens from the Pet screen): today
   and this week's focus time, a seven-day chart, sessions and tasks, focus time by course (with

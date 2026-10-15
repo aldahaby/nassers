@@ -7,14 +7,14 @@ import type { AssignmentType, AvailabilityWindow, PlanType, PlannerPreferences, 
  * starting guesses, not established findings.
  */
 
-export const PLANNER_SCHEMA_VERSION = 2;
+export const PLANNER_SCHEMA_VERSION = 3;
 
 // ── Parser ──────────────────────────────────────────────────────────
 
 /** Current deterministic, on-device parser. */
-export const PARSER_VERSION = 'syllabus-parser-1.0';
+export const PARSER_VERSION = 'syllabus-parser-2.0';
 /** Older behaviour kept for Syllabus Lab comparison (no table splitting, no recurrence). */
-export const PARSER_VERSIONS = [PARSER_VERSION, 'syllabus-parser-0.9'] as const;
+export const PARSER_VERSIONS = [PARSER_VERSION, 'syllabus-parser-1.0', 'syllabus-parser-0.9'] as const;
 export type ParserVersion = (typeof PARSER_VERSIONS)[number];
 
 /** Month/day order for numeric dates like 3/4 when the document doesn't make it obvious. */
@@ -37,11 +37,32 @@ export const TYPE_KEYWORDS: readonly { type: AssignmentType; words: readonly str
 export const DUE_WORDS: readonly string[] = ['due', 'submit', 'deadline', 'turn in', 'hand in'];
 
 /** Lines that look like dates but are not work (holidays, no class). */
-export const NON_WORK_WORDS: readonly string[] = ['no class', 'holiday', 'break', 'recess', 'office hours', 'class cancelled', 'reading day', 'last day to drop', 'add/drop'];
+export const NON_WORK_WORDS: readonly string[] = ['no class', 'holiday', 'break', 'recess', 'office hours', 'class cancelled', 'reading day', 'reading week', 'study break', 'last day to drop', 'last day to withdraw', 'add/drop'];
 
 export const VAGUE_TIMING_WORDS: readonly string[] = ['near the end of the term', 'near the end of term', 'end of term', 'end of the term', 'end of semester', 'end of the semester', 'near the end', 'finals week', 'last week of class', 'last week of classes', 'later in the term'];
 
 export const TBA_WORDS: readonly string[] = ['tba', 'tbd', 'to be announced', 'to be determined'];
+
+/**
+ * Revised syllabus: when a new item might be an existing one (renamed or
+ * re-dated). Only a suggestion; the student decides.
+ */
+export const REVISION_MATCH = { minTitleSimilarity: 0.5, dateWindowDays: 14 } as const;
+
+/** A date the syllabus itself calls provisional. Never treated as settled. */
+export const TENTATIVE_WORDS: readonly string[] = ['tentative', 'tentatively', 'subject to change', 'tbc', 'to be confirmed', 'provisional', 'approximately', 'approx'];
+
+/** Words that mark the date as a release/availability date, not the due date. */
+export const RELEASE_WORDS: readonly string[] = ['released', 'release', 'available', 'posted', 'assigned', 'handed out', 'opens', 'out on'];
+
+/** Stated time-zone abbreviations Studyling can map (others are left to the student). */
+export const ZONE_ABBREVIATIONS: Readonly<Record<string, string>> = {
+  et: 'America/New_York', est: 'America/New_York', edt: 'America/New_York',
+  ct: 'America/Chicago', cst: 'America/Chicago', cdt: 'America/Chicago',
+  mt: 'America/Denver', mst: 'America/Denver', mdt: 'America/Denver',
+  pt: 'America/Los_Angeles', pst: 'America/Los_Angeles', pdt: 'America/Los_Angeles',
+  utc: 'UTC', gmt: 'UTC',
+};
 
 // ── Effort and planning ─────────────────────────────────────────────
 

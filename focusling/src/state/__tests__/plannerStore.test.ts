@@ -1,6 +1,7 @@
 import { CLEAN_TEXT, REVISED } from '@/core/planner/fixtures/syllabi';
+import { CA_OUTLINE, US_OUTLINE } from '@/core/planner/fixtures/courseOutlines';
 import { fromWallClock } from '@/core/planner/time';
-import { adoptPet, createNewSave, migrateSave, setRoomColor, type GameSave } from '@/core';
+import { adoptPet, buildStatsSnapshot, courseBreakdown, createNewSave, migrateSave, setRoomColor, studyDataFrom, type GameSave } from '@/core';
 import { MemorySaveRepository } from '@/services/persistence/MemorySaveRepository';
 import { MockProtectionService } from '@/services/protection/MockProtectionService';
 import { MockNotificationService } from '@/services/notifications/MockNotificationService';
@@ -252,5 +253,59 @@ describe('planner store: Journey', () => {
     expect(m2.firstSession).toEqual(m1.firstSession);
     const reloaded = await setup({ plannerRepo, saveRepo, clock: ctx.clock });
     expect(reloaded.planner.getState().planner!.journey.milestones).toEqual(m2);
+  });
+});
+
+describe('planner store: Syllabus Intelligence → Lock-In → Stats', () => {
+  it('an imported assignment links to a real Lock-In; time is attributed once; studying never completes it; importing pays nothing', async () => {
+    const ctx = await setup();
+    const coinsBefore = ctx.game.getState().save!.wallet.coins;
+    const xpBefore = ctx.game.getState().save!.pet!.lifetimeXp;
+    ctx.planner.getState().importText(US_OUTLINE.text, 'docx', { filename: 'cs1301.docx', extraction: 'docx' });
+    const res = ctx.planner.getState().commitDraft(false)!;
+    expect(res.assignmentIds.length).toBeGreaterThan(3);
+    expect(ctx.game.getState().save!.wallet.coins).toBe(coinsBefore);
+    expect(ctx.game.getState().save!.pet!.lifetimeXp).toBe(xpBefore);
+    const planner0 = ctx.planner.getState().planner!;
+    const hw2 = Object.values(planner0.assignments).find((a) => a.title === 'Homework 2')!;
+    const course = planner0.courses[hw2.courseId]!;
+    expect(course.details?.identity.code).toBe('CS 1301');
+    expect(planner0.journey.milestones.firstSyllabus).toBeDefined();
+
+    const started = await ctx.planner.getState().startStudy({ assignmentId: hw2.id, minutes: 25, source: 'app' });
+    expect(started.ok).toBe(true);
+    expect(ctx.game.getState().save!.focus.active!.study).toMatchObject({ assignmentId: hw2.id, courseId: course.id });
+    ctx.clock.t += 25 * 60_000 + 1000;
+    ctx.game.getState().refresh();
+    await flush();
+
+    const planner = ctx.planner.getState().planner!;
+    const sessions = Object.values(planner.studySessions).filter((s) => s.assignmentId === hw2.id);
+    expect(sessions).toHaveLength(1);
+    expect(planner.assignments[hw2.id]!.status).toBe('open'); // studying ≠ completing
+    expect(planner.journey.milestones.firstTaskSession).toBeDefined();
+    expect(ctx.game.getState().save!.wallet.coins).toBeGreaterThan(coinsBefore); // the focus session itself pays, as always
+
+    const data = studyDataFrom(planner, ctx.game.getState().save);
+    expect(data.records.filter((r) => r.assignmentId === hw2.id)).toHaveLength(1);
+    const snap = buildStatsSnapshot(data.records, data.tasks, null, TZ, ctx.clock.t);
+    const rows = courseBreakdown(data.records, data.tasks, TZ, snap.week.start, snap.week.days[6]!.date);
+    expect(rows.find((r) => r.courseId === course.id)?.focusMinutes).toBe(25);
+
+    // Re-importing the same syllabus changes nothing.
+    ctx.planner.getState().importText(US_OUTLINE.text, 'docx', { filename: 'cs1301.docx', extraction: 'docx' });
+    expect(ctx.planner.getState().draft!.duplicateOfSyllabusId).not.toBeNull();
+    ctx.planner.getState().cancelDraft();
+    expect(Object.keys(ctx.planner.getState().planner!.assignments)).toHaveLength(Object.keys(planner.assignments).length);
+  });
+
+  it('canceling an import leaves stored data exactly as it was', async () => {
+    const ctx = await setup();
+    const before = ctx.planner.getState().planner;
+    ctx.planner.getState().importText(CA_OUTLINE.text, 'pdf', { filename: 'comp202.pdf' });
+    expect(ctx.planner.getState().draft).not.toBeNull();
+    ctx.planner.getState().cancelDraft();
+    expect(ctx.planner.getState().draft).toBeNull();
+    expect(ctx.planner.getState().planner).toBe(before);
   });
 });

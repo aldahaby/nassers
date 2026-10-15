@@ -26,6 +26,10 @@ import {
   discardProposals,
   dismissCapacityNote,
   editDraftItem,
+  linkDraftItem,
+  setDraftDetails,
+  unlinkDraftItem,
+  type CourseIdentity,
   getEndsAt,
   getProgression,
   liveActivityContent,
@@ -83,7 +87,7 @@ export interface PlannerStoreDeps {
 }
 
 export type ImportStatus = 'idle' | 'picking' | 'extracting' | 'parsing' | 'error';
-export type ImportError = 'unsupported' | 'unreadable' | 'empty' | 'noItems';
+export type ImportError = 'unsupported' | 'unreadable' | 'empty' | 'noItems' | 'tooLarge' | 'encrypted';
 
 export interface StartNotice {
   planId?: Id;
@@ -116,6 +120,11 @@ export interface PlannerStoreState {
   confirmDraftItem(key: string): void;
   setDraftCourse(index: number, patch: { name?: string; code?: string | null; timezone?: string }): void;
   cancelDraft(): void;
+  /** Revised syllabus: "this is the same item as…" / "these are different". */
+  linkDraftItem(key: string): void;
+  unlinkDraftItem(key: string): void;
+  setDraftDetails(patch: { save?: boolean; saveContacts?: boolean }): void;
+  setDraftIdentity(patch: Partial<Pick<CourseIdentity, 'institution' | 'section'>>): void;
   commitDraft(keepOriginal: boolean): { courseIds: Id[]; assignmentIds: Id[] } | null;
   // Manual entry
   addCourse(input: Omit<CourseInput, 'timezone'> & { timezone?: string }): Id;
@@ -328,7 +337,9 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
         const extracted = await deps.documents.extract(doc, (done, total) => set({ importProgress: { done, total } }));
         if (!extracted.ok) return set({ importStatus: 'error', importError: extracted.error === 'cancelled' ? null : extracted.error });
         set({ importStatus: 'parsing' });
-        const draft = get().importText(joinPages(extracted.value), doc.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'emailText', { filename: doc.name, extraction: extracted.value.method });
+        const method = extracted.value.method;
+        const sourceType: SyllabusSourceType = method === 'docx' ? 'docx' : method === 'pastedText' ? 'emailText' : doc.mimeType?.startsWith('image/') ? 'image' : 'pdf';
+        const draft = get().importText(joinPages(extracted.value), sourceType, { filename: doc.name, extraction: method });
         if (!draft) return;
         set({ importStatus: 'idle', importProgress: null });
       },
@@ -359,6 +370,25 @@ export function createPlannerStore(deps: PlannerStoreDeps) {
         const d = get().draft;
         if (!d) return;
         set({ draft: { ...d, courses: d.courses.map((c) => (c.index === index ? { ...c, ...patch, name: patch.name ?? c.name } : c)) } });
+      },
+      linkDraftItem(key) {
+        const d = get().draft;
+        if (d) set({ draft: linkDraftItem(current(), d, key) });
+      },
+      unlinkDraftItem(key) {
+        const d = get().draft;
+        if (d) set({ draft: unlinkDraftItem(d, key) });
+      },
+      setDraftDetails(patch) {
+        const d = get().draft;
+        if (d) set({ draft: setDraftDetails(d, patch) });
+      },
+      setDraftIdentity(patch) {
+        const d = get().draft;
+        if (!d) return;
+        const clean = (v: string | null | undefined) => (v === undefined ? undefined : v && v.trim() ? v.trim() : null);
+        const identity = { ...d.insights.identity, ...(patch.institution !== undefined ? { institution: clean(patch.institution) ?? null } : {}), ...(patch.section !== undefined ? { section: clean(patch.section) ?? null } : {}) };
+        set({ draft: { ...d, insights: { ...d.insights, identity } } });
       },
       cancelDraft() {
         // Discarding the draft drops the raw text with it.

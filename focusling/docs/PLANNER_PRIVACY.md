@@ -23,6 +23,7 @@ Planner document  studyling/planner/v1  (AsyncStorage / localStorage on this dev
    ├─ study sessions (times, durations, outcome, start source, protection result)
    ├─ retrieval items (the student's own prompts/answers)
    ├─ Journey milestones (ids, dates, course ids; no text)
+   ├─ course details (optional; identity, people, times, grading, topics, key dates; no policy text)
    └─ event log (ids, times, small codes; no titles or text)
    │
    ├─► Local notifications (OS): titles/bodies follow the Lock Screen setting
@@ -60,7 +61,9 @@ Planner document  studyling/planner/v1  (AsyncStorage / localStorage on this dev
 - Private Live Activity shows "Study session · N min" (test). Notifications follow the same setting (test).
 - The parser and import code never log text; the native extractor never logs text.
 - Planner events hold ids, timestamps and small codes only (E2E checks no titles/notes in the log).
-- No professor names/emails are extracted or required. No location, contacts, microphone or
+- Instructor/TA names, office hours and course details are extracted for review and saved only if
+  the student keeps "Save course details" (local only). Email addresses are off by default and saved
+  only on request. They never reach events, notifications, widgets or any shared space. No location, contacts, microphone or
   mailbox access. No Gmail OAuth. Email import is paste-only (or picking a saved attachment).
 - Erase local data (Settings) removes the planner document and cancels scheduled reminders.
 

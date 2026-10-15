@@ -1,6 +1,8 @@
-import { PARSER_VERSION, PLAN_TYPE_FOR, PLANNER_RULES, type ParserVersion } from '@/config/planner';
+import { PARSER_VERSION, PLAN_TYPE_FOR, PLANNER_RULES, REVISION_MATCH, type ParserVersion } from '@/config/planner';
 import { sha256Hex } from '../shared/sha256';
-import type { Assignment, AssignmentType, ConfidenceLevel, Course, Id, PlannerState, ReviewReason, SourceProvenance, SourceValues, Syllabus, SyllabusSourceType, Timestamp } from '../models';
+import type { Assignment, AssignmentType, ConfidenceLevel, Course, CourseDetails, Id, Inference, PlannerState, ReviewReason, SourceProvenance, SourceValues, Syllabus, SyllabusInsights, SyllabusSourceType, Timestamp } from '../models';
+import { stripRunningHeaders } from '../documents/documentText';
+import { extractInsights } from './syllabusInsights';
 import { logEvent, type IdGen } from './plannerState';
 import { applySourceUpdate } from './sourceAuthority';
 import { normalizeTitle, parseSyllabus, worst, type Candidate, type CourseGuess } from './syllabusParser';
@@ -51,6 +53,27 @@ export interface DraftItem {
   existingAssignmentId?: Id;
   /** What a revised syllabus changed, for the review screen ("Oct 12 → Oct 14"). */
   diffs?: { field: 'title' | 'type' | 'due'; from: string; to: string }[];
+  /** How values were worked out from context (shown as "Inferred from context"). */
+  inferences: Inference[];
+  availableDayKey: string | null;
+  /** Exam period with no exam date yet. */
+  window: { from: string; to: string } | null;
+  weightPercent: number | null;
+  statedZone: { label: string; zone: string | null } | null;
+  /** Explicit coverage (from the item's own line or an "X covers Y" statement), plus that schedule's topics. */
+  coverage: { weeks: { from: number; to: number } | null; chapters: string | null; topics: string[] } | null;
+  /** Revised syllabus: a new item that might be a renamed existing one. The student decides. */
+  possibleMatch?: { assignmentId: Id; title: string };
+}
+
+/** What a student sees about one value: what Studyling knows, and what it doesn't. */
+export type TrustStatus = 'confirmedByYou' | 'fromDocument' | 'inferred' | 'needsReview' | 'conflicting' | 'notSpecified';
+
+export interface DetailDiff {
+  area: 'grading' | 'schedule' | 'people' | 'meetings' | 'identity';
+  label: string;
+  from: string | null;
+  to: string | null;
 }
 
 export interface ImportDraft {
@@ -69,6 +92,14 @@ export interface ImportDraft {
   dateRange: { first: string; last: string } | null;
   /** Memory only; dropped on commit unless keepOriginal. */
   rawText: string;
+  /** Course-level understanding (identity, people, grading, schedule…), editable in review. */
+  insights: SyllabusInsights;
+  /** Whether to save course details, and whether to include people's email addresses (off by default). */
+  details: { save: boolean; saveContacts: boolean };
+  /** Revised syllabus: what changed in course details compared with what's saved. */
+  detailsDiff: DetailDiff[];
+  /** Running header/footer lines ignored (repeated on most pages). */
+  ignoredHeaderLines: number;
 }
 
 export interface CreateDraftInput {
@@ -105,8 +136,15 @@ function matchCourse(state: PlannerState, guess: CourseGuess): Course | null {
 }
 
 export function createImportDraft(state: PlannerState, input: CreateDraftInput): ImportDraft {
-  const parsed = parseSyllabus({ text: input.text, timezone: input.timezone, referenceAt: input.now, parserVersion: input.parserVersion });
-  const courses: DraftCourse[] = parsed.courses.map((guess, index) => {
+  const cleaned = stripRunningHeaders(input.text);
+  const parsed = parseSyllabus({ text: cleaned.text, timezone: input.timezone, referenceAt: input.now, parserVersion: input.parserVersion });
+  const insights = extractInsights(cleaned.text);
+  const courses: DraftCourse[] = parsed.courses.map((g, index) => {
+    // The insights pass reads labelled headings ("Course title:", institution lines) the parser doesn't.
+    const guess: CourseGuess =
+      index === 0 && parsed.courses.length === 1
+        ? { code: g.code ?? insights.identity.code, name: g.code && insights.identity.code === g.code ? insights.identity.title ?? g.name : g.name ?? insights.identity.title, term: g.term ?? (insights.identity.term ? `${insights.identity.term.season[0]!.toUpperCase()}${insights.identity.term.season.slice(1)} ${insights.identity.term.year}` : null) }
+        : g;
     const existing = matchCourse(state, guess);
     return {
       index,
@@ -123,7 +161,7 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
   const titleCounts = new Map<string, number>();
   parsed.candidates.forEach((c) => titleCounts.set(`${c.courseIndex}|${c.normalizedTitle}`, (titleCounts.get(`${c.courseIndex}|${c.normalizedTitle}`) ?? 0) + 1));
 
-  const items: DraftItem[] = parsed.candidates.map((c) => toDraftItem(c, courses[c.courseIndex]!, (titleCounts.get(`${c.courseIndex}|${c.normalizedTitle}`) ?? 1) > 1));
+  const items: DraftItem[] = parsed.candidates.map((c) => toDraftItem(c, courses[c.courseIndex]!, (titleCounts.get(`${c.courseIndex}|${c.normalizedTitle}`) ?? 1) > 1, insights));
 
   const primary = courses[0]!;
   const prior = primary.existingCourseId
@@ -146,11 +184,25 @@ export function createImportDraft(state: PlannerState, input: CreateDraftInput):
     revisionOfSyllabusId: prior[0]?.id ?? null,
     dateRange: parsed.dateRange,
     rawText: input.text,
+    insights,
+    details: { save: true, saveContacts: false },
+    detailsDiff: primary.existingCourseId ? diffDetails(state.courses[primary.existingCourseId]?.details ?? null, insights) : [],
+    ignoredHeaderLines: cleaned.removed,
   };
   return reconcileDraft(state, draft);
 }
 
-function toDraftItem(c: Candidate, course: DraftCourse, series: boolean): DraftItem {
+/** Coverage for an item: its own line first, then an explicit "X covers Y" line; topics come from those weeks of the schedule. */
+function coverageFor(c: Candidate, insights: SyllabusInsights): DraftItem['coverage'] {
+  const stated = insights.coverage.find((r) => r.itemKey === c.normalizedTitle || (c.normalizedTitle.startsWith(r.itemKey) && r.itemKey.length >= 4));
+  const weeks = c.coverage?.weeks ?? stated?.weeks ?? null;
+  const chapters = c.coverage?.chapters ?? stated?.chapters ?? null;
+  if (!weeks && !chapters) return null;
+  const topics = weeks ? insights.schedule.filter((w) => w.week >= weeks.from && w.week <= weeks.to).map((w) => w.topic) : [];
+  return { weeks, chapters, topics };
+}
+
+function toDraftItem(c: Candidate, course: DraftCourse, series: boolean, insights: SyllabusInsights): DraftItem {
   return {
     key: c.key,
     courseIndex: c.courseIndex,
@@ -168,6 +220,12 @@ function toDraftItem(c: Candidate, course: DraftCourse, series: boolean): DraftI
     snippet: c.snippet,
     fingerprint: fingerprintOf(courseKeyOf(course), c.normalizedTitle, series ? c.dueDayKey : null),
     change: 'new',
+    inferences: c.inferences ?? [],
+    availableDayKey: c.availableDayKey ?? null,
+    window: c.window ?? null,
+    weightPercent: c.weightPercent ?? null,
+    statedZone: c.statedZone ?? null,
+    coverage: coverageFor(c, insights),
   };
 }
 
@@ -223,10 +281,116 @@ function reconcileDraft(state: PlannerState, draft: ImportDraft): ImportDraft {
         fingerprint: a.sourceFingerprint,
         change: 'removed',
         existingAssignmentId: a.id,
+        inferences: [],
+        availableDayKey: null,
+        window: null,
+        weightPercent: null,
+        statedZone: null,
+        coverage: null,
       });
     }
   }
+  // A new item that looks like a removed one (renamed? re-dated?) is offered as a possible match; never merged silently.
+  const removed = items.filter((i) => i.change === 'removed');
+  for (const item of items) {
+    if (item.change !== 'new') continue;
+    const course = draft.courses[item.courseIndex]!;
+    const newDue = dueAtFor(item.dueDayKey, item.dueTime, course.timezone).dueAt;
+    const firstWord = (t: string) => normalizeTitle(t).split(' ')[0] ?? '';
+    const twin = removed.find((r) => {
+      if (r.courseIndex !== item.courseIndex || r.type !== item.type) return false;
+      if (titleSimilarity(r.title, item.title) >= REVISION_MATCH.minTitleSimilarity) return true;
+      // "Homework 2" → "Homework Two" moved a few days: same kind, same leading word, close dates.
+      const oldDue = state.assignments[r.existingAssignmentId!]?.dueAt;
+      return firstWord(r.title) === firstWord(item.title) && newDue !== null && oldDue !== undefined && Math.abs(newDue - oldDue) <= REVISION_MATCH.dateWindowDays * 86_400_000;
+    });
+    if (twin) item.possibleMatch = { assignmentId: twin.existingAssignmentId!, title: twin.title };
+  }
   return { ...draft, items };
+}
+
+/** Word-overlap similarity of two titles (0–1). */
+export function titleSimilarity(a: string, b: string): number {
+  const words = (t: string) => new Set(normalizeTitle(t).split(' ').filter(Boolean));
+  const A = words(a);
+  const B = words(b);
+  if (!A.size || !B.size) return 0;
+  let shared = 0;
+  for (const w of A) if (B.has(w)) shared++;
+  return shared / new Set([...A, ...B]).size;
+}
+
+/** Student says a new item IS the existing one: it becomes an update to that assignment. */
+export function linkDraftItem(state: PlannerState, draft: ImportDraft, key: string): ImportDraft {
+  const item = draft.items.find((i) => i.key === key);
+  if (!item?.possibleMatch) return draft;
+  const existing = state.assignments[item.possibleMatch.assignmentId];
+  if (!existing) return draft;
+  const course = draft.courses[item.courseIndex]!;
+  const { dueAt } = dueAtFor(item.dueDayKey, item.dueTime, course.timezone);
+  const was = existing.sourceValues ?? { title: existing.title, type: existing.type, dueAt: existing.dueAt ?? null, dueDateOnly: existing.dueDateOnly ?? false };
+  const diffs: NonNullable<DraftItem['diffs']> = [];
+  if (was.title !== item.title) diffs.push({ field: 'title', from: was.title, to: item.title });
+  if (was.type !== item.type) diffs.push({ field: 'type', from: was.type, to: item.type });
+  if ((was.dueAt ?? null) !== dueAt) diffs.push({ field: 'due', from: fmtDue(was.dueAt), to: fmtDue(dueAt) });
+  const linked: DraftItem = { ...item, change: diffs.length ? 'changed' : 'unchanged', existingAssignmentId: existing.id, diffs: diffs.length ? diffs : undefined, possibleMatch: undefined, estimatedMinutes: existing.estimatedMinutes ?? item.estimatedMinutes };
+  return { ...draft, items: draft.items.filter((i) => !(i.change === 'removed' && i.existingAssignmentId === existing.id)).map((i) => (i.key === key ? linked : i)) };
+}
+
+/** Student says they're different items: keep both (the old one stays flagged as no longer listed). */
+export function unlinkDraftItem(draft: ImportDraft, key: string): ImportDraft {
+  return { ...draft, items: draft.items.map((i) => (i.key === key ? { ...i, possibleMatch: undefined } : i)) };
+}
+
+export function setDraftDetails(draft: ImportDraft, patch: Partial<ImportDraft['details']>): ImportDraft {
+  return { ...draft, details: { ...draft.details, ...patch } };
+}
+
+/** What the student sees about an item in review. */
+export function trustStatusOf(item: DraftItem): TrustStatus {
+  const c = item.confidence;
+  if (c.title === 'confirmed' && c.type === 'confirmed' && c.due === 'confirmed') return 'confirmedByYou';
+  if (item.dueOptions?.length || item.reasons.includes('conflictingDates')) return 'conflicting';
+  if (!item.dueDayKey && !item.recurrence) return 'notSpecified';
+  if (worst(c.title, c.type, c.due) === 'needsReview') return 'needsReview';
+  if (item.inferences.length) return 'inferred';
+  return 'fromDocument';
+}
+
+/** The same question for a saved assignment. */
+export function assignmentTrustStatus(a: Assignment): TrustStatus {
+  if (a.sourceAuthority === 'user' || a.reviewState === 'userEntered') return 'confirmedByYou';
+  if (a.reviewState === 'sourceConflict' || a.reviewReasons?.includes('conflictingDates')) return 'conflicting';
+  if (!a.dueAt) return 'notSpecified';
+  if (Object.values(a.fieldConfidence).includes('needsReview')) return 'needsReview';
+  if (Object.keys(a.userOverrides).length) return 'confirmedByYou';
+  if (a.inferenceNotes?.length) return 'inferred';
+  return 'fromDocument';
+}
+
+/** Course-detail changes between what's saved and a revised syllabus. */
+export function diffDetails(old: CourseDetails | null, next: SyllabusInsights): DetailDiff[] {
+  if (!old) return [];
+  const out: DetailDiff[] = [];
+  const oldGrades = new Map((old.grading?.components ?? []).map((c) => [normalizeTitle(c.name), c]));
+  const newGrades = new Map((next.grading?.components ?? []).map((c) => [normalizeTitle(c.name), c]));
+  for (const [k, c] of newGrades) {
+    const was = oldGrades.get(k);
+    if (!was) out.push({ area: 'grading', label: c.name, from: null, to: `${c.weightPercent}%` });
+    else if (was.weightPercent !== c.weightPercent) out.push({ area: 'grading', label: c.name, from: `${was.weightPercent}%`, to: `${c.weightPercent}%` });
+  }
+  for (const [k, c] of oldGrades) if (!newGrades.has(k)) out.push({ area: 'grading', label: c.name, from: `${c.weightPercent}%`, to: null });
+  const oldWeeks = new Map(old.schedule.map((w) => [w.week, w]));
+  for (const w of next.schedule) {
+    const was = oldWeeks.get(w.week);
+    if (!was) out.push({ area: 'schedule', label: `Week ${w.week}`, from: null, to: w.topic });
+    else if (normalizeTitle(was.topic) !== normalizeTitle(w.topic)) out.push({ area: 'schedule', label: `Week ${w.week}`, from: was.topic, to: w.topic });
+  }
+  const names = (d: { people: { role: string; name: string }[] }) => d.people.map((p) => `${p.role}:${p.name}`).sort().join(', ');
+  if (names(old) !== names(next) && next.people.length) out.push({ area: 'people', label: 'Instructor and TAs', from: old.people.map((p) => p.name).join(', ') || null, to: next.people.map((p) => p.name).join(', ') });
+  const meets = (m: { kind: string; weekday: number; startMinute: number | null }[]) => m.map((x) => `${x.kind}:${x.weekday}:${x.startMinute}`).sort().join(',');
+  if (meets(old.meetings) !== meets(next.meetings) && next.meetings.length) out.push({ area: 'meetings', label: 'Class times', from: null, to: null });
+  return out;
 }
 
 // ── Review edits (all pure) ─────────────────────────────────────────
@@ -319,6 +483,7 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
       };
     }
     result.courseIds.push(courseId);
+    const willSaveDetails = dc.index === 0 && draft.details.save;
 
     const priorRevision = Math.max(0, ...Object.values(next.syllabi).filter((s) => s.courseId === courseId).map((s) => s.revision));
     const syllabusId = ids('syllabus');
@@ -340,6 +505,25 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
       extraction: draft.extraction,
     };
     if (opts.keepOriginal) next.originals[syllabusId] = draft.rawText;
+    if (willSaveDetails) {
+      const course = next.courses[courseId]!;
+      const ins = draft.insights;
+      const details: CourseDetails = {
+        ...ins,
+        // People's email addresses are kept only when the student asks.
+        people: ins.people.map((p) => (draft.details.saveContacts ? p : { role: p.role, name: p.name, provenance: p.provenance })),
+        fromSyllabusId: syllabusId,
+        reviewedAt: now,
+      };
+      const lectures = ins.meetings.filter((m) => m.startMinute !== null && m.endMinute !== null && m.kind !== 'tutorial' && m.kind !== 'lab');
+      next.courses[courseId] = {
+        ...course,
+        details,
+        code: course.code ?? ins.identity.code ?? undefined,
+        meetingSchedule: course.meetingSchedule?.length ? course.meetingSchedule : lectures.length ? lectures.map((m) => ({ weekday: m.weekday, startMinute: m.startMinute!, endMinute: m.endMinute! })) : course.meetingSchedule,
+        updatedAt: now,
+      };
+    }
 
     for (const item of courseItems) {
       if (item.change === 'removed') {
@@ -361,7 +545,7 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
             continue;
           }
           const upd = applySourceUpdate(existing, sourceValues, 'syllabus', now);
-          const a: Assignment = { ...upd.assignment, syllabusId, estimatedMinutes: item.estimatedMinutes ?? existing.estimatedMinutes };
+          const a: Assignment = { ...upd.assignment, syllabusId, estimatedMinutes: item.estimatedMinutes ?? existing.estimatedMinutes, ...academicFields(item, dc.timezone, existing) };
           next.assignments[a.id] = a;
           if (upd.changedFields.length || upd.conflictFields.length) {
             result.changedAssignmentIds.push(a.id);
@@ -400,6 +584,7 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
           userOverrides: {},
           createdAt: now,
           updatedAt: now,
+          ...academicFields(item, dc.timezone),
         };
         result.createdAssignmentIds.push(id);
       }
@@ -409,6 +594,19 @@ export function commitImport(state: PlannerState, draft: ImportDraft, opts: Comm
 }
 
 const confirmLikely = (c: ConfidenceLevel): ConfidenceLevel => (c === 'likely' ? 'confirmed' : c);
+
+/** Weight, release date, exam window, coverage and inference notes from a reviewed item. Existing values the student set are kept. */
+function academicFields(item: DraftItem, timezone: string, existing?: Assignment): Partial<Assignment> {
+  const out: Partial<Assignment> = {};
+  if (item.weightPercent !== null && existing?.weight === undefined) out.weight = item.weightPercent;
+  if (item.availableDayKey && existing?.availableAt === undefined) out.availableAt = atMinute(item.availableDayKey, 0, timezone);
+  if (item.window && !item.dueDayKey) out.window = { from: atMinute(item.window.from, 0, timezone), to: atMinute(item.window.to, 23 * 60 + 59, timezone) };
+  if (!item.dueDayKey && !item.recurrence) out.unresolved = item.reasons.includes('examPeriod') ? 'examPeriod' : item.reasons.includes('tba') ? 'tba' : undefined;
+  if (item.dueDayKey && existing?.unresolved) out.unresolved = undefined;
+  if (item.coverage) out.coverage = item.coverage;
+  if (item.inferences.length) out.inferenceNotes = item.inferences.map((i) => i.note);
+  return out;
+}
 
 /** Weekly items become one assignment per week inside the document's date range. */
 function expandItem(item: DraftItem, draft: ImportDraft, _timezone: string): { title: string; dueDayKey: string | null; dueTime: string | null }[] {

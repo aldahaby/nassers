@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
-import type { ConfidenceLevel, Course } from '@/core';
+import type { ConfidenceLevel, Course, TrustStatus } from '@/core';
 import { TabIcon, colors, radius, spacing } from '@/ui';
-import { courseColor, courseLabel, TRUST_LABEL } from './plannerCopy';
+import { courseColor, courseLabel, TRUST_LABEL, TRUST_STATUS_LABEL } from './plannerCopy';
 
 /** Trust state: icon + words, never colour alone, never a percentage. */
 export function TrustBadge({ level, compact = false }: { level: ConfidenceLevel; compact?: boolean }) {
@@ -19,6 +19,26 @@ const TRUST: Record<ConfidenceLevel, { glyph: string; fg: string; bg: string; bo
   likely: { glyph: '~', fg: '#4A3F8F', bg: '#F1EEFF', border: '#DCD4FF' },
   // Calm amber, not red: uncertainty is normal, not an error.
   needsReview: { glyph: '?', fg: '#8A4B00', bg: '#FFF4E0', border: '#F5D7A3' },
+};
+
+/** Trust status: glyph + words (never colour alone). */
+export function StatusPill({ status }: { status: TrustStatus }) {
+  const s = STATUS[status];
+  return (
+    <View style={[styles.badge, { backgroundColor: s.bg, borderColor: s.border }]} accessible accessibilityLabel={TRUST_STATUS_LABEL[status]}>
+      <Text style={[styles.badgeGlyph, { color: s.fg }]}>{s.glyph}</Text>
+      <Text style={[styles.badgeText, { color: s.fg }]}>{TRUST_STATUS_LABEL[status]}</Text>
+    </View>
+  );
+}
+
+const STATUS: Record<TrustStatus, { glyph: string; fg: string; bg: string; border: string }> = {
+  confirmedByYou: { glyph: '✓', fg: colors.success, bg: colors.successSoft, border: colors.successBorder },
+  fromDocument: { glyph: '✓', fg: colors.success, bg: colors.successSoft, border: colors.successBorder },
+  inferred: { glyph: '~', fg: '#4A3F8F', bg: '#F1EEFF', border: '#DCD4FF' },
+  needsReview: { glyph: '?', fg: '#8A4B00', bg: '#FFF4E0', border: '#F5D7A3' },
+  conflicting: { glyph: '!', fg: '#8A4B00', bg: '#FFF4E0', border: '#F5D7A3' },
+  notSpecified: { glyph: '–', fg: colors.textMuted, bg: colors.surfaceMuted, border: colors.border },
 };
 
 /** Course label with a colour dot as a secondary cue (text always present). */

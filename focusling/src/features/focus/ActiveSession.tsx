@@ -8,6 +8,7 @@ import {
   useEquipped,
   useGameStore,
   usePetView,
+  usePlanner,
   useSessionStreak,
 } from '@/state';
 import { AnimatedPet, Card, ConfirmDialog, ProgressRing, Screen, colors, spacing, typography, Pressable } from '@/ui';
@@ -35,6 +36,7 @@ export function ActiveSession() {
   const refresh = useGameStore((s) => s.refresh);
   const endFocus = useGameStore((s) => s.endFocus);
   const { width } = useWindowDimensions();
+  const planner = usePlanner();
 
   const [cheering, setCheering] = useState(false);
   const [confirm, setConfirm] = useState<AbandonPreview | null>(null);
@@ -65,6 +67,10 @@ export function ActiveSession() {
   if (!view || !progress || !session) return null;
   const { pet, progression } = view;
   const ringSize = Math.min(300, width * 0.76);
+  // The task this Lock-In is for (from the planner), so the student sees what they're working on.
+  const studyCourse = session.study?.courseId ? planner?.courses[session.study.courseId] : undefined;
+  const studyTask = session.study?.assignmentId ? planner?.assignments[session.study.assignmentId] : undefined;
+  const studyingFor = [studyCourse ? studyCourse.code ?? studyCourse.name : null, studyTask?.title].filter(Boolean).join(' · ');
 
   const askToEnd = () => {
     const save = useGameStore.getState().save;
@@ -75,6 +81,11 @@ export function ActiveSession() {
   return (
     <Screen scroll contentStyle={styles.content}>
       <Text style={styles.eyebrow}>Focusing with {pet.name}</Text>
+      {studyingFor ? (
+        <Text style={styles.studying} accessibilityLabel={`Studying for ${studyingFor}`} numberOfLines={2}>
+          Studying: {studyingFor}
+        </Text>
+      ) : null}
 
       <ProgressRing size={ringSize} progress={progress.progress} strokeWidth={12}>
         <AnimatedPet
@@ -138,6 +149,7 @@ export function ActiveSession() {
 }
 
 const styles = StyleSheet.create({
+  studying: { ...typography.label, color: colors.primaryDark, textAlign: 'center', marginTop: -spacing.sm },
   content: { alignItems: 'center', paddingTop: spacing.xl },
   eyebrow: { ...typography.label, textTransform: 'uppercase', letterSpacing: 1 },
   timerBlock: { alignItems: 'center', gap: 2 },

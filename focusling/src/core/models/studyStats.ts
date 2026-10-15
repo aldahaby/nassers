@@ -99,7 +99,10 @@ export type JourneyMilestoneKind =
   | 'firstIndependentStart'
   | 'firstRetrieval'
   | 'petStage'
-  | 'courseFirstSession';
+  | 'courseFirstSession'
+  | 'firstSyllabusTaskDone'
+  | 'firstTaskSession'
+  | 'firstExamPrep';
 
 /** A milestone the student reached. Stored once; never removed or re-awarded. */
 export interface JourneyMilestone {

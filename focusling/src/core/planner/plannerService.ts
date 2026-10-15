@@ -1,3 +1,4 @@
+import { recordedMinutesFor } from '../stats/sessionRecords';
 import { PLAN_TYPE_FOR, PLANNER_RULES } from '@/config/planner';
 import type { Assignment, AssignmentType, AvailabilityWindow, Course, Id, PlannerState, SessionPlan, Timestamp } from '../models';
 import { logEvent, type IdGen } from './plannerState';
@@ -178,7 +179,8 @@ export function isSchedulable(a: Assignment): boolean {
 export function assignmentProgress(state: PlannerState, id: Id, now: Timestamp) {
   const a = state.assignments[id];
   const sessions = Object.values(state.studySessions).filter((s) => s.assignmentId === id);
-  const studiedMinutes = sessions.reduce((sum, s) => sum + s.actualFocusedMinutes, 0);
+  // Same rule as Stats: credited minutes capped by real elapsed time (see core/stats).
+  const studiedMinutes = sessions.reduce((sum, s) => sum + recordedMinutesFor(s.actualFocusedMinutes, s.actualStartAt, s.endedAt), 0);
   const plans = Object.values(state.plans).filter((p) => p.assignmentId === id);
   const upcoming = plans.filter((p) => isActivePlan(p) && p.plannedStartAt + p.plannedMinutes * MIN > now).sort((x, y) => x.plannedStartAt - y.plannedStartAt);
   const plannedMinutes = upcoming.reduce((sum, p) => sum + p.plannedMinutes, 0);

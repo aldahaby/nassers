@@ -1,7 +1,7 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { assignmentProgress, capacityFor, dayKeyIn, describeReason, isSchedulable, timeOfDay, worst, type AssignmentField } from '@/core';
+import { assignmentProgress, assignmentTrustStatus, capacityFor, dayKeyIn, describeReason, isSchedulable, timeOfDay, type AssignmentField } from '@/core';
 import { useAppRoutes } from '@/hooks/useAppRoutes';
 import { useNow } from '@/hooks/useNow';
 import { useActiveSession, usePlannerStore } from '@/state';
@@ -9,10 +9,11 @@ import { Button, Card, colors, radius, spacing, typography } from '@/ui';
 import { DateField, EffortField, TimeField, TypeChips } from './AssignmentFields';
 import { CapacityNote } from './CapacityNote';
 import { PlanRow } from './PlanCard';
-import { CourseTag, InfoNote, SectionTitle, TrustBadge } from './PlannerBits';
+import { CourseTag, InfoNote, SectionTitle, StatusPill } from './PlannerBits';
 import { formatClock, formatDay, formatDue, formatMinutes, START_CONTEXT_LABEL, TYPE_LABEL } from './plannerCopy';
 
-const SOURCE_LABEL = { parser: 'From a syllabus (not yet reviewed)', syllabus: 'From a reviewed syllabus', lms: 'From your class site', user: 'Added by you' } as const;
+/** Official requirement vs the student's own task (Studyling's plan suggestions are labelled separately). */
+const SOURCE_LABEL = { parser: 'From your syllabus · needs review', syllabus: 'Course requirement · from your syllabus', lms: 'From your class site', user: 'Added by you' } as const;
 
 export function AssignmentDetail({ id, editEstimate = false }: { id: string; editEstimate?: boolean }) {
   const planner = usePlannerStore((s) => s.planner);
@@ -35,7 +36,6 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
   const progress = assignmentProgress(planner, a.id, now);
   const capacity = capacityFor(planner, a.id, now);
   const syllabus = a.syllabusId ? planner.syllabi[a.syllabusId] : undefined;
-  const level = worst(a.fieldConfidence.title, a.fieldConfidence.type, a.fieldConfidence.due);
   const current = progress.upcomingPlans[0];
   const plannedNow = current && current.plannedStartAt - 15 * 60_000 <= now;
   const dueKey = a.dueAt ? dayKeyIn(a.dueAt, tz) : null;
@@ -56,7 +56,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
       <Card>
         <View style={styles.rowBetween}>
           <CourseTag course={course} />
-          <TrustBadge level={a.reviewState === 'sourceConflict' ? 'needsReview' : level} />
+          <StatusPill status={assignmentTrustStatus(a)} />
         </View>
         <Text style={typography.title}>{a.title}</Text>
         <Text style={styles.meta}>
@@ -69,6 +69,16 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
           {a.provenance ? ` · page ${a.provenance.page ?? 1}, line ${a.provenance.line}` : ''}
         </Text>
         {a.missingFromSource && <Text style={styles.reason}>The latest syllabus doesn’t list this anymore.</Text>}
+        {a.unresolved && (
+          <Text style={styles.reason}>
+            {a.unresolved === 'examPeriod' && a.window ? `Only the exam period is known (${formatDay(a.window.from, tz)} – ${formatDay(a.window.to, tz)}). Add the date when it’s announced.` : 'The syllabus doesn’t give a date yet. Add it when it’s announced.'}
+          </Text>
+        )}
+        {(a.inferenceNotes ?? []).map((n) => (
+          <Text key={n} style={styles.inference}>
+            {n}
+          </Text>
+        ))}
         {(a.reviewReasons ?? []).map((r) => (
           <Text key={r} style={styles.reason}>
             {describeReason(r)}
@@ -92,6 +102,35 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
         <InfoNote icon="book">This item needs a quick look before Studyling plans it or sends any reminder.{a.dueAt ? '' : ' Add its due date.'}</InfoNote>
       )}
 
+      {(a.weight !== undefined || a.availableAt || a.coverage) && (
+        <Card>
+          <SectionTitle>From the syllabus</SectionTitle>
+          {a.weight !== undefined && <Text style={styles.body}>{`Worth ${a.weight}% of the final grade`}</Text>}
+          {a.availableAt && <Text style={styles.body}>{`Released ${formatDay(a.availableAt, tz)}`}</Text>}
+          {a.coverage && (
+            <Text style={styles.body}>
+              {`Covers ${a.coverage.weeks ? `Weeks ${a.coverage.weeks.from}–${a.coverage.weeks.to}` : a.coverage.chapters}`}
+              {a.coverage.topics.length ? `: ${a.coverage.topics.join(', ')}` : ''}
+            </Text>
+          )}
+        </Card>
+      )}
+
+      {a.type === 'exam' && a.status === 'open' && a.dueAt && a.dueAt > now && !a.estimatedMinutes && (
+        <Card>
+          <Text style={styles.kicker}>Suggestion from Studyling · not from your instructor</Text>
+          <Text style={styles.body}>
+            {`Starting review a little at a time before ${formatDay(a.dueAt, tz, now)} tends to be easier than one long session.`}
+            {a.coverage?.weeks ? ` The syllabus says it covers Weeks ${a.coverage.weeks.from}–${a.coverage.weeks.to}.` : ''} Add your own estimate and Studyling can suggest review blocks you accept or skip.
+          </Text>
+          <Button label="Add an estimate" variant="secondary" onPress={() => setEditing(true)} />
+        </Card>
+      )}
+
+      {course?.details && (
+        <Button label="Course details" variant="ghost" onPress={() => router.push(`/planner/course/${course.id}` as Href)} />
+      )}
+
       {a.status === 'open' && !active && (
         <>
           {current && plannedNow ? (
@@ -99,6 +138,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
           ) : (
             <Button label="Start & Lock now" onPress={() => void startUnplanned()} sound={null} accessibilityHint={`Starts a ${planner.preferences.preferredSessionMinutes} minute study session for this assignment`} />
           )}
+          <Text style={styles.muted}>Study time is recorded for this assignment. Studying doesn’t mark it done; you decide when it’s finished.</Text>
         </>
       )}
 
@@ -162,6 +202,7 @@ export function AssignmentDetail({ id, editEstimate = false }: { id: string; edi
       <SectionTitle>Planned study</SectionTitle>
       <Card>
         {progress.upcomingPlans.length === 0 && <Text style={styles.muted}>No accepted blocks yet.</Text>}
+        <Text style={styles.muted}>Study blocks are Studyling’s planning suggestions that you accepted, not instructions from your course.</Text>
         {progress.upcomingPlans.map((p) => (
           <View key={p.id} style={styles.planLine}>
             <View style={styles.flex}>
@@ -231,6 +272,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  inference: { fontSize: 13, color: '#4A3F8F', marginTop: 2 },
+  kicker: { ...typography.label, color: colors.primaryDark },
   wrap: { gap: spacing.md },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, flexWrap: 'wrap' },
   meta: { ...typography.body, fontSize: 15, fontWeight: '700' },

@@ -1,4 +1,4 @@
-import { dayKeyIn, toWallClock, type AssignmentType, type ConfidenceLevel, type Course, type ProtectionResult, type StartContext, type Timestamp } from '@/core';
+import { dayKeyIn, toWallClock, type AssignmentType, type ConfidenceLevel, type Course, type ProtectionResult, type StartContext, type Timestamp, type TrustStatus } from '@/core';
 
 /** Plain-language labels for planner screens (no percentages, no guilt). */
 
@@ -18,6 +18,21 @@ export const TYPE_LABEL: Record<AssignmentType, string> = {
 export const TYPE_ORDER: readonly AssignmentType[] = ['assignment', 'reading', 'quiz', 'exam', 'paper', 'project', 'lab', 'presentation', 'review', 'other'];
 
 export const TRUST_LABEL: Record<ConfidenceLevel, string> = { confirmed: 'Confirmed', likely: 'Looks likely', needsReview: 'Needs review' };
+
+/** What Studyling knows about a value, in the student's words. */
+export const TRUST_STATUS_LABEL: Record<TrustStatus, string> = {
+  confirmedByYou: 'Confirmed by you',
+  fromDocument: 'Confirmed from document',
+  inferred: 'Inferred from context',
+  needsReview: 'Needs your review',
+  conflicting: 'Conflicting information',
+  notSpecified: 'Not specified',
+};
+
+export function minuteRange(start: number | null, end: number | null): string {
+  if (start === null) return '';
+  return end === null ? minuteLabel(start) : `${minuteLabel(start)}–${minuteLabel(end)}`;
+}
 
 export function courseLabel(c: Pick<Course, 'code' | 'name'> | undefined): string {
   return c ? c.code ?? c.name : 'Course';

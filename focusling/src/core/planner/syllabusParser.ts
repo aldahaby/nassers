@@ -1,6 +1,6 @@
-import { DEFAULT_NUMERIC_DATE_ORDER, DUE_WORDS, NON_WORK_WORDS, PARSER_VERSION, TBA_WORDS, TYPE_KEYWORDS, VAGUE_TIMING_WORDS, type ParserVersion } from '@/config/planner';
+import { DEFAULT_NUMERIC_DATE_ORDER, DUE_WORDS, NON_WORK_WORDS, PARSER_VERSION, RELEASE_WORDS, TBA_WORDS, TENTATIVE_WORDS, TYPE_KEYWORDS, VAGUE_TIMING_WORDS, ZONE_ABBREVIATIONS, type ParserVersion } from '@/config/planner';
 import { sha256Hex } from '../shared/sha256';
-import type { AssignmentType, ConfidenceLevel, ReviewReason, SourceProvenance, Timestamp } from '../models';
+import type { AssignmentType, ConfidenceLevel, Inference, ReviewReason, SourceProvenance, Timestamp } from '../models';
 import { toWallClock } from './time';
 
 /**
@@ -48,6 +48,18 @@ export interface Candidate {
   /** In-memory review context only; never persisted. */
   snippet: string;
   overall: ConfidenceLevel;
+  /** Values worked out from context, with how (e.g. the year from the term). */
+  inferences: Inference[];
+  /** When the work is released, if the same line says so ("released Oct 1, due Oct 8"). */
+  availableDayKey: string | null;
+  /** An exam period ("during the exam period, Dec 8–22"): a window, not a date. */
+  window: { from: string; to: string } | null;
+  /** "(10%)" on the same line as the item. */
+  weightPercent: number | null;
+  /** Time zone written next to the time ("11:59 PM ET"), mapped to an IANA zone when known. */
+  statedZone: { label: string; zone: string | null } | null;
+  /** "covers Weeks 1–5" / "Chapters 1–4" on the same line. */
+  coverage: { weeks: { from: number; to: number } | null; chapters: string | null } | null;
 }
 
 export interface ParseResult {
@@ -110,6 +122,9 @@ interface DateMatch {
   day: number;
   year: number | null;
   range: boolean;
+  /** End of a range ("Dec 8–22", "Dec 8 - Jan 3"). */
+  endMonth?: number;
+  endDay?: number;
   weekOf: boolean;
   numeric: boolean;
 }
@@ -137,6 +152,11 @@ export function repairOcrDates(line: string): { line: string; repaired: boolean 
   return { line: out, repaired };
 }
 
+/** Dates written in one line (month/day/year as found; year may be null). */
+export function datesInLine(line: string, numericOrder: 'MDY' | 'DMY' = DEFAULT_NUMERIC_DATE_ORDER): { month: number; day: number; year: number | null; endMonth?: number; endDay?: number }[] {
+  return findDates(repairOcrDates(line).line, numericOrder).map((d) => ({ month: d.month, day: d.day, year: d.year, endMonth: d.endMonth, endDay: d.endDay }));
+}
+
 function findDates(line: string, numericOrder: 'MDY' | 'DMY'): DateMatch[] {
   const found: DateMatch[] = [];
   const taken = (s: number, e: number) => found.some((f) => s < f.end && e > f.start);
@@ -151,7 +171,8 @@ function findDates(line: string, numericOrder: 'MDY' | 'DMY'): DateMatch[] {
     const s = m.index!;
     const e = s + m[0].length;
     if (taken(s, e)) continue;
-    found.push({ start: s, end: e, month: MONTHS[m[1]!.slice(0, 3)]!, day: Number(m[2]), year: m[5] ? Number(m[5]) : null, range: Boolean(m[4]), weekOf: weekOfBefore(s), numeric: false });
+    const month = MONTHS[m[1]!.slice(0, 3)]!;
+    found.push({ start: s, end: e, month, day: Number(m[2]), year: m[5] ? Number(m[5]) : null, range: Boolean(m[4]), ...(m[4] ? { endMonth: m[3] ? MONTHS[m[3].slice(0, 3)]! : month, endDay: Number(m[4]) } : {}), weekOf: weekOfBefore(s), numeric: false });
   }
   const dayFirst = new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_RE}\\.?(?:,?\\s+(\\d{4}))?\\b`, 'g');
   for (const m of lower.matchAll(dayFirst)) {
@@ -261,6 +282,11 @@ function stripNoise(text: string): string {
     .replace(/\bweek\s+\d+\b/gi, ' ')
     .replace(/\b(due|due date|deadline|submit(?:ted)?|turn in|hand in|by|on|at|before)\b:?/gi, ' ')
     .replace(/\b(tba|tbd|to be announced|to be determined)\b/gi, ' ')
+    .replace(/\(?\b\d{1,3}(?:\.\d)?\s?%\)?(?:\s*of (?:the )?(?:final )?grade)?/gi, ' ')
+    .replace(/\(?\b(?:covers?|covering)\b[^)]*\)?/gi, ' ')
+    .replace(/\(\s*weeks?\s+\d+\s*(?:-|to|through)\s*\d+\s*\)/gi, ' ')
+    .replace(/\(?\b(tentative|subject to change|tbc|provisional)\b\)?/gi, ' ')
+    .replace(/\b(released|release|available|posted|assigned|handed out|opens)\s*$/gi, ' ')
     .replace(/[|•*]+/g, ' ')
     .replace(/^\s*[-–:,.;)(\d. ]{0,4}\s*/, '')
     .replace(/\s+[-–:,;(]+\s*$/g, '')
@@ -281,8 +307,8 @@ interface Line {
   cells: string[];
 }
 
-const COURSE_CODE = /\b([A-Z]{2,5})[ -]?(\d{3,4}[A-Z]?)\b/;
-const TERM_RE = /\b(fall|autumn|spring|summer|winter)\s*(?:term|semester|quarter|session)?\s*(\d{4})\b/i;
+export const COURSE_CODE = /\b([A-Z]{2,5})[ -]?(\d{3,4}[A-Z]?)\b/;
+export const TERM_RE = /\b(fall|autumn|spring|summer|winter)\s*(?:term|semester|quarter|session)?\s*(\d{4})\b/i;
 
 function splitLines(text: string, splitCells: boolean): Line[] {
   const pages = normalizeText(text).split('\f');
@@ -386,6 +412,11 @@ interface Raw {
   reasons: Set<ReviewReason>;
   recurrence?: { weekday: number; time: string | null };
   provenance: SourceProvenance;
+  release?: DateMatch | null;
+  window?: DateMatch | null;
+  weightPercent?: number | null;
+  statedZone?: { label: string; zone: string | null } | null;
+  coverage?: Candidate['coverage'];
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -393,11 +424,12 @@ const RANK: Record<ConfidenceLevel, number> = { confirmed: 0, likely: 1, needsRe
 export const worst = (...levels: (ConfidenceLevel | null | undefined)[]): ConfidenceLevel =>
   levels.filter((l): l is ConfidenceLevel => Boolean(l)).reduce<ConfidenceLevel>((a, b) => (RANK[b] > RANK[a] ? b : a), 'confirmed');
 
-const DATE_REASONS: readonly ReviewReason[] = ['ambiguousWeek', 'missingYear', 'tba', 'vagueTiming', 'conflictingDates', 'ocrDamage', 'noDate', 'recurringRange', 'numericDateOrder'];
+const DATE_REASONS: readonly ReviewReason[] = ['ambiguousWeek', 'missingYear', 'tba', 'vagueTiming', 'conflictingDates', 'ocrDamage', 'noDate', 'recurringRange', 'numericDateOrder', 'tentative', 'examPeriod', 'timeZoneStated'];
 
 export function parseSyllabus(input: ParseInput): ParseResult {
   const version = input.parserVersion ?? PARSER_VERSION;
-  const modern = version === PARSER_VERSION;
+  const modern = version !== 'syllabus-parser-0.9';
+  const v2 = version === PARSER_VERSION;
   const lines = splitLines(input.text, modern);
   const { courses, courseOfLine } = guessCourses(lines);
   const repairedLines = lines.map((l) => repairOcrDates(l.text));
@@ -422,7 +454,11 @@ export function parseSyllabus(input: ParseInput): ParseResult {
       const segText = seg.text;
       const dates = findDates(segText, numericOrder);
       const sharedDates = seg.sharedDate ? findDates(seg.sharedDate, numericOrder) : [];
-      const date = dates[0] ?? sharedDates[0] ?? null;
+      const picked = v2 ? pickDueDate(segText, dates) : { due: dates[0] ?? null, release: null };
+      const examPeriod = v2 && EXAM_PERIOD.test(segText);
+      let date = picked.due ?? sharedDates[0] ?? null;
+      const windowDate = examPeriod && date && date.range ? date : null;
+      if (examPeriod) date = null; // a period is a window, never a due date
       const time = findTime(segText, dates) ?? (seg.sharedDate ? findTime(seg.sharedDate, sharedDates) : null);
       const type = classify(segText);
       const hasDue = containsAny(segText, DUE_WORDS);
@@ -431,6 +467,10 @@ export function parseSyllabus(input: ParseInput): ParseResult {
       const weekN = /\bweek\s+\d+\b/i.test(segText) && !date;
       const recurrenceMatch = modern ? new RegExp(`\\b(?:every|each)\\s+(${WEEKDAY_NAMES.join('|')})s?\\b|\\b(${WEEKDAY_NAMES.join('|')})s\\b`, 'i').exec(segText) : null;
       const reasons = new Set<ReviewReason>();
+      const extra = v2 ? lineFacts(segments.length === 1 && line.cells.length > 1 ? line.cells.join(' | ') : segText, time) : null;
+      if (examPeriod) reasons.add('examPeriod');
+      if (v2 && containsAny(segText, TENTATIVE_WORDS)) reasons.add('tentative');
+      if (extra?.statedZone && extra.statedZone.zone !== input.timezone) reasons.add('timeZoneStated');
       if (repaired && date) reasons.add('ocrDamage');
       if (/[^\x20-\x7E]{2,}|[~^]{1,}|\b[a-z]*\d+[a-z]+\d*[a-z]*\b/i.test(segText) && repaired) reasons.add('ocrDamage');
 
@@ -469,6 +509,10 @@ export function parseSyllabus(input: ParseInput): ParseResult {
         continue;
       }
 
+      if (!date && examPeriod) {
+        raws.push({ courseIndex: courseOfLine[idx] ?? 0, text: segText, title: cleanTitle(segText, dates, time), type, date: null, time, reasons, provenance, window: windowDate, ...extra });
+        continue;
+      }
       if (!date) {
         if (tba) reasons.add('tba');
         else if (vague) reasons.add('vagueTiming');
@@ -483,24 +527,32 @@ export function parseSyllabus(input: ParseInput): ParseResult {
       }
       if (date?.weekOf || date?.range) reasons.add('ambiguousWeek');
       if (time?.ambiguous) reasons.add('timeAmbiguous');
-      raws.push({ courseIndex: courseOfLine[idx] ?? 0, text: segText, title: cleanTitle(segText, dates, findTime(segText, dates)), type, date, time, reasons, provenance });
+      raws.push({ courseIndex: courseOfLine[idx] ?? 0, text: segText, title: cleanTitle(segText, dates, findTime(segText, dates)), type, date, time, reasons, provenance, release: picked.release, ...extra });
     }
   });
 
   // Resolve years in document order.
   let prevMonth: number | null = null;
   let prevYear: number | null = null;
-  const dated = raws.map((r) => {
-    if (!r.date) return { r, dayKey: null as string | null };
-    let year = r.date.year;
+  const termLabel = ctx.termSeason && ctx.termYear ? `${ctx.termSeason[0]!.toUpperCase()}${ctx.termSeason.slice(1)} ${ctx.termYear}` : null;
+  const keyFor = (d: DateMatch, inferences: Inference[], reasons: Set<ReviewReason>, month = d.month, day = d.day, explicitYear = d.year) => {
+    let year = explicitYear;
     if (year === null) {
-      const inferred = inferYear(r.date.month, ctx, prevMonth, prevYear);
+      const inferred = inferYear(month, ctx, prevMonth, prevYear);
       year = inferred.year;
-      if (inferred.reason) r.reasons.add(inferred.reason);
+      if (inferred.reason) reasons.add(inferred.reason);
+      else if (v2 && !inferences.some((i) => i.field === 'year')) inferences.push({ field: 'year', note: termLabel ? `Year ${year} from “${termLabel}”` : `Year ${year} from other dates in the syllabus` });
     }
-    prevMonth = r.date.month;
+    prevMonth = month;
     prevYear = year;
-    return { r, dayKey: `${year}-${pad2(r.date.month)}-${pad2(r.date.day)}` };
+    return `${year}-${pad2(month)}-${pad2(day)}`;
+  };
+  const dated = raws.map((r) => {
+    const inferences: Inference[] = [];
+    const available = r.release ? keyFor(r.release, inferences, r.reasons) : null;
+    const window = r.window ? { from: keyFor(r.window, inferences, r.reasons), to: keyFor(r.window, inferences, r.reasons, r.window.endMonth ?? r.window.month, r.window.endDay ?? r.window.day, r.window.year) } : null;
+    if (!r.date) return { r, dayKey: null as string | null, inferences, available, window };
+    return { r, dayKey: keyFor(r.date, inferences, r.reasons), inferences, available, window };
   });
 
   // Range for weekly recurrences: every dated item plus any fully dated line ("First class: September 1, 2026").
@@ -509,8 +561,10 @@ export function parseSyllabus(input: ParseInput): ParseResult {
   const dateRange = dayKeys.length ? { first: dayKeys[0]!, last: dayKeys[dayKeys.length - 1]! } : null;
 
   // Build candidates, then dedupe/flag conflicts by normalised title per course.
-  const built: Candidate[] = dated.map(({ r, dayKey }, i) => {
-    const title = r.title || defaultTitle(r.type);
+  const built: Candidate[] = dated.map(({ r, dayKey, inferences, available, window }, i) => {
+    // A bare chapter reference ("Ch. 4" from a schedule table) reads better as a reading.
+    const bare = r.title && /^(?:ch(?:apters?|\.)?|pp?\.|pages?)\s*\d/i.test(r.title) ? `Reading: ${r.title}` : r.title;
+    const title = bare || defaultTitle(r.type);
     const typeConfidence: ConfidenceLevel = r.type ? 'likely' : 'needsReview';
     if (!r.type) r.reasons.add('typeUnknown');
     return {
@@ -529,6 +583,12 @@ export function parseSyllabus(input: ParseInput): ParseResult {
       provenance: [r.provenance],
       snippet: r.text.slice(0, 160),
       overall: 'likely',
+      inferences,
+      availableDayKey: available,
+      window,
+      weightPercent: r.weightPercent ?? null,
+      statedZone: r.statedZone ?? null,
+      coverage: r.coverage ?? null,
     };
   });
 
@@ -550,6 +610,39 @@ export function parseSyllabus(input: ParseInput): ParseResult {
     dateRange,
     yearAnchor: ctx.anchor,
   };
+}
+
+const EXAM_PERIOD = /\b(?:final\s+)?exam(?:ination)?s?\s+period\b|\bfinals?\s+(?:period|week)\b|\bduring\s+(?:the\s+)?(?:final\s+)?exam(?:ination)?s?\b|\bofficial\s+(?:final\s+)?exam(?:ination)?\s+schedule\b/i;
+
+/** "Released Oct 1, due Oct 8": the date after "due" is the due date; a date next to a release word is the release date. */
+function pickDueDate(text: string, dates: DateMatch[]): { due: DateMatch | null; release: DateMatch | null } {
+  if (dates.length < 2) return { due: dates[0] ?? null, release: null };
+  const lower = text.toLowerCase();
+  const dueAt = lower.search(/\b(due|deadline|submit|turn in|hand in)\b/);
+  const isRelease = (d: DateMatch) => RELEASE_WORDS.some((w) => {
+    const before = lower.slice(Math.max(0, d.start - 24), d.start);
+    return before.includes(w);
+  });
+  const release = dates.find(isRelease) ?? null;
+  const afterDue = dueAt >= 0 ? dates.find((d) => d.start > dueAt && d !== release) : undefined;
+  const due = afterDue ?? dates.find((d) => d !== release) ?? null;
+  return { due, release: release && due && release !== due ? release : null };
+}
+
+/** Weight, stated time zone and explicit coverage written on the same line. */
+function lineFacts(text: string, time: TimeMatch | null): Pick<Raw, 'weightPercent' | 'statedZone' | 'coverage'> {
+  const weight = /\(?\b(\d{1,2}(?:\.\d)?|100)\s?%\)?/.exec(text);
+  let statedZone: Raw['statedZone'] = null;
+  if (time) {
+    const zone = /^\s*\(?([a-z]{2,3})\)?\b/i.exec(text.slice(time.end));
+    const key = zone?.[1]?.toLowerCase();
+    if (key && key in ZONE_ABBREVIATIONS) statedZone = { label: zone![1]!.toUpperCase(), zone: ZONE_ABBREVIATIONS[key] ?? null };
+  }
+  const weeks = /\b(?:covers?|covering|on|material from)\b[^.;]*?\bweeks?\s+(\d{1,2})\s*(?:-|to|through|and)\s*(\d{1,2})\b/i.exec(text) ?? /\(\s*weeks?\s+(\d{1,2})\s*(?:-|to|through)\s*(\d{1,2})\s*\)/i.exec(text);
+  const chapters = /\b(?:covers?|covering)?\s*\(?\b(ch(?:apters?|\.)?\s*\d{1,2}(?:\s*(?:-|to|through|,|and)\s*\d{1,2})*)/i.exec(text);
+  const assessment = /\b(exam|examination|midterm|quiz|test|final)\b/i.test(text);
+  const coverage = assessment && (weeks || chapters) ? { weeks: weeks ? { from: Number(weeks[1]), to: Number(weeks[2]) } : null, chapters: chapters ? chapters[1]!.replace(/\s+/g, ' ').trim() : null } : null;
+  return { weightPercent: weight ? Number(weight[1]) : null, statedZone, coverage };
 }
 
 function recurringTitle(text: string): string {
@@ -631,5 +724,11 @@ export function describeReason(reason: ReviewReason): string {
       return 'The day and month could be swapped.';
     case 'recurringRange':
       return 'It repeats weekly, but the term dates weren’t clear.';
+    case 'tentative':
+      return 'The syllabus says this date is tentative.';
+    case 'examPeriod':
+      return 'Only the exam period is given, not the exam’s own date.';
+    case 'timeZoneStated':
+      return 'The time is given in a different time zone.';
   }
 }

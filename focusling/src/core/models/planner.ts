@@ -2,7 +2,7 @@ import type { Id, Timestamp } from './common';
 import type { ProtectionMode } from './protection';
 import type { RetrievalItem } from './retrieval';
 import type { JourneyState } from './studyStats';
-import type { ConfidenceLevel, ReviewReason, SourceProvenance, Syllabus, SyllabusSourceType } from './syllabus';
+import type { ConfidenceLevel, CourseDetails, ReviewReason, SourceProvenance, Syllabus, SyllabusSourceType } from './syllabus';
 
 /**
  * Studyling planner records. Normalised (one table per entity, keyed by id)
@@ -32,6 +32,8 @@ export interface Course {
   sourceType: SyllabusSourceType;
   externalId?: string;
   meetingSchedule?: MeetingTime[];
+  /** What the student kept from the syllabus: identity, people, grading, schedule… (planner schema 3, local only). */
+  details?: CourseDetails;
   active: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -98,6 +100,17 @@ export interface Assignment {
   /** Set when a revised syllabus no longer lists this item (kept, flagged). */
   missingFromSource?: boolean;
   completedAt?: Timestamp;
+  /**
+   * Planner schema 3 (Syllabus Intelligence). All optional; manual tasks have none.
+   * - coverage: what the syllabus explicitly says an assessment covers (+ topics from those weeks).
+   * - window: an exam period with no exam date yet ("Dec 8–17").
+   * - unresolved: the syllabus names the requirement but not its date.
+   * - inferenceNotes: how values were worked out (e.g. "Year 2026 from “Fall 2026”").
+   */
+  coverage?: { weeks: { from: number; to: number } | null; chapters: string | null; topics: string[] };
+  window?: { from: Timestamp; to: Timestamp };
+  unresolved?: 'tba' | 'examPeriod';
+  inferenceNotes?: string[];
   /** "I'll handle it" on a capacity note: don't show it again for this deadline. */
   capacityNoteDismissedFor?: Timestamp;
   createdAt: Timestamp;

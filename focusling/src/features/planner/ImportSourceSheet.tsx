@@ -42,7 +42,7 @@ export function ImportSourceSheet() {
   return (
     <View style={styles.wrap}>
       <SectionTitle>Import syllabus</SectionTitle>
-      <SourceOption icon="book" title="PDF or file" body={services.documents.canReadPdf ? 'Read on this device. Scanned pages use on-device text recognition.' : 'Text files work here. PDF reading runs in the iPhone app; you can paste the text instead.'} onPress={() => void pickFile()} disabled={busy} />
+      <SourceOption icon="book" title="PDF, Word or text file" body={services.documents.canReadPdf ? 'Read on this device: PDF, Word, text, or a photo of the page. Scans use on-device text recognition.' : 'DOCX and text files work here. PDFs and photos are read in the iPhone app; you can paste the text instead.'} onPress={() => void pickFile()} disabled={busy} />
       <SourceOption icon="bell" title="Paste from email" body="Copy the syllabus or schedule from an email and paste it here. No mailbox access." onPress={() => setPasting((v) => !v)} disabled={busy} />
 
       {busy && (
@@ -59,12 +59,16 @@ export function ImportSourceSheet() {
       {error && (
         <InfoNote icon="book">
           {error === 'unsupported'
-            ? 'This device can’t read PDFs in the preview. Paste the syllabus text instead, or import it on your iPhone.'
+            ? 'This file type can’t be read here. PDFs and photos are read on the iPhone app; on the web, use a DOCX or text file, or paste the text.'
             : error === 'empty'
               ? 'No text was found. If it’s a photo of a page, try a clearer scan, or paste the text.'
-              : error === 'noItems'
-                ? 'No dates or assignments were found. You can add them yourself in a minute.'
-                : 'That file couldn’t be read. Try another file or paste the text.'}
+              : error === 'tooLarge'
+                ? 'That file is too large to read on this device. Try exporting just the syllabus pages, or paste the text.'
+                : error === 'encrypted'
+                  ? 'That file is password-protected. Save an unprotected copy, or paste the text.'
+                  : error === 'noItems'
+                    ? 'No dates or assignments were found. You can add them yourself in a minute.'
+                    : 'Most of that file couldn’t be read, so nothing was imported. Try a clearer copy or paste the text.'}
         </InfoNote>
       )}
 

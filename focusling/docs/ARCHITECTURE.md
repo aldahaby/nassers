@@ -476,3 +476,16 @@ student progress, and marks onboarding done for a pet adopted during an unfinish
 `core/__tests__/studentOnly.test.ts` fails if family routes, modules or Child View checks return.
 Apple's Screen Time framework names (`FamilyControls`, `FamilyActivityPicker`) are platform APIs
 used by focus protection and are unrelated.
+
+## 20. Syllabus Intelligence 2.0 (planner schema 3, parser 2.0)
+
+- Document layer `core/documents/` (DOCX via a dependency-free ZIP/DEFLATE reader, type sniffing,
+  readability gate, running-header removal) behind `services/documents/readDocument.ts`. PDF and
+  photo OCR stay in the iOS native module (untested on device).
+- Parser 2.0: release vs due, tentative, exam-period windows, line weights, stated time zones,
+  explicit coverage, recorded inferences. `syllabusInsights` adds course identity, people, office
+  hours, meetings, grading, weekly schedule, coverage relations, key dates and policy headings.
+- Planner schema 3 (optional fields only): `Course.details`, plus `Assignment.coverage/window/unresolved/inferenceNotes`.
+- Trust statuses, revision matching and course-detail diffs in `syllabusImport`;
+  `courseSpaceKeyOf` for future Course Spaces; `services.syllabusAnalysis` (local only).
+- See `docs/SYLLABUS_INTELLIGENCE.md`.

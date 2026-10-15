@@ -16,6 +16,8 @@ export interface LiveActivityPayload {
 
 export interface StudylingNativeModule {
   extractPdfText(uri: string): Promise<ExtractedPage[]>;
+  /** Vision OCR of a photographed page (newer native builds only). */
+  extractImageText?(uri: string): Promise<ExtractedPage[]>;
   writeWidgetSnapshot(json: string): Promise<void>;
   startLiveActivity(payload: LiveActivityPayload): Promise<string | null>;
   updateLiveActivity(id: string, payload: LiveActivityPayload): Promise<void>;
